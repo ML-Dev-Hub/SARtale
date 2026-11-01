@@ -104,6 +104,8 @@ export interface StoryStep {
   site?: string;
   /** Show the observation timeline inside the step. */
   strip?: boolean;
+  /** Dated marks on that timeline, for events that are not passes. */
+  marks?: { date: string; label: string }[];
   /** "play" adds a button that plays the season. */
   action?: "play";
   camera: { fit: true } | { center: [number, number]; zoom: number };

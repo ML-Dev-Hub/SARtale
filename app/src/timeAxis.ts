@@ -24,6 +24,8 @@ export interface AxisModel {
   gap: { from: number; to: number; label: string } | null;
   /** Calendar days from the first to the last built date, counting both ends. */
   days: number;
+  /** Place on the axis, 0 to 1, of the middle of a calendar day (YYYY-MM-DD). */
+  place(date: string): number;
 }
 
 function dayStart(iso: string): number {
@@ -76,7 +78,7 @@ export function buildAxis(m: Manifest): AxisModel {
       gap = { from: at(from), to: at(to), label: `No data ${dayMonth(f)} to ${dayMonth(e)}` };
     }
   }
-  return { dates, unused, months, gap, days: Math.round(span / DAY_MS) };
+  return { dates, unused, months, gap, days: Math.round(span / DAY_MS), place: midday };
 }
 
 /** The built date nearest to a place on the axis (0 to 1). */
@@ -106,6 +108,8 @@ export interface AxisHandle {
 }
 
 export interface AxisOptions {
+  /** Marks for dates that are not passes, such as a river peak between two of them. */
+  marks?: { date: string; label: string }[];
   /** Called when the person points at the axis. The index is of a built date. */
   onPick(index: number, final: boolean): void;
   disabled?: () => boolean;
@@ -147,6 +151,13 @@ export function mountAxis(track: HTMLElement, layer: HTMLElement, model: AxisMod
     if (d.flag) el.classList.add("flagged");
     if (d.excluded) el.dataset.excluded = "true";
     dots.set(d.index, el);
+    layer.append(el);
+  }
+
+  for (const mark of opts.marks ?? []) {
+    const el = make("axis-mark", model.place(mark.date));
+    el.dataset.label = mark.label;
+    el.title = `${formatDate(mark.date)}: ${mark.label}`;
     layer.append(el);
   }
 

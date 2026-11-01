@@ -124,6 +124,7 @@
       ],
       "source": "Flood Forecasting Division, Pakistan Meteorological Department, daily flood bulletins 035/26, 039/26 and 042/26. Readings at 06:00 Pakistan time.",
       "strip": true,
+      "marks": [{ "date": "2026-07-23", "label": "Peak, 23 Jul" }],
       "camera": { "center": [71.98, 34.02], "zoom": 8.8 },
       "map": { "date": "2026-07-26", "pol": "HH", "swipeBefore": "2026-07-14" }
     },
