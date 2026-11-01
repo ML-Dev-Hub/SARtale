@@ -3,6 +3,7 @@
 Order of operations everywhere: mask, average in linear power, convert to dB.
 """
 import json
+from collections.abc import Collection
 from pathlib import Path
 
 import numpy as np
@@ -113,11 +114,16 @@ def composite_indices(n: int) -> tuple[int, int, int]:
     return 0, n // 2, n - 1
 
 
-def composite_choice(dates: list[str], avoid: str = INTERFERENCE_DATE) -> tuple[int, int, int]:
-    """Indices into the sorted `dates` of the composite's early, middle and late dates, never `avoid`."""
-    usable = [i for i, d in enumerate(dates) if d != avoid]
+def composite_choice(dates: list[str], flagged: Collection[str] = ()) -> tuple[int, int, int]:
+    """Indices into the sorted `dates` of the composite's early, middle and late dates.
+
+    Every date in `flagged` is skipped. A flagged date is used only if no other is left; 2 July never is.
+    """
+    usable = [i for i, d in enumerate(dates) if d != INTERFERENCE_DATE and d not in flagged]
     if not usable:
-        raise ValueError(f"No date for the composite: only {avoid}, which it must not use")
+        usable = [i for i, d in enumerate(dates) if d != INTERFERENCE_DATE]
+    if not usable:
+        raise ValueError(f"No date for the composite: only {INTERFERENCE_DATE}, which it must not use")
     return tuple(usable[i] for i in composite_indices(len(usable)))
 
 
@@ -241,7 +247,7 @@ def pixel_size_m(extent: tuple[float, float, float, float], shape: tuple[int, in
 # --- build ----------------------------------------------------------------------
 
 def flag_for(date: str, granule: str) -> str | None:
-    """The visible caution for a date, or None. 2 July: possible interference. Forecast orbit: less precise."""
+    """The visible caution for a date, or None. 2 July: likely interference. Forecast orbit: less precise."""
     if date == INTERFERENCE_DATE:
         return INTERFERENCE_FLAG
     if parse_granule(granule).accuracy == "F":
@@ -331,6 +337,7 @@ def build_products(gcov_dir: Path, dates: list[str], manifest_in: Path,
     frames = out_dir / "frames"
     all_bounds = set()
     entries = []
+    flags = {d: flag_for(d, g["name"]) for d, g in zip(dates, granules)}
     for i, (d, g) in enumerate(zip(dates, granules)):
         rel = {}
         for pol in POL_TERMS:
@@ -338,13 +345,14 @@ def build_products(gcov_dir: Path, dates: list[str], manifest_in: Path,
             rel[pol] = f"frames/{d}_{pol}.webp"
             all_bounds.add(write_frame(render_frame(shown[pol][i], stretch[pol]), out_dir / rel[pol]))
         entry = {"date": d, "granule": g["name"], "frames": rel}
-        flag = flag_for(d, g["name"])
-        if flag:
-            entry["flag"] = flag
+        if flags[d]:
+            entry["flag"] = flags[d]
         entries.append(entry)
 
-    e, m, l = composite_choice(dates)
+    e, m, l = composite_choice(dates, {d for d, flag in flags.items() if flag})
     composite_dates = [dates[e], dates[m], dates[l]]
+    if any(flags[d] for d in composite_dates):
+        print(f"WARNING: the composite uses flagged dates: {', '.join(d for d in composite_dates if flags[d])}")
     rgba = seasonal_composite(shown["HH"][e], shown["HH"][m], shown["HH"][l], stretch["HH"])
     all_bounds.add(write_frame(rgba, frames / "composite_HH.webp"))
     if len(all_bounds) != 1:

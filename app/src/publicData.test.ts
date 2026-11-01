@@ -5,7 +5,7 @@ import sitesJson from "../public/data/sites.json";
 import { cardFor, findBannedClaims } from "./content";
 import { FORECAST_FLAG, INTERFERENCE_FLAG } from "./fixtures";
 import { sitesForManifest } from "./sites";
-import { maturityBanner } from "./timeline";
+import { flagFor, maturityBanner } from "./timeline";
 import type { Manifest, Site } from "./types";
 
 const manifest = manifestJson as unknown as Manifest;
@@ -23,8 +23,7 @@ describe("the data the app ships (app/public/data)", () => {
 
   test("is the calibrated manifest: real granule IDs, a dB stretch, every acquisition listed", () => {
     expect(manifest.maturity).toBe("Provisional");
-    expect(built.length).toBeGreaterThanOrEqual(5);
-    expect(built).toEqual(REAL_DATES.filter((d) => built.includes(d))); // real dates, in order; the rest arrive with the rebuild
+    expect(built).toEqual(REAL_DATES);
     for (const d of manifest.dates) {
       expect(d.granule).toMatch(/^NISAR_L2_PR_GCOV_\d{3}_084_A_019_4005_DHDH_A_\d{8}T\d{6}_\d{8}T\d{6}_P05023_[A-Z]_F_J_001$/);
       expect(d.granule).toContain(d.date.replaceAll("-", "") + "T");
@@ -55,10 +54,9 @@ describe("the data the app ships (app/public/data)", () => {
     expect(flagged[1].flag).toBe(FORECAST_FLAG);
   });
 
-  test("the composite is three built dates and never 2 July", () => {
-    expect(manifest.composite_dates).toHaveLength(3);
-    for (const d of manifest.composite_dates!) expect(built).toContain(d);
-    expect(manifest.composite_dates).not.toContain("2026-07-02");
+  test("the composite uses the first, middle and last unflagged dates", () => {
+    expect(manifest.composite_dates).toEqual(["2026-07-26", "2026-09-12", "2026-10-18"]);
+    for (const d of manifest.composite_dates!) expect(flagFor(manifest, d)).toBeUndefined();
   });
 
   test("every frame file the manifest names exists, and nothing else is in frames/", () => {
@@ -86,6 +84,20 @@ describe("the data the app ships (app/public/data)", () => {
       expect(c.dates.length, s.id).toBeGreaterThan(0);
       for (const d of c.dates) expect(built, `${s.id} ${d}`).toContain(d);
     }
+  });
+
+  test("site labels do not name a land cover nobody has checked", () => {
+    expect(JSON.stringify(sites.map((s) => s.role))).not.toMatch(/field|farm|crop/i);
+  });
+
+  test("the Swabi site's name states its real bearing from the Swabi label", () => {
+    const swabi = sites.find((s) => s.id === "swabi-plain")!;
+    const km = (Math.PI / 180) * 6371;
+    const east = (swabi.lon - 72.47) * km * Math.cos((34.12 * Math.PI) / 180);
+    const north = (swabi.lat - 34.12) * km;
+    expect(east).toBeLessThan(-9); // about 11 km west
+    expect(north).toBeGreaterThan(2); // about 3 km north
+    expect(swabi.name).toBe("Plain west-north-west of Swabi");
   });
 
   test("every value a card quotes equals the curve", () => {

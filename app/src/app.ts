@@ -243,6 +243,15 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     return `Composite colours: ${which}. Colour shows a difference in backscatter, not proven physical change. ${off}`;
   }
 
+  /** The cautions of any flagged date behind the composite, each with its date. */
+  function compositeFlags(): string | undefined {
+    const notes = (m.composite_dates ?? []).flatMap((d) => {
+      const flag = flagFor(m, d);
+      return flag ? [`${formatDate(d)}: ${flag}`] : [];
+    });
+    return notes.length ? notes.join(" ") : undefined;
+  }
+
   function updateLabels(): void {
     dateOut.textContent = formatDate(dates[state.i]);
     slider.setAttribute("aria-valuetext", formatDate(dates[state.i]));
@@ -251,7 +260,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     stampAfter.textContent = state.composite ? polText : `${formatDate(dates[state.i])}, ${state.pol}`;
     stampBefore.textContent = `${formatDate(dates[state.beforeI])}, ${state.pol}`;
     stampBefore.hidden = !(state.swipe && !state.composite);
-    const flagA = state.composite ? undefined : flagFor(m, dates[state.i]);
+    const flagA = state.composite ? compositeFlags() : flagFor(m, dates[state.i]);
     flagAfter.textContent = flagA ?? "";
     flagAfter.hidden = !flagA;
     const flagB = state.swipe && !state.composite ? flagFor(m, dates[state.beforeI]) : undefined;

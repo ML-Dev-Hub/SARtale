@@ -461,6 +461,23 @@ describe("real preview manifest", () => {
     expect(t).not.toMatch(/scaled for display|preview/i);
   });
 
+  test("the composite shows the flag of any flagged date it uses, with that date", async () => {
+    const { app, $ } = setup({ ...previewManifest, composite_dates: ["2026-07-14", "2026-09-12", "2026-10-18"] });
+    await app.settled();
+    $("composite-toggle").click();
+    await app.settled();
+    expect($("flag-after").hidden).toBe(false);
+    expect($("flag-after").textContent).toBe(`14 Jul 2026: ${FORECAST_FLAG}`);
+  });
+
+  test("the composite shows no flag when none of its dates is flagged", async () => {
+    const { app, $ } = setup(previewManifest);
+    await app.settled();
+    $("composite-toggle").click();
+    await app.settled();
+    expect($("flag-after").hidden).toBe(true);
+  });
+
   test("the limits line and the flags do not appear for synthetic data", async () => {
     const { app, $ } = setup({ ...fixtureManifest, maturity: "Demo" });
     await app.settled();

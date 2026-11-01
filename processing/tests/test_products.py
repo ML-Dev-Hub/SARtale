@@ -124,6 +124,18 @@ def test_composite_choice_is_unchanged_without_2_july():
     assert composite_choice(DATES) == composite_indices(len(DATES))
 
 
+def test_composite_choice_skips_every_flagged_date():
+    dates = ["2026-07-02", "2026-07-14", "2026-07-26", "2026-08-19", "2026-08-31", "2026-09-12",
+             "2026-09-24", "2026-10-06", "2026-10-18"]
+    e, m, l = composite_choice(dates, {"2026-07-02", "2026-07-14"})
+    assert [dates[e], dates[m], dates[l]] == ["2026-07-26", "2026-09-12", "2026-10-18"]
+
+
+def test_composite_choice_uses_a_flagged_date_only_if_nothing_else_is_left_and_never_2_july():
+    dates = ["2026-07-02", "2026-07-14", "2026-07-26"]
+    assert composite_choice(dates, set(dates)) == (1, 2, 2)
+
+
 def test_composite_choice_with_nothing_else_than_2_july_fails():
     with pytest.raises(ValueError, match="2026-07-02"):
         composite_choice(["2026-07-02"])
@@ -304,6 +316,35 @@ def test_build_composite_never_uses_2_july(tmp_path):
     out, _ = _build(tmp_path, gdir, mpath, dates=dates)
     m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
     assert m["composite_dates"] == ["2026-07-26", "2026-09-12", "2026-10-18"]
+
+
+def test_build_composite_skips_a_forecast_orbit_date_too(tmp_path):
+    dates = ["2026-07-02", "2026-07-14", "2026-07-26", "2026-08-19", "2026-09-12"]
+    gdir, mpath, granules = _make_stack(tmp_path, dates=dates)
+    doc = json.loads(mpath.read_text(encoding="utf-8"))
+    old = doc["granules"][1]["name"]
+    new = old.replace("_P05023_N_", "_P05023_F_")
+    doc["granules"][1].update(name=new, accuracy="F")
+    mpath.write_text(json.dumps(doc), encoding="utf-8")
+    write_gcov(gdir / f"{new}.h5", seed=1, granule_id=new, release_id="P05023")
+    (gdir / f"{old}.h5").unlink()
+    out, _ = _build(tmp_path, gdir, mpath, dates=dates)
+    m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    assert m["composite_dates"] == ["2026-07-26", "2026-08-19", "2026-09-12"]
+
+
+def test_build_warns_when_the_composite_has_to_use_a_flagged_date(tmp_path, capsys):
+    dates = ["2026-07-14", "2026-07-26"]
+    gdir, mpath, granules = _make_stack(tmp_path, dates=dates)
+    doc = json.loads(mpath.read_text(encoding="utf-8"))
+    for g in doc["granules"]:
+        old = g["name"]
+        g.update(name=old.replace("_P05023_N_", "_P05023_F_"), accuracy="F")
+        write_gcov(gdir / f"{g['name']}.h5", seed=1, granule_id=g["name"], release_id="P05023")
+        (gdir / f"{old}.h5").unlink()
+    mpath.write_text(json.dumps(doc), encoding="utf-8")
+    _build(tmp_path, gdir, mpath, dates=dates)
+    assert "WARNING: the composite uses flagged dates" in capsys.readouterr().out
 
 
 def test_build_flags_2_july_and_forecast_granules_like_the_preview(tmp_path):
