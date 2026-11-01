@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import manifestJson from "../public/data/manifest.json";
 import sitesJson from "../public/data/sites.json";
-import { findBannedClaims } from "./content";
+import { findBannedClaims, heroCopy, siteCards, storyBeats } from "./content";
 import { calibratedManifest, changeManifest } from "./fixtures";
 import { createEvidenceView, evidenceCopy, evidenceTokens, fillTokens } from "./evidenceView";
 import type { Manifest, Site } from "./types";
@@ -115,6 +115,10 @@ describe("How we know", () => {
   test("invents no expectation: nothing says what a reprocessed 2 July file should read, and the mask claim follows the docs", () => {
     const { text } = open(real, realSites);
     expect(text).not.toMatch(/interference filtering|back to about -10/i);
+    // The same holds for every card and for the story and hero copy.
+    const all = JSON.stringify([siteCards, storyBeats, heroCopy]);
+    expect(all).not.toMatch(/interference filtering|back to about -10|should bring HV/i);
+    expect(siteCards["peshawar-city"].test).not.toMatch(/-?\d+(\.\d+)? dB|about -?\d/);
     expect(text).not.toContain("The mask was set on the main pool");
     expect(text).toContain("thresholds were set on the main Tarbela pool on 26 July, a date not compared");
     expect(text).toContain("The 2 July HV brightening is likely radio interference");

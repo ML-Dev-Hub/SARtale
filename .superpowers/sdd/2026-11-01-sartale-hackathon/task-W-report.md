@@ -47,3 +47,10 @@ Covering tests (appStory.test.ts, evidenceView.test.ts, sitesView.test.ts): caut
 Commands: `npx tsc --noEmit`, `npx vitest --run` -> 292 passed; `npm run build` ok.
 Screenshots: web-fix-m-peak, web-fix-m-2jul, web-fix-m-closed, web-fix-m-controls (390 px, 2x), web-fix-d-peak (1440x900).
 Not unit-tested: adapter padding clamp and marker tabindex (need WebGL); checked only by screenshot and absence of console warnings. The closed phone map keeps the default upright view, which still leaves empty bands above and below the image.
+
+## Fix round 2
+
+- sites.json Peshawar "test" no longer predicts a value: it compares 2 July HV with a later NASA reprocessing and with other passes made without interference. evidenceView.test.ts now also checks all cards, story.json and the hero for "interference filtering", "back to about -10", "should bring HV", and that the Peshawar test names no dB value.
+- Console capture at a true 390 px (CDP, touch emulation, console.warn hooked, walking every story step and then leaving the story): first run showed one "Map cannot fit within canvas with the given bounds, padding, and/or offset." on the gap step (the second tall padding in a row). Fix: maplibreAdapter clears the map's existing padding before a fit move. Re-run over all ten steps plus exit: warnings `[]`.
+- 23 July card at 390 px: the strip caption was clipped (caption bottom 613 against card body bottom 561). On phones the caption is now hidden (the labelled axis and its aria-label carry the same facts); re-measured at scroll 0 and after scrolling 40 px: axis bottom 558 inside body bottom 561, clipped false. Desktop keeps the caption. Screenshot: web-fix2-m-peak.png.
+- Commands: `npx tsc --noEmit`; `npx vitest --run` -> 292 passed; `npm run build` ok.

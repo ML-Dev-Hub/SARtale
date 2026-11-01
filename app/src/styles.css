@@ -799,6 +799,8 @@ button { font: inherit; }
 
   .story { left: 6px; right: 6px; top: auto; bottom: 6px; width: auto; max-height: 52%; }
   .story-title { font-size: 1.25rem; }
+  /* The dated labels are on the axis itself, and the axis keeps its text alternative, so the caption would only be clipped. */
+  .story-strip figcaption { display: none; }
   .story-text { font-size: 0.9rem; }
   .story-body { padding: 4px 14px 8px; gap: 6px; }
   .stamp { bottom: 8px; font-size: 0.78rem; }

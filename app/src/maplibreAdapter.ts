@@ -114,6 +114,9 @@ class RadarMap implements MapLike {
     const pad = { top, right, bottom, left };
     if ("fit" in camera) {
       const [w, s, e, n] = this.bounds;
+      // MapLibre counts padding the map already has against the new padding, so a second tall panel in a row could not
+      // fit on a phone ("Map cannot fit within canvas"). Clear it first; the move that follows sets the new padding.
+      this.map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
       this.map.fitBounds([[w, s], [e, n]], { padding: pad, animate, duration: 1400 });
     } else {
       this.map.easeTo({ center: camera.center, zoom: camera.zoom, padding: pad, animate, duration: 1400 });

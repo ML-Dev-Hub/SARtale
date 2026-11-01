@@ -7,7 +7,7 @@
     ],
     "observation": "HH stayed between 3.5 dB on 26 Jul and 4.2 dB on 24 Sep, and HV sat near -10 dB except on 2 Jul, when it read -7.2 dB.",
     "hypothesis": "The one high HV reading may indicate radio interference reaching the city, because HH did not move with it.",
-    "test": "The 2 July file reprocessed with interference filtering should bring HV back to about -10 dB.",
+    "test": "Compare HV on 2 July with a later NASA reprocessing of the same file, and with other passes of this area made when the interference is absent. If interference was the cause, the reprocessed HV should agree with those passes.",
     "limits": "One circle of 150 m radius, about 30 m pixels. A very bright target can hide small changes. Provisional data, so levels may move when NASA reprocesses.",
     "evidence": "observed",
     "quotes": [
