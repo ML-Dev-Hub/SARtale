@@ -60,9 +60,31 @@ describe("the data the app ships (app/public/data)", () => {
   });
 
   test("every frame file the manifest names exists, and nothing else is in frames/", () => {
-    const named = [manifest.composite!, ...manifest.dates.flatMap((d) => Object.values(d.frames))];
-    expect(named).toHaveLength(2 * built.length + 1);
+    const changeFrames = Object.values(manifest.change!.frames);
+    const named = [manifest.composite!, ...manifest.dates.flatMap((d) => Object.values(d.frames)), ...changeFrames];
+    expect(named).toHaveLength(2 * built.length + 1 + changeFrames.length);
     expect(dataFiles.filter((f) => f.startsWith("frames/")).sort()).toEqual([...named].sort());
+  });
+
+  test("the change layer leaves out 2 Jul, keeps 14 Jul out of its baseline and stays beside the Provisional label", () => {
+    const change = manifest.change!;
+    expect(manifest.maturity).toBe("Provisional");
+    expect(change.baseline_dates).toEqual(REAL_DATES.slice(2));
+    expect(Object.keys(change.frames)).toEqual(REAL_DATES.slice(1));
+    expect(change.excluded.map((e) => e.date)).toEqual(["2026-07-02"]);
+    expect(Object.keys(change.removed_offsets_db)).toEqual(REAL_DATES.slice(1));
+    expect(change.threshold).toBeGreaterThan(0);
+    expect(change.scale_max).toBeGreaterThan(change.threshold);
+    expect(findBannedClaims(JSON.stringify(change))).toEqual([]);
+  });
+
+  test("every site has a score on every scored date and none on 2 Jul", () => {
+    for (const s of sites) {
+      for (const p of s.series) {
+        if (p.date === "2026-07-02") expect(p.change_score, s.id).toBeNull();
+        else expect(p.change_score, `${s.id} ${p.date}`).toBeGreaterThan(0);
+      }
+    }
   });
 
   test("no synthetic demo content or preview leftovers ship", () => {

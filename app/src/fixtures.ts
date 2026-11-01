@@ -34,6 +34,26 @@ export const previewManifest: Manifest = {
   pixel_m: 174,
 };
 
+/** Test fixture only: a calibrated manifest with a change layer, 2 Jul excluded and 14 Jul flagged. */
+export const changeManifest: Manifest = {
+  ...fixtureManifest,
+  stack: "fixture-change",
+  dates: previewManifest.dates,
+  change: {
+    method: "m",
+    reference: "r",
+    library: "numpy",
+    version: "0",
+    threshold: 3.5,
+    scale_max: 7,
+    baseline_dates: ["2026-07-26"],
+    excluded: [{ date: "2026-07-02", reason: "Likely radio interference in HV on this date." }],
+    removed_offsets_db: { "2026-07-14": { HH: -0.6, HV: -0.6 }, "2026-07-26": { HH: 0.1, HV: 0.1 } },
+    date_notes: { "2026-07-26": "The cause is unexplained." },
+    frames: { "2026-07-14": "frames/change_2026-07-14.webp", "2026-07-26": "frames/change_2026-07-26.webp" },
+  },
+};
+
 /** Test fixture only: the shape of a calibrated manifest. */
 export const calibratedManifest: Manifest = {
   ...fixtureManifest,

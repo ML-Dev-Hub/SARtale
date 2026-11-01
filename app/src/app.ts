@@ -1,7 +1,7 @@
-import { setComposite, setFrame, type MapLike } from "./map";
+import { setChangeOverlay, setComposite, setFrame, type MapLike } from "./map";
 import { createMissedView } from "./missedView";
 import { createSitesView, type ChartFactory } from "./sitesView";
-import { flagFor, formatDate, maturityBanner, orderedDates } from "./timeline";
+import { changeExclusion, flagFor, formatDate, maturityBanner, orderedDates } from "./timeline";
 import type { Manifest, Pol, Site } from "./types";
 
 /** What the app needs from the two stacked maps (the "after" map underneath, the "before" map clipped on top). */
@@ -21,6 +21,10 @@ export interface AppOptions {
 export type HostFactory = (afterEl: HTMLElement, beforeEl: HTMLElement) => MapHost;
 
 const PLAY_STEP_MS = 800;
+const CHANGE_CAPTION =
+  "Highlighted pixels differ unusually from this area's own season. This is a statistical flag, not proof of what changed.";
+const CHANGE_LIMIT =
+  "A change that lasts most of the season becomes the area's usual state, so the dates before it can be the ones highlighted.";
 
 const TEMPLATE = `
 <div class="shell">
@@ -90,6 +94,13 @@ const TEMPLATE = `
         </label>
       </div>
       <button type="button" class="btn toggle composite" data-role="composite-toggle" aria-pressed="false">Seasonal composite</button>
+      <button type="button" class="btn toggle change" data-role="change-toggle" aria-pressed="false" hidden>Change</button>
+    </div>
+    <div class="change-panel" data-role="change-panel" hidden>
+      <p class="change-caption" data-role="change-caption"></p>
+      <p class="change-legend" data-role="change-legend"><span class="change-ramp" aria-hidden="true"></span><span data-role="change-legend-text"></span></p>
+      <p class="change-limit" data-role="change-limit"></p>
+      <p class="change-note" data-role="change-note" hidden></p>
     </div>
     <p class="hint" data-role="hint" hidden></p>
     <p class="limits" data-role="limits" hidden></p>
@@ -146,6 +157,9 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const beforePick = q("before-pick");
   const beforeSelect = q<HTMLSelectElement>("before-select");
   const compositeToggle = q<HTMLButtonElement>("composite-toggle");
+  const changeToggle = q<HTMLButtonElement>("change-toggle");
+  const changePanel = q("change-panel");
+  const changeNote = q("change-note");
   const hint = q("hint");
   const limitsEl = q("limits");
   const flagBefore = q("flag-before");
@@ -173,7 +187,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
 
   const host = createHost(afterEl, beforeEl);
 
-  const state = { i: 0, beforeI: 0, pol: "HH" as Pol, composite: false, swipe: false, fraction: 0.5, playing: false };
+  const state = { i: 0, beforeI: 0, pol: "HH" as Pol, composite: false, swipe: false, change: false, fraction: 0.5, playing: false };
   let seq = 0;
   let pending: Promise<void> = Promise.resolve();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -222,6 +236,14 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   q("last").textContent = formatDate(dates[last]);
   beforeSelect.innerHTML = dates.map((d, i) => `<option value="${i}">${formatDate(d)}</option>`).join("");
   compositeToggle.hidden = !m.composite;
+  changeToggle.hidden = !m.change;
+  if (m.change) {
+    q("change-caption").textContent = CHANGE_CAPTION;
+    q("change-limit").textContent = CHANGE_LIMIT;
+    q("change-legend-text").textContent =
+      `Yellow is a score of ${m.change.threshold}, red is ${m.change.scale_max} or more, on one scale for every date. ` +
+      `The score counts how many of its usual swings a pixel sits from its usual value, in HH or HV. Below ${m.change.threshold} shows nothing.`;
+  }
   if (dates.length < 2) {
     slider.disabled = true;
     playBtn.disabled = true;
@@ -252,6 +274,15 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     return notes.length ? notes.join(" ") : undefined;
   }
 
+  /** What the change panel says about the current date beyond the fixed caption, or undefined. */
+  function changeDateNote(): string | undefined {
+    const date = dates[state.i];
+    const reason = changeExclusion(m, date);
+    if (reason) return `Excluded from change analysis. ${reason}`;
+    const note = m.change?.date_notes?.[date];
+    return note;
+  }
+
   function updateLabels(): void {
     dateOut.textContent = formatDate(dates[state.i]);
     slider.setAttribute("aria-valuetext", formatDate(dates[state.i]));
@@ -270,6 +301,12 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     playBtn.setAttribute("aria-pressed", String(state.playing));
     swipeToggle.setAttribute("aria-pressed", String(state.swipe));
     compositeToggle.setAttribute("aria-pressed", String(state.composite));
+    changeToggle.setAttribute("aria-pressed", String(state.change));
+    changeToggle.disabled = state.composite;
+    changePanel.hidden = !state.change || state.composite;
+    const note = changeDateNote();
+    changeNote.textContent = note ?? "";
+    changeNote.hidden = !note;
     beforeEl.hidden = !(state.swipe && !state.composite);
     swipeEl.hidden = beforeEl.hidden;
     beforePick.hidden = !state.swipe || state.composite;
@@ -293,6 +330,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
       state.composite ? setComposite(host.after, m) : setFrame(host.after, m, dates[state.i], state.pol),
     ];
     if (state.swipe && !state.composite) jobs.push(setFrame(host.before, m, dates[state.beforeI], state.pol));
+    if (m.change) jobs.push(setChangeOverlay(host.after, m, state.change && !state.composite ? dates[state.i] : null));
     pending = Promise.all(jobs).then(
       () => {
         if (mine === seq) showNotice(null);
@@ -353,6 +391,10 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   compositeToggle.addEventListener("click", () => {
     state.composite = !state.composite;
     if (state.composite) stopPlaying();
+    void refresh();
+  });
+  changeToggle.addEventListener("click", () => {
+    state.change = !state.change;
     void refresh();
   });
   retryBtn.addEventListener("click", () => void refresh());

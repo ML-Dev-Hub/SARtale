@@ -10,6 +10,11 @@ export const BANNED_CLAIMS = [
   "isolated",
   "risk score",
   "early warning",
+  "detected change",
+  "detected changes",
+  "change detected",
+  "changes detected",
+  "change detection",
 ] as const;
 
 const BANNED_PATTERNS = BANNED_CLAIMS.map((phrase) => ({
@@ -49,6 +54,8 @@ export interface SiteCard {
   /** What observation would test the hypothesis. */
   test: string;
   limits: string;
+  /** How to read this site's change scores, where they could mislead. */
+  changeNote?: string;
   evidence: Evidence;
   /** The curve values the observation quotes. A test checks each against sites.json, so copy cannot drift from a rebuild. */
   quotes?: { date: string; pol: "HH" | "HV"; db: string }[];

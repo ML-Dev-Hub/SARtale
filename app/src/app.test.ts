@@ -2,17 +2,22 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { mountApp, type MapHost } from "./app";
 import { findBannedClaims } from "./content";
-import { calibratedManifest, FORECAST_FLAG, fixtureManifest, INTERFERENCE_FLAG, previewManifest } from "./fixtures";
+import { calibratedManifest, changeManifest, FORECAST_FLAG, fixtureManifest, INTERFERENCE_FLAG, previewManifest } from "./fixtures";
 import type { MapLike } from "./map";
 import type { Site } from "./types";
 
-function fakeMap(fail = false): MapLike & { urls: string[] } {
+function fakeMap(fail = false): MapLike & { urls: string[]; overlays: (string | null)[] } {
   const urls: string[] = [];
+  const overlays: (string | null)[] = [];
   return {
     urls,
+    overlays,
     setImage: async (url) => {
       if (fail) throw new Error("image 404");
       urls.push(url);
+    },
+    setOverlay: async (url) => {
+      overlays.push(url);
     },
   };
 }
@@ -155,6 +160,114 @@ describe("app shell", () => {
       await new Promise((r) => setTimeout(r, 1000));
       expect($("slider").getAttribute("aria-valuetext")).toBe("14 Jul 2026");
     });
+  });
+});
+
+describe("the Change control", () => {
+  const CAPTION = "Highlighted pixels differ unusually from this area's own season. This is a statistical flag, not proof of what changed.";
+  const go = (slider: HTMLInputElement, i: number) => {
+    slider.value = String(i);
+    slider.dispatchEvent(new Event("input"));
+  };
+
+  test("is hidden for a build with no change layer", async () => {
+    const { app, $ } = setup(calibratedManifest);
+    await app.settled();
+    expect($("change-toggle").hidden).toBe(true);
+    expect($("change-panel").hidden).toBe(true);
+  });
+
+  test("overlays the current date's score, with the caption and the threshold in words", async () => {
+    const { app, host, $ } = setup(changeManifest);
+    go($("slider"), 2);
+    await app.settled();
+    expect($("change-toggle").hidden).toBe(false);
+    expect(host.after.overlays.at(-1)).toBeNull();
+    $("change-toggle").click();
+    await app.settled();
+    expect($("change-toggle").getAttribute("aria-pressed")).toBe("true");
+    expect(host.after.overlays.at(-1)).toBe("data/frames/change_2026-07-26.webp");
+    expect(host.after.urls.at(-1)).toBe("data/frames/2026-07-26_HH.webp");
+    expect($("change-panel").hidden).toBe(false);
+    expect($("change-caption").textContent).toBe(CAPTION);
+    expect($("change-legend").textContent).toContain("Yellow is a score of 3.5, red is 7 or more");
+    expect($("change-legend").textContent).toContain("Below 3.5 shows nothing");
+  });
+
+  test("follows the slider and clears when switched off", async () => {
+    const { app, host, $ } = setup(changeManifest);
+    $("change-toggle").click();
+    go($("slider"), 1);
+    await app.settled();
+    expect(host.after.overlays.at(-1)).toBe("data/frames/change_2026-07-14.webp");
+    $("change-toggle").click();
+    await app.settled();
+    expect(host.after.overlays.at(-1)).toBeNull();
+    expect($("change-panel").hidden).toBe(true);
+  });
+
+  test("an excluded date shows no overlay and says why, and keeps its flag", async () => {
+    const { app, host, $ } = setup(changeManifest);
+    await app.settled();
+    $("change-toggle").click();
+    await app.settled();
+    expect(host.after.overlays.at(-1)).toBeNull();
+    expect($("change-note").hidden).toBe(false);
+    expect($("change-note").textContent).toBe("Excluded from change analysis. Likely radio interference in HV on this date.");
+    expect($("flag-after").textContent).toBe(INTERFERENCE_FLAG);
+  });
+
+  test("a flagged date is scored and keeps its flag", async () => {
+    const { app, host, $ } = setup(changeManifest);
+    $("change-toggle").click();
+    go($("slider"), 1);
+    await app.settled();
+    expect(host.after.overlays.at(-1)).toBe("data/frames/change_2026-07-14.webp");
+    expect($("flag-after").textContent).toBe(FORECAST_FLAG);
+    expect($("change-note").hidden).toBe(true);
+  });
+
+  test("a date with a note shows it", async () => {
+    const { app, $ } = setup(changeManifest);
+    $("change-toggle").click();
+    go($("slider"), 2);
+    await app.settled();
+    expect($("change-note").textContent).toBe("The cause is unexplained.");
+  });
+
+  test("the composite takes the overlay off and locks the control", async () => {
+    const { app, host, $ } = setup(changeManifest);
+    $("change-toggle").click();
+    await app.settled();
+    $("composite-toggle").click();
+    await app.settled();
+    expect(host.after.overlays.at(-1)).toBeNull();
+    expect($("change-panel").hidden).toBe(true);
+    expect($<HTMLButtonElement>("change-toggle").disabled).toBe(true);
+  });
+
+  test("a change frame that fails to load shows the notice", async () => {
+    const root = document.createElement("div");
+    document.body.append(root);
+    const after: MapLike = { setImage: async () => {}, setOverlay: async (url) => { if (url) throw new Error("image 404"); } };
+    const app = mountApp(root, changeManifest, () => ({ after, before: fakeMap() }));
+    await app.settled();
+    const $ = (role: string) => root.querySelector<HTMLElement>(`[data-role="${role}"]`)!;
+    $("change-toggle").click();
+    const slider = $("slider") as HTMLInputElement;
+    go(slider, 2);
+    await app.settled();
+    expect($("notice").hidden).toBe(false);
+    expect($("notice-text").textContent).toContain("change overlay");
+  });
+
+  test("its text has no banned claims and never claims a detection", async () => {
+    const { app, root, $ } = setup(changeManifest);
+    $("change-toggle").click();
+    await app.settled();
+    const text = root.textContent ?? "";
+    expect(findBannedClaims(text)).toEqual([]);
+    expect(text).not.toMatch(/detect/i);
   });
 });
 

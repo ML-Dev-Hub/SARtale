@@ -8,6 +8,27 @@ export interface FrameEntry {
   flag?: string;
 }
 
+/** The statistical change layer. Calibrated builds with enough dates only. */
+export interface ChangeLayer {
+  method: string;
+  reference: string;
+  library: string;
+  version: string;
+  /** Pixels at or above this score are drawn; the rest are transparent. */
+  threshold: number;
+  /** The score at the top of the shared colour scale. */
+  scale_max: number;
+  baseline_dates: string[];
+  /** Dates left out of the analysis entirely, each with its reason. */
+  excluded: { date: string; reason: string }[];
+  /** What was subtracted from each scored date, in dB. */
+  removed_offsets_db: Record<string, Record<Pol, number>>;
+  /** A visible note for a date, for example a pattern nobody can explain yet. */
+  date_notes?: Record<string, string>;
+  /** Scored date to frame path. */
+  frames: Record<string, string>;
+}
+
 export interface Manifest {
   stack: string;
   crid: string;
@@ -34,6 +55,7 @@ export interface Manifest {
   pixel_m?: number;
   /** Ground size of the pixels behind every measurement (COGs, site curves) in metres. Calibrated builds only. */
   analysis_m?: number;
+  change?: ChangeLayer;
 }
 
 /** One acquisition at a site. null means no valid value on that date (a gap, never zero). */
@@ -42,6 +64,11 @@ export interface SitePoint {
   hh_db: number | null;
   hv_db: number | null;
   valid_fraction: number | null;
+  /**
+   * Median pixel score of the change layer inside the site's radius. null when the date is excluded or nothing is
+   * valid. Absent from builds made before the layer existed.
+   */
+  change_score?: number | null;
 }
 
 /**

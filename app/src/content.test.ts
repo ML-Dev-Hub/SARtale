@@ -19,6 +19,9 @@ describe("findBannedClaims", () => {
   test("catches the other banned phrases", () => {
     expect(findBannedClaims("an isolated village")).toEqual(["isolated"]);
     expect(findBannedClaims("flood detected")).toEqual(["flood detected"]);
+    expect(findBannedClaims("This is a detected change")).toEqual(["detected change"]);
+    expect(findBannedClaims("Change detected here")).toEqual(["change detected"]);
+    expect(findBannedClaims("A change detection layer")).toEqual(["change detection"]);
   });
 
   test("clean text and the allowed hypothesis wording pass", () => {

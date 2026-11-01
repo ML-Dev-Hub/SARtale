@@ -39,6 +39,7 @@ class RadarMap implements MapLike {
   private readonly ready: Promise<void>;
   private hasImage = false;
   private seq = 0;
+  private overlaySeq = 0;
 
   constructor(container: HTMLElement, private readonly bounds: Manifest["bounds"], private readonly decorative: boolean) {
     this.map = new maplibregl.Map({
@@ -83,11 +84,33 @@ class RadarMap implements MapLike {
       this.map.addSource("radar", { type: "image", url, coordinates: corners });
       this.map.addLayer(
         { id: "radar", type: "raster", source: "radar", paint: { "raster-fade-duration": 0, "raster-opacity": 1 } },
-        this.firstOverlayLayer(),
+        this.map.getLayer("change") ? "change" : this.firstOverlayLayer(),
       );
       this.hasImage = true;
     } else {
       (this.map.getSource("radar") as maplibregl.ImageSource).updateImage({ url, coordinates: corners });
+    }
+  }
+
+  /** The change layer sits above the radar and under any overlay lines. */
+  async setOverlay(url: string | null, corners: Corners): Promise<void> {
+    const mine = ++this.overlaySeq;
+    if (url) await loadImage(url);
+    await this.ready;
+    if (mine !== this.overlaySeq) return; // a newer request came in while this one loaded
+    if (!url) {
+      if (this.map.getLayer("change")) this.map.setLayoutProperty("change", "visibility", "none");
+      return;
+    }
+    if (this.map.getSource("change")) {
+      (this.map.getSource("change") as maplibregl.ImageSource).updateImage({ url, coordinates: corners });
+      this.map.setLayoutProperty("change", "visibility", "visible");
+    } else {
+      this.map.addSource("change", { type: "image", url, coordinates: corners });
+      this.map.addLayer(
+        { id: "change", type: "raster", source: "change", paint: { "raster-fade-duration": 0, "raster-opacity": 1 } },
+        this.firstOverlayLayer(),
+      );
     }
   }
 

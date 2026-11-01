@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test } from "vitest";
 import { PLACEHOLDER } from "./content";
-import { fixtureManifest } from "./fixtures";
+import { changeManifest, fixtureManifest } from "./fixtures";
 import { createSitesView, type ChartData, type ChartFactory } from "./sitesView";
 import type { Site } from "./types";
 
@@ -38,6 +38,44 @@ function setup(list: Site[] | null = sites) {
 
 afterEach(() => {
   document.body.innerHTML = "";
+});
+
+describe("change scores on a card", () => {
+  const scored: Site = {
+    ...mk("demo-a", "Demo site A", [-18, -18, -17]),
+    series: [
+      { date: "2026-07-26", hh_db: -10, hv_db: -18, valid_fraction: 1, change_score: 1.26 },
+      { date: "2026-07-02", hh_db: -10, hv_db: -18, valid_fraction: 1, change_score: null },
+      { date: "2026-07-14", hh_db: -10, hv_db: -18, valid_fraction: 1, change_score: 5.39 },
+    ],
+  };
+  function open(manifest: Parameters<typeof createSitesView>[1]["manifest"]) {
+    const root = document.createElement("div");
+    document.body.append(root);
+    const view = createSitesView(root, { sites: [scored], manifest });
+    view.select("demo-a");
+    return <T extends HTMLElement>(role: string) => root.querySelector<T>(`[data-role="${role}"]`)!;
+  }
+
+  test("each date's score sits by the curve, in date order, with exclusions and flags in words", () => {
+    const $ = open(changeManifest);
+    const t = $("card-change").textContent ?? "";
+    expect($("card-change").hidden).toBe(false);
+    expect(t).toContain("Change score:");
+    expect(t).toContain("3.5 or more is highlighted");
+    expect(t).toContain("2 Jul Excluded from change analysis, 14 Jul 5.4 (flagged date), 26 Jul 1.3.");
+  });
+
+  test("the values table carries the score", () => {
+    const $ = open(changeManifest);
+    const rows = [...$("card-table").querySelectorAll("tbody tr")].map((tr) => tr.lastElementChild?.textContent);
+    expect(rows).toEqual(["Excluded from change analysis", "5.4 (flagged date)", "1.3"]);
+  });
+
+  test("a build with no change layer shows no score line", () => {
+    const $ = open(fixtureManifest);
+    expect($("card-change").hidden).toBe(true);
+  });
 });
 
 describe("sites view", () => {

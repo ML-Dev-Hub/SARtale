@@ -1,6 +1,6 @@
 import { BADGE_LABELS, cardFor, story } from "./content";
 import { toChartSeries, type ChartSeries } from "./sites";
-import { formatDate, maturityBanner } from "./timeline";
+import { changeExclusion, flagFor, formatDate, maturityBanner } from "./timeline";
 import type { Manifest, Site } from "./types";
 
 export type ChartData = ChartSeries;
@@ -38,6 +38,7 @@ const TEMPLATE = `
         <span class="key key-hh">HH</span> <span class="key key-hv">HV</span> backscatter in dB. A break in a line means no valid value on that date.
       </figcaption>
     </figure>
+    <p class="slot" data-role="card-change" hidden></p>
     <p class="slot" data-role="card-dates"></p>
     <p class="slot" data-role="card-observation"></p>
     <p class="slot" data-role="card-hypothesis"></p>
@@ -47,7 +48,7 @@ const TEMPLATE = `
     <details class="values">
       <summary>Values by date</summary>
       <table data-role="card-table">
-        <thead><tr><th scope="col">Date</th><th scope="col">HH (dB)</th><th scope="col">HV (dB)</th><th scope="col">Valid</th></tr></thead>
+        <thead><tr><th scope="col">Date</th><th scope="col">HH (dB)</th><th scope="col">HV (dB)</th><th scope="col">Valid</th><th scope="col" data-role="card-change-col" hidden>Change score</th></tr></thead>
         <tbody></tbody>
       </table>
     </details>
@@ -57,6 +58,7 @@ const TEMPLATE = `
 const NO_DATA = "no data";
 const db = (v: number | null | undefined): string => (v == null ? NO_DATA : v.toFixed(1));
 const pct = (v: number | null | undefined): string => (v == null ? NO_DATA : `${Math.round(v * 100)}%`);
+const dayMonth = (iso: string): string => formatDate(iso).split(" ").slice(0, 2).join(" ");
 
 export function createSitesView(root: HTMLElement, opts: SitesViewOptions): SitesViewHandle {
   root.innerHTML = TEMPLATE;
@@ -70,6 +72,7 @@ export function createSitesView(root: HTMLElement, opts: SitesViewOptions): Site
   const listEl = q("list");
   const cardEl = q("card");
   const sites = opts.sites ?? [];
+  q("card-change-col").hidden = !opts.manifest.change;
   let chart: { destroy(): void } | undefined;
 
   const hasSites = sites.length > 0;
@@ -104,6 +107,25 @@ export function createSitesView(root: HTMLElement, opts: SitesViewOptions): Site
     p.replaceChildren(strong, document.createTextNode(text));
   }
 
+  /** One date's change score as text, keeping the reason for a missing score and the caution on a flagged date. */
+  function scoreText(date: string, score: number | null | undefined): string {
+    if (changeExclusion(opts.manifest, date)) return "Excluded from change analysis";
+    if (score == null) return NO_DATA;
+    return `${score.toFixed(1)}${flagFor(opts.manifest, date) ? " (flagged date)" : ""}`;
+  }
+
+  /** The scores next to the curves, or nothing for a build with no change layer. */
+  function changeSlot(site: Site, note: string | undefined): void {
+    const change = opts.manifest.change;
+    const p = q("card-change");
+    p.hidden = !change;
+    if (!change) return;
+    const rows = [...site.series].sort((a, b) => (a.date < b.date ? -1 : 1));
+    const scores = rows.map((r) => `${dayMonth(r.date)} ${scoreText(r.date, r.change_score)}`).join(", ");
+    const lead = `The typical pixel here, where ${change.threshold} or more is highlighted on the map. ${scores}.`;
+    slot("card-change", "Change score", note ? `${lead} ${note}` : lead);
+  }
+
   function select(id: string): void {
     const site = sites.find((s) => s.id === id);
     if (!site) return;
@@ -123,6 +145,7 @@ export function createSitesView(root: HTMLElement, opts: SitesViewOptions): Site
     const range = sortedDates.length
       ? `${formatDate(sortedDates[0])} to ${formatDate(sortedDates[sortedDates.length - 1])}, ${sortedDates.length} acquisitions`
       : "no acquisitions";
+    changeSlot(site, card.changeNote);
     slot("card-dates", "Dates", card.dates.length ? card.dates.map(formatDate).join(", ") : "not set yet");
     slot("card-observation", "Observation", card.observation);
     slot("card-hypothesis", "Hypothesis", card.hypothesis);
@@ -136,7 +159,9 @@ export function createSitesView(root: HTMLElement, opts: SitesViewOptions): Site
         .sort((a, b) => (a.date < b.date ? -1 : 1))
         .map((r) => {
           const tr = document.createElement("tr");
-          for (const text of [formatDate(r.date), db(r.hh_db), db(r.hv_db), pct(r.valid_fraction)]) {
+          const cells = [formatDate(r.date), db(r.hh_db), db(r.hv_db), pct(r.valid_fraction)];
+          if (opts.manifest.change) cells.push(scoreText(r.date, r.change_score));
+          for (const text of cells) {
             const td = document.createElement("td");
             td.textContent = text;
             tr.append(td);

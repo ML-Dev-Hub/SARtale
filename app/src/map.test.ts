@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { cornersFromBounds, setComposite, setFrame, type MapLike } from "./map";
-import { fixtureManifest as m } from "./fixtures";
+import { cornersFromBounds, setChangeOverlay, setComposite, setFrame, type MapLike } from "./map";
+import { changeManifest, fixtureManifest as m } from "./fixtures";
 
 function recordingMap(): MapLike & { calls: [string, unknown][] } {
   const calls: [string, unknown][] = [];
@@ -10,6 +10,40 @@ function recordingMap(): MapLike & { calls: [string, unknown][] } {
 const mapThatFailsToLoad: MapLike = {
   setImage: () => Promise.reject(new Error("image 404")),
 };
+
+describe("change overlay", () => {
+  const corners = cornersFromBounds(changeManifest.bounds);
+  function overlayMap(fail = false): MapLike & { shown: (string | null)[] } {
+    const shown: (string | null)[] = [];
+    return {
+      shown,
+      setImage: async () => {},
+      setOverlay: async (url, at) => {
+        if (fail) throw new Error("image 404");
+        expect(at).toEqual(corners);
+        shown.push(url);
+      },
+    };
+  }
+
+  test("a scored date shows its frame", async () => {
+    const map = overlayMap();
+    await setChangeOverlay(map, changeManifest, "2026-07-14");
+    expect(map.shown).toEqual(["data/frames/change_2026-07-14.webp"]);
+  });
+  test("an excluded date and null both clear the overlay", async () => {
+    const map = overlayMap();
+    await setChangeOverlay(map, changeManifest, "2026-07-02");
+    await setChangeOverlay(map, changeManifest, null);
+    expect(map.shown).toEqual([null, null]);
+  });
+  test("a frame that fails to load is reported", async () => {
+    await expect(setChangeOverlay(overlayMap(true), changeManifest, "2026-07-14")).rejects.toThrow("change overlay");
+  });
+  test("a map with no overlay support is left alone", async () => {
+    await expect(setChangeOverlay({ setImage: async () => {} }, changeManifest, "2026-07-14")).resolves.toBeUndefined();
+  });
+});
 
 describe("map frames", () => {
   test("cornersFromBounds goes clockwise from top-left", () => {

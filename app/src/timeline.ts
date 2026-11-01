@@ -52,6 +52,11 @@ export function flagFor(m: Manifest, date: string): string | undefined {
   return m.dates.find((d) => d.date === date)?.flag || undefined;
 }
 
+/** Why a date is left out of the change layer, or undefined. */
+export function changeExclusion(m: Manifest, date: string): string | undefined {
+  return m.change?.excluded.find((e) => e.date === date)?.reason;
+}
+
 /** "2026-07-02" to "2 Jul 2026", without time zone shifts. */
 export function formatDate(iso: string): string {
   const [y, mo, d] = iso.split("-").map(Number);
