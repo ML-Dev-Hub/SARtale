@@ -43,7 +43,7 @@ body { background: var(--ink-0); font-size: 1rem; line-height: 1.45; }
 .lede { margin: 0; flex-basis: 100%; color: var(--muted); font-size: 0.9rem; max-width: 62ch; }
 
 /* View switch: two buttons, both always reachable. */
-.views { display: flex; gap: 6px; margin-left: auto; }
+.views { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
 .view-btn { min-width: 44px; padding: 0 14px; }
 .view-btn[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: #04201d; }
 
@@ -358,6 +358,47 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(
 .u-legend { color: var(--text); font-size: 0.82rem; }
 .u-title { color: var(--text); }
 
+/* What NISAR Missed: the strip draws the same three states the text lists. Colour is never the only cue. */
+.missed-root { display: flex; flex: 1 1 auto; min-height: 0; }
+.missed-scroll { flex: 1 1 auto; min-width: 0; overflow-y: auto; padding: 12px; display: grid; gap: 12px; align-content: start; }
+.missed-scroll:focus-visible { outline-offset: -3px; }
+.missed-title { margin: 0; font-size: 1.3rem; }
+.missed-sub { margin: 4px 0 0; font-size: 1rem; color: var(--muted); }
+.gap-facts { color: var(--text); }
+.missed-fig { margin: 0; min-width: 0; }
+.strip { display: flex; height: 56px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--ink-0); }
+.strip .cell { flex-basis: 0; min-width: 4px; }
+.cell-observed { background: var(--teal); min-width: 6px; border-left: 1px solid var(--ink-0); border-right: 1px solid var(--ink-0); }
+.cell-between { background: transparent; background-image: radial-gradient(var(--muted) 1px, transparent 1.5px); background-size: 8px 8px; }
+.cell-gap {
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  color: #1a1203;
+  font-size: 0.85rem;
+  font-weight: 800;
+  background: repeating-linear-gradient(-45deg, var(--amber) 0 8px, #d9902a 8px 16px);
+  border-left: 2px solid var(--amber);
+  border-right: 2px solid var(--amber);
+}
+.strip-ends { display: flex; justify-content: space-between; margin-top: 4px; color: var(--muted); font-size: 0.82rem; }
+.legend-keys { list-style: none; display: grid; gap: 6px; margin: 8px 0 0; padding: 0; color: var(--text); font-size: 0.88rem; }
+.legend-keys li { display: flex; align-items: center; gap: 8px; }
+.swatch { flex: none; width: 28px; height: 16px; border: 1px solid var(--line); border-radius: 3px; }
+.swatch-observed { background: var(--teal); }
+.swatch-between { background-image: radial-gradient(var(--muted) 1px, transparent 1.5px); background-size: 8px 8px; }
+.swatch-gap { background: repeating-linear-gradient(-45deg, var(--amber) 0 5px, #d9902a 5px 10px); border-color: var(--amber); }
+.runs { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 0.9rem; }
+.runs li { padding: 6px 10px; border-left: 4px solid var(--line); background: var(--ink-2); border-radius: 0 6px 6px 0; }
+.runs li[data-kind="observed"] { border-left-color: var(--teal); }
+.runs li[data-kind="gap"] { border-left: 4px solid var(--amber); font-weight: 700; }
+.runs li[data-kind="between"] { border-left-style: dotted; color: var(--muted); }
+.passes { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+.passes li { padding: 3px 10px; border: 1px solid var(--teal-dim); border-radius: 999px; }
+.event-copy { color: var(--muted); font-style: italic; }
+
 .startup-error { margin: 24px; padding: 14px; border: 1px solid var(--amber); border-radius: var(--radius); color: #ffe2b0; background: var(--ink-1); }
 
 /* Phone widths: stack the controls, keep the date row on one line. */
@@ -369,6 +410,8 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(
   .btn.composite { grid-column: 2 / 3; align-self: start; }
   .compare .btn, .btn.composite { width: 100%; padding: 0 8px; }
   .before-pick { grid-column: 1 / -1; }
+  .views { flex-basis: 100%; margin-left: 0; margin-top: 6px; }
+  .view-btn { flex: 1 1 auto; padding: 0 8px; font-size: 0.88rem; }
 }
 
 @media (min-width: 760px) {

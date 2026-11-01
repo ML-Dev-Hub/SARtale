@@ -1,4 +1,5 @@
 import { setComposite, setFrame, type MapLike } from "./map";
+import { createMissedView } from "./missedView";
 import { createSitesView, type ChartFactory } from "./sitesView";
 import { formatDate, maturityBanner, orderedDates } from "./timeline";
 import type { Manifest, Pol, Site } from "./types";
@@ -29,6 +30,7 @@ const TEMPLATE = `
     <nav class="views" aria-label="Views">
       <button type="button" class="btn view-btn" data-role="view-dance" aria-pressed="true">The Dance</button>
       <button type="button" class="btn view-btn" data-role="view-sites" aria-pressed="false">Site Stories</button>
+      <button type="button" class="btn view-btn" data-role="view-missed" aria-pressed="false">What NISAR Missed</button>
     </nav>
     <p class="lede" data-role="lede">Step through the season's radar images. Brighter areas sent more of the signal back.</p>
   </header>
@@ -53,6 +55,10 @@ const TEMPLATE = `
   <section class="sites-view" data-role="sites-view" aria-label="Site Stories" hidden>
     <p class="maturity" data-role="sites-maturity"></p>
     <div class="sites-scroll" data-role="sites-root"></div>
+  </section>
+  <section class="sites-view missed-view" data-role="missed-view" aria-label="What NISAR Missed" hidden>
+    <p class="maturity" data-role="missed-maturity"></p>
+    <div class="missed-root" data-role="missed-root"></div>
   </section>
   <section class="dock" data-role="dock" aria-label="Controls">
     <div class="row timeline">
@@ -125,10 +131,13 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const dockEl = q("dock");
   const sitesViewEl = q("sites-view");
   const sitesMaturity = q("sites-maturity");
+  const missedViewEl = q("missed-view");
+  const missedMaturity = q("missed-maturity");
   const viewName = q("view-name");
   const ledeEl = q("lede");
   const viewDance = q<HTMLButtonElement>("view-dance");
   const viewSites = q<HTMLButtonElement>("view-sites");
+  const viewMissed = q<HTMLButtonElement>("view-missed");
 
   const host = createHost(afterEl, beforeEl);
 
@@ -143,25 +152,31 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   maturityEl.dataset.kind = banner.kind;
   sitesMaturity.textContent = banner.text;
   sitesMaturity.dataset.kind = banner.kind;
+  missedMaturity.textContent = banner.text;
+  missedMaturity.dataset.kind = banner.kind;
   const maturityTag = banner.kind === "synthetic" ? "synthetic demo" : "provisional data";
 
-  // Views: The Dance (map) and Site Stories (curves and cards).
+  // Views: The Dance (map), Site Stories (curves and cards), What NISAR Missed (timeline and data gap).
   const sitesView = createSitesView(q("sites-root"), { sites: opts.sites ?? null, manifest: m, createChart: opts.createChart });
-  function showView(view: "dance" | "sites"): void {
-    const sitesOn = view === "sites";
-    if (sitesOn) stopPlaying();
-    stageEl.hidden = sitesOn;
-    dockEl.hidden = sitesOn;
-    ledeEl.hidden = sitesOn;
-    sitesViewEl.hidden = !sitesOn;
-    viewDance.setAttribute("aria-pressed", String(!sitesOn));
-    viewSites.setAttribute("aria-pressed", String(sitesOn));
-    const name = sitesOn ? "Site Stories" : "The Dance";
+  const missedView = createMissedView(q("missed-root"), { manifest: m });
+  function showView(view: "dance" | "sites" | "missed"): void {
+    const danceOn = view === "dance";
+    if (!danceOn) stopPlaying();
+    stageEl.hidden = !danceOn;
+    dockEl.hidden = !danceOn;
+    ledeEl.hidden = !danceOn;
+    sitesViewEl.hidden = view !== "sites";
+    missedViewEl.hidden = view !== "missed";
+    viewDance.setAttribute("aria-pressed", String(danceOn));
+    viewSites.setAttribute("aria-pressed", String(view === "sites"));
+    viewMissed.setAttribute("aria-pressed", String(view === "missed"));
+    const name = { dance: "The Dance", sites: "Site Stories", missed: "What NISAR Missed" }[view];
     viewName.textContent = name;
     document.title = `SARtale: ${name} (${maturityTag})`;
   }
   viewDance.addEventListener("click", () => showView("dance"));
   viewSites.addEventListener("click", () => showView("sites"));
+  viewMissed.addEventListener("click", () => showView("missed"));
 
   // Slider, ticks, end labels, before picker.
   slider.max = String(last);
@@ -332,6 +347,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     destroy: () => {
       stopPlaying();
       sitesView.destroy();
+      missedView.destroy();
       root.innerHTML = "";
     },
   };

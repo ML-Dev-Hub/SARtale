@@ -264,3 +264,62 @@ describe("views", () => {
     expect($("play").textContent).toBe("Play");
   });
 });
+
+describe("What NISAR Missed view", () => {
+  const withGap = { ...fixtureManifest, gap: { start: "2026-07-27T22:03:25Z", end: "2026-08-10T00:55:27Z" } };
+
+  test("the nav has a third button and the view starts hidden", async () => {
+    const { app, $ } = setup(withGap);
+    await app.settled();
+    expect($("view-missed").textContent).toBe("What NISAR Missed");
+    expect($("view-missed").getAttribute("aria-pressed")).toBe("false");
+    expect($("missed-view").hidden).toBe(true);
+  });
+
+  test("the switch shows the view and hides the map, controls and other views", async () => {
+    const { app, $ } = setup(withGap);
+    await app.settled();
+    $("view-missed").click();
+    expect($("missed-view").hidden).toBe(false);
+    expect($("stage").hidden).toBe(true);
+    expect($("dock").hidden).toBe(true);
+    expect($("sites-view").hidden).toBe(true);
+    expect($("view-missed").getAttribute("aria-pressed")).toBe("true");
+    expect($("view-dance").getAttribute("aria-pressed")).toBe("false");
+    expect($("view-name").textContent).toBe("What NISAR Missed");
+    expect(document.title).toContain("What NISAR Missed");
+    $("view-sites").click();
+    expect($("missed-view").hidden).toBe(true);
+    expect($("sites-view").hidden).toBe(false);
+    $("view-missed").click();
+    $("view-dance").click();
+    expect($("missed-view").hidden).toBe(true);
+    expect($("stage").hidden).toBe(false);
+  });
+
+  test("the SYNTHETIC DEMO banner stays visible in this view", async () => {
+    const { app, $ } = setup({ ...withGap, maturity: "Synthetic demo" });
+    await app.settled();
+    $("view-missed").click();
+    expect($("missed-maturity").textContent).toBe("SYNTHETIC DEMO: NOT NISAR DATA");
+    expect($("missed-maturity").dataset.kind).toBe("synthetic");
+    expect($("missed-maturity").hidden).toBe(false);
+    expect($("missed-view").hidden).toBe(false);
+  });
+
+  test("the view shows the gap text and no banned claims", async () => {
+    const { app, root, $ } = setup(withGap);
+    await app.settled();
+    $("view-missed").click();
+    expect($("gap-facts").textContent).toContain("NISAR has no data from 27 Jul 2026, 22:03:25 UTC");
+    expect(findBannedClaims(root.textContent ?? "")).toEqual([]);
+  });
+
+  test("switching to this view stops playback", async () => {
+    const { app, $ } = setup(withGap);
+    await app.settled();
+    $("play").click();
+    $("view-missed").click();
+    expect($("play").textContent).toBe("Play");
+  });
+});

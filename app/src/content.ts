@@ -40,6 +40,9 @@ export const BADGE_LABELS: Record<Evidence, string> = { ...EVIDENCE_LABELS, plac
 /** Marks copy that has not been written from real curves yet. */
 export const PLACEHOLDER = "Placeholder text: replace after real curves are reviewed.";
 
+/** Marks event copy that waits for the event-timing check against PDMA reports and FFD bulletins. */
+export const EVENT_PLACEHOLDER = "Placeholder text: replace after event timing is checked.";
+
 export interface SiteCard {
   /** ISO dates the card is about. Empty until the copy is written. */
   dates: string[];

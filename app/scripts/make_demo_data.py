@@ -61,6 +61,8 @@ def main() -> None:
         "bounds": [0.0, 0.0, 1.0, 1.0],
         "dates": dates,
         "composite": "frames/composite_HH.webp",
+        # The permanent NISAR data gap. This is a verified fact, not a placeholder.
+        "gap": {"start": "2026-07-27T22:03:25Z", "end": "2026-08-10T00:55:27Z"},
         "stretch_db": {"HH": [0, 1], "HV": [0, 1]},
     }
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
