@@ -16,7 +16,7 @@ export const fixtureManifest: Manifest = {
 };
 
 export const INTERFERENCE_FLAG =
-  "Possible radio interference over the western area (unconfirmed). Do not read this as surface change.";
+  "Likely radio interference in HV over the western area. Do not read this as surface change.";
 export const FORECAST_FLAG = "Forecast-orbit product; positions may be less precise.";
 
 /** Test fixture only: the shape of the real browse-preview manifest, with the two flagged dates. */

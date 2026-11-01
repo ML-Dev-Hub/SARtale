@@ -1,0 +1,457 @@
+[
+  {
+    "id": "peshawar-city",
+    "name": "Peshawar city",
+    "lon": 71.5649,
+    "lat": 34.0278,
+    "role": "Stable urban control",
+    "stack": "084_A_019",
+    "crid": "P05023",
+    "series": [
+      {
+        "date": "2026-07-02",
+        "hh_db": 3.81,
+        "hv_db": -7.15,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-14",
+        "hh_db": 3.75,
+        "hv_db": -9.78,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-26",
+        "hh_db": 3.48,
+        "hv_db": -9.39,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-19",
+        "hh_db": 3.67,
+        "hv_db": -10.0,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-31",
+        "hh_db": 3.84,
+        "hv_db": -9.71,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-12",
+        "hh_db": 4.13,
+        "hv_db": -9.59,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-24",
+        "hh_db": 4.19,
+        "hv_db": -9.07,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-06",
+        "hh_db": 3.68,
+        "hv_db": -9.73,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-18",
+        "hh_db": 3.76,
+        "hv_db": -9.87,
+        "valid_fraction": 1.0
+      }
+    ]
+  },
+  {
+    "id": "hazro-built-up",
+    "name": "Built-up area near Hazro",
+    "lon": 72.4938,
+    "lat": 33.9083,
+    "role": "Stable urban control, outside the 2 July interference",
+    "stack": "084_A_019",
+    "crid": "P05023",
+    "series": [
+      {
+        "date": "2026-07-02",
+        "hh_db": 6.12,
+        "hv_db": -10.1,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-14",
+        "hh_db": 6.71,
+        "hv_db": -10.42,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-26",
+        "hh_db": 7.11,
+        "hv_db": -10.05,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-19",
+        "hh_db": 6.73,
+        "hv_db": -10.23,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-31",
+        "hh_db": 6.07,
+        "hv_db": -10.94,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-12",
+        "hh_db": 7.02,
+        "hv_db": -10.41,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-24",
+        "hh_db": 5.82,
+        "hv_db": -11.02,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-06",
+        "hh_db": 5.82,
+        "hv_db": -11.17,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-18",
+        "hh_db": 6.35,
+        "hv_db": -10.83,
+        "valid_fraction": 1.0
+      }
+    ]
+  },
+  {
+    "id": "tarbela-pool",
+    "name": "Tarbela Reservoir, main pool",
+    "lon": 72.7415,
+    "lat": 34.1081,
+    "role": "Permanent water control",
+    "stack": "084_A_019",
+    "crid": "P05023",
+    "series": [
+      {
+        "date": "2026-07-02",
+        "hh_db": -16.05,
+        "hv_db": -21.48,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-14",
+        "hh_db": -16.44,
+        "hv_db": -22.7,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-26",
+        "hh_db": -15.4,
+        "hv_db": -21.81,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-19",
+        "hh_db": -15.36,
+        "hv_db": -21.64,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-31",
+        "hh_db": -16.3,
+        "hv_db": -22.1,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-12",
+        "hh_db": -15.66,
+        "hv_db": -21.75,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-24",
+        "hh_db": -15.85,
+        "hv_db": -21.98,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-06",
+        "hh_db": -16.82,
+        "hv_db": -22.17,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-18",
+        "hh_db": -15.7,
+        "hv_db": -21.32,
+        "valid_fraction": 1.0
+      }
+    ]
+  },
+  {
+    "id": "tarbela-shore",
+    "name": "Tarbela Reservoir, south-east shore",
+    "lon": 72.871,
+    "lat": 34.0138,
+    "role": "Reservoir shoreline",
+    "stack": "084_A_019",
+    "crid": "P05023",
+    "series": [
+      {
+        "date": "2026-07-02",
+        "hh_db": -6.37,
+        "hv_db": -17.04,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-14",
+        "hh_db": -6.07,
+        "hv_db": -16.26,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-26",
+        "hh_db": -7.64,
+        "hv_db": -17.39,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-19",
+        "hh_db": -16.6,
+        "hv_db": -22.35,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-31",
+        "hh_db": -16.79,
+        "hv_db": -22.86,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-12",
+        "hh_db": -15.62,
+        "hv_db": -22.47,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-24",
+        "hh_db": -14.06,
+        "hv_db": -21.88,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-06",
+        "hh_db": -12.98,
+        "hv_db": -21.22,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-18",
+        "hh_db": -12.77,
+        "hv_db": -20.42,
+        "valid_fraction": 1.0
+      }
+    ]
+  },
+  {
+    "id": "swabi-plain",
+    "name": "Plain south-west of Swabi",
+    "lon": 72.3484,
+    "lat": 34.1489,
+    "role": "Field area, rises in August and falls by October",
+    "stack": "084_A_019",
+    "crid": "P05023",
+    "series": [
+      {
+        "date": "2026-07-02",
+        "hh_db": -6.57,
+        "hv_db": -14.33,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-14",
+        "hh_db": -7.35,
+        "hv_db": -15.85,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-26",
+        "hh_db": -6.16,
+        "hv_db": -14.56,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-19",
+        "hh_db": -1.81,
+        "hv_db": -10.61,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-31",
+        "hh_db": -1.25,
+        "hv_db": -12.95,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-12",
+        "hh_db": -2.48,
+        "hv_db": -11.01,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-24",
+        "hh_db": -3.79,
+        "hv_db": -12.7,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-06",
+        "hh_db": -2.93,
+        "hv_db": -11.55,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-18",
+        "hh_db": -4.65,
+        "hv_db": -12.9,
+        "valid_fraction": 1.0
+      }
+    ]
+  },
+  {
+    "id": "mardan-plain",
+    "name": "Plain east of Mardan",
+    "lon": 72.1833,
+    "lat": 34.218,
+    "role": "Field area, rises from July to late September",
+    "stack": "084_A_019",
+    "crid": "P05023",
+    "series": [
+      {
+        "date": "2026-07-02",
+        "hh_db": -8.87,
+        "hv_db": -17.34,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-14",
+        "hh_db": -11.42,
+        "hv_db": -19.79,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-26",
+        "hh_db": -9.55,
+        "hv_db": -17.42,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-19",
+        "hh_db": -8.46,
+        "hv_db": -16.9,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-31",
+        "hh_db": -7.03,
+        "hv_db": -16.58,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-12",
+        "hh_db": -6.11,
+        "hv_db": -16.25,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-24",
+        "hh_db": -4.98,
+        "hv_db": -14.32,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-06",
+        "hh_db": -5.24,
+        "hv_db": -16.23,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-18",
+        "hh_db": -6.03,
+        "hv_db": -14.84,
+        "valid_fraction": 1.0
+      }
+    ]
+  },
+  {
+    "id": "indus-attock",
+    "name": "Indus River near Attock",
+    "lon": 72.2362,
+    "lat": 33.9171,
+    "role": "River stretch",
+    "stack": "084_A_019",
+    "crid": "P05023",
+    "series": [
+      {
+        "date": "2026-07-02",
+        "hh_db": -12.07,
+        "hv_db": -18.08,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-14",
+        "hh_db": -17.08,
+        "hv_db": -22.08,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-07-26",
+        "hh_db": -14.54,
+        "hv_db": -19.94,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-19",
+        "hh_db": -14.17,
+        "hv_db": -20.27,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-08-31",
+        "hh_db": -14.2,
+        "hv_db": -19.38,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-12",
+        "hh_db": -13.32,
+        "hv_db": -19.99,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-09-24",
+        "hh_db": -10.31,
+        "hv_db": -17.72,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-06",
+        "hh_db": -10.02,
+        "hv_db": -17.69,
+        "valid_fraction": 1.0
+      },
+      {
+        "date": "2026-10-18",
+        "hh_db": -9.06,
+        "hv_db": -16.45,
+        "valid_fraction": 1.0
+      }
+    ]
+  }
+]

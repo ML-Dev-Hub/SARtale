@@ -51,22 +51,24 @@ describe("app copy", () => {
     }
   });
 
-  test("placeholder copy is labelled as placeholder", () => {
-    for (const [id, s] of Object.entries(story)) {
-      if (id === "what-nisar-missed") expect(s.summary).not.toMatch(/placeholder/i); // written from the data, not a placeholder
-      else expect(s.summary.startsWith(PLACEHOLDER)).toBe(true);
-    }
-    for (const c of Object.values(siteCards)) expect(c.observation.startsWith(PLACEHOLDER)).toBe(true);
+  test("story copy is written, not placeholder", () => {
+    for (const s of Object.values(story)) expect(s.summary).not.toMatch(/placeholder/i);
   });
 
-  test("placeholder cards carry the neutral Placeholder badge, not an evidence class", () => {
+  test("real cards carry an evidence class, and only a site without a card gets the Placeholder badge", () => {
     for (const c of Object.values(siteCards)) {
-      expect(c.observation.startsWith(PLACEHOLDER)).toBe(true);
-      expect(c.evidence).toBe("placeholder");
+      expect(c.observation).not.toMatch(/placeholder/i);
+      expect(Object.keys(EVIDENCE_LABELS)).toContain(c.evidence);
     }
     expect(cardFor("no-such-site").evidence).toBe("placeholder");
     expect(BADGE_LABELS.placeholder).toBe("Placeholder");
     expect(Object.values(EVIDENCE_LABELS)).not.toContain("Placeholder");
+  });
+
+  test("copy keeps the honesty rules: a hypothesis is never a finding, change is never flood probability", () => {
+    const text = JSON.stringify(siteCards);
+    expect(text).not.toMatch(/flood probability|floodwater|inundat|proves|confirms/i);
+    for (const c of Object.values(siteCards)) expect(c.hypothesis).toContain("may indicate");
   });
 
   test("cardFor falls back to a placeholder card for an unknown site", () => {

@@ -1,7 +1,7 @@
 {
   "stack": "084_A_019",
   "crid": "P05023",
-  "maturity": "Provisional preview",
+  "maturity": "Provisional",
   "bounds": [
     71.2,
     33.8,
@@ -16,7 +16,7 @@
         "HH": "frames/2026-07-02_HH.webp",
         "HV": "frames/2026-07-02_HV.webp"
       },
-      "flag": "Possible radio interference over the western area (unconfirmed). Do not read this as surface change."
+      "flag": "Likely radio interference in HV over the western area. Do not read this as surface change."
     },
     {
       "date": "2026-07-14",
@@ -97,14 +97,24 @@
   ],
   "composite": "frames/composite_HH.webp",
   "composite_dates": [
-    "2026-07-26",
+    "2026-07-14",
     "2026-09-12",
     "2026-10-18"
   ],
-  "stretch_db": null,
+  "stretch_db": {
+    "HH": [
+      -12.874,
+      2.134
+    ],
+    "HV": [
+      -20.126,
+      -7.563
+    ]
+  },
   "gap": {
     "start": "2026-07-27T22:03:25Z",
     "end": "2026-08-10T00:55:27Z"
   },
-  "pixel_m": 174
+  "pixel_m": 67,
+  "analysis_m": 30
 }

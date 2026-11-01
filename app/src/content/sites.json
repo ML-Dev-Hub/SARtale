@@ -1,1 +1,232 @@
-{}
+{
+  "peshawar-city": {
+    "dates": [
+      "2026-07-02",
+      "2026-07-26",
+      "2026-09-24"
+    ],
+    "observation": "HH stayed between 3.5 dB on 26 Jul and 4.2 dB on 24 Sep, and HV sat near -10 dB except on 2 Jul, when it read -7.2 dB.",
+    "hypothesis": "The one high HV reading may indicate radio interference reaching the city, because HH did not move with it.",
+    "test": "The 2 July file reprocessed with interference filtering should bring HV back to about -10 dB.",
+    "limits": "One circle of 150 m radius, about 30 m pixels. A very bright target can hide small changes. Provisional data, so levels may move when NASA reprocesses.",
+    "evidence": "observed",
+    "quotes": [
+      {
+        "date": "2026-07-26",
+        "pol": "HH",
+        "db": "3.5"
+      },
+      {
+        "date": "2026-09-24",
+        "pol": "HH",
+        "db": "4.2"
+      },
+      {
+        "date": "2026-07-02",
+        "pol": "HV",
+        "db": "-7.2"
+      }
+    ]
+  },
+  "hazro-built-up": {
+    "dates": [
+      "2026-07-26",
+      "2026-09-24",
+      "2026-10-06"
+    ],
+    "observation": "HH stayed between 5.8 dB and 7.1 dB, and HV between -11.2 dB and -10.1 dB, with no jump on 2 Jul.",
+    "hypothesis": "A spread this small may indicate that changes well above 2 dB at the other sites are not drift in the data.",
+    "test": "The same small spread at other bright built-up places, and again after NASA's reprocessing.",
+    "limits": "The name comes from the nearby town and land cover was not checked on the ground. This was the steadier of two sites tried, so it may flatter the data. Provisional data, so levels may move when NASA reprocesses.",
+    "evidence": "observed",
+    "quotes": [
+      {
+        "date": "2026-09-24",
+        "pol": "HH",
+        "db": "5.8"
+      },
+      {
+        "date": "2026-07-26",
+        "pol": "HH",
+        "db": "7.1"
+      },
+      {
+        "date": "2026-10-06",
+        "pol": "HV",
+        "db": "-11.2"
+      },
+      {
+        "date": "2026-07-26",
+        "pol": "HV",
+        "db": "-10.1"
+      }
+    ]
+  },
+  "tarbela-pool": {
+    "dates": [
+      "2026-08-19",
+      "2026-10-06",
+      "2026-10-18"
+    ],
+    "observation": "The water stayed dark on every date: HH between -16.8 dB and -15.4 dB, and HV no higher than -21.3 dB.",
+    "hypothesis": "The small changes between dates may indicate wind on the water, not any change in the water itself.",
+    "test": "Wind records for Tarbela at the pass times, about 05:22 Pakistan time, should move with HH.",
+    "limits": "HV here is only about 4 dB above the file's noise level, and noise is not subtracted, so it cannot show how dark the water really is. Provisional data, so levels may move when NASA reprocesses.",
+    "evidence": "observed",
+    "quotes": [
+      {
+        "date": "2026-10-06",
+        "pol": "HH",
+        "db": "-16.8"
+      },
+      {
+        "date": "2026-08-19",
+        "pol": "HH",
+        "db": "-15.4"
+      },
+      {
+        "date": "2026-10-18",
+        "pol": "HV",
+        "db": "-21.3"
+      }
+    ]
+  },
+  "tarbela-shore": {
+    "dates": [
+      "2026-07-26",
+      "2026-08-19",
+      "2026-09-24",
+      "2026-10-18"
+    ],
+    "observation": "HH fell from -7.6 dB on 26 Jul to -16.6 dB on 19 Aug, then climbed to -14.1 dB on 24 Sep and -12.8 dB on 18 Oct.",
+    "hypothesis": "This may indicate the rising reservoir covering this shore by August and falling away from it after mid-September.",
+    "test": "Two dated references move the same way. Flood Forecasting Division bulletins give the reservoir at 1528.11 ft on 26 Jul, 1550.00 ft on 19 Aug and 1520.04 ft on 6 Oct. OPERA DSWx-S1 marks 0 of 81 cells here as water on 28 Jun, 75 on 15 Sep, 26 on 23 Sep and 0 on 5 and 17 Oct. A survey of this shore's height would test it further.",
+    "limits": "OPERA has no tile here between 28 Jun and 15 Sep, so the August step rests on the level bulletins alone. HH was still below its July value on 18 Oct, and the radar does not say why. Provisional data, so levels may move when NASA reprocesses.",
+    "evidence": "reference-agrees",
+    "quotes": [
+      {
+        "date": "2026-07-26",
+        "pol": "HH",
+        "db": "-7.6"
+      },
+      {
+        "date": "2026-08-19",
+        "pol": "HH",
+        "db": "-16.6"
+      },
+      {
+        "date": "2026-09-24",
+        "pol": "HH",
+        "db": "-14.1"
+      },
+      {
+        "date": "2026-10-18",
+        "pol": "HH",
+        "db": "-12.8"
+      }
+    ]
+  },
+  "swabi-plain": {
+    "dates": [
+      "2026-07-26",
+      "2026-08-19",
+      "2026-10-18"
+    ],
+    "observation": "HH rose from -6.2 dB on 26 Jul to -1.8 dB on 19 Aug and was back to -4.7 dB on 18 Oct, while HV rose from -14.6 dB to -10.6 dB in the first step.",
+    "hypothesis": "This may indicate a crop growing and then being cut, or wetter ground, and the radar alone cannot tell these apart.",
+    "test": "Optical greenness from HLS for the same fields, or a field visit: a crop would be green in August and less so by October.",
+    "limits": "Land cover was not checked. The 150 m circle mixes several fields. No rain record was compared. Provisional data, so levels may move when NASA reprocesses.",
+    "evidence": "hypothesis",
+    "quotes": [
+      {
+        "date": "2026-07-26",
+        "pol": "HH",
+        "db": "-6.2"
+      },
+      {
+        "date": "2026-08-19",
+        "pol": "HH",
+        "db": "-1.8"
+      },
+      {
+        "date": "2026-10-18",
+        "pol": "HH",
+        "db": "-4.7"
+      },
+      {
+        "date": "2026-07-26",
+        "pol": "HV",
+        "db": "-14.6"
+      },
+      {
+        "date": "2026-08-19",
+        "pol": "HV",
+        "db": "-10.6"
+      }
+    ]
+  },
+  "mardan-plain": {
+    "dates": [
+      "2026-07-26",
+      "2026-09-24",
+      "2026-10-18"
+    ],
+    "observation": "HH rose from -9.6 dB on 26 Jul to -5.0 dB on 24 Sep and was still -6.0 dB on 18 Oct.",
+    "hypothesis": "This may indicate a crop that kept growing later than at the Swabi site, or ground left rougher after field work.",
+    "test": "Optical greenness from HLS for the same fields, or a field visit, compared with the Swabi site.",
+    "limits": "Land cover was not checked. The 14 Jul value is not quoted because the whole scene reads low on that date. No rain record was compared. Provisional data, so levels may move when NASA reprocesses.",
+    "evidence": "hypothesis",
+    "quotes": [
+      {
+        "date": "2026-07-26",
+        "pol": "HH",
+        "db": "-9.6"
+      },
+      {
+        "date": "2026-09-24",
+        "pol": "HH",
+        "db": "-5.0"
+      },
+      {
+        "date": "2026-10-18",
+        "pol": "HH",
+        "db": "-6.0"
+      }
+    ]
+  },
+  "indus-attock": {
+    "dates": [
+      "2026-07-26",
+      "2026-08-31",
+      "2026-09-24",
+      "2026-10-18"
+    ],
+    "observation": "HH read -14.5 dB on 26 Jul and -14.2 dB on 31 Aug, then rose to -10.3 dB on 24 Sep and -9.1 dB on 18 Oct.",
+    "hypothesis": "This may indicate sand or gravel bars coming out of the water as the river fell after the monsoon.",
+    "test": "OPERA DSWx-S1 moves the same way: of 81 cells here it marks 59 as water on 15 Sep, 48 on 23 Sep, 39 on 5 Oct and 12 on 17 Oct. Optical images of the bars in October would test it further.",
+    "limits": "OPERA has no tile here between 28 Jun and 15 Sep, and it is a few days from each NISAR date. Wind also changes how bright a river looks. Provisional data, so levels may move when NASA reprocesses.",
+    "evidence": "reference-agrees",
+    "quotes": [
+      {
+        "date": "2026-07-26",
+        "pol": "HH",
+        "db": "-14.5"
+      },
+      {
+        "date": "2026-08-31",
+        "pol": "HH",
+        "db": "-14.2"
+      },
+      {
+        "date": "2026-09-24",
+        "pol": "HH",
+        "db": "-10.3"
+      },
+      {
+        "date": "2026-10-18",
+        "pol": "HH",
+        "db": "-9.1"
+      }
+    ]
+  }
+}

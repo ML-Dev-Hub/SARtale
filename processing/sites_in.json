@@ -1,0 +1,58 @@
+[
+  {
+    "id": "peshawar-city",
+    "name": "Peshawar city",
+    "lon": 71.5649,
+    "lat": 34.0278,
+    "role": "Stable urban control",
+    "why": "Picked from the real stack: a cluster of cells near the city centre bright in HH on every date, with a small seasonal spread. It lies at the edge of the 2 July HV interference, so that date also shows the interference on a target that otherwise does not move."
+  },
+  {
+    "id": "hazro-built-up",
+    "name": "Built-up area near Hazro",
+    "lon": 72.4938,
+    "lat": 33.9083,
+    "role": "Stable urban control, outside the 2 July interference",
+    "why": "A stable bright cluster far from the western area, so its HV is usable on all dates. A second control for the first. A cluster west of Mardan was tried first and rejected: on all nine dates its HH spread was 2.1 dB, because of one high reading on 6 October."
+  },
+  {
+    "id": "tarbela-pool",
+    "name": "Tarbela Reservoir, main pool",
+    "lon": 72.7415,
+    "lat": 34.1081,
+    "role": "Permanent water control",
+    "why": "The dark stable cluster in the main pool, well inside the shoreline at every reservoir level seen this season."
+  },
+  {
+    "id": "tarbela-shore",
+    "name": "Tarbela Reservoir, south-east shore",
+    "lon": 72.871,
+    "lat": 34.0138,
+    "role": "Reservoir shoreline",
+    "why": "Red in the seasonal composite: much brighter in July and October than in August. The strongest seasonal change in the window, with a dated independent reference in the published reservoir level."
+  },
+  {
+    "id": "swabi-plain",
+    "name": "Plain south-west of Swabi",
+    "lon": 72.3484,
+    "lat": 34.1489,
+    "role": "Field area, rises in August and falls by October",
+    "why": "Among the strongest seasonal HH and HV spreads on the plain, in a block of cells that moved together."
+  },
+  {
+    "id": "mardan-plain",
+    "name": "Plain east of Mardan",
+    "lon": 72.1833,
+    "lat": 34.218,
+    "role": "Field area, rises from July to late September",
+    "why": "One of the largest blocks that was dark in July and stayed brighter through October, unlike the Swabi site, which falls more."
+  },
+  {
+    "id": "indus-attock",
+    "name": "Indus River near Attock",
+    "lon": 72.2362,
+    "lat": 33.9171,
+    "role": "River stretch",
+    "why": "Dark through the monsoon and much brighter in late September and October. The river stretch with the clearest seasonal change."
+  }
+]

@@ -50,6 +50,8 @@ export interface SiteCard {
   test: string;
   limits: string;
   evidence: Evidence;
+  /** The curve values the observation quotes. A test checks each against sites.json, so copy cannot drift from a rebuild. */
+  quotes?: { date: string; pol: "HH" | "HV"; db: string }[];
 }
 
 export interface SiteStory {

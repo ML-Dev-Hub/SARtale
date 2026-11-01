@@ -69,14 +69,17 @@ describe("missed view", () => {
     expect(legend).toContain("No observation, permanent data gap");
   });
 
-  test("event copy states only what the data shows, with no event claims", () => {
+  test("event copy keeps to a dated outside source, named, and the view's own text makes no event claim", () => {
     const { root, $ } = setup(gapped);
     const copy = story["what-nisar-missed"].summary;
     expect(copy).not.toMatch(/placeholder/i);
     expect($("event-copy").textContent).toBe(copy);
     expect(copy).toContain("which dates NISAR imaged");
+    expect(copy).toContain("It does not say what happened on the ground");
+    expect(copy).toContain("Source: Flood Forecasting Division, Pakistan Meteorological Department");
     expect(findBannedClaims(root.textContent ?? "")).toEqual([]);
-    expect(root.textContent).not.toMatch(/flood|river|rain|monsoon|storm/i);
+    const own = (root.textContent ?? "").replace(copy, "");
+    expect(own).not.toMatch(/flood|river|rain|monsoon|storm/i);
   });
 
   test("a flagged date carries its flag in the list of observed dates", () => {

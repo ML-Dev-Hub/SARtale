@@ -100,7 +100,7 @@ export function createMissedView(root: HTMLElement, opts: MissedViewOptions): Mi
     ? `${facts} Days in the gap say ${stateLabel("no-observation")}. That says nothing about what happened on the ground.`
     : "This data lists no data gap.";
 
-  // The only event copy is the labelled placeholder from story.json.
+  // The only event copy comes from story.json: dated, with its source named.
   q("event-copy").textContent = copy.summary;
 
   const built = new Set(orderedDates(m));

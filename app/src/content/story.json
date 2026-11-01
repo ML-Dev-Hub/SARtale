@@ -1,6 +1,6 @@
 {
   "what-nisar-missed": {
     "title": "What NISAR Missed",
-    "summary": "This view shows only which dates NISAR imaged this area and when it recorded nothing. It does not say what happened on the ground."
+    "summary": "This view shows only which dates NISAR imaged this area and when it recorded nothing. It does not say what happened on the ground. One dated report from outside NISAR: the Flood Forecasting Division's daily bulletins give the Kabul River at Nowshera as 32.6 thousand cusecs on 19 July, 78.5 on 23 July (Low flood level, and the highest figure the bulletins list for the 2026 flood season) and 53.5 on 26 July. NISAR passed on 14 and 26 July, so that rise fell between two passes, before the data gap. From 28 July to 9 August, inside the gap, the same bulletins give 38.0 to 57.8 thousand cusecs. All readings are at 06:00 Pakistan time. Source: Flood Forecasting Division, Pakistan Meteorological Department, daily flood bulletins 035/26, 039/26 and 042/26, and those of 28 July to 9 August 2026."
   }
 }
