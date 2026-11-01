@@ -1,4 +1,4 @@
-"""SARtale pipeline CLI: search, build, sites, preview."""
+"""SARtale pipeline CLI: search, download, build, sites, preview."""
 import argparse
 import json
 from pathlib import Path
@@ -6,6 +6,7 @@ from pathlib import Path
 from sartale import config
 from sartale.browse import build_preview
 from sartale.catalog import search_cmr, select_stack, write_manifest
+from sartale.download import download
 from sartale.products import build_products
 from sartale.sites import build_sites, stability_report, write_sites
 
@@ -25,6 +26,12 @@ def cmd_build(args) -> None:
     manifest = build_products(Path(args.gcov_dir), dates, Path(args.manifest_in),
                               Path(args.out_dir), Path(args.cog_dir))
     print(f"{len(manifest['dates'])} dates -> {Path(args.out_dir) / 'manifest.json'}")
+
+
+def cmd_download(args) -> None:
+    dates = [d.strip() for d in args.dates.split(",") if d.strip()]
+    paths = download(Path(args.manifest), dates, Path(args.out))
+    print(f"{len(paths)} files in {args.out}")
 
 
 def cmd_sites(args) -> None:
@@ -49,9 +56,14 @@ def main(argv=None) -> None:
     s = sub.add_parser("search", help="search CMR and write a manifest")
     s.add_argument("--out", required=True)
     s.set_defaults(func=cmd_search)
+    d = sub.add_parser("download", help="download the GCOV files for some dates (uses ~/.netrc, resumes, verifies size and MD5)")
+    d.add_argument("--manifest", required=True, help="manifest written by `search` (needs size and md5)")
+    d.add_argument("--dates", required=True, help="comma-separated UTC dates, e.g. 2026-07-26,2026-08-19,2026-09-12,2026-10-18")
+    d.add_argument("--out", default=str(REPO_ROOT / "data" / "gcov"), help="folder for <granule>.h5 files")
+    d.set_defaults(func=cmd_download)
     b = sub.add_parser("build", help="build overlays, COGs and manifest from GCOV files")
     b.add_argument("--gcov-dir", required=True, help="directory holding <granule>.h5 files")
-    b.add_argument("--dates", required=True, help="comma-separated UTC dates, e.g. 2026-07-02,2026-08-19")
+    b.add_argument("--dates", required=True, help="comma-separated UTC dates, e.g. 2026-07-26,2026-08-19,2026-09-12,2026-10-18")
     b.add_argument("--manifest-in", required=True, help="manifest written by `search`")
     b.add_argument("--out-dir", default=str(REPO_ROOT / "app" / "public" / "data"))
     b.add_argument("--cog-dir", default=str(REPO_ROOT / "data" / "cog"))
