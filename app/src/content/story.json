@@ -55,7 +55,7 @@
       "title": "Tarbela: the shore goes dark",
       "body": [
         "Between 26 Jul and 19 Aug, HH at the south-east shore fell from -7.6 to -16.6 dB. Over the same weeks, Flood Forecasting Division bulletins give the reservoir rising from 1528.11 ft to 1550.00 ft.",
-        "This may indicate the rising water covering the shore. The Change map colours the step by its date, 19 Aug."
+        "This may indicate the rising water covering the shore. The Change map colours the step by its date, 19 Aug. It is a statistical flag, not proof of cause."
       ],
       "site": "tarbela-shore",
       "camera": { "center": [72.871, 34.0138], "zoom": 10.3 },

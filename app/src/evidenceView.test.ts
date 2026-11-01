@@ -132,7 +132,7 @@ describe("How we know", () => {
   test("honest wording is on the page where a reader first looks, before the detail", () => {
     const { root } = open(real, realSites);
     const first = root.querySelector(".evidence-verdict")!.textContent ?? "";
-    expect(first).toContain("What it cannot tell you");
+    expect(first).toContain("What it cannot do");
     expect(first).toContain("Call the rule a blind test");
   });
 });

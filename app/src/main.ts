@@ -1,7 +1,9 @@
 import "@fontsource-variable/bricolage-grotesque/wdth.css";
 import "./styles.css";
-import { hostFactoryFor } from "./maplibreAdapter";
+import { lazyHostFactory } from "./lazyHost";
 import { createUplotChart } from "./chart";
+import { loadImage } from "./images";
+import { createPreloader } from "./preload";
 import { sitesForManifest, loadSites } from "./sites";
 import { mountOrShowError, showStartupError } from "./startup";
 import { loadManifest } from "./timeline";
@@ -11,7 +13,7 @@ const root = document.getElementById("app")!;
 Promise.all([loadManifest("data/manifest.json"), loadSites("data/sites.json")]).then(
   ([m, sites]) =>
     // Curves from another build (or with no stamp) are dropped: the view then says "No site curves yet".
-    mountOrShowError(root, m, hostFactoryFor(m), { sites: sitesForManifest(sites, m), createChart: createUplotChart }),
+    mountOrShowError(root, m, lazyHostFactory(m), { sites: sitesForManifest(sites, m), createChart: createUplotChart, preload: createPreloader(loadImage) }),
   (err: unknown) =>
     showStartupError(
       root,

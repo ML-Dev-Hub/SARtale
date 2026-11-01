@@ -164,7 +164,7 @@ describe("app shell", () => {
 });
 
 describe("the Change control", () => {
-  const STEP_CAPTION = "Highlighted areas stepped up or down in radar brightness around this date. This is a statistical flag, not proof of what changed.";
+  const STEP_CAPTION = "One map for the whole season. Each coloured patch stepped between two passes, and its colour is the date of the first pass after the step. Light tints went brighter, deep shades went darker. This is a statistical flag, not proof of what changed.";
   const CAPTION = "Highlighted pixels differ unusually from this area's own season. This is a statistical flag, not proof of what changed.";
   /** Change on, in its second view. */
   const unusual = async (app: { settled(): Promise<void> }, $: (role: string) => HTMLElement) => {
@@ -198,11 +198,11 @@ describe("the Change control", () => {
     expect($("step-legend").textContent).toContain("26 Jul");
     expect($("step-legend").textContent).toContain("Brighter after");
     expect($("step-legend").textContent).toContain("Darker after");
-    expect($("change-limit").textContent).toContain("at least 3 dB");
-    expect($("step-legend").querySelector("th.current")?.textContent).toBe("26 Jul");
+    expect($("change-detail").textContent).toContain("at least 3 dB");
+    expect($("step-legend").querySelector("li.current .legend-date")?.textContent).toBe("26 Jul");
     go($("slider"), 1);
     await app.settled();
-    expect($("step-legend").querySelector("th.current")).toBeNull();
+    expect($("step-legend").querySelector("li.current")).toBeNull();
     expect(host.after.overlays.at(-1)).toBe("data/frames/step_date.webp");
   });
 
@@ -329,13 +329,29 @@ describe("views", () => {
     },
   ];
 
-  test("starts on The Dance with the sites view hidden", async () => {
+  test("starts on the opening screen, with the map loading behind it and no view chosen", async () => {
     const { app, $ } = setup();
     await app.settled();
+    expect($("hero").hidden).toBe(false);
     expect($("stage").hidden).toBe(false);
+    expect($("stage").hasAttribute("inert")).toBe(true);
+    expect($("dock").hidden).toBe(true);
     expect($("sites-view").hidden).toBe(true);
+    expect($("view-dance").getAttribute("aria-pressed")).toBe("false");
+    expect($("view-name").textContent).toBe("Start");
+  });
+
+  test("Explore the map opens The Dance, and the logo goes back to the start", async () => {
+    const { app, $ } = setup();
+    await app.settled();
+    $("hero-explore").click();
+    expect($("hero").hidden).toBe(true);
+    expect($("stage").hasAttribute("inert")).toBe(false);
+    expect($("dock").hidden).toBe(false);
     expect($("view-dance").getAttribute("aria-pressed")).toBe("true");
-    expect($("view-sites").getAttribute("aria-pressed")).toBe("false");
+    $("home").click();
+    expect($("hero").hidden).toBe(false);
+    expect($("view-dance").getAttribute("aria-pressed")).toBe("false");
   });
 
   test("the switch shows Site Stories and hides the map and its controls", async () => {

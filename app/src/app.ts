@@ -1,7 +1,12 @@
+import { heroCopy, storyBeats, type StoryStep } from "./content";
+import { createEvidenceView } from "./evidenceView";
 import { setChangeOverlay, setComposite, setFrame, setStepOverlay, type MapLike } from "./map";
 import { createMissedView } from "./missedView";
+import type { Preloader } from "./preload";
 import { createSitesView, type ChartFactory } from "./sitesView";
-import { changeExclusion, flagFor, formatDate, maturityBanner, orderedDates } from "./timeline";
+import { createStoryPanel } from "./storyPanel";
+import { buildAxis, mountAxis } from "./timeAxis";
+import { changeExclusion, dataUrl, flagFor, formatDate, frameUrl, maturityBanner, orderedDates } from "./timeline";
 import type { Manifest, Pol, Site } from "./types";
 
 /** Where to point the map: the whole study area, or a centre and zoom. */
@@ -28,103 +33,171 @@ export interface AppOptions {
   /** Site curves from data/sites.json, or null/undefined when the file is absent. */
   sites?: Site[] | null;
   createChart?: ChartFactory;
+  /** Fetches frames in the background so stepping through dates does not stall. Absent in tests. */
+  preload?: Preloader;
 }
 
 export type HostFactory = (afterEl: HTMLElement, beforeEl: HTMLElement) => MapHost;
 
+type View = "home" | "dance" | "sites" | "missed" | "evidence";
+
 const PLAY_STEP_MS = 800;
+/** How long play waits for the next frame before it goes on without it. */
+const PLAY_WAIT_MS = 4000;
 const STEP_CAPTION =
-  "Highlighted areas stepped up or down in radar brightness around this date. This is a statistical flag, not proof of what changed.";
+  "One map for the whole season. Each coloured patch stepped between two passes, and its colour is the date of the first pass after the step. Light tints went brighter, deep shades went darker. This is a statistical flag, not proof of what changed.";
 const CHANGE_CAPTION =
   "Highlighted pixels differ unusually from this area's own season. This is a statistical flag, not proof of what changed.";
 const CHANGE_LIMIT =
   "A change that lasts most of the season becomes the area's usual state, so the dates before it can be the ones highlighted.";
+const STEP_LIMIT =
+  "The rule was set with the known sites in view, so this is not a blind test. Its false-alarm budget is about 1%, on control ground and on shuffled dates. Plain ground flags too, with no known cause, and a step names no cause.";
 
 const TEMPLATE = `
-<div class="shell">
+<div class="shell" data-role="shell">
+  <a class="skip" href="#main">Skip to the content</a>
   <header class="top">
-    <span class="logo-panel"><img class="logo" src="brand/logo-256.png" width="56" height="56" alt="SARtale Pakistan logo" /></span>
-    <h1 class="brand">SARtale</h1>
-    <p class="view" data-role="view-name" aria-live="polite">The Dance</p>
+    <button type="button" class="logo-btn" data-role="home" aria-label="SARtale: back to the start">
+      <span class="logo-panel"><img class="logo" src="brand/logo-256.png" width="56" height="56" alt="SARtale Pakistan logo" /></span>
+    </button>
+    <h1 class="sr-only">SARtale: one monsoon season over the Peshawar Valley, in NISAR radar</h1>
+    <p class="sr-only" data-role="view-name" aria-live="polite">Start</p>
+    <p class="lede" data-role="lede">Step through the season's radar images. Brighter areas sent more of the signal back.</p>
     <nav class="views" aria-label="Views">
-      <button type="button" class="btn view-btn" data-role="view-dance" aria-pressed="true">The Dance</button>
+      <button type="button" class="btn view-btn" data-role="view-dance" aria-pressed="false">The Dance</button>
       <button type="button" class="btn view-btn" data-role="view-sites" aria-pressed="false">Site Stories</button>
       <button type="button" class="btn view-btn" data-role="view-missed" aria-pressed="false">What NISAR Missed</button>
+      <button type="button" class="btn view-btn" data-role="view-evidence" aria-pressed="false">How we know</button>
     </nav>
-    <p class="lede" data-role="lede">Step through the season's radar images. Brighter areas sent more of the signal back.</p>
+    <button type="button" class="btn story-btn" data-role="story-start" aria-pressed="false">Start the story</button>
   </header>
-  <main class="stage" data-role="stage" aria-label="Radar map">
-    <p class="maturity" data-role="maturity"></p>
-    <div class="viewport">
-      <div class="map map-after" data-role="after"></div>
-      <div class="map map-before" data-role="before" hidden></div>
-      <div class="swipe" data-role="swipe" role="slider" tabindex="0" hidden
-           aria-label="Before and after divider" aria-orientation="horizontal"
-           aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
-        <span class="grip" aria-hidden="true"></span>
+
+  <main class="workspace" id="main" tabindex="-1">
+    <section class="hero" data-role="hero" aria-labelledby="hero-title">
+      <img class="hero-img" data-role="hero-img" src="brand/hero-radar.webp" width="1280" height="704" fetchpriority="high"
+           alt="NISAR radar picture of the Peshawar Valley, with the dark Tarbela Reservoir on the right." />
+      <div class="hero-shade" aria-hidden="true"></div>
+      <div class="hero-copy">
+        <p class="hero-badge" data-role="hero-maturity"></p>
+        <h2 class="hero-title" id="hero-title" data-role="hero-title"></h2>
+        <p class="hero-lede" data-role="hero-lede"></p>
+        <aside class="hero-finding" data-role="hero-finding" aria-label="Headline finding" hidden>
+          <p data-role="hero-finding-text"></p>
+          <p class="hero-source" data-role="hero-finding-source"></p>
+        </aside>
+        <div class="hero-actions">
+          <button type="button" class="btn cta" data-role="hero-start">Start the story</button>
+          <button type="button" class="btn cta-ghost" data-role="hero-explore">Explore the map</button>
+          <button type="button" class="link-btn" data-role="hero-method">How we know</button>
+        </div>
+        <figure class="hero-strip" data-role="hero-strip">
+          <div class="axis axis-mini" data-role="hero-axis" role="img" aria-label=""><div class="axis-layer" data-role="hero-axis-layer"></div></div>
+          <figcaption data-role="hero-strip-caption"></figcaption>
+        </figure>
       </div>
-      <p class="stamp stamp-before" data-role="stamp-before" hidden></p>
-      <p class="stamp stamp-after" data-role="stamp-after"></p>
-      <p class="flag flag-before" data-role="flag-before" role="note" hidden></p>
-      <p class="flag flag-after" data-role="flag-after" role="note" hidden></p>
-      <div class="notice" data-role="notice" role="alert" hidden>
-        <span data-role="notice-text"></span>
-        <button type="button" class="btn small" data-role="retry">Try again</button>
+      <p class="hero-caption" data-role="hero-caption"></p>
+    </section>
+
+    <div class="stage" data-role="stage" role="region" aria-label="Radar map">
+      <div class="viewport">
+        <div class="map map-after" data-role="after"></div>
+        <div class="map map-before" data-role="before" hidden></div>
+        <div class="swipe" data-role="swipe" role="slider" tabindex="0" hidden
+             aria-label="Before and after divider" aria-orientation="horizontal"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+          <span class="grip" aria-hidden="true"></span>
+        </div>
+        <div class="top-bar">
+          <p class="maturity" data-role="maturity"></p>
+          <div class="toolbar" role="group" aria-label="Map layers">
+            <fieldset class="pol" data-role="pol">
+              <legend>Polarization</legend>
+              <label class="seg seg-hh"><input type="radio" name="pol" value="HH" checked /><span>HH</span></label>
+              <label class="seg seg-hv"><input type="radio" name="pol" value="HV" /><span>HV</span></label>
+            </fieldset>
+            <button type="button" class="btn toggle" data-role="swipe-toggle" aria-pressed="false">Before and after</button>
+            <label class="before-pick" data-role="before-pick" hidden>Before
+              <select data-role="before-select"></select>
+            </label>
+            <button type="button" class="btn toggle composite" data-role="composite-toggle" aria-pressed="false">Seasonal composite</button>
+            <button type="button" class="btn toggle change" data-role="change-toggle" aria-pressed="false" hidden>Change</button>
+          </div>
+        </div>
+        <button type="button" class="btn story-resume" data-role="story-resume" hidden></button>
+        <div class="side">
+          <p class="hint" data-role="hint" hidden></p>
+          <section class="change-panel" data-role="change-panel" aria-label="Change map key" hidden>
+            <h2 class="change-title" data-role="change-title">When the radar stepped</h2>
+            <ul class="step-legend" data-role="step-legend" aria-label="Colour by date of the step" hidden></ul>
+            <details class="change-about" data-role="change-about" open>
+              <summary>What this map shows, and how far to trust it</summary>
+              <p class="change-caption" data-role="change-caption"></p>
+              <p class="change-legend" data-role="change-legend"><span class="change-ramp" data-role="change-ramp" aria-hidden="true"></span><span data-role="change-legend-text"></span></p>
+              <p class="change-limit" data-role="change-limit"></p>
+              <details class="change-more" data-role="change-more">
+                <summary>How the map is drawn and tested</summary>
+                <p data-role="change-detail"></p>
+              </details>
+            </details>
+            <button type="button" class="btn toggle unusual" data-role="unusual-toggle" aria-pressed="false" hidden>Unusual dates</button>
+            <p class="change-note" data-role="change-note" hidden></p>
+          </section>
+          <details class="limits-box" data-role="limits-box">
+            <summary>Limits of these pictures</summary>
+            <p class="limits" data-role="limits" hidden></p>
+          </details>
+        </div>
+        <aside class="story" data-role="story" aria-label="Guided story" hidden></aside>
+        <p class="stamp stamp-before" data-role="stamp-before" hidden></p>
+        <p class="stamp stamp-after" data-role="stamp-after"></p>
+        <p class="flag flag-before" data-role="flag-before" role="note" hidden></p>
+        <p class="flag flag-after" data-role="flag-after" role="note" hidden></p>
+        <p class="loading" data-role="loading" role="status" hidden></p>
+        <div class="notice" data-role="notice" role="alert" hidden>
+          <span data-role="notice-text"></span>
+          <button type="button" class="btn small" data-role="retry">Try again</button>
+        </div>
       </div>
     </div>
-  </main>
-  <section class="sites-view" data-role="sites-view" aria-label="Site Stories" hidden>
-    <p class="maturity" data-role="sites-maturity"></p>
-    <div class="sites-scroll" data-role="sites-root"></div>
-  </section>
-  <section class="sites-view missed-view" data-role="missed-view" aria-label="What NISAR Missed" hidden>
-    <p class="maturity" data-role="missed-maturity"></p>
-    <div class="missed-root" data-role="missed-root"></div>
-  </section>
-  <section class="dock" data-role="dock" aria-label="Controls">
-    <div class="row timeline">
+
+    <section class="sites-view" data-role="sites-view" aria-label="Site Stories" hidden>
+      <p class="maturity" data-role="sites-maturity"></p>
+      <div class="sites-scroll" data-role="sites-root"></div>
+    </section>
+    <section class="sites-view missed-view" data-role="missed-view" aria-label="What NISAR Missed" hidden>
+      <p class="maturity" data-role="missed-maturity"></p>
+      <div class="missed-root" data-role="missed-root"></div>
+    </section>
+    <section class="sites-view evidence-view" data-role="evidence-view" aria-label="How we know" hidden>
+      <p class="maturity" data-role="evidence-maturity"></p>
+      <div class="evidence-root" data-role="evidence-root"></div>
+    </section>
+
+    <section class="dock" data-role="dock" aria-label="Date controls">
       <button type="button" class="btn play" data-role="play">Play</button>
-      <div class="slider-block">
-        <label class="slider-label" for="date-slider">
-          Date <output class="date-out" data-role="date-out" for="date-slider"></output>
-        </label>
-        <div class="track">
-          <div class="ticks" data-role="ticks" aria-hidden="true"></div>
+      <div class="timeline">
+        <div class="date-row">
+          <label class="slider-label" for="date-slider">Date <output class="date-out" data-role="date-out" for="date-slider"></output></label>
+          <span class="chip chip-flag" data-role="date-flag" hidden>Flagged date</span>
+          <span class="chip chip-out" data-role="date-excluded" hidden>Not in the Change map</span>
+          <span class="load-state" data-role="load-state" role="status" hidden></span>
+        </div>
+        <div class="axis" data-role="axis">
+          <div class="axis-layer" data-role="ticks" aria-hidden="true"></div>
           <input id="date-slider" data-role="slider" type="range" min="0" step="1" value="0" />
         </div>
-        <div class="ends" aria-hidden="true"><span data-role="first"></span><span data-role="last"></span></div>
+        <ul class="axis-key" data-role="axis-key" aria-label="Key to the date line"></ul>
       </div>
-    </div>
-    <div class="row options">
-      <fieldset class="pol" data-role="pol">
-        <legend>Polarization</legend>
-        <label class="seg seg-hh"><input type="radio" name="pol" value="HH" checked /><span>HH</span></label>
-        <label class="seg seg-hv"><input type="radio" name="pol" value="HV" /><span>HV</span></label>
-      </fieldset>
-      <div class="compare">
-        <button type="button" class="btn toggle" data-role="swipe-toggle" aria-pressed="false">Before and after</button>
-        <label class="before-pick" data-role="before-pick" hidden>Before
-          <select data-role="before-select"></select>
-        </label>
-      </div>
-      <button type="button" class="btn toggle composite" data-role="composite-toggle" aria-pressed="false">Seasonal composite</button>
-      <button type="button" class="btn toggle change" data-role="change-toggle" aria-pressed="false" hidden>Change</button>
-    </div>
-    <div class="change-panel" data-role="change-panel" hidden>
-      <p class="change-caption" data-role="change-caption"></p>
-      <table class="step-legend" data-role="step-legend" hidden>
-        <caption>Colour shows the date of the step, and shade its direction</caption>
-        <thead><tr data-role="step-legend-dates"></tr></thead>
-        <tbody data-role="step-legend-rows"></tbody>
-      </table>
-      <p class="change-legend" data-role="change-legend"><span class="change-ramp" data-role="change-ramp" aria-hidden="true"></span><span data-role="change-legend-text"></span></p>
-      <p class="change-limit" data-role="change-limit"></p>
-      <button type="button" class="btn toggle unusual" data-role="unusual-toggle" aria-pressed="false" hidden>Unusual dates</button>
-      <p class="change-note" data-role="change-note" hidden></p>
-    </div>
-    <p class="hint" data-role="hint" hidden></p>
-    <p class="limits" data-role="limits" hidden></p>
-  </section>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p><strong data-role="foot-status"></strong> Not an official warning service: for warnings, use PMD, NDMA and PDMA.</p>
+    <details class="foot-credits" data-role="foot-credits" open>
+      <summary>Data credits and team</summary>
+      <p>Data: NISAR GCOV from NASA, distributed by ASF. OPERA DSWx-S1 from NASA. River and reservoir figures from the Flood Forecasting Division (FFD), Pakistan Meteorological Department. Team SARcastic Scientists, Islamabad Local Event, NASA Space Apps Challenge 2026.</p>
+    </details>
+  </footer>
 </div>`;
 
 export interface AppHandle {
@@ -168,10 +241,14 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const noticeEl = q("notice");
   const noticeText = q("notice-text");
   const retryBtn = q<HTMLButtonElement>("retry");
+  const loadingEl = q("loading");
   const playBtn = q<HTMLButtonElement>("play");
   const slider = q<HTMLInputElement>("slider");
   const dateOut = q("date-out");
-  const ticks = q("ticks");
+  const dateFlag = q("date-flag");
+  const dateExcluded = q("date-excluded");
+  const loadState = q("load-state");
+  const axisEl = q("axis");
   const polSet = q<HTMLFieldSetElement>("pol");
   const swipeToggle = q<HTMLButtonElement>("swipe-toggle");
   const beforePick = q("before-pick");
@@ -182,6 +259,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const changeNote = q("change-note");
   const changeCaption = q("change-caption");
   const changeLimit = q("change-limit");
+  const changeDetail = q("change-detail");
   const changeRamp = q("change-ramp");
   const legendText = q("change-legend-text");
   const stepLegend = q("step-legend");
@@ -191,29 +269,48 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const flagBefore = q("flag-before");
   const flagAfter = q("flag-after");
   const dockEl = q("dock");
+  const heroEl = q("hero");
+  const storyEl = q("story");
+  const storyResume = q<HTMLButtonElement>("story-resume");
+  const storyStart = q<HTMLButtonElement>("story-start");
   const sitesViewEl = q("sites-view");
   const sitesMaturity = q("sites-maturity");
   const missedViewEl = q("missed-view");
   const missedMaturity = q("missed-maturity");
+  const evidenceViewEl = q("evidence-view");
+  const evidenceMaturity = q("evidence-maturity");
   const viewName = q("view-name");
   const ledeEl = q("lede");
-  const viewDance = q<HTMLButtonElement>("view-dance");
-  const viewSites = q<HTMLButtonElement>("view-sites");
-  const viewMissed = q<HTMLButtonElement>("view-missed");
+  const viewButtons: Record<Exclude<View, "home">, HTMLButtonElement> = {
+    dance: q("view-dance"),
+    sites: q("view-sites"),
+    missed: q("view-missed"),
+    evidence: q("view-evidence"),
+  };
 
   // Maturity label: always visible. Set before the map is created, so it is on the page even if the map cannot start
   // (for example when WebGL is unavailable).
   const banner = maturityBanner(m);
-  maturityEl.textContent = banner.text;
-  maturityEl.dataset.kind = banner.kind;
-  sitesMaturity.textContent = banner.text;
-  sitesMaturity.dataset.kind = banner.kind;
-  missedMaturity.textContent = banner.text;
-  missedMaturity.dataset.kind = banner.kind;
+  for (const el of [maturityEl, sitesMaturity, missedMaturity, evidenceMaturity]) {
+    el.textContent = banner.text;
+    el.dataset.kind = banner.kind;
+  }
+  q("foot-status").textContent = banner.kind === "provisional" ? `${banner.text}.` : banner.text;
 
   const host = createHost(afterEl, beforeEl);
 
+  // On a phone the longer notes start folded, so the map keeps its room. Everywhere else they are open.
+  const narrow = window.matchMedia?.("(max-width: 760px)");
+  const syncFolds = (): void => {
+    q<HTMLDetailsElement>("foot-credits").open = !narrow?.matches;
+    q<HTMLDetailsElement>("change-about").open = !narrow?.matches;
+  };
+  narrow?.addEventListener?.("change", syncFolds);
+  syncFolds();
+
   const state = { i: 0, beforeI: 0, pol: "HH" as Pol, composite: false, swipe: false, change: false, unusual: !m.change?.step, fraction: 0.5, playing: false };
+  const story = { active: false, resume: -1 };
+  let view: View = "home";
   let seq = 0;
   let pending: Promise<void> = Promise.resolve();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -222,6 +319,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const isPreview = banner.kind === "preview";
   // Limits of the images, shown on The Dance. Not shown for synthetic data.
   limitsEl.hidden = banner.kind === "synthetic";
+  q("limits-box").hidden = banner.kind === "synthetic";
   if (banner.kind === "provisional") limitsEl.textContent = calibratedLimits(m, banner.text);
   if (isPreview) {
     ledeEl.textContent = "Step through the season's radar images. The images are scaled for display, so their brightness is not a measurement.";
@@ -231,89 +329,175 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
       "Placement uses the published footprint and is good to roughly 2 km.";
   }
 
-  // Views: The Dance (map), Site Stories (curves and cards), What NISAR Missed (timeline and data gap).
-  const sitesView = createSitesView(q("sites-root"), { sites: opts.sites ?? null, manifest: m, createChart: opts.createChart });
+  // ---- The opening screen --------------------------------------------------------------------------------------
+  const provisional = banner.kind === "provisional";
+  const siteIds = new Set((opts.sites ?? []).map((s) => s.id));
+  q("hero-maturity").textContent = banner.text;
+  q("hero-maturity").dataset.kind = banner.kind;
+  heroEl.dataset.kind = banner.kind;
+  q("hero-title").textContent = provisional ? heroCopy.title : "The Peshawar Valley through one monsoon season";
+  q("hero-lede").textContent = provisional
+    ? heroCopy.lede
+    : isPreview
+      ? "Step through NASA's NISAR browse images of the valley. They are low-resolution previews scaled for display, not calibrated measurements."
+      : "A synthetic demonstration of the app. It is not NISAR data.";
+  // The picture is the real calibrated composite, so it appears only for calibrated data. The finding needs the
+  // build it was written from: its sites and its step map.
+  const showFinding = provisional && !!m.change?.step && siteIds.has("tarbela-shore");
+  q<HTMLImageElement>("hero-img").hidden = !provisional;
+  q("hero-finding").hidden = !showFinding;
+  if (showFinding) {
+    q("hero-finding-text").textContent = heroCopy.finding;
+    q("hero-finding-source").textContent = heroCopy.findingSource;
+  }
+  const [cr, cg, cb] = (m.composite_dates ?? []).map(formatDate);
+  q("hero-caption").hidden = !provisional;
+  q("hero-caption").textContent =
+    cr && cg && cb
+      ? `NISAR HH on ${cr}, ${cg} and ${cb}, drawn as red, green and blue. Provisional data.`
+      : "NISAR HH seasonal composite. Provisional data.";
+  const axisModel = buildAxis(m);
+  const heroAxis = mountAxis(q("hero-axis"), q("hero-axis-layer"), axisModel, { onPick() {}, disabled: () => true });
+  {
+    const gapText = axisModel.gap ? ` The hatched band is the gap in NISAR's record, ${axisModel.gap.label.replace("No data ", "")}.` : "";
+    const caption = `${dates.length} passes, ${formatDate(dates[0])} to ${formatDate(dates[last])}.${gapText}`;
+    q("hero-strip-caption").textContent = caption;
+    q("hero-axis").setAttribute("aria-label", caption);
+  }
+  // The story is calibrated data's guided tour; it uses the step map and the sites of that build.
+  const storyEnabled = provisional && storyBeats.length > 0;
+  for (const id of ["hero-start", "story-start"]) q(id).hidden = !storyEnabled;
+
+  // ---- Views ---------------------------------------------------------------------------------------------------
+  const sitesView = createSitesView(q("sites-root"), {
+    sites: opts.sites ?? null,
+    manifest: m,
+    createChart: opts.createChart,
+    onShowDate: (date, site) => showOnMap(date, site),
+  });
   const missedView = createMissedView(q("missed-root"), { manifest: m });
-  function showView(view: "dance" | "sites" | "missed"): void {
-    const danceOn = view === "dance";
+  const evidenceView = createEvidenceView(q("evidence-root"), { manifest: m, sites: opts.sites ?? null });
+
+  function showView(next: View): void {
+    view = next;
+    q("shell").dataset.view = next;
+    const danceOn = next === "dance";
+    const home = next === "home";
     if (!danceOn) stopPlaying();
-    stageEl.hidden = !danceOn;
+    // The map stays mounted behind the opening screen so its first frame is loading while the person reads.
+    stageEl.hidden = !(danceOn || home);
+    stageEl.toggleAttribute("inert", home);
     dockEl.hidden = !danceOn;
     ledeEl.hidden = !danceOn;
-    sitesViewEl.hidden = view !== "sites";
-    missedViewEl.hidden = view !== "missed";
-    viewDance.setAttribute("aria-pressed", String(danceOn));
-    viewSites.setAttribute("aria-pressed", String(view === "sites"));
-    viewMissed.setAttribute("aria-pressed", String(view === "missed"));
-    const name = { dance: "The Dance", sites: "Site Stories", missed: "What NISAR Missed" }[view];
+    heroEl.hidden = !home;
+    sitesViewEl.hidden = next !== "sites";
+    missedViewEl.hidden = next !== "missed";
+    evidenceViewEl.hidden = next !== "evidence";
+    for (const [name, btn] of Object.entries(viewButtons)) btn.setAttribute("aria-pressed", String(name === next));
+    const name = { home: "Start", dance: "The Dance", sites: "Site Stories", missed: "What NISAR Missed", evidence: "How we know" }[next];
     viewName.textContent = name;
     document.title = `SARtale: ${name} (${maturityTag})`;
+    updateStoryChrome();
   }
-  viewDance.addEventListener("click", () => showView("dance"));
-  viewSites.addEventListener("click", () => showView("sites"));
-  viewMissed.addEventListener("click", () => showView("missed"));
+  q("home").addEventListener("click", () => showView("home"));
+  viewButtons.dance.addEventListener("click", () => showView("dance"));
+  viewButtons.sites.addEventListener("click", () => showView("sites"));
+  viewButtons.missed.addEventListener("click", () => showView("missed"));
+  viewButtons.evidence.addEventListener("click", () => showView("evidence"));
+  q("hero-explore").addEventListener("click", () => showView("dance"));
+  q("hero-method").addEventListener("click", () => showView("evidence"));
 
-  // Slider, ticks, end labels, before picker.
+  // ---- The date line -------------------------------------------------------------------------------------------
   slider.max = String(last);
-  ticks.innerHTML = dates
-    .map((_, i) => `<i style="left:${last === 0 ? 0 : (i / last) * 100}%"></i>`)
-    .join("");
-  q("first").textContent = formatDate(dates[0]);
-  q("last").textContent = formatDate(dates[last]);
+  const axis = mountAxis(axisEl, q("ticks"), axisModel, {
+    onPick: (i) => {
+      if (i === state.i) return;
+      stopPlaying();
+      state.i = i;
+      void refresh();
+    },
+    disabled: () => state.composite || dates.length < 2,
+  });
   beforeSelect.innerHTML = dates.map((d, i) => `<option value="${i}">${formatDate(d)}</option>`).join("");
+  {
+    const key = q("axis-key");
+    const item = (cls: string, text: string): HTMLLIElement => {
+      const li = document.createElement("li");
+      const sw = document.createElement("span");
+      sw.className = `key-mark ${cls}`;
+      sw.setAttribute("aria-hidden", "true");
+      li.append(sw, document.createTextNode(text));
+      return li;
+    };
+    key.append(item("km-pass", "NISAR pass"));
+    if (dates.some((d) => flagFor(m, d))) key.append(item("km-flag", "Flagged date"));
+    if (axisModel.gap) key.append(item("km-gap", axisModel.gap.label));
+    if (m.change) key.append(item("km-out", "Left out of the Change map"));
+  }
   compositeToggle.hidden = !m.composite;
   changeToggle.hidden = !m.change;
   unusualToggle.hidden = !m.change?.step;
+
+  const stepClasses = m.change?.step?.classes ?? [];
+  const dayMonth = (iso: string): string => formatDate(iso).split(" ").slice(0, 2).join(" ");
   if (m.change?.step) {
-    const swatch = (c: number[], label: string): HTMLTableCellElement => {
-      const td = document.createElement("td");
-      const box = document.createElement("span");
-      box.className = "swatch";
-      box.style.background = `rgb(${c.join(" ")})`;
-      box.title = label;
-      td.append(box);
-      return td;
-    };
-    const header = (text: string, scope: string): HTMLTableCellElement => {
-      const th = document.createElement("th");
-      th.scope = scope;
-      th.textContent = text;
-      return th;
-    };
-    const classes = m.change.step.classes;
-    const dayMonth = (iso: string): string => formatDate(iso).split(" ").slice(0, 2).join(" ");
-    const dateRow = q("step-legend-dates");
-    dateRow.append(header("Step around", "col"));
-    for (const c of classes) {
-      const th = header(dayMonth(c.date), "col");
-      th.dataset.date = c.date;
-      dateRow.append(th);
-    }
-    for (const [label, key] of [["Brighter after", "up"], ["Darker after", "down"]] as const) {
-      const tr = document.createElement("tr");
-      tr.append(header(label, "row"), ...classes.map((c) => swatch(c[key], `${label}, around ${dayMonth(c.date)}`)));
-      q("step-legend-rows").append(tr);
+    const head = document.createElement("li");
+    head.className = "legend-head";
+    head.setAttribute("aria-hidden", "true");
+    head.append(...["Step date", "Brighter", "Darker"].map((t) => Object.assign(document.createElement("span"), { textContent: t })));
+    stepLegend.append(head);
+    for (const c of stepClasses) {
+      const li = document.createElement("li");
+      li.dataset.date = c.date;
+      const label = document.createElement("span");
+      label.className = "legend-date";
+      label.textContent = dayMonth(c.date);
+      const swatch = (rgb: number[], what: string): HTMLSpanElement => {
+        const s = document.createElement("span");
+        s.className = "swatch";
+        s.style.background = `rgb(${rgb.join(" ")})`;
+        s.title = `${what} after, around ${dayMonth(c.date)}`;
+        const t = document.createElement("span");
+        t.className = "sr-only";
+        t.textContent = `${what} after`;
+        s.append(t);
+        return s;
+      };
+      li.append(label, swatch(c.up, "Brighter"), swatch(c.down, "Darker"));
+      // Pointing at a legend row lights its date on the date line, which is the link between a colour and a date.
+      li.addEventListener("pointerenter", () => axis.highlight(c.date));
+      li.addEventListener("pointerleave", () => axis.highlight(null));
+      stepLegend.append(li);
     }
   }
+  const stepColours: Record<string, string> = Object.fromEntries(stepClasses.map((c) => [c.date, `rgb(${c.down.join(" ")})`]));
 
   /** The words of the change panel for the view that is on. */
   function changeWords(): void {
     const c = m.change;
     if (!c) return;
     const step = state.unusual ? undefined : c.step;
+    q("change-title").textContent = step ? "When the radar stepped" : "Unusual dates";
     changeCaption.textContent = step ? STEP_CAPTION : CHANGE_CAPTION;
     stepLegend.hidden = !step;
     changeRamp.hidden = !!step;
     legendText.textContent = step
-      ? `A date means the step fell between the pass before it and that pass. Grey areas did not pass the test.`
+      ? "Colour shows the date of the step. Light tint: brighter after. Deep shade: darker after. No colour: no step passed the test. The date slider changes the radar underneath, not these colours."
       : `Yellow is a score of ${c.threshold}, red is ${c.scale_max} or more, on one scale for every date. ` +
         `The score counts how many of its usual swings a pixel sits from its usual value, in HH or HV. Below ${c.threshold} shows nothing.`;
-    changeLimit.textContent = step
-      ? `HH and HV moved the same way by at least ${step.min_step_db} dB on average, and the dates on each side of the step agree. ` +
-        `One step is shown per place, so a second step there is not drawn. Drawn wider than measured, to stay visible.`
+    changeLimit.textContent = step ? STEP_LIMIT : CHANGE_LIMIT;
+    const drawn = step ? step.pixel_m * 3 : 0;
+    changeDetail.textContent = step
+      ? `HH and HV must move the same way by at least ${step.min_step_db} dB on average, and the dates on each side of the step must agree (stability of at least ${step.min_stability.toFixed(1)}). ` +
+        `One step is shown per place, so a second step there is not drawn. ` +
+        `The map is drawn at ${drawn} m and analysed at ${step.pixel_m} m: a ${drawn} m cell is drawn only if at least 2 of its 9 pixels are flagged, ` +
+        `so small patches look wider than measured, and about 31% of flagged pixels fall in cells that are not drawn. ` +
+        `The controls were used in setting the limit, and five fresh cities also stayed quiet (an independent check, 0% flagged within 450 m). ` +
+        `The step test and its numbers are on the How we know page.`
       : CHANGE_LIMIT;
-    for (const th of stepLegend.querySelectorAll<HTMLElement>("th[data-date]")) {
-      th.classList.toggle("current", th.dataset.date === dates[state.i]);
+    q("change-more").hidden = !step;
+    for (const li of stepLegend.querySelectorAll<HTMLElement>("li[data-date]")) {
+      li.classList.toggle("current", li.dataset.date === dates[state.i]);
     }
   }
   if (dates.length < 2) {
@@ -358,6 +542,8 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     dateOut.textContent = formatDate(dates[state.i]);
     slider.setAttribute("aria-valuetext", formatDate(dates[state.i]));
     slider.value = String(state.i);
+    axis.select(state.i);
+    for (const r of polSet.querySelectorAll<HTMLInputElement>('input[name="pol"]')) r.checked = r.value === state.pol;
     const polText = state.composite ? "HH seasonal composite" : state.pol;
     stampAfter.textContent = state.composite ? polText : `${formatDate(dates[state.i])}, ${state.pol}`;
     stampBefore.textContent = `${formatDate(dates[state.beforeI])}, ${state.pol}`;
@@ -368,31 +554,76 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     const flagB = state.swipe && !state.composite ? flagFor(m, dates[state.beforeI]) : undefined;
     flagBefore.textContent = flagB ?? "";
     flagBefore.hidden = !flagB;
+    dateFlag.hidden = state.composite || !flagFor(m, dates[state.i]);
+    const changeOn = state.change && !state.composite;
+    dateExcluded.hidden = !(changeOn && changeExclusion(m, dates[state.i]));
     playBtn.textContent = state.playing ? "Pause" : "Play";
     playBtn.setAttribute("aria-pressed", String(state.playing));
     swipeToggle.setAttribute("aria-pressed", String(state.swipe));
     compositeToggle.setAttribute("aria-pressed", String(state.composite));
     changeToggle.setAttribute("aria-pressed", String(state.change));
     changeToggle.disabled = state.composite;
-    changePanel.hidden = !state.change || state.composite;
+    changePanel.hidden = !changeOn;
     const note = changeDateNote();
     changeNote.textContent = note ?? "";
     changeNote.hidden = !note;
     unusualToggle.setAttribute("aria-pressed", String(state.unusual));
     changeWords();
+    axis.tint(changeOn && !state.unusual && m.change?.step ? stepColours : null);
+    axis.showExcluded(!!changeOn);
     beforeEl.hidden = !(state.swipe && !state.composite);
     swipeEl.hidden = beforeEl.hidden;
     beforePick.hidden = !state.swipe || state.composite;
+    beforeSelect.value = String(state.beforeI);
     const locked = state.composite;
     slider.disabled = locked || dates.length < 2;
     playBtn.disabled = locked || dates.length < 2;
     swipeToggle.disabled = locked || dates.length < 2;
     polSet.disabled = locked;
+    axisEl.classList.toggle("locked", locked);
     hint.hidden = !locked;
     hint.textContent = locked ? compositeHint() : "";
     stageEl.style.setProperty("--swipe", `${state.fraction * 100}%`);
     beforeEl.style.clipPath = `inset(0 ${100 - state.fraction * 100}% 0 0)`;
     swipeEl.setAttribute("aria-valuenow", String(Math.round(state.fraction * 100)));
+  }
+
+  // ---- Frames: loading state and background preloading ---------------------------------------------------------
+  const preload = opts.preload;
+  const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+  /** The frame URL for a date, or undefined where the manifest has none (never throws). */
+  function urlOf(i: number, pol: Pol = state.pol): string | undefined {
+    try {
+      return frameUrl(m, dates[i], pol);
+    } catch {
+      return undefined;
+    }
+  }
+  /** Ask for every frame of a polarization, nearest the current date first. */
+  function warm(pol: Pol): void {
+    if (!preload || saveData) return;
+    const order = dates.map((_, i) => i).sort((a, b) => Math.abs(a - state.i) - Math.abs(b - state.i));
+    preload.request(order.flatMap((i) => urlOf(i, pol) ?? []));
+    if (m.change?.step && state.change) preload.request([dataUrl(m.change.step.frame)]);
+  }
+  preload?.onChange(() => {
+    const p = preload.progress();
+    const left = p.total - p.done - p.failed;
+    loadState.hidden = left <= 0;
+    loadState.textContent = left > 0 ? `Preparing frames: ${p.done} of ${p.total}` : "";
+  });
+  let loadingTimer: ReturnType<typeof setTimeout> | undefined;
+  function showLoading(text: string): void {
+    clearTimeout(loadingTimer);
+    // Quick loads stay silent; a slow one says what it is waiting for.
+    loadingTimer = setTimeout(() => {
+      loadingEl.textContent = text;
+      loadingEl.hidden = false;
+    }, 160);
+  }
+  function hideLoading(): void {
+    clearTimeout(loadingTimer);
+    loadingEl.hidden = true;
   }
 
   /** Draw whatever the state says. Newer calls supersede older ones; only the newest reports errors. */
@@ -407,6 +638,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
       const on = state.change && !state.composite;
       jobs.push(on && !state.unusual ? setStepOverlay(host.after, m) : setChangeOverlay(host.after, m, on ? dates[state.i] : null));
     }
+    showLoading(state.composite ? "Loading the seasonal composite" : `Loading ${formatDate(dates[state.i])}, ${state.pol}`);
     pending = Promise.all(jobs).then(
       () => {
         if (mine === seq) showNotice(null);
@@ -418,6 +650,9 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
         showNotice(err instanceof Error ? err.message : String(err));
       },
     );
+    void pending.finally(() => {
+      if (mine === seq) hideLoading();
+    });
     return pending;
   }
 
@@ -431,9 +666,21 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   async function tick(): Promise<void> {
     if (!state.playing) return;
     if (state.i >= last) return stopPlaying();
-    state.i += 1;
+    const next = state.i + 1;
+    const url = urlOf(next);
+    if (preload && url) {
+      // Wait for the next frame to be on hand, so the step is clean instead of a blank flash. Never wait for long.
+      showLoading(`Loading ${formatDate(dates[next])}, ${state.pol}`);
+      await Promise.race([preload.whenReady(url).catch(() => {}), new Promise((r) => setTimeout(r, PLAY_WAIT_MS))]);
+      hideLoading();
+      if (!state.playing) return;
+    }
+    state.i = next;
     await refresh();
     if (!state.playing) return;
+    // Ask for the frame after this one now, while this one is on screen.
+    const ahead = urlOf(state.i + 1);
+    if (preload && ahead) preload.prioritize(ahead);
     timer = setTimeout(() => void tick(), PLAY_STEP_MS);
   }
 
@@ -453,6 +700,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     const t = e.target as HTMLInputElement;
     if (t.name === "pol") {
       state.pol = t.value as Pol;
+      warm(state.pol);
       void refresh();
     }
   });
@@ -466,11 +714,15 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   });
   compositeToggle.addEventListener("click", () => {
     state.composite = !state.composite;
-    if (state.composite) stopPlaying();
+    if (state.composite) {
+      stopPlaying();
+      if (preload && m.composite) preload.prioritize(dataUrl(m.composite));
+    }
     void refresh();
   });
   changeToggle.addEventListener("click", () => {
     state.change = !state.change;
+    if (state.change && preload && m.change?.step && !state.unusual) preload.prioritize(dataUrl(m.change.step.frame));
     void refresh();
   });
   unusualToggle.addEventListener("click", () => {
@@ -512,8 +764,114 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     }
   });
 
-  void refresh();
-  showView("dance");
+  // ---- The guided story ----------------------------------------------------------------------------------------
+  /** The index of a date in the built dates, or the nearest earlier one, or 0. */
+  function dateIndex(date: string | undefined): number {
+    if (!date) return 0;
+    const exact = dates.indexOf(date);
+    if (exact >= 0) return exact;
+    return Math.max(0, dates.filter((d) => d <= date).length - 1);
+  }
+
+  /** How much of the map the floating panels hide, so a camera move leaves its target in the clear. */
+  function cameraPadding(): Padding {
+    const pad = { top: 0, right: 0, bottom: 0, left: 0 };
+    const stage = stageEl.getBoundingClientRect();
+    const topBar = root.querySelector<HTMLElement>(".top-bar");
+    if (topBar) pad.top = topBar.offsetHeight;
+    if (story.active && !storyEl.hidden && stage.width > 0) {
+      const r = storyEl.getBoundingClientRect();
+      if (r.width > stage.width * 0.8) pad.bottom = r.height + 8;
+      else pad.left = r.width + 20;
+    }
+    return pad;
+  }
+
+  function applyStep(step: StoryStep): void {
+    stopPlaying();
+    state.composite = false;
+    state.i = dateIndex(step.map.date);
+    state.pol = step.map.pol;
+    state.swipe = !!step.map.swipeBefore;
+    if (step.map.swipeBefore) state.beforeI = dateIndex(step.map.swipeBefore);
+    state.fraction = 0.5;
+    state.change = !!step.map.change && !!m.change?.step;
+    state.unusual = !m.change?.step;
+    warm(state.pol);
+    void refresh();
+    host.moveTo?.(step.camera, cameraPadding());
+  }
+
+  const storyPanel = createStoryPanel(storyEl, {
+    steps: storyBeats,
+    manifest: m,
+    sites: opts.sites ?? null,
+    onGo: (step, index) => {
+      story.resume = index;
+      applyStep(step);
+    },
+    onExit: () => exitStory(),
+    onOpenSite: (id) => {
+      showView("sites");
+      sitesView.select(id);
+    },
+    onPlay: () => {
+      state.composite = false;
+      startPlaying();
+    },
+  });
+
+  function updateStoryChrome(): void {
+    const total = storyBeats.length;
+    storyEl.hidden = !(story.active && view === "dance");
+    stageEl.dataset.story = story.active ? "on" : "off";
+    storyStart.setAttribute("aria-pressed", String(story.active));
+    storyStart.textContent = story.active ? "In the story" : story.resume >= 0 ? "Resume the story" : "Start the story";
+    storyResume.hidden = !(storyEnabled && !story.active && story.resume >= 0 && view === "dance");
+    storyResume.textContent = `Resume the story, step ${story.resume + 1} of ${total}`;
+  }
+
+  function startStory(from = Math.max(0, story.resume)): void {
+    if (!storyEnabled) return;
+    story.active = true;
+    showView("dance");
+    storyPanel.go(from);
+    q("story-title").focus({ preventScroll: true });
+  }
+
+  /** Leave the story to explore freely. The place is kept, so the person can come back to it. */
+  function exitStory(): void {
+    const finished = storyPanel.index() >= storyPanel.count() - 1;
+    story.active = false;
+    story.resume = finished ? -1 : storyPanel.index();
+    if (view !== "dance") showView("dance");
+    else updateStoryChrome();
+  }
+
+  storyStart.addEventListener("click", () => {
+    if (story.active) showView("dance");
+    else startStory();
+  });
+  q("hero-start").addEventListener("click", () => startStory(0));
+  storyResume.addEventListener("click", () => startStory());
+
+  /** Show a date on the map, centred on a site (from a card's chart or table). Leaves the story if it was on. */
+  function showOnMap(date: string, site: Site): void {
+    if (story.active) {
+      story.active = false;
+      story.resume = storyPanel.index();
+    }
+    stopPlaying();
+    state.composite = false;
+    state.swipe = false;
+    state.i = dateIndex(date);
+    showView("dance");
+    void refresh();
+    host.moveTo?.({ center: [site.lon, site.lat], zoom: 10.5 }, cameraPadding());
+  }
+
+  void refresh().then(() => warm(state.pol));
+  showView("home");
 
   if (opts.sites?.length) {
     host.setSiteMarkers?.(opts.sites, (id) => {
@@ -526,8 +884,13 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     settled: () => pending,
     destroy: () => {
       stopPlaying();
+      narrow?.removeEventListener?.("change", syncFolds);
+      axis.destroy();
+      heroAxis.destroy();
+      storyPanel.destroy();
       sitesView.destroy();
       missedView.destroy();
+      evidenceView.destroy();
       root.innerHTML = "";
     },
   };

@@ -101,7 +101,7 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
   canList.append(...evidenceCopy.can.map((t) => el("li", undefined, fill(t))));
   can.append(canList);
   const cannot = el("section", "verdict-cannot");
-  cannot.append(el("h3", undefined, "What it cannot tell you"));
+  cannot.append(el("h3", undefined, "What it cannot do"));
   const cannotList = el("ul");
   cannotList.append(...evidenceCopy.cannot.map((t) => el("li", undefined, fill(t))));
   cannot.append(cannotList);

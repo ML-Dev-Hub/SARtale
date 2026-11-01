@@ -30,11 +30,11 @@ const TEMPLATE = `
 <div class="story-body" data-role="story-content" aria-live="polite">
   <p class="story-kicker" data-role="story-kicker"></p>
   <h2 class="story-title" data-role="story-title" tabindex="-1"></h2>
-  <div class="story-text" data-role="story-text"></div>
   <figure class="story-strip" data-role="story-strip" hidden>
     <div class="axis axis-mini" data-role="story-axis"><div class="axis-layer" data-role="story-axis-layer"></div></div>
     <figcaption data-role="story-strip-caption"></figcaption>
   </figure>
+  <div class="story-text" data-role="story-text"></div>
   <p class="story-source" data-role="story-source" hidden></p>
   <div class="story-actions" data-role="story-actions"></div>
 </div>
