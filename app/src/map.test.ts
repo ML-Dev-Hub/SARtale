@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { cornersFromBounds, setChangeOverlay, setComposite, setFrame, type MapLike } from "./map";
+import { cornersFromBounds, setChangeOverlay, setComposite, setFrame, setStepOverlay, type MapLike } from "./map";
 import { changeManifest, fixtureManifest as m } from "./fixtures";
 
 function recordingMap(): MapLike & { calls: [string, unknown][] } {
@@ -39,6 +39,12 @@ describe("change overlay", () => {
   });
   test("a frame that fails to load is reported", async () => {
     await expect(setChangeOverlay(overlayMap(true), changeManifest, "2026-07-14")).rejects.toThrow("change overlay");
+  });
+  test("the step map is one frame for the whole season, and a failure is reported", async () => {
+    const map = overlayMap();
+    await setStepOverlay(map, changeManifest);
+    expect(map.shown).toEqual(["data/frames/step_date.webp"]);
+    await expect(setStepOverlay(overlayMap(true), changeManifest)).rejects.toThrow("change overlay");
   });
   test("a map with no overlay support is left alone", async () => {
     await expect(setChangeOverlay({ setImage: async () => {} }, changeManifest, "2026-07-14")).resolves.toBeUndefined();

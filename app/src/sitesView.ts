@@ -38,6 +38,7 @@ const TEMPLATE = `
         <span class="key key-hh">HH</span> <span class="key key-hv">HV</span> backscatter in dB. A break in a line means no valid value on that date.
       </figcaption>
     </figure>
+    <p class="slot" data-role="card-step" hidden></p>
     <p class="slot" data-role="card-change" hidden></p>
     <p class="slot" data-role="card-dates"></p>
     <p class="slot" data-role="card-observation"></p>
@@ -48,7 +49,7 @@ const TEMPLATE = `
     <details class="values">
       <summary>Values by date</summary>
       <table data-role="card-table">
-        <thead><tr><th scope="col">Date</th><th scope="col">HH (dB)</th><th scope="col">HV (dB)</th><th scope="col">Valid</th><th scope="col" data-role="card-change-col" hidden>Change score</th></tr></thead>
+        <thead><tr><th scope="col">Date</th><th scope="col">HH (dB)</th><th scope="col">HV (dB)</th><th scope="col">Valid</th><th scope="col" data-role="card-change-col" hidden>Unusual dates score</th></tr></thead>
         <tbody></tbody>
       </table>
     </details>
@@ -114,16 +115,29 @@ export function createSitesView(root: HTMLElement, opts: SitesViewOptions): Site
     return `${score.toFixed(1)}${flagFor(opts.manifest, date) ? " (flagged date)" : ""}`;
   }
 
+  /** The site's largest step, read from its own curve, or nothing for a build with no step layer. */
+  function stepSlot(site: Site, note: string | undefined): void {
+    const step = site.step;
+    const rule = opts.manifest.change?.step;
+    const p = q("card-step");
+    p.hidden = !step || !rule;
+    if (!step || !rule) return;
+    const sign = (v: number): string => `${v > 0 ? "+" : ""}${v.toFixed(1)}`;
+    const size = `HH ${sign(step.hh_db)} dB, HV ${sign(step.hv_db)} dB between ${dayMonth(step.previous_date)} and ${dayMonth(step.date)}.`;
+    const verdict = step.flagged ? "It passes the test the map uses." : "It does not pass the test the map uses.";
+    const map = `${Math.round(step.map_share * 100)}% of map pixels here are flagged.`;
+    slot("card-step", step.flagged ? "Step" : "Largest step", [size, verdict, map, note].filter(Boolean).join(" "));
+  }
+
   /** The scores next to the curves, or nothing for a build with no change layer. */
-  function changeSlot(site: Site, note: string | undefined): void {
+  function changeSlot(site: Site): void {
     const change = opts.manifest.change;
     const p = q("card-change");
     p.hidden = !change;
     if (!change) return;
     const rows = [...site.series].sort((a, b) => (a.date < b.date ? -1 : 1));
     const scores = rows.map((r) => `${dayMonth(r.date)} ${scoreText(r.date, r.change_score)}`).join(", ");
-    const lead = `The typical pixel here, where ${change.threshold} or more is highlighted on the map. ${scores}.`;
-    slot("card-change", "Change score", note ? `${lead} ${note}` : lead);
+    slot("card-change", "Unusual dates score", `The typical pixel here, where ${change.threshold} or more is highlighted on that view. ${scores}.`);
   }
 
   function select(id: string): void {
@@ -145,7 +159,8 @@ export function createSitesView(root: HTMLElement, opts: SitesViewOptions): Site
     const range = sortedDates.length
       ? `${formatDate(sortedDates[0])} to ${formatDate(sortedDates[sortedDates.length - 1])}, ${sortedDates.length} acquisitions`
       : "no acquisitions";
-    changeSlot(site, card.changeNote);
+    stepSlot(site, card.changeNote);
+    changeSlot(site);
     slot("card-dates", "Dates", card.dates.length ? card.dates.map(formatDate).join(", ") : "not set yet");
     slot("card-observation", "Observation", card.observation);
     slot("card-hypothesis", "Hypothesis", card.hypothesis);

@@ -1,4 +1,4 @@
-import { setChangeOverlay, setComposite, setFrame, type MapLike } from "./map";
+import { setChangeOverlay, setComposite, setFrame, setStepOverlay, type MapLike } from "./map";
 import { createMissedView } from "./missedView";
 import { createSitesView, type ChartFactory } from "./sitesView";
 import { changeExclusion, flagFor, formatDate, maturityBanner, orderedDates } from "./timeline";
@@ -21,6 +21,8 @@ export interface AppOptions {
 export type HostFactory = (afterEl: HTMLElement, beforeEl: HTMLElement) => MapHost;
 
 const PLAY_STEP_MS = 800;
+const STEP_CAPTION =
+  "Highlighted areas stepped up or down in radar brightness around this date. This is a statistical flag, not proof of what changed.";
 const CHANGE_CAPTION =
   "Highlighted pixels differ unusually from this area's own season. This is a statistical flag, not proof of what changed.";
 const CHANGE_LIMIT =
@@ -98,8 +100,14 @@ const TEMPLATE = `
     </div>
     <div class="change-panel" data-role="change-panel" hidden>
       <p class="change-caption" data-role="change-caption"></p>
-      <p class="change-legend" data-role="change-legend"><span class="change-ramp" aria-hidden="true"></span><span data-role="change-legend-text"></span></p>
+      <table class="step-legend" data-role="step-legend" hidden>
+        <caption>Colour shows the date of the step, and shade its direction</caption>
+        <thead><tr data-role="step-legend-dates"></tr></thead>
+        <tbody data-role="step-legend-rows"></tbody>
+      </table>
+      <p class="change-legend" data-role="change-legend"><span class="change-ramp" data-role="change-ramp" aria-hidden="true"></span><span data-role="change-legend-text"></span></p>
       <p class="change-limit" data-role="change-limit"></p>
+      <button type="button" class="btn toggle unusual" data-role="unusual-toggle" aria-pressed="false" hidden>Unusual dates</button>
       <p class="change-note" data-role="change-note" hidden></p>
     </div>
     <p class="hint" data-role="hint" hidden></p>
@@ -160,6 +168,12 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const changeToggle = q<HTMLButtonElement>("change-toggle");
   const changePanel = q("change-panel");
   const changeNote = q("change-note");
+  const changeCaption = q("change-caption");
+  const changeLimit = q("change-limit");
+  const changeRamp = q("change-ramp");
+  const legendText = q("change-legend-text");
+  const stepLegend = q("step-legend");
+  const unusualToggle = q<HTMLButtonElement>("unusual-toggle");
   const hint = q("hint");
   const limitsEl = q("limits");
   const flagBefore = q("flag-before");
@@ -187,7 +201,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
 
   const host = createHost(afterEl, beforeEl);
 
-  const state = { i: 0, beforeI: 0, pol: "HH" as Pol, composite: false, swipe: false, change: false, fraction: 0.5, playing: false };
+  const state = { i: 0, beforeI: 0, pol: "HH" as Pol, composite: false, swipe: false, change: false, unusual: !m.change?.step, fraction: 0.5, playing: false };
   let seq = 0;
   let pending: Promise<void> = Promise.resolve();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -237,12 +251,58 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   beforeSelect.innerHTML = dates.map((d, i) => `<option value="${i}">${formatDate(d)}</option>`).join("");
   compositeToggle.hidden = !m.composite;
   changeToggle.hidden = !m.change;
-  if (m.change) {
-    q("change-caption").textContent = CHANGE_CAPTION;
-    q("change-limit").textContent = CHANGE_LIMIT;
-    q("change-legend-text").textContent =
-      `Yellow is a score of ${m.change.threshold}, red is ${m.change.scale_max} or more, on one scale for every date. ` +
-      `The score counts how many of its usual swings a pixel sits from its usual value, in HH or HV. Below ${m.change.threshold} shows nothing.`;
+  unusualToggle.hidden = !m.change?.step;
+  if (m.change?.step) {
+    const swatch = (c: number[], label: string): HTMLTableCellElement => {
+      const td = document.createElement("td");
+      const box = document.createElement("span");
+      box.className = "swatch";
+      box.style.background = `rgb(${c.join(" ")})`;
+      box.title = label;
+      td.append(box);
+      return td;
+    };
+    const header = (text: string, scope: string): HTMLTableCellElement => {
+      const th = document.createElement("th");
+      th.scope = scope;
+      th.textContent = text;
+      return th;
+    };
+    const classes = m.change.step.classes;
+    const dayMonth = (iso: string): string => formatDate(iso).split(" ").slice(0, 2).join(" ");
+    const dateRow = q("step-legend-dates");
+    dateRow.append(header("Step around", "col"));
+    for (const c of classes) {
+      const th = header(dayMonth(c.date), "col");
+      th.dataset.date = c.date;
+      dateRow.append(th);
+    }
+    for (const [label, key] of [["Brighter after", "up"], ["Darker after", "down"]] as const) {
+      const tr = document.createElement("tr");
+      tr.append(header(label, "row"), ...classes.map((c) => swatch(c[key], `${label}, around ${dayMonth(c.date)}`)));
+      q("step-legend-rows").append(tr);
+    }
+  }
+
+  /** The words of the change panel for the view that is on. */
+  function changeWords(): void {
+    const c = m.change;
+    if (!c) return;
+    const step = state.unusual ? undefined : c.step;
+    changeCaption.textContent = step ? STEP_CAPTION : CHANGE_CAPTION;
+    stepLegend.hidden = !step;
+    changeRamp.hidden = !!step;
+    legendText.textContent = step
+      ? `A date means the step fell between the pass before it and that pass. Grey areas did not pass the test.`
+      : `Yellow is a score of ${c.threshold}, red is ${c.scale_max} or more, on one scale for every date. ` +
+        `The score counts how many of its usual swings a pixel sits from its usual value, in HH or HV. Below ${c.threshold} shows nothing.`;
+    changeLimit.textContent = step
+      ? `HH and HV moved the same way by at least ${step.min_step_db} dB on average, and the dates on each side of the step agree. ` +
+        `One step is shown per place, so a second step there is not drawn. Drawn wider than measured, to stay visible.`
+      : CHANGE_LIMIT;
+    for (const th of stepLegend.querySelectorAll<HTMLElement>("th[data-date]")) {
+      th.classList.toggle("current", th.dataset.date === dates[state.i]);
+    }
   }
   if (dates.length < 2) {
     slider.disabled = true;
@@ -306,6 +366,8 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     const note = changeDateNote();
     changeNote.textContent = note ?? "";
     changeNote.hidden = !note;
+    unusualToggle.setAttribute("aria-pressed", String(state.unusual));
+    changeWords();
     beforeEl.hidden = !(state.swipe && !state.composite);
     swipeEl.hidden = beforeEl.hidden;
     beforePick.hidden = !state.swipe || state.composite;
@@ -329,7 +391,10 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
       state.composite ? setComposite(host.after, m) : setFrame(host.after, m, dates[state.i], state.pol),
     ];
     if (state.swipe && !state.composite) jobs.push(setFrame(host.before, m, dates[state.beforeI], state.pol));
-    if (m.change) jobs.push(setChangeOverlay(host.after, m, state.change && !state.composite ? dates[state.i] : null));
+    if (m.change) {
+      const on = state.change && !state.composite;
+      jobs.push(on && !state.unusual ? setStepOverlay(host.after, m) : setChangeOverlay(host.after, m, on ? dates[state.i] : null));
+    }
     pending = Promise.all(jobs).then(
       () => {
         if (mine === seq) showNotice(null);
@@ -394,6 +459,10 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   });
   changeToggle.addEventListener("click", () => {
     state.change = !state.change;
+    void refresh();
+  });
+  unusualToggle.addEventListener("click", () => {
+    state.unusual = !state.unusual;
     void refresh();
   });
   retryBtn.addEventListener("click", () => void refresh());

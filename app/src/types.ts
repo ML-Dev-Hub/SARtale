@@ -8,7 +8,35 @@ export interface FrameEntry {
   flag?: string;
 }
 
-/** The statistical change layer. Calibrated builds with enough dates only. */
+type Rgb = [number, number, number];
+
+/** The before-and-after step layer: one frame, coloured by the date of the step, with its direction. */
+export interface StepLayer {
+  method: string;
+  reference: string;
+  /** Ground size of the pixels the step is judged on, in metres. */
+  pixel_m: number;
+  /** The dates the test uses, in order. */
+  dates: string[];
+  /** The dates a step can be placed at: the first date after it. */
+  split_dates: string[];
+  min_segment: number;
+  /** A pixel is flagged at or above both, with HH and HV moving the same way. */
+  min_step_db: number;
+  min_stability: number;
+  control_p99_db: number;
+  control_p99_stability: number;
+  shuffled_p99_db: number;
+  shuffled_p99_stability: number;
+  scatter_floor_db: number;
+  /** Share of scored pixels flagged, 0 to 1. */
+  flagged_share: number;
+  frame: string;
+  /** The colours of the frame, by the date of the step and its direction. */
+  classes: { date: string; up: Rgb; down: Rgb }[];
+}
+
+/** The statistical change layers. Calibrated builds with enough dates only. */
 export interface ChangeLayer {
   method: string;
   reference: string;
@@ -27,6 +55,8 @@ export interface ChangeLayer {
   date_notes?: Record<string, string>;
   /** Scored date to frame path. */
   frames: Record<string, string>;
+  /** The main change view. Absent from builds made before it existed. */
+  step?: StepLayer;
 }
 
 export interface Manifest {
@@ -78,6 +108,21 @@ export interface SitePoint {
  * when both equal the manifest's, so stale or demo curves never appear beside another build. A site
  * with no stamp (or the wrong one) is dropped.
  */
+/** The step test on a site's own curve. Mean dB after minus mean dB before, so the card can be read off the chart. */
+export interface SiteStep {
+  /** The first date after the step. */
+  date: string;
+  /** The last date before it. */
+  previous_date: string;
+  hh_db: number;
+  hv_db: number;
+  stability: number;
+  /** Whether the curve's step passes the limits the map uses. */
+  flagged: boolean;
+  /** Share of map pixels in the site's radius flagged, 0 to 1. */
+  map_share: number;
+}
+
 export interface Site {
   id: string;
   name: string;
@@ -87,6 +132,8 @@ export interface Site {
   stack: string;
   crid: string;
   series: SitePoint[];
+  /** null for a build without the step layer. */
+  step?: SiteStep | null;
 }
 
 /** Image source corners, clockwise from top-left, as [lon, lat]. */

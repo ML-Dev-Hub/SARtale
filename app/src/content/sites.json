@@ -102,7 +102,7 @@
     "hypothesis": "This may indicate the rising reservoir covering this shore by August and falling away from it after mid-September.",
     "test": "Two dated references move the same way. Flood Forecasting Division bulletins give the reservoir at 1528.11 ft on 26 Jul, 1550.00 ft on 19 Aug and 1520.04 ft on 6 Oct. OPERA DSWx-S1 marks 0 of 79 pixels here as water on 28 Jun, 74 on 15 Sep, 25 on 23 Sep and 0 on 5 and 17 Oct. A survey of this shore's height would test it further.",
     "limits": "OPERA has no tile here between 28 Jun and 15 Sep, so the August step rests on the level bulletins alone. HH was still below its July value on 18 Oct, and the radar does not say why. Provisional data, so levels may move when NASA reprocesses.",
-    "changeNote": "This shore's highest scores are on 14 and 26 Jul, not in August. It was dark on most of the dates compared, so the bright July dates are the unusual ones. The curve shows the August step better than the score does.",
+    "changeNote": "Only 14 and 26 Jul come before this step, and 14 Jul is a flagged date. One step per place also leaves out the climb after 12 Sep, which the curve shows. The Unusual dates view scores this shore highest in July, not August, because it was dark on most of the dates compared.",
     "evidence": "reference-agrees",
     "quotes": [
       {
@@ -137,7 +137,7 @@
     "hypothesis": "This may indicate a crop growing and then being cut, or wetter ground, and the radar alone cannot tell these apart.",
     "test": "Optical greenness from HLS for the same ground, or a visit: a crop would be green in August and less so by October.",
     "limits": "Land cover was not checked, and the 150 m circle may mix several kinds of ground. No rain record was compared. Provisional data, so levels may move when NASA reprocesses.",
-    "changeNote": "Ground on this plain moves a lot through the season, so a high score here is common and says little on its own.",
+    "changeNote": "Ground on this plain moves a lot through the season, so a step here is common. It says the radar brightness changed, not why.",
     "evidence": "hypothesis",
     "quotes": [
       {
@@ -177,7 +177,7 @@
     "hypothesis": "This may indicate a crop that kept growing later than at the Swabi site, or ground left rougher after field work.",
     "test": "Optical greenness from HLS for the same ground, or a visit, compared with the Swabi site.",
     "limits": "Land cover was not checked. The 14 Jul value is not quoted because the whole scene reads low on that date. No rain record was compared. Provisional data, so levels may move when NASA reprocesses.",
-    "changeNote": "Ground on this plain moves a lot through the season, so a high score here is common and says little on its own.",
+    "changeNote": "Ground on this plain moves a lot through the season, so a step here is common. Pixels here place it on either side of 19 Aug, so the date is rough. It says the radar brightness changed, not why.",
     "evidence": "hypothesis",
     "quotes": [
       {
@@ -208,7 +208,7 @@
     "hypothesis": "This may indicate sand or gravel bars coming out of the water as the river fell after the monsoon.",
     "test": "OPERA DSWx-S1 moves the same way: of 80 pixels here it marks 61 as water on 15 Sep, 48 on 23 Sep, 40 on 5 Oct and 11 on 17 Oct. Flood Forecasting Division bulletins give the Indus at Kalabagh, the next gauge downstream, as 342.5 thousand cusecs on 19 Aug, 253.0 on 31 Aug, 176.6 on 12 Sep, 138.2 on 24 Sep, 86.8 on 6 Oct and 50.6 on 15 Oct. Optical images of the bars in October would test it further.",
     "limits": "OPERA has no tile here between 28 Jun and 15 Sep, and it is a few days from each NISAR date. Kalabagh is far downstream and also carries the Kabul. Wind also changes how bright a river looks. Provisional data, so levels may move when NASA reprocesses.",
-    "changeNote": "The score rises with the curve from 24 Sep to 18 Oct, when more than a third of the pixels here pass the highlight level, though the typical pixel stays just under it.",
+    "changeNote": "The curve rises over several dates, so this date is rough: pixels here place the step anywhere from 12 Sep to 6 Oct.",
     "evidence": "reference-agrees",
     "quotes": [
       {

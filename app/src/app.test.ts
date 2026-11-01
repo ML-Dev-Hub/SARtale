@@ -164,7 +164,14 @@ describe("app shell", () => {
 });
 
 describe("the Change control", () => {
+  const STEP_CAPTION = "Highlighted areas stepped up or down in radar brightness around this date. This is a statistical flag, not proof of what changed.";
   const CAPTION = "Highlighted pixels differ unusually from this area's own season. This is a statistical flag, not proof of what changed.";
+  /** Change on, in its second view. */
+  const unusual = async (app: { settled(): Promise<void> }, $: (role: string) => HTMLElement) => {
+    $("change-toggle").click();
+    $("unusual-toggle").click();
+    await app.settled();
+  };
   const go = (slider: HTMLInputElement, i: number) => {
     slider.value = String(i);
     slider.dispatchEvent(new Event("input"));
@@ -177,15 +184,44 @@ describe("the Change control", () => {
     expect($("change-panel").hidden).toBe(true);
   });
 
-  test("overlays the current date's score, with the caption and the threshold in words", async () => {
+  test("the main view is the step map, with its caption, a legend of date and direction, and the limit in words", async () => {
     const { app, host, $ } = setup(changeManifest);
     go($("slider"), 2);
     await app.settled();
-    expect($("change-toggle").hidden).toBe(false);
     expect(host.after.overlays.at(-1)).toBeNull();
     $("change-toggle").click();
     await app.settled();
     expect($("change-toggle").getAttribute("aria-pressed")).toBe("true");
+    expect(host.after.overlays.at(-1)).toBe("data/frames/step_date.webp");
+    expect($("change-caption").textContent).toBe(STEP_CAPTION);
+    expect($("step-legend").hidden).toBe(false);
+    expect($("step-legend").textContent).toContain("26 Jul");
+    expect($("step-legend").textContent).toContain("Brighter after");
+    expect($("step-legend").textContent).toContain("Darker after");
+    expect($("change-limit").textContent).toContain("at least 3 dB");
+    expect($("step-legend").querySelector("th.current")?.textContent).toBe("26 Jul");
+    go($("slider"), 1);
+    await app.settled();
+    expect($("step-legend").querySelector("th.current")).toBeNull();
+    expect(host.after.overlays.at(-1)).toBe("data/frames/step_date.webp");
+  });
+
+  test("a build with change scores but no step map offers only the scores", async () => {
+    const { step: _step, ...older } = changeManifest.change!;
+    const { app, host, $ } = setup({ ...changeManifest, change: older });
+    go($("slider"), 2);
+    $("change-toggle").click();
+    await app.settled();
+    expect($("unusual-toggle").hidden).toBe(true);
+    expect(host.after.overlays.at(-1)).toBe("data/frames/change_2026-07-26.webp");
+  });
+
+  test("Unusual dates overlays the current date's score, with its caption and the threshold in words", async () => {
+    const { app, host, $ } = setup(changeManifest);
+    go($("slider"), 2);
+    await unusual(app, $);
+    expect($("unusual-toggle").getAttribute("aria-pressed")).toBe("true");
+    expect($("step-legend").hidden).toBe(true);
     expect(host.after.overlays.at(-1)).toBe("data/frames/change_2026-07-26.webp");
     expect(host.after.urls.at(-1)).toBe("data/frames/2026-07-26_HH.webp");
     expect($("change-panel").hidden).toBe(false);
@@ -194,9 +230,9 @@ describe("the Change control", () => {
     expect($("change-legend").textContent).toContain("Below 3.5 shows nothing");
   });
 
-  test("follows the slider and clears when switched off", async () => {
+  test("Unusual dates follows the slider and clears when switched off", async () => {
     const { app, host, $ } = setup(changeManifest);
-    $("change-toggle").click();
+    await unusual(app, $);
     go($("slider"), 1);
     await app.settled();
     expect(host.after.overlays.at(-1)).toBe("data/frames/change_2026-07-14.webp");
@@ -206,10 +242,13 @@ describe("the Change control", () => {
     expect($("change-panel").hidden).toBe(true);
   });
 
-  test("an excluded date shows no overlay and says why, and keeps its flag", async () => {
+  test("an excluded date says why in both views, and shows no score, and keeps its flag", async () => {
     const { app, host, $ } = setup(changeManifest);
     await app.settled();
     $("change-toggle").click();
+    await app.settled();
+    expect($("change-note").textContent).toContain("Excluded from change analysis");
+    $("unusual-toggle").click();
     await app.settled();
     expect(host.after.overlays.at(-1)).toBeNull();
     expect($("change-note").hidden).toBe(false);
@@ -219,7 +258,7 @@ describe("the Change control", () => {
 
   test("a flagged date is scored and keeps its flag", async () => {
     const { app, host, $ } = setup(changeManifest);
-    $("change-toggle").click();
+    await unusual(app, $);
     go($("slider"), 1);
     await app.settled();
     expect(host.after.overlays.at(-1)).toBe("data/frames/change_2026-07-14.webp");
@@ -254,8 +293,6 @@ describe("the Change control", () => {
     await app.settled();
     const $ = (role: string) => root.querySelector<HTMLElement>(`[data-role="${role}"]`)!;
     $("change-toggle").click();
-    const slider = $("slider") as HTMLInputElement;
-    go(slider, 2);
     await app.settled();
     expect($("notice").hidden).toBe(false);
     expect($("notice-text").textContent).toContain("change overlay");
@@ -265,9 +302,13 @@ describe("the Change control", () => {
     const { app, root, $ } = setup(changeManifest);
     $("change-toggle").click();
     await app.settled();
-    const text = root.textContent ?? "";
-    expect(findBannedClaims(text)).toEqual([]);
-    expect(text).not.toMatch(/detect/i);
+    for (const _view of ["step", "unusual"]) {
+      const text = root.textContent ?? "";
+      expect(findBannedClaims(text)).toEqual([]);
+      expect(text).not.toMatch(/detect/i);
+      $("unusual-toggle").click();
+      await app.settled();
+    }
   });
 });
 

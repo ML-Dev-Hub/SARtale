@@ -60,7 +60,7 @@ describe("the data the app ships (app/public/data)", () => {
   });
 
   test("every frame file the manifest names exists, and nothing else is in frames/", () => {
-    const changeFrames = Object.values(manifest.change!.frames);
+    const changeFrames = [...Object.values(manifest.change!.frames), manifest.change!.step!.frame];
     const named = [manifest.composite!, ...manifest.dates.flatMap((d) => Object.values(d.frames)), ...changeFrames];
     expect(named).toHaveLength(2 * built.length + 1 + changeFrames.length);
     expect(dataFiles.filter((f) => f.startsWith("frames/")).sort()).toEqual([...named].sort());
@@ -76,6 +76,20 @@ describe("the data the app ships (app/public/data)", () => {
     expect(change.threshold).toBeGreaterThan(0);
     expect(change.scale_max).toBeGreaterThan(change.threshold);
     expect(findBannedClaims(JSON.stringify(change))).toEqual([]);
+  });
+
+  test("the step layer uses the eight dates, keeps controls unflagged and offers a colour for every date it can place", () => {
+    const step = manifest.change!.step!;
+    expect(step.dates).toEqual(REAL_DATES.slice(1));
+    expect(step.classes.map((c) => c.date)).toEqual(step.split_dates);
+    expect(step.flagged_share).toBeGreaterThan(0);
+    expect(step.flagged_share).toBeLessThan(0.1);
+    for (const id of ["peshawar-city", "hazro-built-up", "tarbela-pool"]) {
+      expect(sites.find((s) => s.id === id)!.step!.flagged, id).toBe(false);
+    }
+    for (const s of sites) {
+      expect(step.split_dates, s.id).toContain(s.step!.date);
+    }
   });
 
   test("every site has a score on every scored date and none on 2 Jul", () => {

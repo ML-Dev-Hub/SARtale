@@ -43,6 +43,7 @@ afterEach(() => {
 describe("change scores on a card", () => {
   const scored: Site = {
     ...mk("demo-a", "Demo site A", [-18, -18, -17]),
+    step: { date: "2026-08-19", previous_date: "2026-07-26", hh_db: -8.14, hv_db: -5.26, stability: 5.7, flagged: true, map_share: 0.7 },
     series: [
       { date: "2026-07-26", hh_db: -10, hv_db: -18, valid_fraction: 1, change_score: 1.26 },
       { date: "2026-07-02", hh_db: -10, hv_db: -18, valid_fraction: 1, change_score: null },
@@ -61,9 +62,26 @@ describe("change scores on a card", () => {
     const $ = open(changeManifest);
     const t = $("card-change").textContent ?? "";
     expect($("card-change").hidden).toBe(false);
-    expect(t).toContain("Change score:");
+    expect(t).toContain("Unusual dates score:");
     expect(t).toContain("3.5 or more is highlighted");
     expect(t).toContain("2 Jul Excluded from change analysis, 14 Jul 5.4 (flagged date), 26 Jul 1.3.");
+  });
+
+  test("the step sits by the curve, with its size, dates and whether it passes", () => {
+    const t = open(changeManifest)("card-step").textContent ?? "";
+    expect(t).toContain("Step: HH -8.1 dB, HV -5.3 dB between 26 Jul and 19 Aug.");
+    expect(t).toContain("It passes the test the map uses.");
+    expect(t).toContain("70% of map pixels here are flagged.");
+  });
+
+  test("a step that does not pass says so", () => {
+    const quiet = { ...scored, step: { ...scored.step!, flagged: false, map_share: 0 } };
+    const root = document.createElement("div");
+    document.body.append(root);
+    createSitesView(root, { sites: [quiet], manifest: changeManifest }).select("demo-a");
+    const t = root.querySelector('[data-role="card-step"]')!.textContent ?? "";
+    expect(t).toContain("Largest step:");
+    expect(t).toContain("does not pass");
   });
 
   test("the values table carries the score", () => {
@@ -75,6 +93,7 @@ describe("change scores on a card", () => {
   test("a build with no change layer shows no score line", () => {
     const $ = open(fixtureManifest);
     expect($("card-change").hidden).toBe(true);
+    expect($("card-step").hidden).toBe(true);
   });
 });
 

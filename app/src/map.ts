@@ -44,6 +44,17 @@ export async function setChangeOverlay(map: MapLike, m: Manifest, date: string |
   }
 }
 
+/** Show the step map, which is one frame for the whole season. */
+export async function setStepOverlay(map: MapLike, m: Manifest): Promise<void> {
+  const url = dataUrl(m.change!.step!.frame);
+  try {
+    await map.setOverlay?.(url, cornersFromBounds(m.bounds));
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(`Could not load the change overlay for the step map (${url}): ${reason}`);
+  }
+}
+
 export function setComposite(map: MapLike, m: Manifest): Promise<void> {
   if (!m.composite) return Promise.reject(new Error("This data set has no seasonal composite overlay"));
   return show(map, m, () => dataUrl(m.composite!), "the seasonal composite");
