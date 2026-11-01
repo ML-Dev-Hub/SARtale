@@ -102,6 +102,21 @@ export interface AppHandle {
   destroy(): void;
 }
 
+/** The limits line for calibrated data: what it is, the two pixel sizes and the grey scale every date shares. */
+function calibratedLimits(m: Manifest, label: string): string {
+  const stretch = (["HH", "HV"] as const)
+    .filter((pol) => m.stretch_db?.[pol])
+    .map((pol) => `${pol} ${m.stretch_db![pol][0].toFixed(1)} to ${m.stretch_db![pol][1].toFixed(1)} dB`)
+    .join(", ");
+  return (
+    `Limits: ${label}, RTC gamma-0 backscatter, not validated. ` +
+    (m.analysis_m ? `Measurements use ${m.analysis_m} m pixels. ` : "") +
+    (m.pixel_m ? `These pictures are drawn at about ${m.pixel_m} m. ` : "") +
+    (stretch ? `Black to white is ${stretch}, the same on every date. ` : "") +
+    "A change in brightness is a change in backscatter, not proof of what changed on the ground."
+  );
+}
+
 export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory, opts: AppOptions = {}): AppHandle {
   root.innerHTML = TEMPLATE;
   const q = <T extends HTMLElement>(role: string): T => {
@@ -165,8 +180,9 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
 
   const maturityTag = { synthetic: "synthetic demo", preview: "real NISAR preview", provisional: "provisional data" }[banner.kind];
   const isPreview = banner.kind === "preview";
-  // Limits of the preview images, shown on The Dance. Not shown for calibrated or synthetic data.
-  limitsEl.hidden = !isPreview;
+  // Limits of the images, shown on The Dance. Not shown for synthetic data.
+  limitsEl.hidden = banner.kind === "synthetic";
+  if (banner.kind === "provisional") limitsEl.textContent = calibratedLimits(m, banner.text);
   if (isPreview) {
     ledeEl.textContent = "Step through the season's radar images. The images are scaled for display, so their brightness is not a measurement.";
     const size = m.pixel_m ? `about ${m.pixel_m} m` : "coarse";

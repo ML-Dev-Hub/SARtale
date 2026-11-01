@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { mountApp, type MapHost } from "./app";
 import { findBannedClaims } from "./content";
-import { FORECAST_FLAG, fixtureManifest, INTERFERENCE_FLAG, previewManifest } from "./fixtures";
+import { calibratedManifest, FORECAST_FLAG, fixtureManifest, INTERFERENCE_FLAG, previewManifest } from "./fixtures";
 import type { MapLike } from "./map";
 import type { Site } from "./types";
 
@@ -445,8 +445,24 @@ describe("real preview manifest", () => {
     expect(t).toContain("cannot be compared as a measurement");
   });
 
-  test("the limits line and the flags do not appear for non-preview data", async () => {
-    const { app, $ } = setup(fixtureManifest);
+  test("calibrated data shows its own limits line: Provisional, 30 m analysis, RTC gamma-0, the display pixel and stretch", async () => {
+    const { app, $ } = setup(calibratedManifest);
+    await app.settled();
+    expect($("limits").hidden).toBe(false);
+    const t = $("limits").textContent ?? "";
+    expect(t).toContain("Provisional NISAR data");
+    expect(t).toContain("RTC gamma-0");
+    expect(t).toContain("30 m");
+    expect(t).toContain("about 68 m");
+    expect(t).toContain("HH -12.9 to 2.2 dB");
+    expect(t).toContain("HV -21.0 to -6.0 dB");
+    expect(t).toContain("not proof of what changed on the ground");
+    expect(findBannedClaims(t)).toEqual([]);
+    expect(t).not.toMatch(/scaled for display|preview/i);
+  });
+
+  test("the limits line and the flags do not appear for synthetic data", async () => {
+    const { app, $ } = setup({ ...fixtureManifest, maturity: "Demo" });
     await app.settled();
     expect($("limits").hidden).toBe(true);
     expect($("flag-after").hidden).toBe(true);

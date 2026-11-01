@@ -30,8 +30,10 @@ export interface Manifest {
   /** dB stretch of calibrated frames. null for browse previews, which are not in dB. */
   stretch_db: Record<Pol, [number, number]> | null;
   gap?: { start: string; end: string };
-  /** Ground size of one preview pixel in metres, measured from the georeferencing. */
+  /** Ground size of one pixel of the web frames in metres. */
   pixel_m?: number;
+  /** Ground size of the pixels behind every measurement (COGs, site curves) in metres. Calibrated builds only. */
+  analysis_m?: number;
 }
 
 /** One acquisition at a site. null means no valid value on that date (a gap, never zero). */

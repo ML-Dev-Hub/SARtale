@@ -33,3 +33,12 @@ export const previewManifest: Manifest = {
   stretch_db: null,
   pixel_m: 174,
 };
+
+/** Test fixture only: the shape of a calibrated manifest. */
+export const calibratedManifest: Manifest = {
+  ...fixtureManifest,
+  stack: "fixture-calibrated",
+  stretch_db: { HH: [-12.9, 2.2], HV: [-21, -6] },
+  pixel_m: 68,
+  analysis_m: 30,
+};
