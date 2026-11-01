@@ -18,7 +18,7 @@ Four facts checked today shape everything else:
 |---|---|---|
 | **We may not start project work before the hackathon.** | FAQ: "Teams are not allowed to begin working on the challenges prior to the hackathon." The site banner repeats it. | The team chose to start on 1 Nov and accepted this risk. Disclose it. See section 3. |
 | **Usable NISAR data exists over the pilot.** | NASA's catalogue returns 63 GCOV files in our search box. Track 84A frame 19 covers all of it, in one consistent mode, on 9 dates so far. | The biggest open question in the old plan is closed. See section 5. |
-| **No flood capture is established in NISAR data here.** | One FFD bulletin suggests a low 2026 peak on the Kabul at Nowshera (about 78,500 cusecs against a 391,300 record). A low flood was reported on 27 July, with rain forecast to 29 July. The last full-coverage pass before the gap was 26 July, and the next was 12 August. | The app must not claim to detect a flood. Seasonal change is the safer story, and it is what the challenge asks for. PDMA reports still need checking. |
+| **No flood capture is established in NISAR data here.** | FFD's daily bulletins give the 2026 flood-season peak on the Kabul at Nowshera as 78,500 cusecs on 23 July, against a 391,300 record. That peak fell between the 14 and 26 July passes, so NISAR missed it because of the 12-day revisit, not the data gap. | The app must not claim to detect a flood. Seasonal change is the safer story, and it is what the challenge asks for. PDMA reports still need checking. |
 | **The 2025 flood maps cannot validate NISAR.** | UNOSAT and FAO mapped 2025. Calibrated NISAR data starts 17 June 2026. | They become historical context only. Validation uses same-season OPERA and HLS data. See section 9. |
 
 The old plan's main idea survives: separate what was observed from what is inferred, and never call exposure "damage". What changes is the emphasis. The old plan was a flood-resilience platform that happens to use NISAR. This plan is a NISAR surface-change app that ends in a resilience use case, because that is what the challenge statement describes.
@@ -108,9 +108,9 @@ So **tell the Local Lead exactly what exists, and get written guidance before do
 
 1. **Hook.** The Kabul River valley floods again and again, most recently in 2025. Satellites usually show up after the disaster.
 2. **Meet NISAR.** Radar sees through monsoon cloud and returns every 12 days.
-3. **The dance.** Play the season from 26 July (the first of the four default dates: 26 Jul, 19 Aug, 12 Sep, 18 Oct) to the latest date. 2 July and 14 July carry cautions and stay out of the default set. Farmland pulses, river bars emerge and vanish, the city stays still.
+3. **The dance.** Play the season across all nine built dates, 2 July to 18 October. 2 July and 14 July carry cautions and stay out of the composite. Farmland pulses, river bars emerge and vanish, the city stays still.
 4. **Why it moved.** Tap a site for HH and HV curves and a stated hypothesis. HH and HV respond differently, and the app shows how.
-5. **What NISAR did not see.** No full-coverage pass happened between 26 July and 12 August, partly because of a permanent data gap. Whatever peaked in that window went unobserved, and showing that builds trust. Confirm event timing before stating this.
+5. **What NISAR did not see.** The season peak at Nowshera, 78,500 cusecs on 23 July, fell between the 14 and 26 July passes. NISAR missed it because of the 12-day revisit, not the data gap, which came later and holds no reading above 57,800 cusecs. Showing that builds trust.
 6. **Why it matters.** Show one decision linked to evidence: a crossing beside a river stretch that NISAR saw change, inside the 2025 flood outline, with few alternatives if closed. If no such link appears in the data, end on the strongest surface-change story instead.
 
 ## 5. Verified data (metadata checked 1 Nov 2026)

@@ -93,25 +93,28 @@ Cycle 27 has no granule in this list. The pipeline treats 2026-07-27 to 2026-08-
 
 ## Checks on the calibrated data
 
-All numbers below are from the first real build, 2026-11-02. Scripts were one-off; the working notes hold the full tables. Backscatter is gamma-0 in dB.
+All numbers below are from the first real build, 2026-11-02. The scripts behind them are in `processing/checks/`. Backscatter is gamma-0 in dB.
 
 ### 2 July: likely radio interference in HV
 
 The evidence supports "likely radio interference", so the flag says that. It does not prove the cause: an instrument fault in the HV channel on that pass would look much the same.
 
-- **Where.** A smooth patch over the western area, about 970 km2 where HV is more than 6 dB above the median of the other dates (averaged over 1 km), roughly longitude 71.24 to 71.63, latitude 33.94 to 34.43. It sits against the western edge of the scene and runs across hills, plain and river without following any of them..
-- **HV only.** Inside the area with more than 10 dB of excess, HV reads -2.7 dB on 2 July against -14.2 to -15.8 dB on the eight other dates, while HH reads -6.6 dB against -6.6 to -7.9 dB.
+- **Where.** A smooth patch over the western area, about 970 km2 where HV is more than 6 dB above the median of the other dates (averaged over 1 km), roughly longitude 71.24 to 71.63, latitude 33.94 to 34.43. It sits against the western edge of the scene and runs across hills, plain and river without following any of them.
+- **One compact patch.** Above 6 dB, 99 percent of the area is one connected piece, about 54 km along the track and 29 km across it, in a frame about 240 km long. It is not a strip running the length of the track.
+- **HV only.** Inside the area with more than 10 dB of excess, the mean HV is -0.7 dB on 2 July against -13.4 to -15.0 dB on the eight other dates, while the mean HH is -5.2 dB against -5.2 to -6.5 dB.
 - **Added, not scaled.** Inside that core the added power is roughly the same over dark and bright ground (0.37 to 0.64 in linear units), so dark ground rises most (13.7 dB) and bright ground least (10.7 dB). A wetter surface would not do this.
-- **One frequency.** In the same box on the same pass, HV at 1239 MHz (frequency A) reads 0.3 dB against -13.3 to -14.8 dB on the other dates, while HV at 1293.5 MHz (frequency B) reads -11.7 dB against -13.1 to -14.4 dB. A farmland box away from the patch agrees between the two frequencies to within 0.6 dB on every date. The ground cannot rise about 14 dB at one frequency and about 2 dB at a frequency 55 MHz away.
-- **Stable control.** Peshawar city sits at the patch's edge: HH on 2 July is 3.8 dB, in family with every other date, and HV is 2 to 3 dB above its usual value. The control west of Mardan, outside the patch, shows no such jump.
+- **Two frequencies, same pass.** In a box inside the patch (71.30 to 71.45 E, 34.10 to 34.28 N), HV at 1239 MHz (frequency A) reads 0.3 dB against -13.3 to -14.8 dB on the other dates, while HV at 1293.5 MHz (frequency B) reads -11.7 dB against -13.1 to -14.4 dB. A farmland box away from the patch agrees between the two frequencies to within 0.6 dB on every date. In the box, HV at 1239 MHz is 5.1 dB above HH on 2 July, where on every other date it sits 7.9 to 9.2 dB below. The ground cannot rise about 14 dB at one frequency and about 2 dB at a frequency 55 MHz away, so that 12 dB split between the frequencies rules out the ground. It does not by itself rule out an instrument fault.
+- **Stable control.** Peshawar city sits at the patch's edge: HH on 2 July is 3.8 dB, in family with every other date, and HV is 2 to 3 dB above its usual value. The control near Hazro, outside the patch, shows no such jump.
 - **Metadata does not help.** `inputDataExceptionMask` is zero everywhere, and `rfiLikelihood` is out of its documented range on every date, so the conclusion rests on the pixels.
 
-What follows from this: the 2 July HV frame must not be read over the western area, the composite and the grey scale leave out 2 July, and site curves show that date's HV as it is, with the flag.
+Reproduce with `processing/checks/july2.py`.
+
+What follows from this: the 2 July HV frame must not be read over the western area, the composite leaves out every flagged date, the grey scale leaves out 2 July, and site curves show that date's HV as it is, with the flag.
 
 ### Stability of the stack
 
-- **Grids.** All files share one grid. Cross-correlation of HH at 30 m against 26 July gives shifts of at most 3 m on every date at three places. That includes 14 July, the forecast-orbit file, so no shift was seen on that date; the caution stays because of the file's own accuracy code.
-- **Urban controls.** See the table below. They move by 1.3 dB or less apart from the 2 July HV reading at Peshawar, so changes well above that are not stack drift.
+- **Grids.** All files share one grid. Cross-correlation of HH at 30 m against 26 July gives shifts of at most 3 m on every date at three places (`processing/checks/shifts.py`). That includes 14 July, the forecast-orbit file, so no shift was seen on that date; the caution stays because of the file's own accuracy code.
+- **Urban controls.** See the table below. They move by 1.3 dB or less apart from the 2 July HV reading at Peshawar. This may indicate that changes well above that are not drift in the stack, but it is a weak limit: the 1.3 dB comes after dropping a first control at 2.13 dB, and a farmland box about 15 km across spans 2.9 dB in HH over the season. A change under about 3 dB at one site needs other support.
 - **Scene-wide swings.** The median HH of the whole window is 0.5 to 1 dB lower on some dates (14 July, 31 August, 24 September) than on the others. The urban controls do not show this, and water is darker on the same dates. This may be weather (drier ground and calmer water), but it was not tested. Do not read a change of about 1 dB at a single site as a real signal.
 
 ### Sites
@@ -124,35 +127,35 @@ Spread is maximum minus minimum over the dates built. "No 2 Jul" leaves that dat
 | Built-up area near Hazro | Stable urban control, outside the 2 July interference | 1.29 | 1.29 | 1.12 | 1.12 |
 | Tarbela Reservoir, main pool | Permanent water control | 1.46 | 1.46 | 1.38 | 1.38 |
 | Tarbela Reservoir, south-east shore | Reservoir shoreline | 10.72 | 10.72 | 6.60 | 6.60 |
-| Plain south-west of Swabi | Field area, rises in August and falls by October | 6.10 | 6.10 | 5.24 | 5.24 |
-| Plain east of Mardan | Field area, rises from July to late September | 6.44 | 6.44 | 5.47 | 5.47 |
+| Plain west-north-west of Swabi | Plain area, rises in August and falls part way by October | 6.10 | 6.10 | 5.24 | 5.24 |
+| Plain east of Mardan | Plain area, rises from July to late September | 6.44 | 6.44 | 5.47 | 5.47 |
 | Indus River near Attock | River stretch | 8.02 | 8.02 | 5.63 | 5.63 |
 
-A first second control, a bright cluster west of Mardan (72.0175, 34.1902), was rejected: its HH spread on all dates was 2.14 dB, because of one reading on 6 October about 1.5 dB above the rest. Other points on that plain rose on the same date. The site near Hazro was then picked as the steadier one, so its spread may flatter the stack. Controls were checked against limits of 2 dB (urban) and -12 dB (water), and all passed without 2 July.
+A first second control, a bright cluster west of Mardan (72.0175, 34.1902), was rejected: its HH spread on all dates was 2.13 dB, because of one reading on 6 October about 1.5 dB above the rest. Other points on that plain rose on the same date. The site near Hazro was then picked as the steadier one, so its spread may flatter the stack. Controls were checked against limits of 2 dB (urban) and -12 dB (water), and all passed without 2 July.
 
 ### OPERA DSWx-S1 water check
 
-Public OPERA DSWx-S1 WTR tiles (`OPERA_L3_DSWX-S1_V1`, PO.DAAC, 30 m) were downloaded on 2026-11-02 to `data/opera/` (git-ignored). The catalogue has no tile over this window between 28 June and 15 September 2026, so nothing can be checked in the monsoon peak. Classes are the ones in `processing/sartale/config.py`: 1 open water and 3 inundated vegetation count as water; 250, 251 and 255 are excluded. The real tiles held exactly the classes 0, 1, 3, 250, 251 and 255. The NISAR mask is HH below -12.1 dB and HV below -18.8 dB, thresholds set on the main Tarbela pool on 26 July, a date not compared. DSWx comes from Sentinel-1 at a different time and look, so days apart are stated.
+Public OPERA DSWx-S1 WTR tiles (`OPERA_L3_DSWX-S1_V1`, PO.DAAC, 30 m) were downloaded on 2026-11-02 to `data/opera/` (git-ignored) by `processing/checks/opera_fetch.py`, and compared by `processing/checks/opera_compare.py`. The catalogue has no tile over this window between 28 June and 15 September 2026, so nothing can be checked in the monsoon peak. Classes are the ones in `processing/sartale/config.py`: 1 open water and 3 inundated vegetation count as water; 250, 251 and 255 are excluded. The real tiles held exactly the classes 0, 1, 3, 250, 251 and 255. The NISAR mask is HH below -12.1 dB and HV below -18.8 dB, thresholds set on the main Tarbela pool on 26 July, a date not compared. DSWx comes from Sentinel-1 at a different time and look, so days apart are stated.
 
 | NISAR date | DSWx date | Days apart | Pixels compared | Agreement | Calling all dry would score | Water found (recall) | Radar low that is DSWx water (precision) | IoU | Tarbela box: agreement, baseline, IoU |
 |---|---|---|---|---|---|---|---|---|---|
-| 12 Sep | 15 Sep | 3 | 20,325,277 | 0.983 | 0.980 | 0.81 | 0.56 | 0.50 | 0.984, 0.814, 0.92 |
-| 12 Sep | 16 Sep | 4 | 17,635,947 | 0.982 | 0.980 | 0.78 | 0.54 | 0.47 | 0.982, 0.798, 0.91 |
-| 24 Sep | 23 Sep | 1 | 12,510,708 | 0.982 | 0.973 | 0.90 | 0.61 | 0.57 | 0.984, 0.814, 0.92 |
-| 6 Oct | 5 Oct | 1 | 12,506,958 | 0.970 | 0.974 | 0.89 | 0.45 | 0.43 | 0.981, 0.815, 0.90 |
-| 18 Oct | 17 Oct | 1 | 12,508,583 | 0.986 | 0.975 | 0.82 | 0.69 | 0.60 | 0.983, 0.815, 0.91 |
+| 12 Sep | 15 Sep | 3 | 20,336,660 | 0.983 | 0.980 | 0.81 | 0.56 | 0.50 | 0.984, 0.814, 0.92 |
+| 12 Sep | 16 Sep | 4 | 17,658,526 | 0.982 | 0.980 | 0.78 | 0.54 | 0.47 | 0.982, 0.798, 0.91 |
+| 24 Sep | 23 Sep | 1 | 12,512,871 | 0.981 | 0.973 | 0.90 | 0.61 | 0.57 | 0.984, 0.814, 0.92 |
+| 6 Oct | 5 Oct | 1 | 12,508,890 | 0.970 | 0.974 | 0.89 | 0.45 | 0.43 | 0.981, 0.815, 0.90 |
+| 18 Oct | 17 Oct | 1 | 12,510,765 | 0.986 | 0.975 | 0.82 | 0.69 | 0.60 | 0.983, 0.815, 0.91 |
 
 Dates before 12 Sep have no useful partner: the nearest tile to 2 Jul is 28 Jun, 4 days away but on the interference date, and the nearest to 14 Jul is 16 days away. On 6 Oct whole-window agreement is below the all-dry score, because more dry ground fell below the thresholds that day.
 
 Read this with care. Most of the window is dry, so calling everything dry would already score about 97 to 98 percent: **whole-window agreement says little**. Recall and IoU, and the Tarbela box, are the useful numbers. The radar mask also marks smooth dry ground, which is why it finds more low pixels than DSWx has water pixels. The thresholds suit large still water and were not tuned for rivers.
 
-Water share inside the 150 m radius of two sites follows the curves. Each row is DSWx cells marked water out of 81.
+Water share inside the 150 m radius of two sites follows the curves. Tiles are warped to the NISAR grid by nearest neighbour, and each cell gives pixels marked water of valid pixels.
 
-| Site | 28 Jun | 15 Sep | 23 Sep | 5 Oct | 17 Oct |
-|---|---|---|---|---|---|
-| Tarbela south-east shore | 0 | 75 | 26 | 0 | 0 |
-| Indus near Attock | 76 | 59 | 48 | 39 | 12 |
-| Tarbela main pool (control) | 81 | 81 | 81 | 81 | 81 |
+| Site | 28 Jun | 15 Sep | 16 Sep | 23 Sep | 5 Oct | 17 Oct |
+|---|---|---|---|---|---|---|
+| Tarbela south-east shore | 0 of 79 | 74 of 79 | 60 of 68 | 25 of 79 | 0 of 79 | 0 of 79 |
+| Indus near Attock | 77 of 80 | 61 of 80 | 62 of 80 | 48 of 80 | 40 of 80 | 11 of 80 |
+| Tarbela main pool (control) | 81 of 81 | 81 of 81 | 81 of 81 | 81 of 81 | 81 of 81 | 81 of 81 |
 
 On that support, and only for what they state, the Tarbela shore and Indus cards carry "Reference agrees". Neither reference says what the surface was on a NISAR date itself.
 
@@ -179,6 +182,8 @@ Kabul River at Nowshera, with the NISAR passes marked:
 So the river's rise of late July fell between the 14 and 26 July passes, **before the data gap and not inside it**. The 26 July pass, at about 05:22 Pakistan time, came three days after the highest reading. The gap itself holds no reading above 57.8. A press report dated 27 July (The Nation, "Fresh spell of rainfall increases water flows in Kabul, Indus rivers across KP") describes a low-level flood at Nowshera, and Radio Pakistan on 25 July cites NDMA on low-level flooding there. Neither adds a number. No PDMA report of this rise was found.
 
 The table for 20 Jul could not be read from the PDF, so that day is left out.
+
+Indus at Kalabagh, the next gauge downstream of Attock, inflow in thousands of cusecs: 26 Jul 334.2, 19 Aug 342.5, 31 Aug 253.0, 12 Sep 176.6, 24 Sep 138.2, 6 Oct 86.8, 15 Oct 50.6. It also carries the Kabul, so it shows the direction of the river, not the level at the site.
 
 Tarbela reservoir level, feet:
 

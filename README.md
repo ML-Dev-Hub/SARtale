@@ -14,7 +14,7 @@ The study area is the Peshawar Valley, Pakistan. The app steps through calibrate
 - **Measurements use 30 m pixels; the map pictures are coarser.** Every value in a curve or a downloadable GeoTIFF comes from 10 m samples averaged in linear power to 30 m. The web frames are averaged once more and capped at 3000 pixels wide to keep each file small, so a map pixel is about 67 m.
 - **Two dates carry a visible caution.** 2 July: "Likely radio interference in HV over the western area. Do not read this as surface change." The evidence is in `docs/DATA_SOURCES.md`. 14 July: "Forecast-orbit product; positions may be less precise." That date's measured shift against 26 July is under 3 m, so the caution is kept because of what the file says, not because a shift was seen.
 - **A change in backscatter is not flood probability.** The curves show that the radar signal changed. On their own they do not say why, and each card keeps its explanation as a hypothesis. A card carries "Reference agrees" only where a dated outside source moved the same way (see `docs/DATA_SOURCES.md`).
-- **No flood, damage or crop finding is claimed.** Field areas are named by what the radar shows, and land cover has not been checked on the ground.
+- **No flood, damage or crop finding is claimed.** Plain areas are named by what the radar shows, and land cover has not been checked on the ground.
 - **The synthetic demo is a test fixture only.** It lives in `app/demo-data/`, outside the folder the app serves, so it cannot ship. See "Run the pipeline locally".
 - **This is not an official warning service.** It does not issue flood warnings or forecasts. For warnings, use the Pakistan Meteorological Department (PMD), NDMA and PDMA.
 
@@ -22,7 +22,7 @@ The study area is the Peshawar Valley, Pakistan. The app steps through calibrate
 
 | View | What it shows |
 |---|---|
-| The Dance | Calibrated frames by date on a map with one shared grey scale, a date slider and play button, HH or HV polarization, a before and after swipe, and a seasonal red/green/blue composite of three HH dates (the app names them; 2 July is never used) |
+| The Dance | Calibrated frames by date on a map with one shared grey scale, a date slider and play button, HH or HV polarization, a before and after swipe, and a seasonal red/green/blue composite of three HH dates (the app names them; flagged dates are left out) |
 | Site Stories | A backscatter curve in decibels for each sampled site, with an evidence-labelled card: one observation, one hypothesis, what would test it, and its limits. Includes urban and water controls |
 | What NISAR Missed | A timeline of the dates NISAR observed (dates found by the search but not built are marked "Observed, not used in this build"), the gap in the record (27 Jul to 10 Aug 2026), and one dated river report from Pakistan's Flood Forecasting Division |
 
@@ -92,7 +92,7 @@ What the build does besides the images:
 - It works over longitude 71.2 to 73.4 and latitude 33.8 to 34.8 (`WINDOW` in `processing/sartale/config.py`), one date at a time, keeping only 30 m power in memory.
 - It applies the GCOV mask: 255 (fill) and 0 (partially focused) are blanked. It prints a mask histogram for each file and stops on any value other than 0, 1 and 255.
 - It refuses a date whose CRID differs, and a file whose own `granuleId` or release ID differs from the manifest, so a renamed file cannot pass as Provisional.
-- It writes `acquisitions` (every date the search found) so What NISAR Missed does not call a real pass unobserved, and `composite_dates`. The composite and the grey scale leave out 2 July.
+- It writes `acquisitions` (every date the search found) so What NISAR Missed does not call a real pass unobserved, and `composite_dates`. The composite leaves out every flagged date, and the grey scale leaves out 2 July.
 - It writes the same per-date flags as the preview path, and prints a warning for each.
 - It deletes any `sites.json` and any frame the new manifest does not list. `sites` stamps every site with the manifest's `stack` and `crid`, and the app drops sites whose stamp does not match.
 
@@ -116,7 +116,7 @@ It reads `data/browse/` (git-ignored; see `docs/DATA_SOURCES.md`), checks each f
 | `app/public/brand/` | Small web versions of the logo, made by `app/scripts/make_brand_assets.py` |
 | `app/public/data/` | The data the app loads: calibrated web frames, `manifest.json`, `sites.json` and `overlays/places.geojson` (approximate hand-entered labels) |
 | `app/demo-data/` | The synthetic demo, used only by tests. Not served |
-| `processing/` | The Python pipeline (`sartale/`), its tests, `sites_in.json` (the sites and why each was chosen), and `reference/cmr_footprints.json` (scene footprints from NASA's catalogue) |
+| `processing/` | The Python pipeline (`sartale/`), its tests, `checks/` (the scripts behind the evidence in `docs/DATA_SOURCES.md`), `sites_in.json` (the sites and why each was chosen), and `reference/cmr_footprints.json` (scene footprints from NASA's catalogue) |
 | `docs/` | Plan, data sources, AI tool use, concept image |
 | `data/` | Local working data: GCOV files, 30 m GeoTIFFs in `data/cog/`, OPERA tiles, browse PNGs. Git-ignored |
 
