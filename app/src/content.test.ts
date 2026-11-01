@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { cardFor, EVIDENCE_LABELS, findBannedClaims, PLACEHOLDER, siteCards, story } from "./content";
+import { BADGE_LABELS, cardFor, EVIDENCE_LABELS, findBannedClaims, PLACEHOLDER, siteCards, story } from "./content";
 
 describe("findBannedClaims", () => {
   test("catches banned wording in any case", () => {
@@ -41,7 +41,7 @@ describe("app copy", () => {
     expect(cards.length).toBeGreaterThan(0);
     for (const c of cards) {
       for (const k of ["observation", "hypothesis", "test", "limits"] as const) expect(c[k].length).toBeGreaterThan(0);
-      expect(Object.keys(EVIDENCE_LABELS)).toContain(c.evidence);
+      expect(Object.keys(BADGE_LABELS)).toContain(c.evidence);
       expect(Array.isArray(c.dates)).toBe(true);
       expect(c.hypothesis.startsWith(PLACEHOLDER) || c.hypothesis.includes("may indicate")).toBe(true);
     }
@@ -50,6 +50,16 @@ describe("app copy", () => {
   test("placeholder copy is labelled as placeholder", () => {
     for (const s of Object.values(story)) expect(s.summary.startsWith(PLACEHOLDER)).toBe(true);
     for (const c of Object.values(siteCards)) expect(c.observation.startsWith(PLACEHOLDER)).toBe(true);
+  });
+
+  test("placeholder cards carry the neutral Placeholder badge, not an evidence class", () => {
+    for (const c of Object.values(siteCards)) {
+      expect(c.observation.startsWith(PLACEHOLDER)).toBe(true);
+      expect(c.evidence).toBe("placeholder");
+    }
+    expect(cardFor("no-such-site").evidence).toBe("placeholder");
+    expect(BADGE_LABELS.placeholder).toBe("Placeholder");
+    expect(Object.values(EVIDENCE_LABELS)).not.toContain("Placeholder");
   });
 
   test("cardFor falls back to a placeholder card for an unknown site", () => {

@@ -5,7 +5,7 @@
     "hypothesis": "Placeholder text: replace after real curves are reviewed.",
     "test": "Placeholder text: replace after real curves are reviewed.",
     "limits": "Placeholder text: replace after real curves are reviewed.",
-    "evidence": "hypothesis"
+    "evidence": "placeholder"
   },
   "demo-b": {
     "dates": [],
@@ -13,7 +13,7 @@
     "hypothesis": "Placeholder text: replace after real curves are reviewed.",
     "test": "Placeholder text: replace after real curves are reviewed.",
     "limits": "Placeholder text: replace after real curves are reviewed.",
-    "evidence": "hypothesis"
+    "evidence": "placeholder"
   },
   "demo-c": {
     "dates": [],
@@ -21,6 +21,6 @@
     "hypothesis": "Placeholder text: replace after real curves are reviewed.",
     "test": "Placeholder text: replace after real curves are reviewed.",
     "limits": "Placeholder text: replace after real curves are reviewed.",
-    "evidence": "hypothesis"
+    "evidence": "placeholder"
   }
 }

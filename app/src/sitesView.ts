@@ -1,4 +1,4 @@
-import { cardFor, EVIDENCE_LABELS, story } from "./content";
+import { BADGE_LABELS, cardFor, story } from "./content";
 import { toChartSeries, type ChartSeries } from "./sites";
 import { formatDate, maturityBanner } from "./timeline";
 import type { Manifest, Site } from "./types";
@@ -54,8 +54,8 @@ const TEMPLATE = `
 </div>`;
 
 const NO_DATA = "no data";
-const db = (v: number | null): string => (v === null ? NO_DATA : v.toFixed(1));
-const pct = (v: number | null): string => (v === null ? NO_DATA : `${Math.round(v * 100)}%`);
+const db = (v: number | null | undefined): string => (v == null ? NO_DATA : v.toFixed(1));
+const pct = (v: number | null | undefined): string => (v == null ? NO_DATA : `${Math.round(v * 100)}%`);
 
 export function createSitesView(root: HTMLElement, opts: SitesViewOptions): SitesViewHandle {
   root.innerHTML = TEMPLATE;
@@ -115,7 +115,7 @@ export function createSitesView(root: HTMLElement, opts: SitesViewOptions): Site
     q("card-title").textContent = story[id]?.title ?? site.name;
     q("card-role").textContent = site.role;
     const badge = q("card-evidence");
-    badge.textContent = EVIDENCE_LABELS[card.evidence];
+    badge.textContent = BADGE_LABELS[card.evidence];
     badge.dataset.evidence = card.evidence;
 
     const range = sortedDates.length

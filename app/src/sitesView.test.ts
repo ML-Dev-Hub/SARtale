@@ -92,8 +92,20 @@ describe("sites view", () => {
     expect($("card-test").textContent).toContain("What would test it");
     expect($("card-limits").textContent).toContain("Limits");
     const badge = $("card-evidence");
-    expect(["Observed", "Reference agrees", "Hypothesis", "Not observed"]).toContain(badge.textContent);
-    expect(badge.dataset.evidence).toBeTruthy();
+    expect(badge.textContent).toBe("Placeholder");
+    expect(badge.dataset.evidence).toBe("placeholder");
+  });
+
+  test("a row missing hh_db or hv_db shows no data instead of throwing", () => {
+    const partial = { ...sites[0], series: [{ date: "2026-07-02", hv_db: -18 }, { date: "2026-07-14", hh_db: -11 }] } as unknown as Site;
+    const { view, root, charts } = setup([partial]);
+    expect(() => view.select("demo-a")).not.toThrow();
+    const rows = [...root.querySelectorAll("[data-role='card-table'] tbody tr")].map((r) => [...r.children].map((c) => c.textContent));
+    expect(rows).toEqual([
+      ["2 Jul 2026", "no data", "-18.0", "no data"],
+      ["14 Jul 2026", "-11.0", "no data", "no data"],
+    ]);
+    expect(charts[0].data.hh).toEqual([null, -11]);
   });
 
   test("the values table shows no data for a gap", () => {

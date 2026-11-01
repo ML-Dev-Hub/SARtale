@@ -22,14 +22,20 @@ export function findBannedClaims(text: string): string[] {
   return BANNED_PATTERNS.filter(({ re }) => re.test(text)).map(({ phrase }) => phrase);
 }
 
-export type Evidence = "observed" | "reference-agrees" | "hypothesis" | "not-observed";
+/** The four real evidence classes. */
+export type EvidenceClass = "observed" | "reference-agrees" | "hypothesis" | "not-observed";
+/** A card that has no written copy yet shows a neutral "Placeholder" badge instead of an evidence class. */
+export type Evidence = EvidenceClass | "placeholder";
 
-export const EVIDENCE_LABELS: Record<Evidence, string> = {
+export const EVIDENCE_LABELS: Record<EvidenceClass, string> = {
   observed: "Observed",
   "reference-agrees": "Reference agrees",
   hypothesis: "Hypothesis",
   "not-observed": "Not observed",
 };
+
+/** Badge text for every value a card can carry. */
+export const BADGE_LABELS: Record<Evidence, string> = { ...EVIDENCE_LABELS, placeholder: "Placeholder" };
 
 /** Marks copy that has not been written from real curves yet. */
 export const PLACEHOLDER = "Placeholder text: replace after real curves are reviewed.";
@@ -63,7 +69,7 @@ export function cardFor(siteId: string): SiteCard {
       hypothesis: PLACEHOLDER,
       test: PLACEHOLDER,
       limits: PLACEHOLDER,
-      evidence: "hypothesis",
+      evidence: "placeholder",
     }
   );
 }
