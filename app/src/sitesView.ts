@@ -89,6 +89,7 @@ const TEMPLATE = `
 
 const NO_DATA = "no data";
 const db = (v: number | null | undefined): string => (v == null ? NO_DATA : v.toFixed(1));
+const withUnit = (v: number | null | undefined): string => (v == null ? NO_DATA : `${v.toFixed(1)} dB`);
 const pct = (v: number | null | undefined): string => (v == null ? NO_DATA : `${Math.round(v * 100)}%`);
 const dayMonth = (iso: string): string => formatDate(iso).split(" ").slice(0, 2).join(" ");
 
@@ -214,7 +215,7 @@ export function createSitesView(root: HTMLElement, opts: SitesViewOptions): Site
     const row = current.series.find((r) => r.date === date);
     const hint = flagFor(opts.manifest, date);
     q("card-pick-text").textContent =
-      `${formatDate(date)}: HH ${db(row?.hh_db)} dB, HV ${db(row?.hv_db)} dB.` + (hint ? ` ${hint}` : "");
+      `${formatDate(date)}: HH ${withUnit(row?.hh_db)}, HV ${withUnit(row?.hv_db)}.` + (hint ? ` ${hint}` : "");
     q("card-pick").hidden = !opts.onShowDate;
     for (const tr of q("card-table").querySelectorAll<HTMLElement>("tbody tr")) {
       tr.classList.toggle("picked-row", tr.dataset.date === date);
@@ -245,7 +246,7 @@ export function createSitesView(root: HTMLElement, opts: SitesViewOptions): Site
       slot(
         "card-control",
         "A control",
-        "This place is expected to stay steady, so a quiet curve here is the right result. The controls were used in setting the Change map's limits, so they are not an independent test. Five fresh cities not used for the limits also stayed quiet (0% flagged within 450 m).",
+        "This place is expected to stay steady, so a quiet curve here is the right result. The controls were used in setting the Change map's limits, so they are not an independent test. An independent reviewer found that five fresh cities not used for the limits also stayed quiet (0% flagged within 450 m).",
       );
     }
 

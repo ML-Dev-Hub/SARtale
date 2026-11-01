@@ -46,7 +46,7 @@ describe("How we know", () => {
   test("words the control claim accurately: controls fed the limit, fresh cities are the independent check", () => {
     const { text } = open(real, realSites);
     expect(text).toContain("The controls were used in setting the limit");
-    expect(text).toContain("Five fresh cities that played no part in setting it also stayed quiet: 0% flagged within 450 m");
+    expect(text).toContain("An independent reviewer ran the rule on five fresh cities that played no part in setting it, and 0% were flagged within 450 m");
     expect(text).toContain("That is the independent check");
     expect(text).not.toMatch(/controls (prove|confirm)/i);
   });
@@ -110,6 +110,14 @@ describe("How we know", () => {
   test("a small fixture manifest fills its own numbers", () => {
     expect(evidenceTokens(changeManifest).step_dates).toBe("4");
     expect(fillTokens("{a} and {b}", { a: "1" })).toBe("1 and {b}");
+  });
+
+  test("invents no expectation: nothing says what a reprocessed 2 July file should read, and the mask claim follows the docs", () => {
+    const { text } = open(real, realSites);
+    expect(text).not.toMatch(/interference filtering|back to about -10/i);
+    expect(text).not.toContain("The mask was set on the main pool");
+    expect(text).toContain("thresholds were set on the main Tarbela pool on 26 July, a date not compared");
+    expect(text).toContain("The 2 July HV brightening is likely radio interference");
   });
 
   test("never names a land cover nobody has checked", () => {

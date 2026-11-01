@@ -504,12 +504,15 @@ button { font: inherit; }
 .story-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .story-actions:empty { display: none; }
 .story-strip { padding: 6px 0 0; }
+.story-strip .axis-mini { margin-bottom: 18px; }
 .story-strip figcaption { color: var(--muted); font-size: 0.78rem; }
 .story-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--ink-1); }
 .story-count { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 .story-next { background: var(--teal); border-color: var(--teal); color: #04201d; min-width: 7rem; }
 .story-next:hover:not(:disabled) { border-color: #fff; }
-.story-resume { position: absolute; z-index: 8; left: 10px; top: 66px; background: var(--panel); border-color: var(--teal); color: var(--teal); }
+.story-bg { width: fit-content; padding: 1px 10px; border: 1px dashed var(--muted); border-radius: 999px; color: var(--muted); font-size: 0.78rem; }
+.story-caution { padding: 6px 10px; border: 1px solid var(--amber); border-radius: 8px; background: rgb(8 16 21 / 0.9); font-size: 0.85rem; line-height: 1.35; }
+.stage[data-story="on"] .flag { display: none; }
 
 /* ---- Date line ---------------------------------------------------------------------------------------------- */
 .dock { flex: none; display: flex; align-items: center; gap: 16px; padding: 10px 16px 8px; border-top: 1px solid var(--line); background: var(--ink-1); }
@@ -770,16 +773,18 @@ button { font: inherit; }
   .hero-strip { order: 5; }
   .hero-img { height: 28vh; }
 
-  .top-bar { top: 8px; left: 8px; right: 8px; }
+  .top-bar { top: 8px; left: 8px; right: 8px; flex-wrap: wrap; }
   .maturity[data-kind="provisional"] { padding: 3px 10px; font-size: 0.78rem; }
-  .toolbar { flex: 1 1 0; margin-left: 0; overflow-x: auto; scrollbar-width: none; }
-  .toolbar .btn { min-height: 44px; padding: 0 10px; font-size: 0.88rem; }
+  /* Wrap, so every control (Change above all) is in view without scrolling sideways. */
+  .toolbar { flex: 1 1 100%; flex-wrap: wrap; margin-left: 0; padding: 4px; gap: 4px; }
+  .toolbar .btn { min-height: 44px; padding: 0 9px; font-size: 0.84rem; }
+  .toolbar .btn.change { flex: 1 1 auto; }
   .pol legend { display: none; }
   .seg span { min-width: 44px; min-height: 44px; }
   .before-pick { flex: none; }
   .before-pick select { min-height: 44px; }
 
-  .side { top: 62px; left: 8px; right: 8px; width: auto; max-height: 40%; }
+  .side { top: 150px; left: 8px; right: 8px; width: auto; max-height: calc(100% - 170px); }
   .side > * { width: 100%; }
   .limits-box { align-self: flex-end; width: auto; }
   .change-panel { padding: 8px 10px; gap: 6px; font-size: 0.8rem; }
@@ -792,15 +797,16 @@ button { font: inherit; }
   .stage[data-story="on"] .change-title, .stage[data-story="on"] .change-caption, .stage[data-story="on"] .change-about, .stage[data-story="on"] .limits-box, .stage[data-story="on"] .unusual { display: none; }
   .axis-gap::after { display: block; content: "gap"; padding: 0 3px; font-size: 0.65rem; }
 
-  .story { left: 6px; right: 6px; top: auto; bottom: 6px; width: auto; max-height: 44%; }
+  .story { left: 6px; right: 6px; top: auto; bottom: 6px; width: auto; max-height: 52%; }
   .story-title { font-size: 1.25rem; }
   .story-text { font-size: 0.9rem; }
   .story-body { padding: 4px 14px 8px; gap: 6px; }
-  .story-resume { top: 62px; left: 8px; }
   .stamp { bottom: 8px; font-size: 0.78rem; }
   .flag { bottom: 40px; max-width: 60%; font-size: 0.75rem; }
-  .stage[data-story="on"] .stamp, .stage[data-story="on"] .flag { display: none; }
-  .loading { bottom: auto; top: 54px; }
+  .stage[data-story="on"] .stamp { display: none; }
+  .stage[data-story="on"] .toolbar .composite, .stage[data-story="on"] .before-pick { display: none; }
+  .stage[data-story="on"] .side { top: 100px; }
+  .loading { bottom: auto; top: 150px; }
 
   .dock { gap: 10px; padding: 8px 10px 6px; }
   .btn.play { min-width: 64px; padding: 0 10px; }

@@ -5,7 +5,7 @@
     "Radar brightness at the Tarbela south-east shore and on the Indus near Attock stepped between two passes, and the Change map puts each step on a date.",
     "Places chosen because they should stay steady (two city sites and the reservoir's main pool) stayed quiet on the Change map.",
     "Outside sources moved the same way at both places: OPERA water maps and the Flood Forecasting Division's reservoir levels at the shore, OPERA water maps at Attock. Neither says what the surface was on a NISAR date itself.",
-    "The 2 July HV brightening is not ground change. HV differs by 12 dB between two frequencies in the same pass, which the ground cannot do. It is likely radio interference, and an instrument fault would look much the same."
+    "The 2 July HV brightening is likely radio interference, not ground change. HV differs by 12 dB between two frequencies in the same pass, which the ground cannot do. An instrument fault would look much the same."
   ],
   "cannot": [
     "Say what caused any step. A step is a change in backscatter, and land cover here has not been checked on the ground.",
@@ -79,9 +79,9 @@
       ],
       "afterTable": [
         "The whole study window has {flagged_pct}% of its pixels flagged.",
-        "The controls were used in setting the limit, so their staying quiet is partly built in. Five fresh cities that played no part in setting it also stayed quiet: 0% flagged within 450 m. That is the independent check.",
+        "The controls were used in setting the limit, so their staying quiet is partly built in. An independent reviewer ran the rule on five fresh cities that played no part in setting it, and 0% were flagged within 450 m. That is the independent check. It is the reviewer's result, and the script is not in the repository.",
         "Plain ground is not quiet. The plains near Swabi and east of Mardan flag at 35% and 68% within 450 m, with no known cause, so a flag on plain ground says little on its own.",
-        "Against the NISAR dates with an OPERA water map a day or a few days away, NISAR's own water mask finds 78 to 90% of OPERA's water over the whole window, with an overlap (IoU) of 0.43 to 0.60, and agrees closely around Tarbela (IoU 0.90 to 0.92). The mask was set on the main pool and was not tuned for rivers."
+        "Against the NISAR dates with an OPERA water map a day or a few days away, NISAR's own water mask finds 78 to 90% of OPERA's water over the whole window, with an overlap (IoU) of 0.43 to 0.60, and agrees closely around Tarbela (IoU 0.90 to 0.92). Its thresholds were set on the main Tarbela pool on 26 July, a date not compared, and suit large still water. They were not tuned for rivers."
       ]
     },
     {
@@ -121,7 +121,6 @@
       "title": "What would change our mind",
       "list": [
         "NASA's reprocessed files moving the 19 Aug shore step or the Attock steps. Then they were partly a product of the provisional processing.",
-        "The 2 July file, reprocessed with interference filtering, not bringing HV at Peshawar back to about -10 dB. Then the interference reading is wrong.",
         "Wind records for Tarbela at the pass times, about 05:22 Pakistan time, not moving with HH on the pool. Then the pool's small changes are not wind.",
         "A survey of the shore's height, or optical images of the Attock bars in October, contradicting the radar. Then those two hypotheses go.",
         "Optical greenness from HLS showing no crop on the Swabi and Mardan plains. Then the crop reading goes.",

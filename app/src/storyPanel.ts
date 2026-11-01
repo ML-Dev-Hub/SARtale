@@ -29,7 +29,9 @@ const TEMPLATE = `
 </div>
 <div class="story-body" data-role="story-content" aria-live="polite">
   <p class="story-kicker" data-role="story-kicker"></p>
+  <p class="story-bg" data-role="story-background" hidden>Background, not a finding</p>
   <h2 class="story-title" data-role="story-title" tabindex="-1"></h2>
+  <p class="story-caution" data-role="story-caution" role="note" hidden></p>
   <figure class="story-strip" data-role="story-strip" hidden>
     <div class="axis axis-mini" data-role="story-axis"><div class="axis-layer" data-role="story-axis-layer"></div></div>
     <figcaption data-role="story-strip-caption"></figcaption>
@@ -87,6 +89,7 @@ export function createStoryPanel(root: HTMLElement, opts: StoryPanelOptions): St
     const part = inBeat.length > 1 ? `, ${step.stop} (${inBeat.indexOf(step) + 1} of ${inBeat.length})` : "";
     q("story-kicker").textContent = `${step.label}${part}`;
     q("story-title").textContent = step.title;
+    q("story-background").hidden = !step.background;
     q("story-text").replaceChildren(
       ...step.body.map((t) => {
         const p = document.createElement("p");

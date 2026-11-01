@@ -100,6 +100,8 @@ export interface StoryStep {
   title: string;
   body: string[];
   source?: string;
+  /** Background that explains the setting. It is general knowledge or context, not a finding. */
+  background?: boolean;
   /** A site whose card the step can open. */
   site?: string;
   /** Show the observation timeline inside the step. */

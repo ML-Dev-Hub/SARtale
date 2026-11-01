@@ -189,23 +189,24 @@ describe("the guided story", () => {
   });
 
   test("leaving mid-way frees the map, keeps the place and lets the person return to it", async () => {
-    const { app, $, moves } = setupReal();
+    const { app, $, moves, root } = setupReal();
     $("hero-start").click();
     for (let i = 0; i < 3; i++) $("story-next").click();
     await app.settled();
     const place = $("story-title").textContent;
     $("story-exit").click();
     expect($("story").hidden).toBe(true);
-    expect($("story-resume").hidden).toBe(false);
-    expect($("story-resume").textContent).toBe(`Resume the story, step 4 of ${storyBeats.length}`);
+    expect(root.querySelector('[data-role="story-resume"]')).toBeNull();
     expect($("story-start").textContent).toBe("Resume the story");
+    expect($("story-start").title).toBe(`Resume at step 4 of ${storyBeats.length}`);
+    expect(moves.at(-1)!.camera).toEqual({ center: [72.871, 34.0138], zoom: 10.3 });
     // Free exploring still works.
     $<HTMLInputElement>("slider").value = "6";
     $("slider").dispatchEvent(new Event("input"));
     await app.settled();
     expect($("slider").getAttribute("aria-valuetext")).toBe("24 Sep 2026");
     const before = moves.length;
-    $("story-resume").click();
+    $("story-start").click();
     await app.settled();
     expect($("story").hidden).toBe(false);
     expect($("story-title").textContent).toBe(place);
@@ -380,7 +381,7 @@ describe("the step view's words", () => {
     expect(t).toContain("drawn at 270 m and analysed at 90 m");
     expect(t).toContain("about 31% of flagged pixels fall in cells that are not drawn");
     expect(t).toContain("The controls were used in setting the limit");
-    expect(t).toContain("five fresh cities also stayed quiet (an independent check, 0% flagged within 450 m)");
+    expect(t).toContain("an independent reviewer found that five fresh cities also stayed quiet (0% flagged within 450 m)");
   });
 
   test("the caption says it is one season-wide map and that colour is the date of the step", async () => {
@@ -510,5 +511,93 @@ describe("How we know in the app", () => {
     $("hero-method").click();
     expect($("evidence-view").hidden).toBe(false);
     expect($("hero").hidden).toBe(true);
+  });
+});
+
+describe("cautions in the story", () => {
+  const to = ($: (r: string) => HTMLElement, id: string) => {
+    const target = storyBeats.findIndex((b) => b.id === id);
+    for (let n = 0; n < 12 && $("story-title").textContent !== storyBeats[target].title; n++) $("story-next").click();
+  };
+
+  test("the 23 July step states the 14 July caution in its own text and in the card, where it cannot be covered", async () => {
+    const { app, $ } = setupReal();
+    $("hero-start").click();
+    to($, "peak");
+    await app.settled();
+    expect($("story-text").textContent).toContain("14 July is a forecast-orbit file, so its positions may be less precise");
+    expect($("story-caution").hidden).toBe(false);
+    expect($("story-caution").textContent).toContain("14 Jul 2026: Forecast-orbit product; positions may be less precise.");
+    expect($("story").contains($("story-caution"))).toBe(true);
+  });
+
+  test("the 2 July step shows the interference caution inside the card, on every screen size", async () => {
+    const { app, $ } = setupReal();
+    $("hero-start").click();
+    to($, "interference");
+    await app.settled();
+    expect($("story-caution").textContent).toContain("Likely radio interference in HV over the western area. Do not read this as surface change.");
+  });
+
+  test("a step on an unflagged date shows no caution", async () => {
+    const { app, $ } = setupReal();
+    $("hero-start").click();
+    await app.settled();
+    expect($("story-caution").hidden).toBe(true);
+  });
+
+  test("background steps are labelled as background, findings are not", async () => {
+    const { $ } = setupReal();
+    $("hero-start").click();
+    expect($("story-background").hidden).toBe(false);
+    to($, "tarbela");
+    expect($("story-background").hidden).toBe(true);
+  });
+});
+
+describe("leaving the story", () => {
+  test("Escape returns focus to the story button and the map takes the whole stage back", async () => {
+    const { app, $, moves, root } = setupReal();
+    $("hero-start").click();
+    $("story-title").focus();
+    $("story").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect($("story").hidden).toBe(true);
+    expect(document.activeElement).toBe($("story-start"));
+    expect(moves.at(-1)).toEqual({ camera: { home: true }, padding: { top: 0, right: 0, bottom: 0, left: 0 } });
+    await app.settled();
+    expect(root).toBeTruthy();
+  });
+
+  test("leaving on a step that zoomed to a place keeps that place", async () => {
+    const { $, moves } = setupReal();
+    $("hero-start").click();
+    for (let i = 0; i < 3; i++) $("story-next").click();
+    const before = moves.length;
+    $("story-exit").click();
+    expect(moves.length).toBe(before);
+  });
+
+  test("destroying the app stops listening to the preloader", async () => {
+    const preload = createPreloader(async () => {}, 2);
+    let heard = 0;
+    const real = preload.onChange.bind(preload);
+    let stopped = 0;
+    preload.onChange = (l) => {
+      const stop = real(() => {
+        heard += 1;
+        l();
+      });
+      return () => {
+        stopped += 1;
+        stop();
+      };
+    };
+    const { app } = setup(realManifest, { sites: realSites, preload });
+    await app.settled();
+    app.destroy();
+    expect(stopped).toBe(1);
+    const h = heard;
+    preload.request(["x.webp"]);
+    expect(heard).toBe(h);
   });
 });

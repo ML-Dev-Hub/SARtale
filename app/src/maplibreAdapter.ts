@@ -31,6 +31,7 @@ class RadarMap implements MapLike {
   private readonly ready: Promise<void>;
   private hasImage = false;
   private userMoved = false;
+  private markers: { el: HTMLElement; lon: number; lat: number }[] = [];
   private seq = 0;
   private overlaySeq = 0;
 
@@ -93,9 +94,24 @@ class RadarMap implements MapLike {
 
   /** Move the camera. `padding` keeps the target clear of floating panels. A person who moves the map is left alone. */
   moveTo(camera: Camera, padding: Padding): void {
+    if ("home" in camera) {
+      // Back to the default view of the whole stage, with no panel padding.
+      this.userMoved = false;
+      this.fit();
+      return;
+    }
     this.userMoved = true;
     const animate = !reducedMotion();
-    const pad = { top: padding.top + 8, right: padding.right + 8, bottom: padding.bottom + 8, left: padding.left + 8 };
+    // Panels can ask for more room than a phone has. Keep at least 30% of each side free, or MapLibre cannot fit the area.
+    const el = this.map.getContainer();
+    const raw = { top: padding.top + 8, right: padding.right + 8, bottom: padding.bottom + 8, left: padding.left + 8 };
+    const squeeze = (a: number, b: number, size: number): [number, number] => {
+      const room = size * 0.7;
+      return a + b > room && a + b > 0 ? [(a / (a + b)) * room, (b / (a + b)) * room] : [a, b];
+    };
+    const [top, bottom] = squeeze(raw.top, raw.bottom, el.clientHeight);
+    const [left, right] = squeeze(raw.left, raw.right, el.clientWidth);
+    const pad = { top, right, bottom, left };
     if ("fit" in camera) {
       const [w, s, e, n] = this.bounds;
       this.map.fitBounds([[w, s], [e, n]], { padding: pad, animate, duration: 1400 });
@@ -195,7 +211,16 @@ class RadarMap implements MapLike {
       el.setAttribute("aria-label", `Open site story: ${site.name}`);
       el.addEventListener("click", () => onSelect(site.id));
       new maplibregl.Marker({ element: el }).setLngLat([site.lon, site.lat]).addTo(this.map);
+      this.markers.push({ el, lon: site.lon, lat: site.lat });
     }
+    // A marker outside the picture cannot be seen, so it should not take keyboard focus either.
+    const sync = (): void => {
+      const b = this.map.getBounds();
+      for (const m of this.markers) m.el.tabIndex = b.contains([m.lon, m.lat]) ? 0 : -1;
+    };
+    this.map.on("moveend", sync);
+    this.map.on("resize", sync);
+    sync();
   }
 
   private addLines(name: string, data: FeatureCollection, color: string, width: number): void {

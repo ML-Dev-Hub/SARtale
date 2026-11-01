@@ -10,7 +10,7 @@ import { changeExclusion, dataUrl, flagFor, formatDate, frameUrl, maturityBanner
 import type { Manifest, Pol, Site } from "./types";
 
 /** Where to point the map: the whole study area, or a centre and zoom. */
-export type Camera = { fit: true } | { center: [number, number]; zoom: number };
+export type Camera = { fit: true } | { home: true } | { center: [number, number]; zoom: number };
 /** Pixels of the map hidden under floating panels, so the target is drawn clear of them. */
 export interface Padding {
   top: number;
@@ -123,7 +123,6 @@ const TEMPLATE = `
             <button type="button" class="btn toggle change" data-role="change-toggle" aria-pressed="false" hidden>Change</button>
           </div>
         </div>
-        <button type="button" class="btn story-resume" data-role="story-resume" hidden></button>
         <div class="side">
           <p class="hint" data-role="hint" hidden></p>
           <section class="change-panel" data-role="change-panel" aria-label="Change map key" hidden>
@@ -271,7 +270,6 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const dockEl = q("dock");
   const heroEl = q("hero");
   const storyEl = q("story");
-  const storyResume = q<HTMLButtonElement>("story-resume");
   const storyStart = q<HTMLButtonElement>("story-start");
   const sitesViewEl = q("sites-view");
   const sitesMaturity = q("sites-maturity");
@@ -492,7 +490,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
         `One step is shown per place, so a second step there is not drawn. ` +
         `The map is drawn at ${drawn} m and analysed at ${step.pixel_m} m: a ${drawn} m cell is drawn only if at least 2 of its 9 pixels are flagged, ` +
         `so small patches look wider than measured, and about 31% of flagged pixels fall in cells that are not drawn. ` +
-        `The controls were used in setting the limit, and five fresh cities also stayed quiet (an independent check, 0% flagged within 450 m). ` +
+        `The controls were used in setting the limit, and an independent reviewer found that five fresh cities also stayed quiet (0% flagged within 450 m). ` +
         `The step test and its numbers are on the How we know page.`
       : CHANGE_LIMIT;
     q("change-more").hidden = !step;
@@ -554,6 +552,12 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     const flagB = state.swipe && !state.composite ? flagFor(m, dates[state.beforeI]) : undefined;
     flagBefore.textContent = flagB ?? "";
     flagBefore.hidden = !flagB;
+    const caution = [flagA ? (state.composite ? flagA : `${formatDate(dates[state.i])}: ${flagA}`) : "", flagB ? `${formatDate(dates[state.beforeI])}: ${flagB}` : ""].filter(Boolean).join(" ");
+    const cautionEl = root.querySelector<HTMLElement>('[data-role="story-caution"]');
+    if (cautionEl) {
+      cautionEl.textContent = caution;
+      cautionEl.hidden = !caution;
+    }
     dateFlag.hidden = state.composite || !flagFor(m, dates[state.i]);
     const changeOn = state.change && !state.composite;
     dateExcluded.hidden = !(changeOn && changeExclusion(m, dates[state.i]));
@@ -606,7 +610,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     preload.request(order.flatMap((i) => urlOf(i, pol) ?? []));
     if (m.change?.step && state.change) preload.request([dataUrl(m.change.step.frame)]);
   }
-  preload?.onChange(() => {
+  const stopWatching = preload?.onChange(() => {
     const p = preload.progress();
     const left = p.total - p.done - p.failed;
     loadState.hidden = left <= 0;
@@ -827,8 +831,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     stageEl.dataset.story = story.active ? "on" : "off";
     storyStart.setAttribute("aria-pressed", String(story.active));
     storyStart.textContent = story.active ? "In the story" : story.resume >= 0 ? "Resume the story" : "Start the story";
-    storyResume.hidden = !(storyEnabled && !story.active && story.resume >= 0 && view === "dance");
-    storyResume.textContent = `Resume the story, step ${story.resume + 1} of ${total}`;
+    storyStart.title = !story.active && story.resume >= 0 ? `Resume at step ${story.resume + 1} of ${total}` : "";
   }
 
   function startStory(from = Math.max(0, story.resume)): void {
@@ -842,10 +845,16 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   /** Leave the story to explore freely. The place is kept, so the person can come back to it. */
   function exitStory(): void {
     const finished = storyPanel.index() >= storyPanel.count() - 1;
+    const hadFocus = storyEl.contains(document.activeElement);
+    const wasFit = "fit" in storyBeats[Math.max(0, storyPanel.index())].camera;
     story.active = false;
     story.resume = finished ? -1 : storyPanel.index();
     if (view !== "dance") showView("dance");
     else updateStoryChrome();
+    // The card no longer hides part of the map, so the map takes the whole stage back.
+    if (wasFit) host.moveTo?.({ home: true }, { top: 0, right: 0, bottom: 0, left: 0 });
+    // Focus goes to the button that brings the story back, so keyboard users are not left on a hidden card.
+    if (hadFocus) storyStart.focus();
   }
 
   storyStart.addEventListener("click", () => {
@@ -853,7 +862,6 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     else startStory();
   });
   q("hero-start").addEventListener("click", () => startStory(0));
-  storyResume.addEventListener("click", () => startStory());
 
   /** Show a date on the map, centred on a site (from a card's chart or table). Leaves the story if it was on. */
   function showOnMap(date: string, site: Site): void {
@@ -885,6 +893,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     destroy: () => {
       stopPlaying();
       narrow?.removeEventListener?.("change", syncFolds);
+      stopWatching?.();
       axis.destroy();
       heroAxis.destroy();
       storyPanel.destroy();

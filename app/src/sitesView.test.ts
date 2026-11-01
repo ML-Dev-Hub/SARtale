@@ -253,7 +253,7 @@ describe("controls", () => {
     expect($("card-control-tag").hidden).toBe(false);
     const t = $("card-control").textContent ?? "";
     expect(t).toContain("used in setting the Change map's limits, so they are not an independent test");
-    expect(t).toContain("Five fresh cities");
+    expect(t).toContain("An independent reviewer found that five fresh cities");
     expect(t).toContain("0% flagged within 450 m");
     view.select("mv");
     expect($("card-control-tag").hidden).toBe(true);
@@ -295,7 +295,7 @@ describe("seeing the map on a date", () => {
   test("a date in the table does the same, and marks its row", () => {
     const { root, $, shown } = open();
     root.querySelector<HTMLButtonElement>('tr[data-date="2026-07-14"] button')!.click();
-    expect($("card-pick-text").textContent).toContain("14 Jul 2026: HH -11.0 dB, HV no data dB");
+    expect($("card-pick-text").textContent).toContain("14 Jul 2026: HH -11.0 dB, HV no data.");
     expect(root.querySelector('tr[data-date="2026-07-14"]')!.classList.contains("picked-row")).toBe(true);
     $("card-pick-go").click();
     expect(shown).toEqual([["2026-07-14", "demo-a"]]);

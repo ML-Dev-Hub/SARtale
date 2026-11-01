@@ -13,6 +13,7 @@
     {
       "id": "valley",
       "beat": 1,
+      "background": true,
       "label": "Why the valley matters",
       "title": "A valley of rivers, watched through monsoon cloud",
       "body": [
@@ -26,6 +27,7 @@
     {
       "id": "nisar",
       "beat": 2,
+      "background": true,
       "label": "Meet NISAR",
       "title": "A radar that listens for its own echo",
       "body": [
@@ -120,7 +122,8 @@
       "title": "23 July: the river peaked between two passes",
       "body": [
         "The Flood Forecasting Division gives the Kabul River at Nowshera as 32.6 thousand cusecs on 19 July, 78.5 on 23 July and 53.5 on 26 July. The 78.5 is the highest figure its bulletins list for the 2026 flood season.",
-        "NISAR passed on 14 and 26 July, so the peak fell between two passes. That is the 12-day revisit, not the data gap, which came later."
+        "NISAR passed on 14 and 26 July, so the peak fell between two passes. That is the 12-day revisit, not the data gap, which came later.",
+        "Caution: 14 July is a forecast-orbit file, so its positions may be less precise."
       ],
       "source": "Flood Forecasting Division, Pakistan Meteorological Department, daily flood bulletins 035/26, 039/26 and 042/26. Readings at 06:00 Pakistan time.",
       "strip": true,
