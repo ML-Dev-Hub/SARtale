@@ -26,7 +26,12 @@
         "pol": "HV",
         "db": "-7.2"
       }
-    ]
+    ],
+    "mapCheck": {
+      "radius_m": 500,
+      "flagged_pct": 0,
+      "pixels": 99
+    }
   },
   "hazro-built-up": {
     "dates": [
@@ -60,7 +65,12 @@
         "pol": "HV",
         "db": "-10.1"
       }
-    ]
+    ],
+    "mapCheck": {
+      "radius_m": 500,
+      "flagged_pct": 1,
+      "pixels": 96
+    }
   },
   "tarbela-pool": {
     "dates": [
@@ -89,7 +99,12 @@
         "pol": "HV",
         "db": "-21.3"
       }
-    ]
+    ],
+    "mapCheck": {
+      "radius_m": 1000,
+      "flagged_pct": 0,
+      "pixels": 387
+    }
   },
   "tarbela-shore": {
     "dates": [
@@ -102,7 +117,7 @@
     "hypothesis": "This may indicate the rising reservoir covering this shore by August and falling away from it after mid-September.",
     "test": "Two dated references move the same way. Flood Forecasting Division bulletins give the reservoir at 1528.11 ft on 26 Jul, 1550.00 ft on 19 Aug and 1520.04 ft on 6 Oct. OPERA DSWx-S1 marks 0 of 79 pixels here as water on 28 Jun, 74 on 15 Sep, 25 on 23 Sep and 0 on 5 and 17 Oct. A survey of this shore's height would test it further.",
     "limits": "OPERA has no tile here between 28 Jun and 15 Sep, so the August step rests on the level bulletins alone. HH was still below its July value on 18 Oct, and the radar does not say why. Provisional data, so levels may move when NASA reprocesses.",
-    "changeNote": "Only 14 and 26 Jul come before this step, and 14 Jul is a flagged date. One step per place also leaves out the climb after 12 Sep, which the curve shows. The Unusual dates view scores this shore highest in July, not August, because it was dark on most of the dates compared.",
+    "changeNote": "The step rests on two earlier dates, 14 Jul and 26 Jul, and 14 Jul is a flagged date. One step per place also leaves out the climb after 12 Sep, which the curve shows. The Unusual dates view scores this shore highest in July, not August, because it was dark on most of the dates compared.",
     "evidence": "reference-agrees",
     "quotes": [
       {
@@ -125,7 +140,12 @@
         "pol": "HH",
         "db": "-12.8"
       }
-    ]
+    ],
+    "mapCheck": {
+      "radius_m": 450,
+      "flagged_pct": 27,
+      "pixels": 78
+    }
   },
   "swabi-plain": {
     "dates": [
@@ -165,7 +185,12 @@
         "pol": "HV",
         "db": "-10.6"
       }
-    ]
+    ],
+    "mapCheck": {
+      "radius_m": 450,
+      "flagged_pct": 35,
+      "pixels": 79
+    }
   },
   "mardan-plain": {
     "dates": [
@@ -195,7 +220,12 @@
         "pol": "HH",
         "db": "-6.0"
       }
-    ]
+    ],
+    "mapCheck": {
+      "radius_m": 450,
+      "flagged_pct": 68,
+      "pixels": 79
+    }
   },
   "indus-attock": {
     "dates": [
@@ -231,6 +261,11 @@
         "pol": "HH",
         "db": "-9.1"
       }
-    ]
+    ],
+    "mapCheck": {
+      "radius_m": 450,
+      "flagged_pct": 52,
+      "pixels": 79
+    }
   }
 }

@@ -1,4 +1,160 @@
 {
+  "hero": {
+    "title": "One monsoon season over the Peshawar Valley, seen by radar from space",
+    "lede": "NISAR is a NASA radar satellite. It sees the ground through cloud and passes this valley about every 12 days. We lined up nine of its passes, 2 July to 18 October 2026, and checked what moved, what stayed still and what the satellite missed.",
+    "finding": "Around 19 Aug the Tarbela shore went dark in radar: HH fell from -7.6 dB on 26 Jul to -16.6 dB on 19 Aug. Over the same weeks, Flood Forecasting Division bulletins give the reservoir rising from 1528.11 ft to 1550.00 ft. This may indicate the rising water covering the shore.",
+    "findingSource": "From the Tarbela shore card. Provisional NISAR data. Reservoir levels from the Flood Forecasting Division's daily bulletins.",
+    "quotes": [
+      { "site": "tarbela-shore", "date": "2026-07-26", "pol": "HH", "db": "-7.6" },
+      { "site": "tarbela-shore", "date": "2026-08-19", "pol": "HH", "db": "-16.6" }
+    ]
+  },
+  "beats": [
+    {
+      "id": "valley",
+      "beat": 1,
+      "label": "Why the valley matters",
+      "title": "A valley of rivers, watched through monsoon cloud",
+      "body": [
+        "The study area runs from Peshawar east to Tarbela Reservoir. The Kabul River crosses it at Nowshera, and the Indus at Attock. On 22 to 25 July 2026 the Flood Forecasting Division listed the Kabul at Nowshera at a low flood level.",
+        "In monsoon months cloud hides the ground from ordinary satellite pictures. Radar sees through it."
+      ],
+      "source": "Flood Forecasting Division, Pakistan Meteorological Department, daily flood bulletins of 22 to 25 July 2026.",
+      "camera": { "fit": true },
+      "map": { "date": "2026-07-26", "pol": "HH" }
+    },
+    {
+      "id": "nisar",
+      "beat": 2,
+      "label": "Meet NISAR",
+      "title": "A radar that listens for its own echo",
+      "body": [
+        "NISAR sends microwave pulses down and records what comes back. Smooth water returns little and looks dark. Rough ground and buildings return more and look bright.",
+        "HH and HV are two polarizations, two ways of listening to the same echo. Flip between them on the map. These nine passes are provisional: NASA expects to reprocess them."
+      ],
+      "camera": { "fit": true },
+      "map": { "date": "2026-07-26", "pol": "HH" }
+    },
+    {
+      "id": "season",
+      "beat": 3,
+      "label": "The season plays",
+      "title": "Nine passes, one dance",
+      "body": [
+        "Run the season from 2 July to 18 October. The city stays steady: Peshawar's HH moved by less than 1 dB. Farmland brightens through August and September. The Indus near Attock brightens in the autumn. The reservoir's edge goes dark in August."
+      ],
+      "action": "play",
+      "camera": { "fit": true },
+      "map": { "date": "2026-07-02", "pol": "HH" }
+    },
+    {
+      "id": "tarbela",
+      "beat": 4,
+      "label": "Why it moved",
+      "stop": "Tarbela",
+      "title": "Tarbela: the shore goes dark",
+      "body": [
+        "Between 26 Jul and 19 Aug, HH at the south-east shore fell from -7.6 to -16.6 dB. Over the same weeks, Flood Forecasting Division bulletins give the reservoir rising from 1528.11 ft to 1550.00 ft.",
+        "This may indicate the rising water covering the shore. The Change map colours the step by its date, 19 Aug."
+      ],
+      "site": "tarbela-shore",
+      "camera": { "center": [72.871, 34.0138], "zoom": 10.3 },
+      "map": { "date": "2026-08-19", "pol": "HH", "change": true },
+      "quotes": [
+        { "site": "tarbela-shore", "date": "2026-07-26", "pol": "HH", "db": "-7.6" },
+        { "site": "tarbela-shore", "date": "2026-08-19", "pol": "HH", "db": "-16.6" }
+      ]
+    },
+    {
+      "id": "attock",
+      "beat": 4,
+      "label": "Why it moved",
+      "stop": "Attock",
+      "title": "Attock: the river reads brighter in autumn",
+      "body": [
+        "On the Indus near Attock, HH read -14.2 dB on 31 Aug, -10.3 dB on 24 Sep and -9.1 dB on 18 Oct. OPERA, a separate water map, marks 61 of 80 pixels here as water on 15 Sep and 11 of 80 on 17 Oct.",
+        "This may indicate sand or gravel bars coming out of the water as the river fell."
+      ],
+      "site": "indus-attock",
+      "camera": { "center": [72.2362, 33.9171], "zoom": 10.3 },
+      "map": { "date": "2026-09-24", "pol": "HH", "change": true },
+      "quotes": [
+        { "site": "indus-attock", "date": "2026-08-31", "pol": "HH", "db": "-14.2" },
+        { "site": "indus-attock", "date": "2026-09-24", "pol": "HH", "db": "-10.3" },
+        { "site": "indus-attock", "date": "2026-10-18", "pol": "HH", "db": "-9.1" }
+      ]
+    },
+    {
+      "id": "polarizations",
+      "beat": 4,
+      "label": "Why it moved",
+      "stop": "HH against HV",
+      "title": "HH and HV tell different parts of the story",
+      "body": [
+        "At the Tarbela shore the step is 8.1 dB in HH and 5.3 dB in HV. Over the open reservoir, HV sits only about 3 dB above the file's noise level, so it cannot show how dark water really is.",
+        "So the Change map asks both polarizations to move the same way before it marks anything. Switch between HH and HV on the map and watch the shore."
+      ],
+      "site": "tarbela-shore",
+      "camera": { "center": [72.871, 34.0138], "zoom": 10.3 },
+      "map": { "date": "2026-08-19", "pol": "HV" }
+    },
+    {
+      "id": "interference",
+      "beat": 5,
+      "label": "What NISAR missed",
+      "stop": "2 July",
+      "title": "2 July: HV brightens where the ground did not change",
+      "body": [
+        "On 2 July, HV is far brighter across about 970 km² of the west. In the core of that patch mean HV is -0.7 dB, against -13.4 to -15.0 dB on the eight other dates, while HH stays near -5 dB.",
+        "This is likely radio interference, so the date carries a caution and is left out of the composite and the Change map. Do not read it as surface change."
+      ],
+      "source": "Checks on the calibrated data, 2 July (docs/DATA_SOURCES.md).",
+      "camera": { "center": [71.43, 34.19], "zoom": 8.6 },
+      "map": { "date": "2026-07-02", "pol": "HV" }
+    },
+    {
+      "id": "peak",
+      "beat": 5,
+      "label": "What NISAR missed",
+      "stop": "23 July",
+      "title": "23 July: the river peaked between two passes",
+      "body": [
+        "The Flood Forecasting Division gives the Kabul River at Nowshera as 32.6 thousand cusecs on 19 July, 78.5 on 23 July and 53.5 on 26 July. The 78.5 is the highest figure its bulletins list for the 2026 flood season.",
+        "NISAR passed on 14 and 26 July, so the peak fell between two passes. That is the 12-day revisit, not the data gap, which came later."
+      ],
+      "source": "Flood Forecasting Division, Pakistan Meteorological Department, daily flood bulletins 035/26, 039/26 and 042/26. Readings at 06:00 Pakistan time.",
+      "strip": true,
+      "camera": { "center": [71.98, 34.02], "zoom": 8.8 },
+      "map": { "date": "2026-07-26", "pol": "HH", "swipeBefore": "2026-07-14" }
+    },
+    {
+      "id": "gap",
+      "beat": 5,
+      "label": "What NISAR missed",
+      "stop": "The gap",
+      "title": "27 July to 10 August: no data at all",
+      "body": [
+        "NISAR has no data from 27 Jul 2026, 22:03:25 UTC to 10 Aug 2026, 00:55:27 UTC. In those days the same bulletins give the Kabul at Nowshera between 38.0 and 57.8 thousand cusecs, below the 23 July peak.",
+        "Days in the gap say no observation. That says nothing about what happened on the ground."
+      ],
+      "source": "Flood Forecasting Division, Pakistan Meteorological Department, daily flood bulletins of 28 July to 9 August 2026.",
+      "strip": true,
+      "camera": { "fit": true },
+      "map": { "date": "2026-08-19", "pol": "HH", "swipeBefore": "2026-07-26" }
+    },
+    {
+      "id": "next",
+      "beat": 6,
+      "label": "Why it matters",
+      "title": "What a planner could check next",
+      "body": [
+        "Radar can say when a place changed between two passes. It cannot say why. A planner could take the river stretches and reservoir shores the Change map marks and check them against gauge records and a visit. Plain ground flags too, so those places need other evidence first.",
+        "Next: NASA's reprocessed files, optical greenness from HLS for the farmland, wind records for Tarbela, and further NISAR passes. This is not a warning service. For warnings, use PMD, NDMA and PDMA."
+      ],
+      "camera": { "fit": true },
+      "map": { "date": "2026-10-18", "pol": "HH", "change": true }
+    }
+  ],
   "what-nisar-missed": {
     "title": "What NISAR Missed",
     "summary": "This view shows only which dates NISAR imaged this area and when it recorded nothing. It does not say what happened on the ground. One dated report from outside NISAR: the Flood Forecasting Division's daily bulletins give the Kabul River at Nowshera as 32.6 thousand cusecs on 19 July, 78.5 on 23 July (Low flood level, and the highest figure the bulletins list for the 2026 flood season) and 53.5 on 26 July. NISAR passed on 14 and 26 July, so that rise fell between two passes, before the data gap. From 28 July to 9 August, inside the gap, the same bulletins give 38.0 to 57.8 thousand cusecs. All readings are at 06:00 Pakistan time. Source: Flood Forecasting Division, Pakistan Meteorological Department, daily flood bulletins 035/26, 039/26 and 042/26, and those of 28 July to 9 August 2026."

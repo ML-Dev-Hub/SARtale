@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import manifestJson from "../public/data/manifest.json";
 import placesJson from "../public/data/overlays/places.geojson?raw";
 import sitesJson from "../public/data/sites.json";
-import { cardFor, findBannedClaims } from "./content";
+import { cardFor, findBannedClaims, heroCopy, storyBeats, type StoryQuote } from "./content";
 import { FORECAST_FLAG, INTERFERENCE_FLAG } from "./fixtures";
 import { sitesForManifest } from "./sites";
 import { flagFor, maturityBanner } from "./timeline";
@@ -170,5 +170,57 @@ describe("the data the app ships (app/public/data)", () => {
     expect(anchors["Swabi"]).toBe("bottom");
     expect(anchors["Tarbela Reservoir"]).toBe("top");
     expect(findBannedClaims(JSON.stringify(places))).toEqual([]);
+  });
+
+  test("every value the hero and the story quote equals the curve", () => {
+    const quotes: StoryQuote[] = [...heroCopy.quotes, ...storyBeats.flatMap((b) => b.quotes ?? [])];
+    expect(quotes.length).toBeGreaterThan(0);
+    for (const q of quotes) {
+      const point = sites.find((s) => s.id === q.site)!.series.find((p) => p.date === q.date);
+      expect(point, `${q.site} ${q.date}`).toBeDefined();
+      expect((q.pol === "HH" ? point!.hh_db : point!.hv_db)?.toFixed(1), `${q.site} ${q.date} ${q.pol}`).toBe(q.db);
+    }
+    const text = [heroCopy.finding, ...storyBeats.flatMap((b) => b.body)].join(" ");
+    for (const q of quotes) expect(text, `${q.db} dB appears in the copy`).toContain(`${q.db} dB`);
+  });
+
+  test("every story step moves the map to built dates and known sites", () => {
+    for (const b of storyBeats) {
+      expect(built, b.id).toContain(b.map.date);
+      if (b.map.swipeBefore) expect(built, `${b.id} before`).toContain(b.map.swipeBefore);
+      if (b.site) expect(sites.map((s) => s.id), b.id).toContain(b.site);
+      if (b.map.change) expect(manifest.change?.step, b.id).toBeDefined();
+      if ("center" in b.camera) {
+        const [lon, lat] = b.camera.center;
+        expect(lon, b.id).toBeGreaterThan(manifest.bounds[0]);
+        expect(lon, b.id).toBeLessThan(manifest.bounds[2]);
+        expect(lat, b.id).toBeGreaterThan(manifest.bounds[1]);
+        expect(lat, b.id).toBeLessThan(manifest.bounds[3]);
+      }
+    }
+  });
+
+  test("the story's gap sentence quotes the manifest's gap to the second", () => {
+    const gap = storyBeats.find((b) => b.id === "gap")!.body.join(" ");
+    expect(manifest.gap).toEqual({ start: "2026-07-27T22:03:25Z", end: "2026-08-10T00:55:27Z" });
+    expect(gap).toContain("27 Jul 2026, 22:03:25 UTC to 10 Aug 2026, 00:55:27 UTC");
+  });
+
+  test("the map check on each card is the one in DATA_SOURCES.md, so no small sample shows as a bare percentage", () => {
+    // Percent of 90 m pixels flagged, from the table in "Before-and-after step layer".
+    const docs: Record<string, [number, number, number]> = {
+      "peshawar-city": [500, 99, 0],
+      "hazro-built-up": [500, 96, 1],
+      "tarbela-pool": [1000, 387, 0],
+      "tarbela-shore": [450, 78, 27],
+      "swabi-plain": [450, 79, 35],
+      "mardan-plain": [450, 79, 68],
+      "indus-attock": [450, 79, 52],
+    };
+    for (const s of sites) {
+      const [radius_m, pixels, flagged_pct] = docs[s.id];
+      expect(cardFor(s.id).mapCheck, s.id).toEqual({ radius_m, pixels, flagged_pct });
+      expect(pixels, s.id).toBeGreaterThan(50);
+    }
   });
 });

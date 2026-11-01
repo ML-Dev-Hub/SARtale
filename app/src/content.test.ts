@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { BADGE_LABELS, cardFor, EVIDENCE_LABELS, findBannedClaims, PLACEHOLDER, siteCards, story } from "./content";
+import { BADGE_LABELS, cardFor, EVIDENCE_LABELS, findBannedClaims, heroCopy, PLACEHOLDER, siteCards, story, storyBeats } from "./content";
 
 describe("findBannedClaims", () => {
   test("catches banned wording in any case", () => {
@@ -32,7 +32,8 @@ describe("findBannedClaims", () => {
 
 describe("app copy", () => {
   test("all app copy is free of banned claims", () => {
-    expect(findBannedClaims(JSON.stringify([story, siteCards]))).toEqual([]);
+    expect(findBannedClaims(JSON.stringify([story, storyBeats, heroCopy, siteCards]))).toEqual([]);
+    expect(JSON.stringify([story, storyBeats, heroCopy, siteCards])).not.toMatch(/detect/i);
   });
 
   test("the evidence labels are the four allowed ones", () => {
@@ -41,6 +42,7 @@ describe("app copy", () => {
 
   test("no placeholder demo cards or stories ship: only real cards and the missed-view copy", () => {
     expect(Object.keys(story)).toEqual(["what-nisar-missed"]);
+    expect(JSON.stringify([storyBeats, heroCopy])).not.toMatch(/demo|placeholder/i);
     expect(Object.keys(siteCards).filter((id) => /^demo-/.test(id))).toEqual([]);
     expect(JSON.stringify([story, siteCards])).not.toMatch(/demo/i);
   });
@@ -78,5 +80,55 @@ describe("app copy", () => {
     const c = cardFor("no-such-site");
     expect(c.observation.startsWith(PLACEHOLDER)).toBe(true);
     expect(findBannedClaims(JSON.stringify(c))).toEqual([]);
+  });
+});
+
+describe("the guided story", () => {
+  test("walks the six beats in order, each with at least one step", () => {
+    const beats = storyBeats.map((s) => s.beat);
+    expect([...new Set(beats)]).toEqual([1, 2, 3, 4, 5, 6]);
+    expect([...beats].sort()).toEqual(beats);
+    expect(storyBeats.map((s) => s.label).filter((l, i, all) => all.indexOf(l) === i)).toEqual([
+      "Why the valley matters",
+      "Meet NISAR",
+      "The season plays",
+      "Why it moved",
+      "What NISAR missed",
+      "Why it matters",
+    ]);
+  });
+
+  test("beat 4 covers Tarbela, Attock and HH against HV, and beat 5 the 2 July interference, the 23 July peak and the gap", () => {
+    expect(storyBeats.filter((s) => s.beat === 4).map((s) => s.stop)).toEqual(["Tarbela", "Attock", "HH against HV"]);
+    expect(storyBeats.filter((s) => s.beat === 5).map((s) => s.stop)).toEqual(["2 July", "23 July", "The gap"]);
+  });
+
+  test("every step has an id, a title, written text and a place for the map to go", () => {
+    expect(new Set(storyBeats.map((s) => s.id)).size).toBe(storyBeats.length);
+    for (const s of storyBeats) {
+      expect(s.title.length, s.id).toBeGreaterThan(0);
+      expect(s.body.length, s.id).toBeGreaterThan(0);
+      expect(s.body.join(" "), s.id).not.toMatch(/placeholder/i);
+      expect(s.map.date, s.id).toMatch(/^2026-\d\d-\d\d$/);
+      if ("center" in s.camera) {
+        expect(s.camera.zoom, s.id).toBeGreaterThan(5);
+        expect(s.camera.center, s.id).toHaveLength(2);
+      } else {
+        expect(s.camera.fit, s.id).toBe(true);
+      }
+    }
+  });
+
+  test("a hypothesis in the story says may indicate, and no step claims a cause as fact", () => {
+    for (const s of storyBeats) {
+      const text = s.body.join(" ");
+      if (/(rising water|sand or gravel)/.test(text)) expect(text, s.id).toContain("may indicate");
+      expect(text, s.id).not.toMatch(/proves|confirms|caused by|flood probability/i);
+    }
+  });
+
+  test("the hero's finding is a hypothesis and names the provisional status", () => {
+    expect(heroCopy.finding).toContain("may indicate");
+    expect(heroCopy.findingSource).toContain("Provisional");
   });
 });

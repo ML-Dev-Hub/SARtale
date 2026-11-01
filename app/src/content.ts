@@ -56,6 +56,11 @@ export interface SiteCard {
   limits: string;
   /** How to read this site's change scores, where they could mislead. */
   changeNote?: string;
+  /**
+   * What the map's own test says around the site, from DATA_SOURCES.md: the share of 90 m map pixels flagged within
+   * 450 m, and how many pixels that is. Absent where the map flags nothing near the site.
+   */
+  mapCheck?: { radius_m: number; flagged_pct: number; pixels: number };
   evidence: Evidence;
   /** The curve values the observation quotes. A test checks each against sites.json, so copy cannot drift from a rebuild. */
   quotes?: { date: string; pol: "HH" | "HV"; db: string }[];
@@ -66,7 +71,65 @@ export interface SiteStory {
   summary: string;
 }
 
-export const story = storyJson as Record<string, SiteStory>;
+/** One quoted curve value in the hero or a story step. A test checks each against sites.json. */
+export interface StoryQuote {
+  site: string;
+  date: string;
+  pol: "HH" | "HV";
+  db: string;
+}
+
+/** What the map shows at a story step. Dates are ISO dates of built frames. */
+export interface StoryMapState {
+  date: string;
+  pol: "HH" | "HV";
+  /** Show the step map (the main Change view). */
+  change?: boolean;
+  /** Show before and after, with this date on the left. */
+  swipeBefore?: string;
+}
+
+export interface StoryStep {
+  id: string;
+  /** The beat, 1 to 6. Several steps may share one beat. */
+  beat: number;
+  /** The beat's name. */
+  label: string;
+  /** A short name for the step inside a beat that has several. */
+  stop?: string;
+  title: string;
+  body: string[];
+  source?: string;
+  /** A site whose card the step can open. */
+  site?: string;
+  /** Show the observation timeline inside the step. */
+  strip?: boolean;
+  /** "play" adds a button that plays the season. */
+  action?: "play";
+  camera: { fit: true } | { center: [number, number]; zoom: number };
+  map: StoryMapState;
+  quotes?: StoryQuote[];
+}
+
+export interface HeroCopy {
+  title: string;
+  lede: string;
+  /** One finding, in words that keep it a hypothesis. */
+  finding: string;
+  findingSource: string;
+  quotes: StoryQuote[];
+}
+
+const { beats, hero, ...siteStories } = storyJson as unknown as {
+  beats: StoryStep[];
+  hero: HeroCopy;
+} & Record<string, SiteStory>;
+
+/** The six-beat guided story, in order. Every step moves the map. */
+export const storyBeats: StoryStep[] = beats;
+export const heroCopy: HeroCopy = hero;
+/** Copy for single views, by id. */
+export const story: Record<string, SiteStory> = siteStories;
 export const siteCards = sitesJson as Record<string, SiteCard>;
 
 /** The card for a site, or a placeholder card if no copy has been written for it. */
