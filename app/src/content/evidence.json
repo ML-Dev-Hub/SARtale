@@ -9,7 +9,7 @@
   ],
   "cannot": [
     "Say what caused any step. A step is a change in backscatter, and land cover here has not been checked on the ground.",
-    "Tell a real change on plain ground from ordinary farmland variation. Plain ground flags as strongly as the known sites, with no known cause.",
+    "Tell a real change on plain ground from ordinary variation in the ground. Plain ground flags as strongly as the known sites, with no known cause.",
     "Call the rule a blind test. It was set with the known sites in view.",
     "See what happened between passes or inside the data gap.",
     "Warn anyone. This is not an official warning service."

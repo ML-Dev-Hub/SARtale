@@ -112,6 +112,10 @@ describe("How we know", () => {
     expect(fillTokens("{a} and {b}", { a: "1" })).toBe("1 and {b}");
   });
 
+  test("never names a land cover nobody has checked", () => {
+    expect(open(real, realSites).text).not.toMatch(/farm|cropland|wheat|rice|orchard|village|paddy/i);
+  });
+
   test("has no banned claims and never says detect", () => {
     const { text } = open(real, realSites);
     expect(findBannedClaims(text)).toEqual([]);

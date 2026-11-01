@@ -41,7 +41,7 @@
       "label": "The season plays",
       "title": "Nine passes, one dance",
       "body": [
-        "Run the season from 2 July to 18 October. The city stays steady: Peshawar's HH moved by less than 1 dB. Farmland brightens through August and September. The Indus near Attock brightens in the autumn. The reservoir's edge goes dark in August."
+        "Run the season from 2 July to 18 October. The city stays steady: Peshawar's HH moved by less than 1 dB. The plains near Swabi and Mardan brighten through August and September. The Indus near Attock brightens in the autumn. The reservoir's edge goes dark in August."
       ],
       "action": "play",
       "camera": { "fit": true },
@@ -150,7 +150,7 @@
       "title": "What a planner could check next",
       "body": [
         "Radar can say when a place changed between two passes. It cannot say why. A planner could take the river stretches and reservoir shores the Change map marks and check them against gauge records and a visit. Plain ground flags too, so those places need other evidence first.",
-        "Next: NASA's reprocessed files, optical greenness from HLS for the farmland, wind records for Tarbela, and further NISAR passes. This is not a warning service. For warnings, use PMD, NDMA and PDMA."
+        "Next: NASA's reprocessed files, optical greenness from HLS for the plains near Swabi and Mardan, wind records for Tarbela, and further NISAR passes. This is not a warning service. For warnings, use PMD, NDMA and PDMA."
       ],
       "camera": { "fit": true },
       "map": { "date": "2026-10-18", "pol": "HH", "change": true }

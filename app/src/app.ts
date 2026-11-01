@@ -129,11 +129,11 @@ const TEMPLATE = `
           <section class="change-panel" data-role="change-panel" aria-label="Change map key" hidden>
             <h2 class="change-title" data-role="change-title">When the radar stepped</h2>
             <ul class="step-legend" data-role="step-legend" aria-label="Colour by date of the step" hidden></ul>
+            <p class="change-caption" data-role="change-caption"></p>
+            <p class="change-limit" data-role="change-limit"></p>
             <details class="change-about" data-role="change-about" open>
-              <summary>What this map shows, and how far to trust it</summary>
-              <p class="change-caption" data-role="change-caption"></p>
+              <summary>How to read the colours, and how the map is drawn</summary>
               <p class="change-legend" data-role="change-legend"><span class="change-ramp" data-role="change-ramp" aria-hidden="true"></span><span data-role="change-legend-text"></span></p>
-              <p class="change-limit" data-role="change-limit"></p>
               <details class="change-more" data-role="change-more">
                 <summary>How the map is drawn and tested</summary>
                 <p data-role="change-detail"></p>
@@ -482,7 +482,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     stepLegend.hidden = !step;
     changeRamp.hidden = !!step;
     legendText.textContent = step
-      ? "Colour shows the date of the step. Light tint: brighter after. Deep shade: darker after. No colour: no step passed the test. The date slider changes the radar underneath, not these colours."
+      ? "No colour means no step passed the test. The date slider changes the radar underneath, not these colours."
       : `Yellow is a score of ${c.threshold}, red is ${c.scale_max} or more, on one scale for every date. ` +
         `The score counts how many of its usual swings a pixel sits from its usual value, in HH or HV. Below ${c.threshold} shows nothing.`;
     changeLimit.textContent = step ? STEP_LIMIT : CHANGE_LIMIT;

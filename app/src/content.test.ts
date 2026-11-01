@@ -127,6 +127,10 @@ describe("the guided story", () => {
     }
   });
 
+  test("the story and hero never name a land cover nobody has checked", () => {
+    expect(JSON.stringify([storyBeats, heroCopy])).not.toMatch(/farm|cropland|wheat|rice|orchard|village|paddy/i);
+  });
+
   test("the hero's finding is a hypothesis and names the provisional status", () => {
     expect(heroCopy.finding).toContain("may indicate");
     expect(heroCopy.findingSource).toContain("Provisional");

@@ -152,7 +152,7 @@ button { font: inherit; }
   justify-content: center;
   gap: clamp(10px, 2.2vh, 18px);
   min-height: 100%;
-  max-width: 46rem;
+  max-width: 48rem;
   padding: clamp(14px, 3vh, 48px) clamp(18px, 5vw, 72px) 28px;
 }
 .hero-badge {
@@ -169,7 +169,7 @@ button { font: inherit; }
 .hero-badge[data-kind="preview"] { border-color: var(--amber); color: var(--amber); border-radius: 14px; }
 .hero-badge[data-kind="synthetic"] { border-color: var(--amber); background: var(--amber); color: #1a1203; border-radius: 6px; }
 .hero-title {
-  font-size: clamp(2.1rem, min(4.7vw, 7vh), 4.1rem);
+  font-size: clamp(2.1rem, min(4.4vw, 6.2vh), 4.1rem);
   font-weight: 800;
   font-stretch: 75%;
   line-height: 1.02;
@@ -463,13 +463,13 @@ button { font: inherit; }
 .btn.unusual { justify-self: start; min-height: 36px; padding: 0 12px; background: transparent; border-color: var(--line); color: var(--muted); font-weight: 500; font-size: 0.82rem; }
 .btn.unusual[aria-pressed="true"] { color: var(--text); border-color: var(--teal); background: rgb(63 208 196 / 0.12); }
 
-.step-legend { list-style: none; display: grid; gap: 4px; margin: 2px 0; padding: 0; }
-.step-legend li { display: grid; grid-template-columns: 4.4rem minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 8px; padding: 2px 6px 2px 8px; border-radius: 6px; }
+.step-legend { list-style: none; display: grid; gap: 2px; margin: 0; padding: 0; }
+.step-legend li { display: grid; grid-template-columns: 4.4rem minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 8px; padding: 1px 6px 1px 8px; border-radius: 6px; }
 .step-legend .legend-head { color: var(--muted); font-size: 0.75rem; }
 .legend-date { font-weight: 700; font-variant-numeric: tabular-nums; }
 .step-legend li.current { background: var(--ink-3); box-shadow: inset 3px 0 0 var(--text); }
 .step-legend li.current .legend-date { color: #fff; }
-.swatch { display: block; height: 18px; border-radius: 4px; border: 1px solid rgb(0 0 0 / 0.35); }
+.swatch { display: block; height: 15px; border-radius: 4px; border: 1px solid rgb(0 0 0 / 0.35); }
 
 /* ---- Guided story ------------------------------------------------------------------------------------------- */
 .story {
@@ -521,11 +521,11 @@ button { font: inherit; }
 .chip-out { border-style: dashed; border-color: var(--muted); color: var(--muted); }
 .load-state { margin-left: auto; color: var(--muted); font-size: 0.78rem; }
 
-.axis { position: relative; height: 50px; margin: 0 14px; touch-action: none; cursor: pointer; border-radius: 6px; user-select: none; }
+.axis { position: relative; height: 50px; margin: 0 14px 6px; touch-action: none; cursor: pointer; border-radius: 6px; user-select: none; }
 .axis::before { content: ""; position: absolute; left: -14px; right: -14px; top: 19px; border-top: 2px solid var(--line-strong); }
 .axis-layer { position: absolute; inset: 0; }
 .axis input[type="range"] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; pointer-events: none; }
-.axis:focus-within { outline: 3px solid var(--teal); outline-offset: 4px; }
+.axis:focus-within { outline: 3px solid var(--teal); outline-offset: 2px; }
 .axis.locked { opacity: 0.5; cursor: not-allowed; }
 .axis-month { position: absolute; top: 12px; height: 16px; border-left: 1px solid var(--line-strong); font-style: normal; }
 .axis-month::after { content: attr(data-label); position: absolute; top: 20px; left: 4px; color: var(--muted); font-size: 0.72rem; }
@@ -789,7 +789,7 @@ button { font: inherit; }
   .step-legend li { flex: 1 0 auto; grid-template-columns: 1fr 1fr; gap: 2px 4px; padding: 3px 4px; }
   .step-legend .legend-date { grid-column: 1 / -1; font-size: 0.72rem; }
   .swatch { min-width: 22px; height: 14px; }
-  .stage[data-story="on"] .change-title, .stage[data-story="on"] .change-about, .stage[data-story="on"] .limits-box, .stage[data-story="on"] .unusual { display: none; }
+  .stage[data-story="on"] .change-title, .stage[data-story="on"] .change-caption, .stage[data-story="on"] .change-about, .stage[data-story="on"] .limits-box, .stage[data-story="on"] .unusual { display: none; }
   .axis-gap::after { display: block; content: "gap"; padding: 0 3px; font-size: 0.65rem; }
 
   .story { left: 6px; right: 6px; top: auto; bottom: 6px; width: auto; max-height: 44%; }
@@ -815,6 +815,14 @@ button { font: inherit; }
   .story { max-height: 56%; }
 }
 
+/* Short laptop screens: the Change key goes sideways so the caption and the limits stay in view. */
+@media (max-height: 800px) and (min-width: 761px) {
+  .side { max-height: calc(100% - 78px); }
+  .step-legend { display: flex; gap: 4px; }
+  .step-legend .legend-head { display: none; }
+  .step-legend li { flex: 1 1 0; grid-template-columns: 1fr 1fr; gap: 2px 4px; padding: 3px 4px; }
+  .step-legend .legend-date { grid-column: 1 / -1; font-size: 0.78rem; }
+}
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 }
