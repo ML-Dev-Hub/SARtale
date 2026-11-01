@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test } from "vitest";
-import { EVENT_PLACEHOLDER, findBannedClaims, story } from "./content";
+import { findBannedClaims, story } from "./content";
 import { fixtureManifest } from "./fixtures";
 import { createMissedView } from "./missedView";
 import type { Manifest } from "./types";
@@ -69,13 +69,25 @@ describe("missed view", () => {
     expect(legend).toContain("No observation, permanent data gap");
   });
 
-  test("event copy is the labelled placeholder from story.json, with no event claims", () => {
+  test("event copy states only what the data shows, with no event claims", () => {
     const { root, $ } = setup(gapped);
-    expect(EVENT_PLACEHOLDER).toBe("Placeholder text: replace after event timing is checked.");
-    expect(story["what-nisar-missed"].summary).toBe(EVENT_PLACEHOLDER);
-    expect($("event-copy").textContent).toContain(EVENT_PLACEHOLDER);
+    const copy = story["what-nisar-missed"].summary;
+    expect(copy).not.toMatch(/placeholder/i);
+    expect($("event-copy").textContent).toBe(copy);
+    expect(copy).toContain("which dates NISAR imaged");
     expect(findBannedClaims(root.textContent ?? "")).toEqual([]);
-    expect(root.textContent).not.toMatch(/flood|river|rain|monsoon/i);
+    expect(root.textContent).not.toMatch(/flood|river|rain|monsoon|storm/i);
+  });
+
+  test("a flagged date carries its flag in the list of observed dates", () => {
+    const m: Manifest = {
+      ...gapped,
+      dates: gapped.dates.map((d) => (d.date === "2026-07-14" ? { ...d, flag: "Forecast-orbit product; positions may be less precise." } : d)),
+    };
+    const { $ } = setup(m);
+    const items = [...$("passes").querySelectorAll("li")].map((li) => li.textContent);
+    expect(items[1]).toBe("14 Jul 2026. Forecast-orbit product; positions may be less precise.");
+    expect(items[0]).toBe("2 Jul 2026");
   });
 
   test("a manifest with no gap says so and draws no gap", () => {

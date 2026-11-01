@@ -1,6 +1,6 @@
 import { story } from "./content";
 import { coverageSegments, gapSummary, stateLabel, type Segment } from "./gap";
-import { formatDate, orderedDates } from "./timeline";
+import { flagFor, formatDate, orderedDates } from "./timeline";
 import type { Manifest } from "./types";
 
 export interface MissedViewOptions {
@@ -104,7 +104,8 @@ export function createMissedView(root: HTMLElement, opts: MissedViewOptions): Mi
   q("passes").replaceChildren(
     ...dates.map((d) => {
       const li = document.createElement("li");
-      li.textContent = formatDate(d);
+      const flag = flagFor(m, d);
+      li.textContent = flag ? `${formatDate(d)}. ${flag}` : formatDate(d);
       return li;
     }),
   );

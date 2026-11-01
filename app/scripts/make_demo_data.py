@@ -1,8 +1,9 @@
-"""Generate the SYNTHETIC DEMO data set in app/public/data/.
+"""Generate the SYNTHETIC DEMO data set in app/demo-data/ (test fixtures only; never served by the app).
 
 Everything here is a plain flat-colour placeholder with a text label. It is not
 radar, it is not derived from NISAR, and it depicts no real place. It exists so
-the app can be run and tested before real data is available.
+the app's tests have a fixture. To see the demo in the browser, copy this folder over
+app/public/data/ by hand. Never commit it there: the real build ships only real data.
 
 Run from the repo root:  python app/scripts/make_demo_data.py
 """
@@ -11,7 +12,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-OUT = Path(__file__).resolve().parents[1] / "public" / "data"
+OUT = Path(__file__).resolve().parents[1] / "demo-data"
 SIZE = 512
 DATES = ["2026-07-02", "2026-07-14", "2026-07-26", "2026-08-19"]
 # Flat tints: cool for HH, warm for HV, getting lighter with each date so a change is visible.

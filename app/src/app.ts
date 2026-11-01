@@ -1,7 +1,7 @@
 import { setComposite, setFrame, type MapLike } from "./map";
 import { createMissedView } from "./missedView";
 import { createSitesView, type ChartFactory } from "./sitesView";
-import { formatDate, maturityBanner, orderedDates } from "./timeline";
+import { flagFor, formatDate, maturityBanner, orderedDates } from "./timeline";
 import type { Manifest, Pol, Site } from "./types";
 
 /** What the app needs from the two stacked maps (the "after" map underneath, the "before" map clipped on top). */
@@ -47,6 +47,8 @@ const TEMPLATE = `
       </div>
       <p class="stamp stamp-before" data-role="stamp-before" hidden></p>
       <p class="stamp stamp-after" data-role="stamp-after"></p>
+      <p class="flag flag-before" data-role="flag-before" role="note" hidden></p>
+      <p class="flag flag-after" data-role="flag-after" role="note" hidden></p>
       <div class="notice" data-role="notice" role="alert" hidden>
         <span data-role="notice-text"></span>
         <button type="button" class="btn small" data-role="retry">Try again</button>
@@ -90,6 +92,7 @@ const TEMPLATE = `
       <button type="button" class="btn toggle composite" data-role="composite-toggle" aria-pressed="false">Seasonal composite</button>
     </div>
     <p class="hint" data-role="hint" hidden></p>
+    <p class="limits" data-role="limits" hidden></p>
   </section>
 </div>`;
 
@@ -129,6 +132,9 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const beforeSelect = q<HTMLSelectElement>("before-select");
   const compositeToggle = q<HTMLButtonElement>("composite-toggle");
   const hint = q("hint");
+  const limitsEl = q("limits");
+  const flagBefore = q("flag-before");
+  const flagAfter = q("flag-after");
   const dockEl = q("dock");
   const sitesViewEl = q("sites-view");
   const sitesMaturity = q("sites-maturity");
@@ -155,7 +161,16 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   sitesMaturity.dataset.kind = banner.kind;
   missedMaturity.textContent = banner.text;
   missedMaturity.dataset.kind = banner.kind;
-  const maturityTag = banner.kind === "synthetic" ? "synthetic demo" : "provisional data";
+  const maturityTag = { synthetic: "synthetic demo", preview: "real NISAR preview", provisional: "provisional data" }[banner.kind];
+  const isPreview = banner.kind === "preview";
+  // Limits of the preview images, shown on The Dance. Not shown for calibrated or synthetic data.
+  limitsEl.hidden = !isPreview;
+  if (isPreview) {
+    const size = m.pixel_m ? `about ${m.pixel_m} m` : "coarse";
+    limitsEl.textContent =
+      `Limits: each preview pixel covers ${size} and its brightness is scaled for display, so brightness cannot be compared as a measurement. ` +
+      "Placement uses the published footprint and is good to roughly 2 km.";
+  }
 
   // Views: The Dance (map), Site Stories (curves and cards), What NISAR Missed (timeline and data gap).
   const sitesView = createSitesView(q("sites-root"), { sites: opts.sites ?? null, manifest: m, createChart: opts.createChart });
@@ -199,6 +214,16 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     noticeText.textContent = message ?? "";
   }
 
+  function compositeHint(): string {
+    const off = "Switch the composite off to use the date controls.";
+    if (isPreview) {
+      const [r, g, b] = (m.composite_dates ?? []).map(formatDate);
+      const which = r && g && b ? `red is ${r}, green is ${g}, blue is ${b} (HH)` : "red for early dates, green for the middle, blue for late (HH)";
+      return `Composite colours: ${which}. Colour shows a difference in display brightness between dates, not a measurement and not proven physical change. ${off}`;
+    }
+    return `Composite colours: red for early dates, green for the middle, blue for late. Colour shows a difference in backscatter, not proven physical change. ${off}`;
+  }
+
   function updateLabels(): void {
     dateOut.textContent = formatDate(dates[state.i]);
     slider.setAttribute("aria-valuetext", formatDate(dates[state.i]));
@@ -207,6 +232,12 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     stampAfter.textContent = state.composite ? polText : `${formatDate(dates[state.i])}, ${state.pol}`;
     stampBefore.textContent = `${formatDate(dates[state.beforeI])}, ${state.pol}`;
     stampBefore.hidden = !(state.swipe && !state.composite);
+    const flagA = state.composite ? undefined : flagFor(m, dates[state.i]);
+    flagAfter.textContent = flagA ?? "";
+    flagAfter.hidden = !flagA;
+    const flagB = state.swipe && !state.composite ? flagFor(m, dates[state.beforeI]) : undefined;
+    flagBefore.textContent = flagB ?? "";
+    flagBefore.hidden = !flagB;
     playBtn.textContent = state.playing ? "Pause" : "Play";
     playBtn.setAttribute("aria-pressed", String(state.playing));
     swipeToggle.setAttribute("aria-pressed", String(state.swipe));
@@ -220,9 +251,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     swipeToggle.disabled = locked || dates.length < 2;
     polSet.disabled = locked;
     hint.hidden = !locked;
-    hint.textContent = locked
-      ? "Composite colours: red for early dates, green for the middle, blue for late. Colour shows a difference in backscatter, not proven physical change. Switch the composite off to use the date controls."
-      : "";
+    hint.textContent = locked ? compositeHint() : "";
     stageEl.style.setProperty("--swipe", `${state.fraction * 100}%`);
     beforeEl.style.clipPath = `inset(0 ${100 - state.fraction * 100}% 0 0)`;
     swipeEl.setAttribute("aria-valuenow", String(Math.round(state.fraction * 100)));

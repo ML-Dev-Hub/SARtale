@@ -83,6 +83,21 @@ body { background: var(--ink-0); font-size: 1rem; line-height: 1.45; }
   color: var(--teal);
   font-size: 0.85rem;
 }
+/* Real NASA browse previews: shown as real, but marked uncalibrated in amber so nobody reads them as measurements. */
+.maturity[data-kind="preview"] {
+  position: absolute;
+  z-index: 5;
+  top: 10px;
+  left: 10px;
+  max-width: calc(100% - 20px);
+  padding: 5px 12px;
+  border: 1px solid var(--amber);
+  border-radius: 14px;
+  background: rgb(8 16 21 / 0.88);
+  color: var(--amber);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
 .maturity[data-kind="synthetic"] {
   flex: none;
   padding: 9px 12px;
@@ -109,6 +124,24 @@ body { background: var(--ink-0); font-size: 1rem; line-height: 1.45; }
 }
 .stamp-before { left: 10px; }
 .stamp-after { right: 10px; }
+/* A caution for one date, sitting just above that date's stamp. Text only; the colour is not the message. */
+.flag {
+  position: absolute;
+  z-index: 4;
+  bottom: 44px;
+  margin: 0;
+  max-width: min(46%, 34rem);
+  padding: 4px 10px;
+  border: 1px solid var(--amber);
+  border-radius: 6px;
+  background: rgb(8 16 21 / 0.9);
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.3;
+  pointer-events: none;
+}
+.flag-before { left: 10px; }
+.flag-after { right: 10px; }
 
 /* Before/after divider: a teal line with a round grip, as in the storyboard. */
 .swipe {
@@ -284,6 +317,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(
   font: inherit;
 }
 .hint { margin: 0; max-width: 75ch; color: var(--muted); font-size: 0.88rem; }
+.limits { margin: 0; max-width: 90ch; color: var(--muted); font-size: 0.82rem; }
 
 .place {
   padding: 2px 6px;
@@ -305,9 +339,11 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(
   border-radius: var(--radius);
   background: var(--ink-1);
 }
-.sites-view .maturity[data-kind="provisional"] { position: static; align-self: flex-start; margin: 10px; }
+.sites-view .maturity[data-kind="provisional"],
+.sites-view .maturity[data-kind="preview"] { position: static; align-self: flex-start; margin: 10px; }
 .sites-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px; }
-.sites-empty { margin: 0; padding: 24px 8px; text-align: center; color: var(--muted); font-size: 1.1rem; }
+.sites-empty { margin: 0; padding: 24px 8px 6px; text-align: center; color: var(--muted); font-size: 1.1rem; }
+.sites-why { margin: 0 auto; max-width: 52ch; padding: 0 8px 24px; text-align: center; color: var(--muted); font-size: 0.95rem; }
 .sites-body { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
 .site-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .site-item {
@@ -402,7 +438,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(
 .runs li[data-kind="gap"] { border-left: 4px solid var(--amber); font-weight: 700; }
 .runs li[data-kind="between"] { border-left-style: dotted; color: var(--muted); }
 .passes { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
-.passes li { padding: 3px 10px; border: 1px solid var(--teal-dim); border-radius: 999px; }
+.passes li { max-width: 100%; padding: 3px 10px; border: 1px solid var(--teal-dim); border-radius: 14px; }
 .event-copy { color: var(--muted); font-style: italic; }
 
 .startup-error { margin: 24px; padding: 14px; border: 1px solid var(--amber); border-radius: var(--radius); color: #ffe2b0; background: var(--ink-1); }

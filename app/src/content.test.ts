@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { BADGE_LABELS, cardFor, EVENT_PLACEHOLDER, EVIDENCE_LABELS, findBannedClaims, PLACEHOLDER, siteCards, story } from "./content";
+import { BADGE_LABELS, cardFor, EVIDENCE_LABELS, findBannedClaims, PLACEHOLDER, siteCards, story } from "./content";
 
 describe("findBannedClaims", () => {
   test("catches banned wording in any case", () => {
@@ -48,7 +48,10 @@ describe("app copy", () => {
   });
 
   test("placeholder copy is labelled as placeholder", () => {
-    for (const s of Object.values(story)) expect([PLACEHOLDER, EVENT_PLACEHOLDER].some((p) => s.summary.startsWith(p))).toBe(true);
+    for (const [id, s] of Object.entries(story)) {
+      if (id === "what-nisar-missed") expect(s.summary).not.toMatch(/placeholder/i); // written from the data, not a placeholder
+      else expect(s.summary.startsWith(PLACEHOLDER)).toBe(true);
+    }
     for (const c of Object.values(siteCards)) expect(c.observation.startsWith(PLACEHOLDER)).toBe(true);
   });
 

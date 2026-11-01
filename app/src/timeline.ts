@@ -27,13 +27,23 @@ export function orderedDates(m: Manifest): string[] {
   return m.dates.map((d) => d.date).sort();
 }
 
-export type MaturityKind = "provisional" | "synthetic";
+export type MaturityKind = "provisional" | "preview" | "synthetic";
 
-/** The label that must always be visible on the map. Anything but "Provisional" is shown as not NISAR data. */
+/**
+ * The label that must always be visible on the map. Only the exact strings "Provisional" and
+ * "Provisional preview" are shown as NISAR data. Anything else fails safe to the synthetic banner.
+ */
 export function maturityBanner(m: Manifest): { kind: MaturityKind; text: string } {
-  return m.maturity === "Provisional"
-    ? { kind: "provisional", text: "Provisional NISAR data" }
-    : { kind: "synthetic", text: "SYNTHETIC DEMO: NOT NISAR DATA" };
+  if (m.maturity === "Provisional") return { kind: "provisional", text: "Provisional NISAR data" };
+  if (m.maturity === "Provisional preview") {
+    return { kind: "preview", text: "REAL NISAR PREVIEW: LOW-RESOLUTION BROWSE IMAGES, NOT CALIBRATED" };
+  }
+  return { kind: "synthetic", text: "SYNTHETIC DEMO: NOT NISAR DATA" };
+}
+
+/** The flag for a date, or undefined. */
+export function flagFor(m: Manifest, date: string): string | undefined {
+  return m.dates.find((d) => d.date === date)?.flag || undefined;
 }
 
 /** "2026-07-02" to "2 Jul 2026", without time zone shifts. */

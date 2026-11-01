@@ -14,3 +14,22 @@ export const fixtureManifest: Manifest = {
   composite: "frames/composite_HH.webp",
   stretch_db: { HH: [0, 1], HV: [0, 1] },
 };
+
+export const INTERFERENCE_FLAG =
+  "Possible radio interference over the western area (unconfirmed). Do not read this as surface change.";
+export const FORECAST_FLAG = "Forecast-orbit product; positions may be less precise.";
+
+/** Test fixture only: the shape of the real browse-preview manifest, with the two flagged dates. */
+export const previewManifest: Manifest = {
+  ...fixtureManifest,
+  stack: "fixture-preview",
+  maturity: "Provisional preview",
+  dates: [
+    { ...fixtureManifest.dates[0], flag: INTERFERENCE_FLAG },
+    { ...fixtureManifest.dates[1], flag: FORECAST_FLAG },
+    fixtureManifest.dates[2],
+  ],
+  composite_dates: ["2026-07-26", "2026-09-12", "2026-10-18"],
+  stretch_db: null,
+  pixel_m: 174,
+};

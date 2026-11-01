@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import demoManifest from "../public/data/manifest.json";
-import demoSitesJson from "../public/data/sites.json";
+import demoManifest from "../demo-data/manifest.json";
+import demoSitesJson from "../demo-data/sites.json";
 import { findBannedClaims } from "./content";
 import { loadSites, toChartSeries } from "./sites";
 import type { Site } from "./types";
@@ -67,7 +67,7 @@ describe("loadSites", () => {
   });
 });
 
-describe("demo sites.json", () => {
+describe("demo fixture sites.json (not served)", () => {
   test("covers exactly the manifest dates, has a gap, and uses invented names", () => {
     const manifestDates = demoManifest.dates.map((d) => d.date);
     const demo = demoSitesJson as Site[];

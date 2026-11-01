@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { mountApp, type MapHost } from "./app";
 import { findBannedClaims } from "./content";
-import { fixtureManifest } from "./fixtures";
+import { FORECAST_FLAG, fixtureManifest, INTERFERENCE_FLAG, previewManifest } from "./fixtures";
 import type { MapLike } from "./map";
 import type { Site } from "./types";
 
@@ -321,5 +321,129 @@ describe("What NISAR Missed view", () => {
     $("play").click();
     $("view-missed").click();
     expect($("play").textContent).toBe("Play");
+  });
+});
+
+describe("real preview manifest", () => {
+  const PREVIEW_TEXT = "REAL NISAR PREVIEW: LOW-RESOLUTION BROWSE IMAGES, NOT CALIBRATED";
+  const go = (slider: HTMLInputElement, i: number) => {
+    slider.value = String(i);
+    slider.dispatchEvent(new Event("input"));
+  };
+
+  test("the banner is the preview wording on all three views", async () => {
+    const { app, $ } = setup(previewManifest);
+    await app.settled();
+    expect($("maturity").textContent).toBe(PREVIEW_TEXT);
+    expect($("maturity").dataset.kind).toBe("preview");
+    expect($("sites-maturity").textContent).toBe(PREVIEW_TEXT);
+    expect($("missed-maturity").textContent).toBe(PREVIEW_TEXT);
+    expect($("missed-maturity").dataset.kind).toBe("preview");
+    expect(document.title).toContain("real NISAR preview");
+  });
+
+  test("a flagged date shows its flag in text next to the date stamp", async () => {
+    const { app, $ } = setup(previewManifest);
+    await app.settled();
+    expect($("flag-after").hidden).toBe(false);
+    expect($("flag-after").textContent).toBe(INTERFERENCE_FLAG);
+    go($("slider"), 1);
+    await app.settled();
+    expect($("flag-after").textContent).toBe(FORECAST_FLAG);
+    expect($("stamp-after").textContent).toBe("14 Jul 2026, HH");
+  });
+
+  test("an unflagged date shows no flag", async () => {
+    const { app, $ } = setup(previewManifest);
+    go($("slider"), 2);
+    await app.settled();
+    expect($("flag-after").hidden).toBe(true);
+    expect($("flag-after").textContent).toBe("");
+  });
+
+  test("the before map's date carries its own flag", async () => {
+    const { app, $ } = setup(previewManifest);
+    go($("slider"), 2);
+    $("swipe-toggle").click();
+    await app.settled();
+    expect($("flag-before").hidden).toBe(false);
+    expect($("flag-before").textContent).toBe(INTERFERENCE_FLAG);
+    const pick = $<HTMLSelectElement>("before-select");
+    pick.value = "2";
+    pick.dispatchEvent(new Event("change"));
+    await app.settled();
+    expect($("flag-before").hidden).toBe(true);
+  });
+
+  test("the composite view shows no per-date flag and says which dates it uses", async () => {
+    const { app, $ } = setup(previewManifest);
+    await app.settled();
+    $("composite-toggle").click();
+    await app.settled();
+    expect($("flag-after").hidden).toBe(true);
+    expect($("hint").textContent).toContain("26 Jul 2026");
+    expect($("hint").textContent).toContain("12 Sep 2026");
+    expect($("hint").textContent).toContain("18 Oct 2026");
+    expect($("hint").textContent).not.toMatch(/backscatter/i);
+  });
+
+  test("the Dance view states the pixel size and that brightness is not a measurement", async () => {
+    const { app, $ } = setup(previewManifest);
+    await app.settled();
+    expect($("limits").hidden).toBe(false);
+    const t = $("limits").textContent ?? "";
+    expect(t).toContain("174 m");
+    expect(t).toContain("scaled for display");
+    expect(t).toContain("cannot be compared as a measurement");
+  });
+
+  test("the limits line and the flags do not appear for non-preview data", async () => {
+    const { app, $ } = setup(fixtureManifest);
+    await app.settled();
+    expect($("limits").hidden).toBe(true);
+    expect($("flag-after").hidden).toBe(true);
+  });
+
+  /** Text a person can see: skips anything inside an element with the hidden attribute. */
+  function visibleText(el: Element): string {
+    if ((el as HTMLElement).hidden) return "";
+    return [...el.childNodes].map((n) => (n.nodeType === 3 ? n.textContent ?? "" : n.nodeType === 1 ? visibleText(n as Element) : "")).join(" ");
+  }
+
+  test("the visible text of every preview view has no banned claims and never says dB", async () => {
+    const { app, root, $ } = setup(previewManifest, false, { sites: null });
+    await app.settled();
+    for (const view of ["view-dance", "view-sites", "view-missed"]) {
+      $(view).click();
+      const text = visibleText(root);
+      expect(text.length).toBeGreaterThan(100);
+      expect(findBannedClaims(text)).toEqual([]);
+      expect(text).not.toMatch(/\bdB\b|decibel/i);
+    }
+  });
+
+  test("Site Stories with no sites explains why in one sentence and shows no card", async () => {
+    const { app, root, $ } = setup(previewManifest, false, { sites: null });
+    await app.settled();
+    $("view-sites").click();
+    expect($("empty").textContent).toBe("No site curves yet");
+    expect($("empty-why").textContent).toBe("Curves need calibrated data, which needs an Earthdata login.");
+    expect($("empty-why").hidden).toBe(false);
+    expect($("body").hidden).toBe(true);
+    expect($("card").hidden).toBe(true);
+    expect(root.querySelectorAll("[data-site]").length).toBe(0);
+    expect(root.textContent).not.toMatch(/Placeholder|Demo site/);
+  });
+
+  test("What NISAR Missed lists the manifest dates and carries the flags in text", async () => {
+    const { app, root, $ } = setup(previewManifest);
+    await app.settled();
+    $("view-missed").click();
+    const items = [...root.querySelectorAll('[data-role="passes"] li')].map((li) => li.textContent ?? "");
+    expect(items).toHaveLength(3);
+    expect(items[0]).toContain("2 Jul 2026");
+    expect(items[0]).toContain(INTERFERENCE_FLAG);
+    expect(items[1]).toContain(FORECAST_FLAG);
+    expect(items[2]).toBe("26 Jul 2026");
   });
 });
