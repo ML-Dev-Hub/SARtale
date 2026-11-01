@@ -239,6 +239,11 @@ def test_manifest_is_a_provisional_preview_with_no_stretch(tmp_path):
     assert json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8")) == m
 
 
+def test_preview_manifest_lists_every_date_as_an_acquisition(tmp_path):
+    m = build_preview_manifest(_info(ALL_DATES), _granules(ALL_DATES), 174, tmp_path)
+    assert m["acquisitions"] == ALL_DATES
+
+
 def test_manifest_carries_the_real_granule_ids(tmp_path):
     granules = _granules(ALL_DATES)
     m = build_preview_manifest(_info(ALL_DATES), granules, 174, tmp_path)

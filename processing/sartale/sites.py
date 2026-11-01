@@ -9,12 +9,13 @@ import numpy as np
 from pyproj import Transformer
 
 from sartale import config
-from sartale.gcov import Layer, read_layer
+from sartale.gcov import Layer, check_identity, read_layer
 from sartale.products import POL_TERMS, assert_same_grid, multilook_layer
 from sartale.radiometry import to_db
 
 RADIUS_M = 150.0
 SITE_KEYS = ("id", "name", "lon", "lat", "role")
+STAMP_KEYS = ("stack", "crid")  # which manifest these curves belong to
 
 
 def _step(coords: np.ndarray) -> float:
@@ -87,18 +88,28 @@ def _round(v: float | None) -> float | None:
 
 def build_sites(gcov_dir: Path, manifest_path: Path, sites_in: list[dict],
                 radius_m: float = RADIUS_M) -> list[dict]:
-    """Sample every site on every manifest date, HH and HV, on the multilooked build grid."""
+    """Sample every site on every manifest date, HH and HV, on the multilooked build grid.
+
+    Each site is stamped with the manifest's `stack` and `crid`, so the app can refuse curves that
+    belong to another build.
+    """
     for i, s in enumerate(sites_in):
         missing = [k for k in SITE_KEYS if k not in s]
         if missing:
             raise ValueError(f"Site #{i} is missing {', '.join(missing)}")
     manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    missing = [k for k in STAMP_KEYS if not manifest.get(k)]
+    if missing:
+        raise ValueError(f"The manifest has no {', '.join(missing)}, so the sites cannot be stamped")
+    stamp = {k: manifest[k] for k in STAMP_KEYS}
     entries = manifest["dates"]
     dates = [e["date"] for e in entries]
     files = [Path(gcov_dir) / f"{e['granule']}.h5" for e in entries]
     for d, f in zip(dates, files):
         if not f.is_file():
             raise FileNotFoundError(f"No GCOV file for {d}: expected {f}")
+    for e, f in zip(entries, files):
+        check_identity(f, e["granule"], config.CRID)
 
     stacks: dict[str, np.ndarray] = {}
     grid: Layer | None = None
@@ -116,5 +127,5 @@ def build_sites(gcov_dir: Path, manifest_path: Path, sites_in: list[dict],
         series = [{"date": d, "hh_db": _round(a), "hv_db": _round(b),
                    "valid_fraction": round(min(fa, fb), 3)}
                   for d, a, b, fa, fb in zip(dates, hh, hv, hh_frac, hv_frac)]
-        sites.append({**{k: s[k] for k in SITE_KEYS}, "series": series})
+        sites.append({**{k: s[k] for k in SITE_KEYS}, **stamp, "series": series})
     return sites

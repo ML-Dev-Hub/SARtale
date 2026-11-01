@@ -123,10 +123,11 @@ def _app_manifest(tmp_path):
     entries = []
     for i, d in enumerate(DATES):
         name = NAME_FMT.format(cycle=10 + i, ymd=d.replace("-", ""))
-        write_gcov(gdir / f"{name}.h5", seed=i, scale=10 ** (-i / 2))
+        write_gcov(gdir / f"{name}.h5", seed=i, scale=10 ** (-i / 2),
+                   granule_id=name, release_id="P05023")
         entries.append({"date": d, "granule": name, "frames": {}})
     mpath = tmp_path / "manifest.json"
-    mpath.write_text(json.dumps({"dates": entries}), encoding="utf-8")
+    mpath.write_text(json.dumps({"stack": "084_A_019", "crid": "P05023", "dates": entries}), encoding="utf-8")
     return gdir, mpath
 
 
@@ -144,7 +145,8 @@ def test_sites_command_writes_contract(tmp_path):
     sites = json.loads(out.read_text(encoding="utf-8"))
 
     assert [s["id"] for s in sites] == ["s1", "ctl"]
-    assert list(sites[0]) == ["id", "name", "lon", "lat", "role", "series"]
+    assert list(sites[0]) == ["id", "name", "lon", "lat", "role", "stack", "crid", "series"]
+    assert all(s["stack"] == "084_A_019" and s["crid"] == "P05023" for s in sites)
     assert [p["date"] for p in sites[0]["series"]] == DATES
     for s in sites:
         for p in s["series"]:
@@ -172,5 +174,31 @@ def test_sites_command_rejects_incomplete_site(tmp_path):
     sites_in = tmp_path / "sites_in.json"
     sites_in.write_text(json.dumps([{"id": "x", "name": "X", "lon": 71.7}]), encoding="utf-8")
     with pytest.raises(ValueError, match="lat"):
+        main(["sites", "--gcov-dir", str(gdir), "--manifest", str(mpath),
+              "--sites-in", str(sites_in), "--out", str(tmp_path / "o.json")])
+
+
+def test_sites_command_refuses_a_manifest_without_provenance(tmp_path):
+    gdir, mpath = _app_manifest(tmp_path)
+    doc = json.loads(mpath.read_text(encoding="utf-8"))
+    del doc["stack"], doc["crid"]
+    mpath.write_text(json.dumps(doc), encoding="utf-8")
+    sites_in = tmp_path / "sites_in.json"
+    sites_in.write_text(json.dumps([{"id": "x", "name": "X", "lon": 71.7, "lat": 34.1, "role": "river"}]),
+                        encoding="utf-8")
+    with pytest.raises(ValueError, match="stack, crid"):
+        main(["sites", "--gcov-dir", str(gdir), "--manifest", str(mpath),
+              "--sites-in", str(sites_in), "--out", str(tmp_path / "o.json")])
+
+
+def test_sites_command_refuses_a_renamed_file(tmp_path):
+    gdir, mpath = _app_manifest(tmp_path)
+    entries = json.loads(mpath.read_text(encoding="utf-8"))["dates"]
+    name = entries[0]["granule"]
+    write_gcov(gdir / f"{name}.h5", granule_id=entries[1]["granule"], release_id="P05023")
+    sites_in = tmp_path / "sites_in.json"
+    sites_in.write_text(json.dumps([{"id": "x", "name": "X", "lon": CENTER_LONLAT[0], "lat": CENTER_LONLAT[1],
+                                     "role": "river"}]), encoding="utf-8")
+    with pytest.raises(ValueError, match="manifest expects"):
         main(["sites", "--gcov-dir", str(gdir), "--manifest", str(mpath),
               "--sites-in", str(sites_in), "--out", str(tmp_path / "o.json")])

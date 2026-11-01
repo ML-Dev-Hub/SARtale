@@ -3,7 +3,6 @@
 Order of operations everywhere: mask, average in linear power, convert to dB.
 """
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -16,13 +15,15 @@ from rasterio.transform import Affine, array_bounds
 from rasterio.warp import Resampling, calculate_default_transform, reproject
 
 from sartale import config
-from sartale.gcov import Layer, read_layer
+from sartale.catalog import granule_for_date, utc_date
+from sartale.gcov import Layer, check_identity, mask_histogram, read_layer
 from sartale.radiometry import multilook_linear, to_db
 
 MULTILOOK = 3  # 10 m -> 30 m
 MATURITY = "Provisional"
 POL_TERMS = {"HH": "HHHH", "HV": "HVHV"}
 WEBP_QUALITY = 80
+INTERFERENCE_DATE = "2026-07-02"
 
 
 # --- grids ----------------------------------------------------------------------
@@ -191,27 +192,43 @@ def bounds_3857_to_lonlat(bounds: tuple[float, float, float, float]) -> list[flo
 
 # --- build ----------------------------------------------------------------------
 
-def _granule_for_date(granules: list[dict], date: str) -> dict:
-    matches = [
-        g for g in granules
-        if datetime.fromisoformat(g["start"]).astimezone(timezone.utc).date().isoformat() == date
-    ]
-    if not matches:
-        raise ValueError(f"Date {date} is not in the search manifest")
-    if len(matches) > 1:
-        raise ValueError(f"Date {date} matches {len(matches)} granules in the search manifest")
-    return matches[0]
+def _warn_about(date: str, g: dict) -> None:
+    """Print a warning for dates that need a caution. Never blocks the build."""
+    if g.get("accuracy") == "F":
+        print(f"WARNING: {date} is a forecast-orbit product (accuracy F); positions may be less precise.")
+    if date == INTERFERENCE_DATE:
+        print(f"WARNING: {date} may show radio interference over the western area (unconfirmed); "
+              "check it by eye and do not read it as surface change.")
+
+
+def _print_mask_histogram(date: str, layer: Layer) -> None:
+    hist = mask_histogram(layer.mask)
+    shown = ", ".join(f"{v}: {n}" for v, n in hist.items()) if hist else "no mask in file"
+    print(f"mask {date}: {shown}")
+
+
+def _remove_unlisted_frames(frames_dir: Path, listed: set[str]) -> None:
+    """Delete files in frames/ that the new manifest does not name (left by an earlier build or preview)."""
+    if not frames_dir.is_dir():
+        return
+    for f in frames_dir.iterdir():
+        if f.is_file() and f"frames/{f.name}" not in listed:
+            f.unlink()
 
 
 def build_products(gcov_dir: Path, dates: list[str], manifest_in: Path,
                    out_dir: Path, cog_dir: Path) -> dict:
-    """Read one GCOV file per date, write overlays, COGs and manifest.json; return the manifest."""
+    """Read one GCOV file per date, write overlays, COGs and manifest.json; return the manifest.
+
+    Also removes any sites.json in out_dir (curves from another build must never sit beside this
+    manifest) and any frame the new manifest does not list.
+    """
     gcov_dir, out_dir, cog_dir = Path(gcov_dir), Path(out_dir), Path(cog_dir)
     dates = sorted(dates)
     if len(set(dates)) != len(dates):
         raise ValueError("Duplicate dates")
     search = json.loads(Path(manifest_in).read_text(encoding="utf-8"))
-    granules = [_granule_for_date(search["granules"], d) for d in dates]
+    granules = [granule_for_date(search["granules"], d) for d in dates]
     for d, g in zip(dates, granules):
         if g["crid"] != config.CRID:
             raise ValueError(f"Granule for {d} has CRID {g['crid']}, expected {config.CRID}")
@@ -219,17 +236,26 @@ def build_products(gcov_dir: Path, dates: list[str], manifest_in: Path,
     for d, f in zip(dates, files):
         if not f.is_file():
             raise FileNotFoundError(f"No GCOV file for {d}: expected {f}")
+    for d, g, f in zip(dates, granules, files):
+        check_identity(f, g["name"], config.CRID)
+        _warn_about(d, g)
+    acquisitions = sorted({utc_date(g) for g in search["granules"]})
 
     db: dict[str, list[np.ndarray]] = {}
     grid: Layer | None = None
     for pol, term in POL_TERMS.items():
         raw = [read_layer(f, term, config.BBOX) for f in files]
         assert_same_grid(raw)
+        if pol == next(iter(POL_TERMS)):
+            for d, layer in zip(dates, raw):
+                _print_mask_histogram(d, layer)
         looked = [multilook_layer(layer) for layer in raw]
         grid = looked[0]
         db[pol] = [to_db(layer.power) for layer in looked]
     stretch = {pol: shared_stretch(np.stack(arrays)) for pol, arrays in db.items()}
 
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "sites.json").unlink(missing_ok=True)
     frames = out_dir / "frames"
     all_bounds = set()
     entries = []
@@ -243,6 +269,7 @@ def build_products(gcov_dir: Path, dates: list[str], manifest_in: Path,
         entries.append({"date": d, "granule": g["name"], "frames": rel})
 
     e, m, l = composite_indices(len(dates))
+    composite_dates = [dates[e], dates[m], dates[l]]
     rgba = seasonal_composite(db["HH"][e], db["HH"][m], db["HH"][l], stretch["HH"])
     all_bounds.add(write_webp_3857(rgba, grid, frames / "composite_HH.webp"))
     if len(all_bounds) != 1:
@@ -254,10 +281,12 @@ def build_products(gcov_dir: Path, dates: list[str], manifest_in: Path,
         "maturity": MATURITY,
         "bounds": bounds_3857_to_lonlat(all_bounds.pop()),
         "dates": entries,
+        "acquisitions": acquisitions,
         "composite": "frames/composite_HH.webp",
+        "composite_dates": composite_dates,
         "stretch_db": {pol: [round(v, 3) for v in s] for pol, s in stretch.items()},
         "gap": {"start": config.GAP_START, "end": config.GAP_END},
     }
-    out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    _remove_unlisted_frames(frames, {*(p for e_ in entries for p in e_["frames"].values()), manifest["composite"]})
     return manifest

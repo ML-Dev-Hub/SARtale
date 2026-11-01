@@ -27,7 +27,7 @@ from sartale.run_pipeline import main
 
 NAME_FMT = ("NISAR_L2_PR_GCOV_{cycle:03d}_084_A_019_4005_DHDH_A_{ymd}T220325_{ymd}T220400_"
             "P05023_N_F_J_001")
-DATES = ["2026-07-02", "2026-08-19", "2026-09-12", "2026-10-18"]
+DATES = ["2026-07-26", "2026-08-19", "2026-09-12", "2026-10-18"]
 
 
 def _layer(n=12, descending_y=False):
@@ -194,19 +194,22 @@ def test_write_webp_3857_accepts_rgba(tmp_path):
 
 # --- build end to end ---------------------------------------------------------
 
-def _make_stack(tmp_path, dates=DATES, skip=None, shift_last=False):
+def _make_stack(tmp_path, dates=DATES, skip=None, shift_last=False, extra_dates=(), accuracy="N"):
+    """Files for `dates`; the search manifest also lists `extra_dates` that have no file (not built)."""
     gdir = tmp_path / "gcov"
     gdir.mkdir()
     granules = []
-    for i, d in enumerate(dates):
+    for i, d in enumerate(sorted([*dates, *extra_dates])):
         ymd = d.replace("-", "")
         name = NAME_FMT.format(cycle=10 + i, ymd=ymd)
+        acc = accuracy if d == dates[0] else "N"
         granules.append({"name": name, "start": f"{d}T22:03:25+00:00", "crid": "P05023",
-                         "accuracy": "N", "coverage": "F", "cycle": 10 + i})
-        if name == skip:
+                         "accuracy": acc, "coverage": "F", "cycle": 10 + i})
+        if name == skip or d in extra_dates:
             continue
-        dx = 100.0 if shift_last and i == len(dates) - 1 else 0.0
-        write_gcov(gdir / f"{name}.h5", seed=i, scale=10 ** (-i / 2), dx=dx)
+        dx = 100.0 if shift_last and d == dates[-1] else 0.0
+        write_gcov(gdir / f"{name}.h5", seed=i, scale=10 ** (-i / 2), dx=dx,
+                   granule_id=name, release_id="P05023")
     mpath = tmp_path / "search.json"
     mpath.write_text(json.dumps({"searched": "x", "granules": granules}), encoding="utf-8")
     return gdir, mpath, granules
@@ -224,8 +227,10 @@ def test_build_writes_manifest_frames_and_cogs(tmp_path):
     out, cog = _build(tmp_path, gdir, mpath)
     m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
 
-    assert list(m) == ["stack", "crid", "maturity", "bounds", "dates", "composite",
-                       "stretch_db", "gap"]
+    assert list(m) == ["stack", "crid", "maturity", "bounds", "dates", "acquisitions", "composite",
+                       "composite_dates", "stretch_db", "gap"]
+    assert m["acquisitions"] == DATES
+    assert m["composite_dates"] == [DATES[0], DATES[2], DATES[3]]
     assert m["stack"] == config.STACK_ID and m["crid"] == config.CRID
     assert m["maturity"] == "Provisional"
     assert m["gap"] == {"start": config.GAP_START, "end": config.GAP_END}
@@ -274,3 +279,80 @@ def test_build_rejects_dates_on_different_grids(tmp_path):
     gdir, mpath, _ = _make_stack(tmp_path, shift_last=True)
     with pytest.raises(ValueError, match="grid"):
         _build(tmp_path, gdir, mpath)
+
+
+def test_build_lists_every_searched_date_as_an_acquisition_even_when_not_built(tmp_path):
+    extra = ["2026-08-31", "2026-09-24", "2026-10-06"]
+    gdir, mpath, _ = _make_stack(tmp_path, extra_dates=extra)
+    out, _ = _build(tmp_path, gdir, mpath)
+    m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    assert [d["date"] for d in m["dates"]] == DATES
+    assert m["acquisitions"] == sorted([*DATES, *extra])
+
+
+def test_build_deletes_a_stale_sites_json(tmp_path):
+    gdir, mpath, _ = _make_stack(tmp_path)
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "sites.json").write_text("[]", encoding="utf-8")
+    _build(tmp_path, gdir, mpath)
+    assert not (out / "sites.json").exists()
+
+
+def test_build_deletes_frames_the_manifest_does_not_list(tmp_path):
+    gdir, mpath, _ = _make_stack(tmp_path)
+    frames = tmp_path / "out" / "frames"
+    frames.mkdir(parents=True)
+    for stale in ("2026-07-14_HH.webp", "2026-07-14_HV.webp"):
+        (frames / stale).write_bytes(b"old")
+    out, _ = _build(tmp_path, gdir, mpath)
+    m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    listed = {Path(p).name for d in m["dates"] for p in d["frames"].values()} | {"composite_HH.webp"}
+    assert {f.name for f in frames.iterdir()} == listed
+
+
+def test_build_refuses_a_file_that_says_it_is_another_granule(tmp_path):
+    gdir, mpath, granules = _make_stack(tmp_path)
+    name = granules[1]["name"]
+    write_gcov(gdir / f"{name}.h5", seed=1, granule_id=granules[2]["name"], release_id="P05023")
+    with pytest.raises(ValueError, match="manifest expects"):
+        _build(tmp_path, gdir, mpath)
+
+
+def test_build_refuses_a_file_with_another_release_id(tmp_path):
+    gdir, mpath, granules = _make_stack(tmp_path)
+    name = granules[0]["name"]
+    write_gcov(gdir / f"{name}.h5", seed=0, granule_id=name, release_id="P05024")
+    with pytest.raises(ValueError, match="P05024"):
+        _build(tmp_path, gdir, mpath)
+
+
+def test_build_prints_a_mask_histogram_for_each_file(tmp_path, capsys):
+    import numpy as np
+    gdir, mpath, granules = _make_stack(tmp_path)
+    name = granules[0]["name"]
+    mask = np.ones((100, 100), "u1")
+    mask[:3] = 255
+    write_gcov(gdir / f"{name}.h5", seed=0, mask=mask, granule_id=name, release_id="P05023")
+    _build(tmp_path, gdir, mpath)
+    lines = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("mask ")]
+    assert len(lines) == len(DATES)
+    assert lines[0] == "mask 2026-07-26: 1: 9700, 255: 300"
+    assert lines[1] == "mask 2026-08-19: 1: 10000"
+
+
+def test_build_warns_about_a_forecast_orbit_granule_and_2_july_but_still_builds(tmp_path, capsys):
+    dates = ["2026-07-02", "2026-08-19", "2026-09-12", "2026-10-18"]
+    gdir, mpath, _ = _make_stack(tmp_path, dates=dates, accuracy="F")
+    out, _ = _build(tmp_path, gdir, mpath, dates=dates)
+    printed = capsys.readouterr().out
+    assert "WARNING: 2026-07-02 is a forecast-orbit product" in printed
+    assert "WARNING: 2026-07-02 may show radio interference" in printed
+    assert printed.count("WARNING") == 2
+    assert (out / "manifest.json").is_file()
+
+
+def test_build_prints_no_warning_for_the_default_dates(tmp_path, capsys):
+    gdir, mpath, _ = _make_stack(tmp_path)
+    _build(tmp_path, gdir, mpath)
+    assert "WARNING" not in capsys.readouterr().out

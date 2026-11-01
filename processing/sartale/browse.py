@@ -204,6 +204,7 @@ def build_preview_manifest(info: dict, granules: dict[str, str], pixel_m: float,
         "maturity": PREVIEW_MATURITY,
         "bounds": info["bounds"],
         "dates": entries,
+        "acquisitions": dates,  # every date of the stack; here all of them have a preview
         "composite": info["composite"],
         "composite_dates": info["composite_dates"],
         "stretch_db": None,  # browse pixels are display-scaled: there is no dB stretch
