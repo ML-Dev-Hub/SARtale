@@ -475,7 +475,7 @@ describe("real preview manifest", () => {
     await app.settled();
     $("view-sites").click();
     expect($("empty").textContent).toBe("No site curves yet");
-    expect($("empty-why").textContent).toBe("Curves need calibrated data, which needs an Earthdata login.");
+    expect($("empty-why").textContent).toBe("Curves appear once the calibrated build has run.");
     expect($("empty-why").hidden).toBe(false);
     expect($("body").hidden).toBe(true);
     expect($("card").hidden).toBe(true);

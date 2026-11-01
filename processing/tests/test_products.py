@@ -14,7 +14,10 @@ from gcov_fixture import CENTER_LONLAT, EPSG, STEP, write_gcov
 from sartale import config
 from sartale.gcov import Layer
 from sartale.products import (
+    FORECAST_FLAG,
+    INTERFERENCE_FLAG,
     assert_same_grid,
+    composite_choice,
     composite_indices,
     multilook_layer,
     render_frame,
@@ -108,6 +111,20 @@ def test_render_frame_reserves_zero_for_nodata():
 @pytest.mark.parametrize("n,expected", [(3, (0, 1, 2)), (4, (0, 2, 3)), (5, (0, 2, 4)), (6, (0, 3, 5))])
 def test_composite_indices_middle_is_later_of_central_pair(n, expected):
     assert composite_indices(n) == expected
+
+
+def test_composite_choice_skips_2_july_when_it_comes_first():
+    dates = ["2026-07-02", "2026-07-26", "2026-08-19", "2026-09-12", "2026-10-18"]
+    assert composite_choice(dates) == (1, 3, 4)
+
+
+def test_composite_choice_is_unchanged_without_2_july():
+    assert composite_choice(DATES) == composite_indices(len(DATES))
+
+
+def test_composite_choice_with_nothing_else_than_2_july_fails():
+    with pytest.raises(ValueError, match="2026-07-02"):
+        composite_choice(["2026-07-02"])
 
 
 @pytest.mark.parametrize("descending_y", [False, True])
@@ -259,6 +276,33 @@ def test_build_writes_manifest_frames_and_cogs(tmp_path):
     # the COG is multilooked to 30 m
     with rasterio.open(cog / f"{DATES[0]}_HH.tif") as src:
         assert src.transform.a == pytest.approx(3 * STEP)  # 100 m fixture, multilooked by 3
+
+
+def test_build_composite_never_uses_2_july(tmp_path):
+    dates = ["2026-07-02", "2026-07-26", "2026-08-19", "2026-09-12", "2026-10-18"]
+    gdir, mpath, _ = _make_stack(tmp_path, dates=dates)
+    out, _ = _build(tmp_path, gdir, mpath, dates=dates)
+    m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    assert m["composite_dates"] == ["2026-07-26", "2026-09-12", "2026-10-18"]
+
+
+def test_build_flags_2_july_and_forecast_granules_like_the_preview(tmp_path):
+    dates = ["2026-07-02", "2026-07-14", "2026-08-19", "2026-09-12"]
+    gdir, mpath, granules = _make_stack(tmp_path, dates=dates)
+    doc = json.loads(mpath.read_text(encoding="utf-8"))
+    doc["granules"][1]["accuracy"] = "F"
+    doc["granules"][1]["name"] = doc["granules"][1]["name"].replace("_P05023_N_", "_P05023_F_")
+    mpath.write_text(json.dumps(doc), encoding="utf-8")
+    old = granules[1]["name"]
+    new = doc["granules"][1]["name"]
+    write_gcov(gdir / f"{new}.h5", seed=1, granule_id=new, release_id="P05023")
+    (gdir / f"{old}.h5").unlink()
+    out, _ = _build(tmp_path, gdir, mpath, dates=dates)
+    m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    flags = {e["date"]: e.get("flag") for e in m["dates"]}
+    assert flags == {"2026-07-02": INTERFERENCE_FLAG, "2026-07-14": FORECAST_FLAG,
+                     "2026-08-19": None, "2026-09-12": None}
+    assert all("flag" not in e for e in m["dates"][2:])  # absent, not null
 
 
 def test_build_fails_clearly_when_a_date_has_no_file(tmp_path):

@@ -23,7 +23,7 @@ export interface SitesViewHandle {
 
 const TEMPLATE = `
 <p class="sites-empty" data-role="empty" hidden>No site curves yet</p>
-<p class="sites-why" data-role="empty-why" hidden>Curves need calibrated data, which needs an Earthdata login.</p>
+<p class="sites-why" data-role="empty-why" hidden>Curves appear once the calibrated build has run.</p>
 <div class="sites-body" data-role="body" hidden>
   <ul class="site-list" data-role="list" aria-label="Sites"></ul>
   <article class="card" data-role="card" aria-labelledby="card-title" hidden>

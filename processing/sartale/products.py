@@ -15,7 +15,7 @@ from rasterio.transform import Affine, array_bounds
 from rasterio.warp import Resampling, calculate_default_transform, reproject
 
 from sartale import config
-from sartale.catalog import granule_for_date, utc_date
+from sartale.catalog import granule_for_date, parse_granule, utc_date
 from sartale.gcov import Layer, check_identity, mask_histogram, read_layer
 from sartale.radiometry import multilook_linear, to_db
 
@@ -24,6 +24,9 @@ MATURITY = "Provisional"
 POL_TERMS = {"HH": "HHHH", "HV": "HVHV"}
 WEBP_QUALITY = 80
 INTERFERENCE_DATE = "2026-07-02"
+INTERFERENCE_FLAG = ("Possible radio interference over the western area (unconfirmed). "
+                     "Do not read this as surface change.")
+FORECAST_FLAG = "Forecast-orbit product; positions may be less precise."
 
 
 # --- grids ----------------------------------------------------------------------
@@ -88,6 +91,14 @@ def composite_indices(n: int) -> tuple[int, int, int]:
     if n < 1:
         raise ValueError("Need at least one date for a composite")
     return 0, n // 2, n - 1
+
+
+def composite_choice(dates: list[str], avoid: str = INTERFERENCE_DATE) -> tuple[int, int, int]:
+    """Indices into the sorted `dates` of the composite's early, middle and late dates, never `avoid`."""
+    usable = [i for i, d in enumerate(dates) if d != avoid]
+    if not usable:
+        raise ValueError(f"No date for the composite: only {avoid}, which it must not use")
+    return tuple(usable[i] for i in composite_indices(len(usable)))
 
 
 # --- georeferenced outputs ------------------------------------------------------
@@ -192,6 +203,15 @@ def bounds_3857_to_lonlat(bounds: tuple[float, float, float, float]) -> list[flo
 
 # --- build ----------------------------------------------------------------------
 
+def flag_for(date: str, granule: str) -> str | None:
+    """The visible caution for a date, or None. 2 July: possible interference. Forecast orbit: less precise."""
+    if date == INTERFERENCE_DATE:
+        return INTERFERENCE_FLAG
+    if parse_granule(granule).accuracy == "F":
+        return FORECAST_FLAG
+    return None
+
+
 def _warn_about(date: str, g: dict) -> None:
     """Print a warning for dates that need a caution. Never blocks the build."""
     if g.get("accuracy") == "F":
@@ -266,9 +286,13 @@ def build_products(gcov_dir: Path, dates: list[str], manifest_in: Path,
             rel[pol] = f"frames/{d}_{pol}.webp"
             all_bounds.add(write_webp_3857(render_frame(db[pol][i], stretch[pol]), grid,
                                            out_dir / rel[pol]))
-        entries.append({"date": d, "granule": g["name"], "frames": rel})
+        entry = {"date": d, "granule": g["name"], "frames": rel}
+        flag = flag_for(d, g["name"])
+        if flag:
+            entry["flag"] = flag
+        entries.append(entry)
 
-    e, m, l = composite_indices(len(dates))
+    e, m, l = composite_choice(dates)
     composite_dates = [dates[e], dates[m], dates[l]]
     rgba = seasonal_composite(db["HH"][e], db["HH"][m], db["HH"][l], stretch["HH"])
     all_bounds.add(write_webp_3857(rgba, grid, frames / "composite_HH.webp"))

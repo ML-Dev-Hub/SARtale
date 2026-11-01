@@ -18,17 +18,13 @@ from PIL import Image
 from sartale import config
 from sartale.catalog import parse_granule
 from sartale.gcov import Layer
-from sartale.products import bounds_3857_to_lonlat, write_webp_3857
+from sartale.products import bounds_3857_to_lonlat, flag_for, write_webp_3857
 
 PREVIEW_MATURITY = "Provisional preview"
 # west, south, east, north in degrees: the part of the scene the app shows.
 DISPLAY_WINDOW = (71.2, 33.8, 73.4, 34.8)
 # HH of these three dates become red, green and blue. 2 July is never used.
 COMPOSITE_DATES = ("2026-07-26", "2026-09-12", "2026-10-18")
-INTERFERENCE_DATE = "2026-07-02"
-INTERFERENCE_FLAG = ("Possible radio interference over the western area (unconfirmed). "
-                     "Do not read this as surface change.")
-FORECAST_FLAG = "Forecast-orbit product; positions may be less precise."
 # The nine images sit on one pixel grid (zero shift between dates on the real files), so their
 # footprint-fitted extents should agree. If they differ by more than this, something is wrong.
 MAX_EXTENT_SPREAD_DEG = 0.02
@@ -171,17 +167,11 @@ def write_preview_frames(channels: dict[str, tuple[np.ndarray, np.ndarray]],
 
 # --- manifest -------------------------------------------------------------------
 
-def flag_for(date: str, granule: str) -> str | None:
-    """The visible caution for a date, or None. 2 July: possible interference. Forecast orbit: less precise."""
-    if date == INTERFERENCE_DATE:
-        return INTERFERENCE_FLAG
-    if parse_granule(granule).accuracy == "F":
-        return FORECAST_FLAG
-    return None
-
-
 def build_preview_manifest(info: dict, granules: dict[str, str], pixel_m: float, out_dir: Path) -> dict:
-    """Write manifest.json for the frames described by `info` (from write_preview_frames) and return it."""
+    """Write manifest.json for the frames described by `info` and return it.
+
+    Also removes any sites.json in out_dir: curves from another build must never sit beside this manifest.
+    """
     dates = sorted(info["frames"])
     entries = []
     for date in dates:
@@ -213,6 +203,7 @@ def build_preview_manifest(info: dict, granules: dict[str, str], pixel_m: float,
     }
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "sites.json").unlink(missing_ok=True)
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return manifest
 

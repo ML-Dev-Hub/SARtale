@@ -13,8 +13,6 @@ from pyproj import Transformer
 from sartale import config
 from sartale.browse import (
     DISPLAY_WINDOW,
-    FORECAST_FLAG,
-    INTERFERENCE_FLAG,
     build_preview_manifest,
     geo_extent,
     load_browse,
@@ -23,6 +21,7 @@ from sartale.browse import (
     split_channels,
     write_preview_frames,
 )
+from sartale.products import FORECAST_FLAG, INTERFERENCE_FLAG
 from sartale.run_pipeline import main
 
 NAME_FMT = ("NISAR_L2_PR_GCOV_{cycle:03d}_084_A_019_4005_DHDH_A_{ymd}T002239_{ymd}T002313_"
@@ -274,6 +273,12 @@ def test_manifest_carries_the_real_granule_ids(tmp_path):
     for e in m["dates"]:
         assert e["granule"] == granules[e["date"]]
         assert e["granule"].startswith("NISAR_L2_PR_GCOV_")
+
+
+def test_manifest_deletes_a_sites_json_left_by_another_build(tmp_path):
+    (tmp_path / "sites.json").write_text("[]", encoding="utf-8")
+    build_preview_manifest(_info(ALL_DATES), _granules(ALL_DATES), 174, tmp_path)
+    assert not (tmp_path / "sites.json").exists()
 
 
 def test_manifest_flags_only_2_july_and_the_forecast_orbit_date(tmp_path):
