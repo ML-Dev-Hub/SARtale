@@ -23,6 +23,18 @@ describe("map frames", () => {
   test("test_missing_overlay_reports_error", async () => {
     await expect(setFrame(mapThatFailsToLoad, m, "2026-07-02", "HH")).rejects.toThrow("overlay");
   });
+  test("setFrame rejects, not throws, for a date with no HV frame", async () => {
+    const noHv = {
+      ...m,
+      dates: m.dates.map((d) => (d.date === "2026-07-14" ? { ...d, frames: { HH: d.frames.HH } as typeof d.frames } : d)),
+    };
+    const map = recordingMap();
+    let promise: Promise<void> | undefined;
+    expect(() => { promise = setFrame(map, noHv, "2026-07-14", "HV"); }).not.toThrow();
+    await expect(promise).rejects.toThrow("overlay");
+    await expect(setFrame(map, noHv, "2026-01-01", "HH")).rejects.toThrow("overlay");
+    expect(map.calls).toEqual([]);
+  });
   test("setComposite shows the composite and reports a missing one", async () => {
     const map = recordingMap();
     await setComposite(map, m);

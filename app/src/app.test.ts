@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { mountApp, type MapHost } from "./app";
 import { fixtureManifest } from "./fixtures";
 import type { MapLike } from "./map";
@@ -103,5 +103,55 @@ describe("app shell", () => {
     root.querySelector<HTMLButtonElement>('[data-role="retry"]')!.click();
     await app.settled();
     expect(notice.hidden).toBe(true);
+  });
+
+  describe("a date with no HV frame", () => {
+    const noHv = {
+      ...fixtureManifest,
+      dates: fixtureManifest.dates.map((d) =>
+        d.date === "2026-07-14" ? { ...d, frames: { HH: d.frames.HH } as typeof d.frames } : d,
+      ),
+    };
+    const pickHv = (root: HTMLElement) => {
+      const hv = root.querySelector<HTMLInputElement>('input[value="HV"]')!;
+      hv.checked = true;
+      hv.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+
+    test("shows a notice instead of breaking", async () => {
+      const { app, root, $ } = setup(noHv);
+      await app.settled();
+      pickHv(root);
+      const slider = $<HTMLInputElement>("slider");
+      slider.value = "1";
+      slider.dispatchEvent(new Event("input"));
+      await app.settled();
+      expect($("notice").hidden).toBe(false);
+      expect($("notice-text").textContent).toContain("overlay");
+      expect(slider.disabled).toBe(false);
+    });
+
+    test("mounting on a first date with no HV frame does not throw", async () => {
+      const first = { ...fixtureManifest, dates: fixtureManifest.dates.map((d, i) => (i === 0 ? { ...d, frames: { HH: d.frames.HH } as typeof d.frames } : d)) };
+      const { app, root, $ } = setup(first);
+      pickHv(root);
+      await app.settled();
+      expect($("notice").hidden).toBe(false);
+    });
+
+    test("play stops and the button goes back to Play", async () => {
+      const { app, root, $ } = setup(noHv);
+      await app.settled();
+      pickHv(root);
+      await app.settled();
+      $("play").click();
+      expect(["Pause", "Play"]).toContain($("play").textContent);
+      await vi.waitFor(() => expect($("notice").hidden).toBe(false));
+      await app.settled();
+      expect($("play").textContent).toBe("Play");
+      expect($("play").getAttribute("aria-pressed")).toBe("false");
+      await new Promise((r) => setTimeout(r, 1000));
+      expect($("slider").getAttribute("aria-valuetext")).toBe("14 Jul 2026");
+    });
   });
 });

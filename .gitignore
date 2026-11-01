@@ -6,3 +6,5 @@ __pycache__/
 node_modules/
 app/dist/
 app/public/data/raw/
+*.h5
+*.tif

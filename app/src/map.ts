@@ -13,20 +13,22 @@ export function cornersFromBounds(bounds: Manifest["bounds"]): Corners {
   return [[w, n], [e, n], [e, s], [w, s]];
 }
 
-async function show(map: MapLike, m: Manifest, url: string, what: string): Promise<void> {
+async function show(map: MapLike, m: Manifest, urlFor: () => string, what: string): Promise<void> {
+  let url = "";
   try {
+    url = urlFor();
     await map.setImage(url, cornersFromBounds(m.bounds));
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
-    throw new Error(`Could not load the radar overlay for ${what} (${url}): ${reason}`);
+    throw new Error(`Could not load the radar overlay for ${what}${url ? ` (${url})` : ""}: ${reason}`);
   }
 }
 
 export function setFrame(map: MapLike, m: Manifest, date: string, pol: Pol): Promise<void> {
-  return show(map, m, frameUrl(m, date, pol), `${date} ${pol}`);
+  return show(map, m, () => frameUrl(m, date, pol), `${date} ${pol}`);
 }
 
 export function setComposite(map: MapLike, m: Manifest): Promise<void> {
   if (!m.composite) return Promise.reject(new Error("This data set has no seasonal composite overlay"));
-  return show(map, m, dataUrl(m.composite), "the seasonal composite");
+  return show(map, m, () => dataUrl(m.composite!), "the seasonal composite");
 }
