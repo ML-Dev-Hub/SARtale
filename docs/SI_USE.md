@@ -14,6 +14,7 @@ Written 2026-11-01, updated 2026-11-02. The Space Apps FAQ says a submission "mu
 | Tool | Used for | Where |
 |---|---|---|
 | Claude Code (Anthropic) | Planning, writing code (app and pipeline), writing tests, code review, writing documentation. Also ran the checks on the browse previews and the first calibrated build, chose the sites from the real stack, compared them with OPERA and the bulletins, and drafted the site cards, with the numbers recorded in the project's working notes | Whole repository, including this file |
+| Claude Code (Anthropic), change layer | Chose the statistical method after reading `distmetrics`, wrote `processing/sartale/change.py` and its tests, ran it on the real stack, set the threshold from the control pixels by a stated rule, wrote the Change control, and drafted the verdict in `docs/DATA_SOURCES.md`. The layer is plain statistics: no AI model runs in the pipeline or the app, and no deep learning was used | `processing/sartale/change.py`, `processing/checks/change_evidence.py`, the app |
 | OpenAI Codex | Plan review | Review comments on the plan. It also produced the concept storyboard image `docs/assets/sartale-concept-storyboard.png` |
 
 The concept storyboard image is a planning aid. It is an AI-generated mock-up and is not data or a screenshot of the app.
@@ -24,7 +25,7 @@ The team logo (`app/logo/SARtale.png`, with smaller copies in `app/public/brand/
 
 ## Human responsibility
 
-Saeed Ahmad and Shaharyar Sajid are responsible for the submission. Any claim about real NISAR data must be checked by a team member against the data before it is written into the app. The site choices and every card were drafted by an AI tool from the data and have not yet been checked by a person, so a team member must read each card against its curve and open the 2 July evidence in `docs/DATA_SOURCES.md` before submission. The cards keep their explanations as hypotheses, and no flood, damage or crop finding is claimed.
+Saeed Ahmad and Shaharyar Sajid are responsible for the submission. Any claim about real NISAR data must be checked by a team member against the data before it is written into the app. The site choices and every card were drafted by an AI tool from the data and have not yet been checked by a person, so a team member must read each card against its curve and open the 2 July evidence in `docs/DATA_SOURCES.md` before submission. The cards keep their explanations as hypotheses, and no flood, damage or crop finding is claimed. The change layer's verdict and the notes on four cards were also drafted by an AI tool and need the same check.
 
 ## To complete before submission
 

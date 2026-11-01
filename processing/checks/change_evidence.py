@@ -2,7 +2,7 @@
 
 Prints: flagged share per date for controls, known changes, the plain box and the whole window, at the manifest's
 threshold and two others; the shore split by what its pixels did; OPERA DSWx-S1 inside two boxes; and the 2 July and
-6 October checks. Run from the repository root, after `run_pipeline change` and opera_fetch.py:
+6 October checks, the last reading both frequencies from the GCOV files. Run from the repository root, after `run_pipeline change` and opera_fetch.py:
     conda run -n sartale python processing/checks/change_evidence.py
 """
 import json
@@ -12,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "processing"))
+import h5py
 import numpy as np
 import rasterio
 from pyproj import Transformer
@@ -187,3 +188,23 @@ cell_shares = [100 * flagged[r:r + cells, c:c + cells][valid[r:r + cells, c:c + 
                for r in range(0, flagged.shape[0] - cells, cells) for c in range(0, flagged.shape[1] - cells, cells)
                if valid[r:r + cells, c:c + cells].sum() > 1000]
 print(f"  10 km cells on 6 Oct: {len(cell_shares)}, median {np.median(cell_shares):.1f}%, max {np.max(cell_shares):.1f}%")
+
+
+def box_db(path: Path, freq: str, term: str, bounds: tuple[float, float, float, float]) -> float:
+    """Linear mean over the box at the file's own 10 m grid, in dB. Read-only."""
+    with h5py.File(path, "r") as f:
+        g = f[f"/science/LSAR/GCOV/grids/{freq}"]
+        xs, ys = to_utm.transform([bounds[0], bounds[0], bounds[2], bounds[2]], [bounds[1], bounds[3], bounds[1], bounds[3]])
+        xc, yc = g["xCoordinates"][:], g["yCoordinates"][:]
+        ix, iy = np.flatnonzero((xc >= min(xs)) & (xc <= max(xs))), np.flatnonzero((yc >= min(ys)) & (yc <= max(ys)))
+        sl = (slice(iy[0], iy[-1] + 1), slice(ix[0], ix[-1] + 1))
+        a = g[term][sl].astype("f8")
+        a[(g["mask"][sl] == 255) | (a <= 0)] = np.nan
+    return 10 * np.log10(np.nanmean(a))
+
+
+print("patch box means, dB: date, HH at 1239 MHz, HV at 1239 MHz, HH at 1293.5 MHz, HV at 1293.5 MHz")
+for e in manifest["dates"]:
+    path = ROOT / "data" / "gcov" / f"{e['granule']}.h5"
+    means = [box_db(path, freq, term, OCT6_PATCH) for freq in ("frequencyA", "frequencyB") for term in ("HHHH", "HVHV")]
+    print(f"  {e['date']} " + " ".join(f"{v:7.2f}" for v in means))

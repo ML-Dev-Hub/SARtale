@@ -14,6 +14,7 @@ The study area is the Peshawar Valley, Pakistan. The app steps through calibrate
 - **Measurements use 30 m pixels; the map pictures are coarser.** Every value in a curve or a downloadable GeoTIFF comes from 10 m samples averaged in linear power to 30 m. The web frames are averaged once more and capped at 3000 pixels wide to keep each file small, so a map pixel is about 67 m.
 - **Two dates carry a visible caution.** 2 July: "Likely radio interference in HV over the western area. Do not read this as surface change." The evidence is in `docs/DATA_SOURCES.md`. 14 July: "Forecast-orbit product; positions may be less precise." That date's measured shift against 26 July is under 3 m, so the caution is kept because of what the file says, not because a shift was seen.
 - **A change in backscatter is not flood probability.** The curves show that the radar signal changed. On their own they do not say why, and each card keeps its explanation as a hypothesis. A card carries "Reference agrees" only where a dated outside source moved the same way (see `docs/DATA_SOURCES.md`).
+- **The Change control is a statistical flag, not proof of what changed.** It marks pixels that differ unusually from the rest of their own season. Controls stay quiet and the Attock river stands out as its curve rises, but the Tarbela shore does not stand out on 19 or 31 August, and plain ground flags often. It shows which dates are odd for a pixel, not when a lasting change happened or why. The numbers are in `docs/DATA_SOURCES.md`.
 - **No flood, damage or crop finding is claimed.** Plain areas are named by what the radar shows, and land cover has not been checked on the ground.
 - **The synthetic demo is a test fixture only.** It lives in `app/demo-data/`, outside the folder the app serves, so it cannot ship. See "Run the pipeline locally".
 - **This is not an official warning service.** It does not issue flood warnings or forecasts. For warnings, use the Pakistan Meteorological Department (PMD), NDMA and PDMA.
@@ -22,11 +23,11 @@ The study area is the Peshawar Valley, Pakistan. The app steps through calibrate
 
 | View | What it shows |
 |---|---|
-| The Dance | Calibrated frames by date on a map with one shared grey scale, a date slider and play button, HH or HV polarization, a before and after swipe, and a seasonal red/green/blue composite of three HH dates (the app names them; flagged dates are left out) |
-| Site Stories | A backscatter curve in decibels for each sampled site, with an evidence-labelled card: one observation, one hypothesis, what would test it, and its limits. Includes urban and water controls |
+| The Dance | Calibrated frames by date on a map with one shared grey scale, a date slider and play button, HH or HV polarization, a before and after swipe, a seasonal red/green/blue composite of three HH dates (the app names them; flagged dates are left out), and a Change overlay with its threshold in words (2 July is excluded, and says why) |
+| Site Stories | A backscatter curve in decibels for each sampled site, with an evidence-labelled card: one observation, one hypothesis, what would test it, and its limits, with each date's change score. Includes urban and water controls |
 | What NISAR Missed | A timeline of the dates NISAR observed (dates found by the search but not built are marked "Observed, not used in this build"), the gap in the record (27 Jul to 10 Aug 2026), and one dated river report from Pakistan's Flood Forecasting Division |
 
-Evidence labels on the cards: Observed, Reference agrees, Hypothesis, Not observed. Wording such as "damage" or "detected flood" is blocked in the visible app text by a test (`app/src/content.ts`, `app/src/app.test.ts`). A change in backscatter is not proof of a physical change.
+Evidence labels on the cards: Observed, Reference agrees, Hypothesis, Not observed. Wording such as "damage", "detected flood" or "detected change" is blocked in the visible app text by a test (`app/src/content.ts`, `app/src/app.test.ts`). A change in backscatter is not proof of a physical change.
 
 ## Judging criteria
 
@@ -82,7 +83,7 @@ The synthetic fixture in `app/demo-data/` is for the app's tests. To look at it 
    ```bash
    conda run -n sartale python -m sartale.run_pipeline rebuild
    ```
-   It skips `.part` files and any file whose size differs from the catalogue, runs `build` and `sites`, and prints mask histograms, warnings, frame sizes, each site's spread and a check of the controls. Allow about half an hour; it peaked at about 8 GB of memory on nine dates. `build` and `sites` can also be run alone, with the same options.
+   It skips `.part` files and any file whose size differs from the catalogue, runs `build`, `change` and `sites`, and prints mask histograms, warnings, frame sizes, the change threshold and removed offsets, each site's spread and a check of the controls. Allow about half an hour; it peaked at about 8 GB of memory on nine dates. `build` and `sites` can also be run alone, with the same options. `run_pipeline change` rebuilds only the change layer from the COGs, in about 3 minutes, and touches no other frame. A lone `build` drops the layer until `change` runs again.
 5. Read the printed checks and look at every date by eye. Then rerun the app tests: `app/src/publicData.test.ts` compares every value a card quotes with the new curves, so a card that no longer matches fails.
 
 The sites are in `processing/sites_in.json`, each with the reason it was chosen. The cards are in `app/src/content/sites.json`.
@@ -94,6 +95,7 @@ What the build does besides the images:
 - It refuses a date whose CRID differs, and a file whose own `granuleId` or release ID differs from the manifest, so a renamed file cannot pass as Provisional.
 - It writes `acquisitions` (every date the search found) so What NISAR Missed does not call a real pass unobserved, and `composite_dates`. The composite leaves out every flagged date, and the grey scale leaves out 2 July.
 - It writes the same per-date flags as the preview path, and prints a warning for each.
+- `change` scores each date against the season's other dates, in dB after multilooking, and leaves 2 July out entirely. 14 July is scored but stays out of the baseline. With four or fewer baseline dates it writes no layer.
 - It deletes any `sites.json` and any frame the new manifest does not list. `sites` stamps every site with the manifest's `stack` and `crid`, and the app drops sites whose stamp does not match.
 
 ### Rebuild the low-resolution preview

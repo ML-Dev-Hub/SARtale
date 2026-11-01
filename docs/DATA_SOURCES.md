@@ -11,6 +11,7 @@ Written 2026-11-01, updated 2026-11-02 after the first calibrated build. Space A
 | Item | Source | Licence | Access date |
 |---|---|---|---|
 | Calibrated web frames, `manifest.json` and `sites.json` (`app/public/data/`) | Made by `run_pipeline rebuild` from NISAR GCOV files (see "NISAR GCOV data" below). 30 m analysis, about 67 m on the map | NASA data, openly available. Exact wording to confirm | 2026-11-02 |
+| Change frames and scores (`app/public/data/frames/change_<date>.webp`, the `change` record in `manifest.json`, `change_score` in `sites.json`) | Made by `run_pipeline change` from the calibrated 30 m COGs (see "Statistical change layer") | Derived from NASA data. Exact wording to confirm | 2026-11-02 |
 | Place labels (`app/public/data/overlays/places.geojson`) | **Approximate, hand-entered** labels for Peshawar, Nowshera, Charsadda, Mardan, Swabi and Tarbela Reservoir. Typed in by the team from general knowledge, not copied from a dataset. Positions are rough, to about a few kilometres | Part of this repository, Apache License 2.0 | Not applicable |
 | Site list (`processing/sites_in.json`) | Chosen by the team's tooling from the real stack, each with its reason | Part of this repository, Apache License 2.0 | Not applicable |
 | River and reservoir figures in `app/src/content/` | A few dated numbers quoted, with the source named, from the Flood Forecasting Division's public daily bulletins (see "Flood Forecasting Division bulletins" below) | Pakistan Meteorological Department. Reuse terms to confirm; the bulletins themselves are not redistributed | 2026-11-02 |
@@ -199,6 +200,97 @@ Tarbela reservoir level, feet:
 | 6 Oct | 1520.04 | NISAR pass |
 | 15 Oct | 1518.80 | Last bulletin, 3 days before the 18 Oct pass |
 
+### Statistical change layer
+
+Numbers from `processing/checks/change_evidence.py` on 2026-11-02. The layer is built by `run_pipeline change` (also part of `rebuild`) from the 30 m COGs. No deep learning is used.
+
+**Verdict.** At a threshold of 3.5 the layer is not enough on its own: controls stay quiet (at most 6.2% of control pixels on any date, 0% in the Tarbela pool) and the Attock river stands out as its curve rises (37.5% on 18 Oct), but the Tarbela shore does not stand out on 19 or 31 Aug (1.3% and 2.5%, against 73 to 77% on the July dates) and plain ground flags as strongly as the known changes, so it can show which dates are odd for a pixel but not when a lasting change happened or why.
+
+**Method.** For each date and pixel, in HH and in HV: the distance from the median of the season's other baseline dates, divided by a robust scale of those dates. The score is the larger of the two. So a date is never in its own baseline. The scale is 1.4826 x the median absolute deviation, with a floor of 1 dB, because six dates give a noisy spread and about 1 dB is meaningless at a site. This is the modified z-score of Iglewicz and Hoaglin (1993), per pixel. A pixel with fewer than 4 valid baseline dates has no score. Linear averaging happens at multilooking; all these statistics are in dB after multilooking.
+
+**Dates.** Baseline: 26 Jul, 19 Aug, 31 Aug, 12 Sep, 24 Sep, 6 Oct, 18 Oct, so six dates behind each score. 2 Jul is excluded entirely: no score, no frame, not in any baseline. 14 Jul stays out of the baseline and is scored against all seven, keeping its flag.
+
+**Why not distmetrics.** `distmetrics` 1.0.8 (Apache-2.0, confirmed from the package's `LICENSE.txt` and conda-forge metadata, https://github.com/opera-adt/distmetrics) was read, not installed. Its package `__init__` imports the transformer and search code, so importing even the Mahalanobis function brings PyTorch and `asf_search`. A conda dry run added 64 packages and a 2.4 GB download, and replaced one installed package. Its functions take VV and VH arrays, but nothing in the maths needs those polarizations, so HH and HV would work. CuSum documents linear gamma-0 as its assumed input and offers a dB transform. The Mahalanobis floor (`eig_lb`, about 1.4e-4) suits linear or logit values, so dB would need a new floor, and it uses a mean and covariance, not robust statistics, while `get_spatiotemporal_mu` drops its `window_size` argument. The sums are short, so `processing/sartale/change.py` does them with numpy, and nothing is added to `environment.yml`.
+
+**Alternatives tried on the same data and left out.** A full Mahalanobis form with a correlation from the same dates had a control 99th percentile of 4.33, and at thresholds around that value it flagged no more of the known changes and about the same share of the plain box. The larger z-score is simpler to explain. Smoothing the scale over 5 x 5 pixels raised the control 99th percentile from 3.46 to 3.61 and lowered the Attock site's scores, so the floor alone is used. CuSum in date order peaked at a median of 4.7 at the Tarbela shore, but 4.3 east of Mardan and 3.6 near Swabi, against 2.0 to 2.3 at the controls, so it does not separate known change from plain ground either and is not used.
+
+**Scene drift.** Each date's offset is the median, over stable pixels, of that date minus the median of the other baseline dates. Stable pixels are the lowest quarter of temporal spread in both polarizations, about 2.0 million pixels. Comparing with the other dates matters: against a median that includes the date, the result sits near zero because each pixel's median is often that date's own value. Removed, in dB:
+
+| | 14 Jul | 26 Jul | 19 Aug | 31 Aug | 12 Sep | 24 Sep | 6 Oct | 18 Oct |
+|---|---|---|---|---|---|---|---|---|
+| HH | -0.59 | 0.15 | 0.03 | -0.17 | 0.11 | -0.14 | -0.12 | 0.12 |
+| HV | -0.60 | 0.12 | -0.02 | 0.04 | 0.00 | -0.08 | -0.08 | 0.03 |
+
+Only 14 Jul moves much on stable ground. The 0.5 to 1 dB swings of the whole-window median on 31 Aug and 24 Sep are mostly not in stable pixels, so this step does not remove them from variable ground: the plain box's median still reads about 0.6 dB low on 31 Aug after this step.
+
+**Threshold: 3.5.** The 99th percentile of the 1,928 control pixel scores (Peshawar, Hazro and the Tarbela pool, within 150 m, all eight scored dates) is 3.46, rounded up to the next 0.5. It is computed in `build_change`, from the controls only. The shared display scale runs from 3.5 to 7.
+
+Percent of 30 m pixels above 3.5:
+
+| Area | 14 Jul | 26 Jul | 19 Aug | 31 Aug | 12 Sep | 24 Sep | 6 Oct | 18 Oct |
+|---|---|---|---|---|---|---|---|---|
+| Peshawar, 150 m | 6.2 | 1.2 | 0.0 | 6.2 | 0.0 | 0.0 | 2.5 | 1.2 |
+| Peshawar, 500 m | 3.3 | 3.2 | 0.1 | 3.2 | 0.5 | 0.0 | 0.6 | 0.3 |
+| Hazro, 150 m | 1.3 | 1.3 | 0.0 | 2.5 | 0.0 | 0.0 | 0.0 | 0.0 |
+| Hazro, 500 m | 4.7 | 1.6 | 0.8 | 2.5 | 0.8 | 0.6 | 0.3 | 0.5 |
+| Tarbela pool, 150 m | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| Tarbela pool, 1 km | 0.0 | 0.1 | 0.1 | 0.1 | 0.0 | 0.0 | 0.4 | 0.0 |
+| **Tarbela shore, 150 m** | 77.2 | 73.4 | **1.3** | **2.5** | 0.0 | 0.0 | 6.3 | 7.6 |
+| **Indus at Attock, 150 m** | 2.5 | 0.0 | 1.2 | 0.0 | 0.0 | 10.0 | 26.2 | 37.5 |
+| Plain east of Mardan, 150 m | 35.4 | 34.2 | 16.5 | 1.3 | 1.3 | 10.1 | 1.3 | 5.1 |
+| Plain near Swabi, 150 m | 27.8 | 43.0 | 2.5 | 3.8 | 2.5 | 3.8 | 2.5 | 8.9 |
+| Plain box, 72.10 to 72.25 E, 34.10 to 34.28 N | 11.4 | 6.1 | 3.4 | 3.4 | 0.9 | 1.0 | 8.1 | 2.7 |
+| Whole window | 3.9 | 2.7 | 1.4 | 1.7 | 0.7 | 0.5 | 2.3 | 1.3 |
+
+Sensitivity, worst date for each:
+
+| Threshold | Peshawar 150 m | Hazro 150 m | Pool 150 m | Plain box | Shore 19, 31 Aug | Attock 18 Oct |
+|---|---|---|---|---|---|---|
+| 3.0 | 8.6 | 6.3 | 1.2 | 17.4 | 3.8, 5.1 | 52.5 |
+| 3.5 | 6.2 | 2.5 | 0.0 | 11.4 | 1.3, 2.5 | 37.5 |
+| 4.0 | 4.9 | 2.5 | 0.0 | 7.5 | 1.3, 1.3 | 27.5 |
+
+No threshold near these values changes the result for the shore.
+
+**Site scores** are the median pixel score within 150 m, so a site can have many pixels above 3.5 while its typical pixel is below it:
+
+| Site | 14 Jul | 26 Jul | 19 Aug | 31 Aug | 12 Sep | 24 Sep | 6 Oct | 18 Oct |
+|---|---|---|---|---|---|---|---|---|
+| Peshawar city | 1.22 | 1.22 | 0.81 | 1.28 | 0.70 | 1.19 | 0.91 | 0.79 |
+| Near Hazro | 1.29 | 0.99 | 0.99 | 1.06 | 0.99 | 0.72 | 0.84 | 0.79 |
+| Tarbela pool | 0.88 | 0.92 | 0.86 | 1.00 | 0.86 | 0.94 | 1.16 | 0.97 |
+| Tarbela shore | 5.39 | 4.43 | 1.17 | 1.52 | 0.90 | 0.79 | 0.90 | 1.49 |
+| Plain near Swabi | 2.28 | 2.78 | 1.62 | 1.30 | 1.03 | 0.95 | 1.25 | 1.58 |
+| Plain east of Mardan | 3.04 | 2.73 | 2.02 | 0.88 | 0.73 | 1.64 | 1.11 | 1.28 |
+| Indus at Attock | 1.85 | 1.08 | 1.05 | 0.79 | 0.99 | 1.67 | 2.40 | 3.08 |
+
+**Known changes.**
+
+- **Tarbela shore: fails on the dates asked.** It scores 1.17 on 19 Aug and 1.52 on 31 Aug, like a control. It scores 5.39 and 4.43 on 14 and 26 Jul. HH is -6.1 and -7.6 dB on those two dates and -12.8 to -16.8 dB on the six dates after them, so dark is this pixel's usual state and the bright July dates are the odd ones. The curve's 9 dB step between 26 Jul and 19 Aug is real, but a season-only baseline cannot place it. Adding the excluded dates would not help: scoring 19 Aug against the eight other dates, using the curve as it stands, gives about 0.8, because the season has two states. A pre-monsoon baseline would be needed, and the stack starts on 2 Jul.
+- **The rest of the shore.** In the Tarbela box, 2,390 pixels were bright on 26 Jul (HH above -10 dB) and dark on 19 and 31 Aug (HH below -13 dB). Of these, the 1,096 that were not dark on any of 24 Sep, 6 Oct or 18 Oct had 35%, 50% and 25% above threshold on 19 Aug, 31 Aug and 12 Sep, and about 3% in July. The 627 that stayed dark on all three had 57% and 76% on 14 and 26 Jul and at most 6% in August. So the layer marks the August water only where it left again quickly. These groups were selected on those dates, so high scores on them are partly built in; this describes the behaviour and does not test it.
+- **Attock: passes.** Its score moves as the curve did, flat from 26 Jul to 12 Sep, then 1.67, 2.40 and 3.08, with 10%, 26% and 37.5% of pixels above threshold. The typical pixel stays under 3.5, again because the later dates form a large part of its baseline.
+
+**Plain ground.** The plain box reaches 11.4% above threshold on 14 Jul and 8.1% on 6 Oct, and 0.9 to 6.1% on other dates. The two plain sites reach 35% and 43%, as much as Attock on its best date. A high score on plain ground says little on its own, and the cards say so.
+
+**OPERA DSWx-S1, inside two boxes and on dates with tiles only.** A DSWx change is a pixel whose water state on the tile differs from the majority of the other three tiles (15, 23 Sep, 5, 17 Oct). "Flagged water-like" is above threshold and water-like by the mask in "OPERA DSWx-S1 water check" on the date but not in the other dates' median, or the reverse. Tarbela box 72.60 to 72.90 E, 34.00 to 34.30 N (977,898 pixels), Attock box 72.15 to 72.32 E, 33.87 to 33.96 N (168,556 pixels).
+
+| Box | NISAR date, DSWx date | Pixels DSWx changed | Flagged water-like | Of those, DSWx changed | Of DSWx changes, flagged |
+|---|---|---|---|---|---|
+| Tarbela | 12 Sep, 15 Sep | 1.3% | 689 | 28.2% | 1.5% |
+| Tarbela | 24 Sep, 23 Sep | 0.8% | 208 | 1.9% | 0.0% |
+| Tarbela | 6 Oct, 5 Oct | 0.8% | 2,088 | 28.6% | 7.5% |
+| Tarbela | 18 Oct, 17 Oct | 0.9% | 3,856 | 39.5% | 16.7% |
+| Attock | 12 Sep, 15 Sep | 3.0% | 76 | 2.6% | 0.0% |
+| Attock | 24 Sep, 23 Sep | 2.4% | 627 | 33.0% | 5.1% |
+| Attock | 6 Oct, 5 Oct | 2.4% | 2,678 | 31.0% | 20.1% |
+| Attock | 18 Oct, 17 Oct | 3.2% | 4,216 | 44.5% | 34.8% |
+
+On six of eight rows a flagged water-like pixel is many times likelier than chance to be a DSWx change, but most DSWx changes are not flagged and most flagged pixels are not DSWx changes. Tiles differ by 1 to 3 days and in look geometry, and there is no tile for 19 or 31 Aug, so OPERA cannot test the August step.
+
+**Interference and 6 October.** 2 Jul is in no baseline, has no frame and no score COG, and every site's score on it is null (a test also shows that wild 2 Jul values change no output). The rejected cluster west of Mardan (72.0175, 34.1902) is not flagged on 6 Oct: 3.8% within 150 m, with a median score of 1.5. The rise it belonged to does show as patches: the largest, 71.82 to 72.15 E and 34.29 to 34.46 N, reads 1.9 dB in HH and 1.4 dB in HV above the other dates, with 10.7% of pixels flagged, and 10 km cells reach 20% on that date against a median of 1.5%. Unlike 2 July it is in both polarizations and agrees between frequencies: box means on 6 Oct are -1.52 dB in HH at both 1239 and 1293.5 MHz (-3.35 to -4.82 dB on other dates), and -11.88 and -11.73 dB in HV. That argues against narrow-band interference. Wet ground is a possible cause, but no rain record was compared, so the app calls it unexplained.
+
+**Reading the frames.** Web frames average the 30 m score in 2 x 2 blocks, then apply the threshold, so isolated pixels fade and the map shows fewer than the shares above. The eight frames total 2.8 MB. Score COGs are `data/cog/change_<date>.tif`.
+
 ## Other datasets (planned, not yet used or downloaded)
 
 All of these are listed in the plan (`docs/SARtale-hackathon-plan.md`, section 5). Their licence status has **not** been verified for this project unless stated.
@@ -248,6 +340,8 @@ Licences are read from the installed package metadata in the `sartale` conda env
 | networkx | 3.7 | BSD-3-Clause | Listed, not imported yet (planned road analysis) |
 | osmnx | 2.1.1 | MIT | Listed, not imported yet (planned road analysis) |
 | Python | 3.12 | Python Software Foundation licence (to confirm the exact text for the conda build) | Yes |
+
+`distmetrics` 1.0.8 (Apache-2.0) was read to decide the change method and is not a dependency; see "Statistical change layer".
 
 ## Still to do
 
