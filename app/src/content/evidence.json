@@ -1,0 +1,141 @@
+{
+  "title": "How we know",
+  "lede": "What the app is built from, how the Change map decides, how it did where nothing should change, and where it falls short. Every figure here comes from docs/DATA_SOURCES.md in the project folder.",
+  "can": [
+    "Radar brightness at the Tarbela south-east shore and on the Indus near Attock stepped between two passes, and the Change map puts each step on a date.",
+    "Places chosen because they should stay steady (two city sites and the reservoir's main pool) stayed quiet on the Change map.",
+    "Outside sources moved the same way at both places: OPERA water maps and the Flood Forecasting Division's reservoir levels at the shore, OPERA water maps at Attock. Neither says what the surface was on a NISAR date itself.",
+    "The 2 July HV brightening is not ground change. HV differs by 12 dB between two frequencies in the same pass, which the ground cannot do. It is likely radio interference, and an instrument fault would look much the same."
+  ],
+  "cannot": [
+    "Say what caused any step. A step is a change in backscatter, and land cover here has not been checked on the ground.",
+    "Tell a real change on plain ground from ordinary farmland variation. Plain ground flags as strongly as the known sites, with no known cause.",
+    "Call the rule a blind test. It was set with the known sites in view.",
+    "See what happened between passes or inside the data gap.",
+    "Warn anyone. This is not an official warning service."
+  ],
+  "sections": [
+    {
+      "id": "data",
+      "title": "The data",
+      "paragraphs": [
+        "Everything on the map comes from a few public sources. Only the first is satellite data."
+      ],
+      "table": {
+        "head": ["Source", "What we used it for", "Status"],
+        "rows": [
+          [
+            "NISAR L2 GCOV, provisional (NASA, from the ASF archive)",
+            "Every picture and curve. Track 84, ascending, frame 19, HH and HV, nine passes from 2 Jul to 18 Oct 2026, one processing version (P05023).",
+            "Provisional and not validated. NASA expects to reprocess it, so levels may move."
+          ],
+          [
+            "OPERA DSWx-S1 water maps (NASA)",
+            "A separate check of where water was on 15 and 23 Sep, 5 and 17 Oct. There is no map between 28 Jun and 15 Sep.",
+            "Made from another satellite, at another time and look, so days apart are stated."
+          ],
+          [
+            "Flood Forecasting Division (FFD) bulletins, Pakistan Meteorological Department",
+            "A few dated river and reservoir figures, with the source named.",
+            "Read from the public daily bulletins and not redistributed. Reuse terms are still to confirm."
+          ],
+          [
+            "Place labels",
+            "Six names on the map.",
+            "Typed in by the team and approximate, to a few kilometres."
+          ]
+        ]
+      }
+    },
+    {
+      "id": "method",
+      "title": "The method, in plain words",
+      "steps": [
+        "Read each pass and set aside the pixels the file marks as fill or partly focused.",
+        "Average power over 3 by 3 pixels, from 10 m to {analysis_m} m, then convert to decibels (dB). Every curve is measured at this size.",
+        "Draw every date on one grey scale, so brightness can be compared between dates. The web pictures are averaged once more and drawn at about {pixel_m} m.",
+        "For each site, average HH and HV inside a circle of 150 m radius. That gives its curve.",
+        {
+          "text": "For the Change map, remove each date's scene-wide offset and average to {step_pixel_m} m. For every pixel, try each split of the {step_dates} dates into a before and an after, with at least 2 dates on each side, and keep the split where HH and HV changed most clearly. The step's date is the first date after the split. 2 July is left out because of the interference, and 14 July stays in with its caution.",
+          "needs": "step"
+        },
+        {
+          "text": "Flag a pixel only where HH and HV moved the same way by at least {min_step_db} dB on average and the dates on each side agree (stability of at least {min_stability}).",
+          "needs": "step"
+        },
+        {
+          "text": "Draw the flagged pixels in {drawn_m} m cells, coloured by the date of the step and shaded by its direction.",
+          "needs": "step"
+        },
+        "Compare with outside sources that do not come from NISAR: OPERA water maps and the Flood Forecasting Division's bulletins."
+      ]
+    },
+    {
+      "id": "controls",
+      "title": "Control results",
+      "needs": "step",
+      "paragraphs": [
+        "A control is a place that should stay steady, and a good rule leaves it quiet. The table gives the share of the Change map's {step_pixel_m} m pixels flagged near each site, with the pixel count behind it."
+      ],
+      "afterTable": [
+        "The whole study window has {flagged_pct}% of its pixels flagged.",
+        "The controls were used in setting the limit, so their staying quiet is partly built in. Five fresh cities that played no part in setting it also stayed quiet: 0% flagged within 450 m. That is the independent check.",
+        "Plain ground is not quiet. The plains near Swabi and east of Mardan flag at 35% and 68% within 450 m, with no known cause, so a flag on plain ground says little on its own.",
+        "Against the NISAR dates with an OPERA water map a day or a few days away, NISAR's own water mask finds 78 to 90% of OPERA's water over the whole window, with an overlap (IoU) of 0.43 to 0.60, and agrees closely around Tarbela (IoU 0.90 to 0.92). The mask was set on the main pool and was not tuned for rivers."
+      ]
+    },
+    {
+      "id": "rule",
+      "title": "The rule, and how it was set",
+      "needs": "step",
+      "paragraphs": [
+        "A pixel is flagged where HH and HV move the same way, their mean size is at least {min_step_db} dB and their stability (a two-sample t statistic, combined as a root mean square) is at least {min_stability}.",
+        "The size limit is the project's standing rule that a change under about 3 dB at one site needs other support. The stability limit was computed: the smallest multiple of 0.5 that lets through at most 1% of control pixels and at most 1% of shuffled-date pixels in a plain-ground box. That 1% is the false-alarm budget.",
+        "Shuffling the dates keeps each pixel's values and removes their order. Picking the best split inflates results, so a size limit alone is not safe: HH of at least 3 dB would pass about 1% of shuffled pixels even at one fixed split.",
+        "This rule was not blind, and it changed. The first rule set each limit separately. Once the known sites were looked at it flagged only 13% at the shore and 5% east of Mardan within 450 m, which looked too strict. Two faults that do not depend on the sites explained it: 1% on each limit compounds to about 0.08% together, and asking each polarization to pass alone loses steps that are weaker in HV. One joint 1% budget replaced it, and the way to combine HH and HV was chosen on synthetic steps added to shuffled plain pixels. The choice still followed seeing the sites, so the limits were set with the known sites in view.",
+        "One result does not depend on that choice. Shuffling the dates together, in one random order for all pixels, 200 times, flagged at most 1.26% of the window. The real order flags 1.4%."
+      ]
+    },
+    {
+      "id": "limits",
+      "title": "Limits",
+      "list": [
+        "Provisional data. NASA expects to reprocess it, so levels and steps may move.",
+        {
+          "text": "The map is drawn at {drawn_m} m and analysed at {step_pixel_m} m. A cell is drawn only when at least 2 of its 9 pixels are flagged, so lone pixels drop out and small patches are drawn wider than measured. About 31% of flagged pixels fall in cells that are not drawn.",
+          "needs": "step"
+        },
+        "A step names no cause. No rain record was compared, and land cover has not been checked on the ground.",
+        "The shore's step rests on two earlier dates, 14 Jul and 26 Jul, and 14 Jul is a flagged forecast-orbit date. With so few dates before it, the step cannot be tested by dropping a date.",
+        "Dropping any one date from 19 Aug on keeps 86 to 90% of flagged pixels, except 6 Oct (71%) and 18 Oct (78%). Dropping a July date keeps 46 to 51%. Only 24% of flagged pixels survive every single drop.",
+        "Only about 20% of flagged pixels step down. A second step in the same place is not drawn, and a dark spell that returns is mostly missed.",
+        "On 6 October patches of the northern plain read about 1.5 dB brighter in both polarizations. The cause is unexplained, and steps dated there are weak.",
+        "OPERA has no water map between 28 Jun and 15 Sep, so the August step at the shore rests on the reservoir-level bulletins alone.",
+        "The whole scene reads 0.5 to 1 dB lower on some dates, so a change of about 1 dB at one site is not read as a signal.",
+        "A site card uses the site's averaged curve, which is more lenient than the map's pixel-by-pixel test.",
+        "Over dark water HV sits only about 3 dB above the file's noise level, and noise is not subtracted."
+      ]
+    },
+    {
+      "id": "mind",
+      "title": "What would change our mind",
+      "list": [
+        "NASA's reprocessed files moving the 19 Aug shore step or the Attock steps. Then they were partly a product of the provisional processing.",
+        "The 2 July file, reprocessed with interference filtering, not bringing HV at Peshawar back to about -10 dB. Then the interference reading is wrong.",
+        "Wind records for Tarbela at the pass times, about 05:22 Pakistan time, not moving with HH on the pool. Then the pool's small changes are not wind.",
+        "A survey of the shore's height, or optical images of the Attock bars in October, contradicting the radar. Then those two hypotheses go.",
+        "Optical greenness from HLS showing no crop on the Swabi and Mardan plains. Then the crop reading goes.",
+        "A baseline from before the monsoon placing the shore's step on another date. The stack starts on 2 July, so none exists here.",
+        "Controls we have not yet used flagging more than about 1%. Then the false-alarm budget was wrong."
+      ]
+    },
+    {
+      "id": "check",
+      "title": "Check it yourself",
+      "paragraphs": [
+        "docs/DATA_SOURCES.md lists every source, its licence status and every number on this page. The scripts that produced the numbers are in processing/checks/ (july2.py, shifts.py, opera_compare.py, step_evidence.py and change_evidence.py), and one command, run_pipeline rebuild, makes every picture again from the NASA files.",
+        "Provisional NISAR data, not an official warning service. For warnings, use the Pakistan Meteorological Department, NDMA and PDMA."
+      ]
+    }
+  ]
+}

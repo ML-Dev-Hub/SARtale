@@ -285,6 +285,12 @@ Only about 20% of flagged pixels in the window step down. The steady ground of a
 
 **Display.** `frames/step_date.webp`, 16 KB, lossless. Hue is the date, the light tint is up, the deep shade is down. Lossy WebP would blur small patches and bilinear warping would invent colours between dates, so classes are warped by nearest neighbour. The map's image layer has no mipmaps, so a fine frame loses patches at the default zoom. Instead each 270 m cell is drawn in its commonest class if at least 2 of its 9 pixels are flagged: lone pixels drop out and small patches stay, drawn a little wider than measured (2.7% of cells against 1.39% of pixels). COGs at 90 m: `data/cog/change_step_HH.tif`, `_HV`, `_stability` (0 where HH and HV disagree in direction) and `_split` (position in the eight dates).
 
+**Checks added when the app copy was written (2 Nov 2026).** These back statements the app makes about the step map.
+
+- **Not drawn.** Rebuilding the frame's cell rule from the 90 m COGs (`change_step_HH`, `_HV`, `_stability`, `_split`) gives 39,096 flagged pixels, 1.39% of those scored, of which 12,196 (31%) lie in 270 m cells that are not drawn, because fewer than 2 of the cell's 9 pixels are flagged. A further 12% of flagged pixels lie in a drawn cell but take the colour of the cell's commonest class, so 43% are not drawn in their own class. The app says the 31%. The check was a short script run once and is not kept in `processing/checks/`.
+- **Fresh cities.** A reviewer ran the rule on five cities that played no part in setting the limits: 0% of pixels flagged within 450 m. The cities are not named here and the script is not in the repository, so this check is reported, not reproduced by us. The three controls (Peshawar, Hazro, the Tarbela pool) were used in setting the stability limit, so their quiet is partly built in.
+- **Card against map.** A site card judges the site's averaged curve (mean dB inside the 150 m circle, then the same limits). The map judges each 90 m pixel, which is stricter, so a card can pass where few map pixels do. Percentages of map pixels within 150 m rest on 8 to 10 pixels and are not quoted; the card quotes the share within 450 m and its pixel count (the table above).
+
 ### Unusual dates layer (z-scores)
 
 This is the secondary view. Its verdict below still stands for what it is: it cannot place a lasting change, which is why the step layer above is the main one. It still catches short pulses the step layer misses.
