@@ -1,6 +1,6 @@
 import { story } from "./content";
-import { coverageSegments, gapSummary, stateLabel, type Segment } from "./gap";
-import { flagFor, formatDate, orderedDates } from "./timeline";
+import { coverageSegments, gapSummary, stateLabel, UNUSED_LABEL, type Segment } from "./gap";
+import { acquisitionDates, flagFor, formatDate, orderedDates } from "./timeline";
 import type { Manifest } from "./types";
 
 export interface MissedViewOptions {
@@ -21,6 +21,7 @@ const TEMPLATE = `
     <figcaption>
       <ul class="legend-keys" data-role="legend" aria-label="Legend">
         <li><span class="swatch swatch-observed" aria-hidden="true"></span>Observed</li>
+        <li><span class="swatch swatch-unused" aria-hidden="true"></span>Observed, not used in this build</li>
         <li><span class="swatch swatch-between" aria-hidden="true"></span>No observation, between passes (expected)</li>
         <li><span class="swatch swatch-gap" aria-hidden="true"></span>No observation, permanent data gap</li>
       </ul>
@@ -28,20 +29,22 @@ const TEMPLATE = `
   </figure>
   <h3 class="missed-sub">Timeline in words</h3>
   <ol class="runs" data-role="runs"></ol>
-  <h3 class="missed-sub">Dates NISAR observed in this data (<span data-role="pass-count"></span>)</h3>
+  <h3 class="missed-sub">Dates NISAR observed (<span data-role="pass-count"></span>)</h3>
   <ul class="passes" data-role="passes"></ul>
   <p class="slot event-copy" data-role="event-copy"></p>
 </div>`;
 
 export interface Run {
-  kind: "observed" | "between" | "gap";
+  kind: "observed" | "unused" | "between" | "gap";
   from: string;
   to: string;
   days: number;
 }
 
 function kindOf(s: Segment): Run["kind"] {
-  return s.state === "observed" ? "observed" : s.inGap ? "gap" : "between";
+  if (s.state === "observed") return "observed";
+  if (s.state === "observed-unused") return "unused";
+  return s.inGap ? "gap" : "between";
 }
 
 /** Consecutive days of the same kind joined into one run. */
@@ -63,12 +66,13 @@ export function toRuns(segments: Segment[]): Run[] {
 function runText(r: Run): string {
   const span = r.from === r.to ? formatDate(r.from) : `${formatDate(r.from)} to ${formatDate(r.to)}`;
   if (r.kind === "observed") return `${stateLabel("observed")}: ${span}`;
+  if (r.kind === "unused") return `${stateLabel("observed-unused")}: ${span}`;
   return `${stateLabel("no-observation")}, ${r.kind === "gap" ? "permanent data gap" : "between passes"}: ${span}`;
 }
 
-/** First and last day to draw: the manifest dates, widened to the whole days the gap touches. */
+/** First and last day to draw: every date NISAR imaged, widened to the whole days the gap touches. */
 function timelineRange(m: Manifest): [string, string] | null {
-  const days = orderedDates(m);
+  const days = acquisitionDates(m);
   if (m.gap) {
     for (const t of [Date.parse(m.gap.start), Date.parse(m.gap.end)]) {
       if (Number.isFinite(t)) days.push(new Date(t).toISOString().slice(0, 10));
@@ -99,13 +103,14 @@ export function createMissedView(root: HTMLElement, opts: MissedViewOptions): Mi
   // The only event copy is the labelled placeholder from story.json.
   q("event-copy").textContent = copy.summary;
 
-  const dates = orderedDates(m);
+  const built = new Set(orderedDates(m));
+  const dates = acquisitionDates(m);
   q("pass-count").textContent = String(dates.length);
   q("passes").replaceChildren(
     ...dates.map((d) => {
       const li = document.createElement("li");
-      const flag = flagFor(m, d);
-      li.textContent = flag ? `${formatDate(d)}. ${flag}` : formatDate(d);
+      const notes = [flagFor(m, d), built.has(d) ? undefined : `${UNUSED_LABEL}.`].filter(Boolean);
+      li.textContent = notes.length ? `${formatDate(d)}. ${notes.join(" ")}` : formatDate(d);
       return li;
     }),
   );
@@ -124,11 +129,13 @@ export function createMissedView(root: HTMLElement, opts: MissedViewOptions): Mi
       return cell;
     }),
   );
+  const unusedCount = dates.filter((d) => !built.has(d)).length;
   const hasGap = runs.some((r) => r.kind === "gap");
   strip.setAttribute(
     "aria-label",
     range
       ? `Timeline from ${formatDate(range[0])} to ${formatDate(range[1])}: ${dates.length} observed dates` +
+          (unusedCount ? `, of which ${unusedCount} not used in this build` : "") +
           (hasGap ? ", and a permanent data gap with no observation" : "") +
           ". The same facts are listed below."
       : "No dates in this data",

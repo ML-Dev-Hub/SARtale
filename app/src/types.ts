@@ -19,6 +19,11 @@ export interface Manifest {
   /** [west, south, east, north] in lon/lat */
   bounds: [number, number, number, number];
   dates: FrameEntry[];
+  /**
+   * Every UTC date NISAR imaged this stack (YYYY-MM-DD), including dates not built into this data set.
+   * Absent in older manifests: readers then fall back to `dates`.
+   */
+  acquisitions?: string[];
   composite?: string;
   /** The three dates behind the seasonal composite (red, green, blue). */
   composite_dates?: string[];

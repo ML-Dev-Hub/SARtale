@@ -27,6 +27,12 @@ export function orderedDates(m: Manifest): string[] {
   return m.dates.map((d) => d.date).sort();
 }
 
+/** Every date NISAR imaged this stack: the manifest's `acquisitions` plus its built `dates`, sorted. Falls back to `dates`. */
+export function acquisitionDates(m: Manifest): string[] {
+  const all = new Set([...orderedDates(m), ...(Array.isArray(m.acquisitions) ? m.acquisitions : [])]);
+  return [...all].sort();
+}
+
 export type MaturityKind = "provisional" | "preview" | "synthetic";
 
 /**

@@ -411,6 +411,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(
 .strip { display: flex; height: 56px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--ink-0); }
 .strip .cell { flex-basis: 0; min-width: 4px; }
 .cell-observed { background: var(--teal); min-width: 6px; border-left: 1px solid var(--ink-0); border-right: 1px solid var(--ink-0); }
+.cell-unused { background: repeating-linear-gradient(-45deg, var(--teal-dim) 0 3px, var(--ink-0) 3px 6px); min-width: 6px; border-left: 1px solid var(--teal); border-right: 1px solid var(--teal); }
 .cell-between { background: transparent; background-image: radial-gradient(var(--muted) 1px, transparent 1.5px); background-size: 8px 8px; }
 .cell-gap {
   display: grid;
@@ -430,6 +431,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(
 .legend-keys li { display: flex; align-items: center; gap: 8px; }
 .swatch { flex: none; width: 28px; height: 16px; border: 1px solid var(--line); border-radius: 3px; }
 .swatch-observed { background: var(--teal); }
+.swatch-unused { background: repeating-linear-gradient(-45deg, var(--teal-dim) 0 3px, var(--ink-0) 3px 6px); border-color: var(--teal); }
 .swatch-between { background-image: radial-gradient(var(--muted) 1px, transparent 1.5px); background-size: 8px 8px; }
 .swatch-gap { background: repeating-linear-gradient(-45deg, var(--amber) 0 5px, #d9902a 5px 10px); border-color: var(--amber); }
 .runs { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 0.9rem; }

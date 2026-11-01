@@ -103,3 +103,54 @@ describe("missed view", () => {
     expect($("scroll").getAttribute("aria-label")).toBeTruthy();
   });
 });
+
+describe("missed view: dates observed but not built", () => {
+  // A four-date build of a nine-date stack, as the real run will be.
+  const built = ["2026-07-26", "2026-08-19", "2026-09-12", "2026-10-18"];
+  const acquisitions = ["2026-07-26", "2026-08-19", "2026-08-31", "2026-09-12", "2026-09-24", "2026-10-06", "2026-10-18"];
+  const four: Manifest = {
+    ...fixtureManifest,
+    gap: { start: "2026-07-27T22:03:25Z", end: "2026-08-10T00:55:27Z" },
+    dates: built.map((date, i) => ({ date, granule: `g${i}`, frames: { HH: "a", HV: "b" } })),
+    acquisitions,
+  };
+
+  test("31 Aug, 24 Sep and 6 Oct are not called unobserved: the strip, word list and legend say so", () => {
+    const { $ } = setup(four);
+    const kinds = [...$("strip").querySelectorAll<HTMLElement>("[data-kind]")].map((c) => c.dataset.kind);
+    expect(kinds).toContain("unused");
+    const runs = [...$("runs").querySelectorAll("li")].map((li) => li.textContent);
+    for (const d of ["31 Aug 2026", "24 Sep 2026", "6 Oct 2026"]) {
+      expect(runs).toContain(`Observed, not used in this build: ${d}`);
+      expect(runs.some((t) => t!.startsWith("No observation") && t!.includes(d))).toBe(false);
+    }
+    expect($("legend").textContent).toContain("Observed, not used in this build");
+  });
+
+  test("the date list names every observed date and marks the unused ones", () => {
+    const { $ } = setup(four);
+    const items = [...$("passes").querySelectorAll("li")].map((li) => li.textContent);
+    expect($("pass-count").textContent).toBe("7");
+    expect(items).toEqual([
+      "26 Jul 2026",
+      "19 Aug 2026",
+      "31 Aug 2026. Observed, not used in this build.",
+      "12 Sep 2026",
+      "24 Sep 2026. Observed, not used in this build.",
+      "6 Oct 2026. Observed, not used in this build.",
+      "18 Oct 2026",
+    ]);
+  });
+
+  test("the strip text alternative counts the unused dates", () => {
+    const { $ } = setup(four);
+    expect($("strip").getAttribute("aria-label")).toContain("7 observed dates, of which 3 not used in this build");
+  });
+
+  test("a manifest without acquisitions behaves as before: no unused cells", () => {
+    const { $ } = setup({ ...four, acquisitions: undefined });
+    expect($("strip").querySelector('[data-kind="unused"]')).toBeNull();
+    expect($("pass-count").textContent).toBe("4");
+  });
+});
+

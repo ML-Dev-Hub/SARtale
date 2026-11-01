@@ -1,6 +1,11 @@
+import { acquisitionDates, orderedDates } from "./timeline";
 import type { Manifest } from "./types";
 
-export type CoverageState = "observed" | "no-observation";
+/**
+ * "observed": NISAR imaged the day and this build uses it. "observed-unused": NISAR imaged the day but this
+ * build does not include it. "no-observation": NISAR recorded nothing that day.
+ */
+export type CoverageState = "observed" | "observed-unused" | "no-observation";
 
 export interface Segment {
   /** UTC calendar date, YYYY-MM-DD. */
@@ -10,8 +15,10 @@ export interface Segment {
   inGap: boolean;
 }
 
+export const UNUSED_LABEL = "Observed, not used in this build";
+
 export function stateLabel(state: Segment["state"]): string {
-  return state === "observed" ? "Observed" : "No observation";
+  return state === "observed" ? "Observed" : state === "observed-unused" ? UNUSED_LABEL : "No observation";
 }
 
 const DAY_MS = 86_400_000;
@@ -35,8 +42,9 @@ function gapRange(m: Manifest): [number, number] | null {
 
 /**
  * One segment per UTC calendar day from `from` to `to` inclusive.
- * A day is "observed" when the manifest lists it as an acquisition date, unless the whole day lies inside the
- * permanent gap: then it is "no-observation" with inGap true, even if the manifest lists it.
+ * A day is "observed" when the manifest builds it, and "observed-unused" when the manifest's `acquisitions`
+ * list it but the build does not (a manifest without `acquisitions` falls back to its `dates`). Unless the whole
+ * day lies inside the permanent gap: then it is "no-observation" with inGap true, even if the manifest lists it.
  * A day the gap only touches (the days of the gap's start and end) is not inGap, so a pass on it stays observed.
  * An empty, reversed or invalid range returns [].
  */
@@ -44,13 +52,15 @@ export function coverageSegments(m: Manifest, from: string, to: string): Segment
   const a = dayStart(from);
   const b = dayStart(to);
   if (a === null || b === null || b < a) return [];
-  const acquired = new Set(m.dates.map((d) => d.date));
+  const built = new Set(orderedDates(m));
+  const imaged = new Set(acquisitionDates(m));
   const gap = gapRange(m);
   const out: Segment[] = [];
   for (let t = a; t <= b; t += DAY_MS) {
     const date = new Date(t).toISOString().slice(0, 10);
     const inGap = gap !== null && t >= gap[0] && t + DAY_MS <= gap[1];
-    out.push({ date, state: !inGap && acquired.has(date) ? "observed" : "no-observation", inGap });
+    const state: CoverageState = inGap || !imaged.has(date) ? "no-observation" : built.has(date) ? "observed" : "observed-unused";
+    out.push({ date, state, inGap });
   }
   return out;
 }

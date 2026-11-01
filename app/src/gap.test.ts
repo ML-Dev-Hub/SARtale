@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { fixtureManifest } from "./fixtures";
-import { coverageSegments, gapSummary, stateLabel } from "./gap";
+import { coverageSegments, gapSummary, stateLabel, UNUSED_LABEL } from "./gap";
 import type { Manifest } from "./types";
 
 const GAP = { start: "2026-07-27T22:03:25Z", end: "2026-08-10T00:55:27Z" };
@@ -89,5 +89,35 @@ describe("gapSummary", () => {
     expect(text).toContain("27 Jul 2026, 22:03:25 UTC");
     expect(text).toContain("10 Aug 2026, 00:55:27 UTC");
     expect(text).toContain("NISAR has no data");
+  });
+});
+
+describe("observed but not used in this build", () => {
+  const withAcquisitions: Manifest = { ...m, acquisitions: ["2026-07-02", "2026-07-14", "2026-07-26", "2026-08-31", "2026-09-24"] };
+
+  test("the label says Observed, not used in this build", () => {
+    expect(stateLabel("observed-unused")).toBe("Observed, not used in this build");
+    expect(UNUSED_LABEL).toBe("Observed, not used in this build");
+  });
+
+  test("a date in acquisitions but not in dates is observed-unused, never no-observation", () => {
+    const s = coverageSegments(withAcquisitions, "2026-08-31", "2026-08-31");
+    expect(s[0]).toEqual({ date: "2026-08-31", state: "observed-unused", inGap: false });
+    expect(coverageSegments(withAcquisitions, "2026-09-24", "2026-09-24")[0].state).toBe("observed-unused");
+  });
+
+  test("a built date stays observed and a day with no pass stays no-observation", () => {
+    expect(coverageSegments(withAcquisitions, "2026-07-26", "2026-07-26")[0].state).toBe("observed");
+    expect(coverageSegments(withAcquisitions, "2026-09-01", "2026-09-01")[0].state).toBe("no-observation");
+  });
+
+  test("a manifest without acquisitions falls back to its dates", () => {
+    expect(coverageSegments(m, "2026-08-31", "2026-08-31")[0].state).toBe("no-observation");
+    expect(coverageSegments(m, "2026-07-14", "2026-07-14")[0].state).toBe("observed");
+  });
+
+  test("an unused acquisition inside the permanent gap is still the gap", () => {
+    const inGap: Manifest = { ...m, acquisitions: ["2026-08-01"] };
+    expect(coverageSegments(inGap, "2026-08-01", "2026-08-01")[0]).toEqual({ date: "2026-08-01", state: "no-observation", inGap: true });
   });
 });
