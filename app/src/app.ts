@@ -168,6 +168,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   // Limits of the preview images, shown on The Dance. Not shown for calibrated or synthetic data.
   limitsEl.hidden = !isPreview;
   if (isPreview) {
+    ledeEl.textContent = "Step through the season's radar images. The images are scaled for display, so their brightness is not a measurement.";
     const size = m.pixel_m ? `about ${m.pixel_m} m` : "coarse";
     limitsEl.textContent =
       `Limits: each preview pixel covers ${size} and its brightness is scaled for display, so brightness cannot be compared as a measurement. ` +
@@ -218,12 +219,12 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
 
   function compositeHint(): string {
     const off = "Switch the composite off to use the date controls.";
+    const [r, g, b] = (m.composite_dates ?? []).map(formatDate);
+    const which = r && g && b ? `red is ${r}, green is ${g}, blue is ${b} (HH)` : "red for early dates, green for the middle, blue for late (HH)";
     if (isPreview) {
-      const [r, g, b] = (m.composite_dates ?? []).map(formatDate);
-      const which = r && g && b ? `red is ${r}, green is ${g}, blue is ${b} (HH)` : "red for early dates, green for the middle, blue for late (HH)";
-      return `Composite colours: ${which}. Colour shows a difference in display brightness between dates, not a measurement and not proven physical change. ${off}`;
+      return `Composite colours: ${which}. Colour differences may come from display scaling, so they are not a measurement and not proven physical change. ${off}`;
     }
-    return `Composite colours: red for early dates, green for the middle, blue for late. Colour shows a difference in backscatter, not proven physical change. ${off}`;
+    return `Composite colours: ${which}. Colour shows a difference in backscatter, not proven physical change. ${off}`;
   }
 
   function updateLabels(): void {

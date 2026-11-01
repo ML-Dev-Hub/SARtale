@@ -389,6 +389,38 @@ describe("real preview manifest", () => {
     expect($("hint").textContent).not.toMatch(/backscatter/i);
   });
 
+  test("the composite hint blames display scaling, not backscatter, for colour differences", async () => {
+    const { app, $ } = setup(previewManifest);
+    await app.settled();
+    $("composite-toggle").click();
+    await app.settled();
+    expect($("hint").textContent).toContain("Colour differences may come from display scaling");
+    expect($("hint").textContent).not.toMatch(/display brightness|backscatter/i);
+  });
+
+  test("the lede for the preview says the images are scaled for display, not that bright areas sent more signal back", async () => {
+    const { app, $ } = setup(previewManifest);
+    await app.settled();
+    expect($("lede").textContent).toContain("scaled for display");
+    expect($("lede").textContent).not.toContain("sent more of the signal back");
+  });
+
+  test("the lede for calibrated data keeps the plain description", async () => {
+    const { app, $ } = setup(fixtureManifest);
+    await app.settled();
+    expect($("lede").textContent).toContain("Brighter areas sent more of the signal back");
+  });
+
+  test("calibrated data names its composite dates when the manifest has them", async () => {
+    const { app, $ } = setup({ ...fixtureManifest, composite_dates: ["2026-07-26", "2026-09-12", "2026-10-18"] });
+    await app.settled();
+    $("composite-toggle").click();
+    await app.settled();
+    const t = $("hint").textContent ?? "";
+    expect(t).toContain("red is 26 Jul 2026, green is 12 Sep 2026, blue is 18 Oct 2026");
+    expect(t).toContain("backscatter");
+  });
+
   test("the maturity banner is on the page before the map is created", () => {
     const root = document.createElement("div");
     document.body.append(root);
