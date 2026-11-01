@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sartale.config import BBOX, GAP_END, GAP_START
+from sartale.config import BBOX, GAP_END, GAP_START, SOURCE
 
 CMR_URL = "https://cmr.earthdata.nasa.gov/search/granules.umm_json"
 SHORT_NAME = "NISAR_L2_GCOV_PROVISIONAL_V1"
@@ -76,7 +76,8 @@ def select_stack(granules: list[Granule], stack_id: str, mode: str, pole: str) -
     out = [
         g for g in granules
         if (g.track, g.direction, g.frame) == (int(track), direction, int(frame))
-        and g.mode == mode and g.pole == pole and g.coverage == "F"
+        and g.mode == mode and g.pole == pole and g.source == SOURCE
+        and g.coverage == "F"
         and not gap_start <= g.start <= gap_end
     ]
     crids = sorted({g.crid for g in out})

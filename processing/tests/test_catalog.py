@@ -6,8 +6,8 @@ NAME = "NISAR_L2_PR_GCOV_023_063_D_071_2005_QPDH_A_20260618T135450_20260618T1355
 
 
 def make(cycle="020", track="084", direction="A", frame="019", mode="4005",
-         pole="DHDH", start="20260702T010203", crid="P05023", acc="N", cov="F"):
-    return (f"NISAR_L2_PR_GCOV_{cycle}_{track}_{direction}_{frame}_{mode}_{pole}_A_"
+         pole="DHDH", start="20260702T010203", crid="P05023", acc="N", cov="F", src="A"):
+    return (f"NISAR_L2_PR_GCOV_{cycle}_{track}_{direction}_{frame}_{mode}_{pole}_{src}_"
             f"{start}_{start}_{crid}_{acc}_{cov}_J_001")
 
 
@@ -57,3 +57,9 @@ def test_select_stack_excludes_dates_in_gap(sample):
 def test_select_stack_keeps_forecast_accuracy(sample):
     out = stack(sample + [make(start="20260714T010203", acc="F")])
     assert len(out) == 3 and out[1].accuracy == "F"
+
+
+def test_select_stack_excludes_non_a_source(sample):
+    out = stack(sample + [make(start="20260915T010203", src="B")])
+    assert len(out) == 2
+    assert all(g.source == "A" for g in out)
