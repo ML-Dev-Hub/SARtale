@@ -209,7 +209,8 @@ def test_sites_command_writes_contract(tmp_path):
     assert [p["date"] for p in sites[0]["series"]] == DATES
     for s in sites:
         for p in s["series"]:
-            assert list(p) == ["date", "hh_db", "hv_db", "valid_fraction"]
+            assert list(p) == ["date", "hh_db", "hv_db", "valid_fraction", "change_score"]
+            assert p["change_score"] is None  # this manifest has no change layer
             assert 0 < p["valid_fraction"] <= 1
             assert p["hh_db"] == round(p["hh_db"], 2)
     # fixture power falls by 10**(-i/2) per date, i.e. -5 dB each step

@@ -547,6 +547,31 @@ def test_rebuild_builds_every_verified_date_and_samples_the_sites(tmp_path, caps
     assert "4 dates" in printed
 
 
+def test_rebuild_reproduces_the_change_layer_when_there_are_enough_dates(tmp_path, capsys):
+    dates = ["2026-07-26", "2026-08-19", "2026-08-31", "2026-09-12", "2026-09-24", "2026-10-06", "2026-10-18"]
+    gdir, mpath, _ = _make_stack(tmp_path, dates=dates)
+    _with_sizes(gdir, mpath)
+    out = _rebuild(tmp_path, gdir, mpath)
+    m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    assert len(m["change"]["baseline_dates"]) >= 5
+    for path in m["change"]["frames"].values():
+        assert (out / path).is_file()
+    assert (tmp_path / "cog" / f"change_{dates[-1]}.tif").is_file()
+    sites = json.loads((out / "sites.json").read_text(encoding="utf-8"))
+    assert any(p["change_score"] is not None for p in sites[0]["series"])
+    assert "change: threshold" in capsys.readouterr().out
+
+
+def test_rebuild_with_too_few_dates_has_no_change_layer_and_null_site_scores(tmp_path, capsys):
+    gdir, mpath, _ = _make_stack(tmp_path)
+    _with_sizes(gdir, mpath)
+    out = _rebuild(tmp_path, gdir, mpath)
+    assert "change" not in json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    sites = json.loads((out / "sites.json").read_text(encoding="utf-8"))
+    assert all(p["change_score"] is None for p in sites[0]["series"])
+    assert "not enough dates" in capsys.readouterr().out
+
+
 def test_rebuild_refuses_a_manifest_without_sizes(tmp_path):
     gdir, mpath, _ = _make_stack(tmp_path)
     with pytest.raises(ValueError, match="run `search` again"):

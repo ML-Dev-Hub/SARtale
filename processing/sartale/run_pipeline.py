@@ -1,4 +1,4 @@
-"""SARtale pipeline CLI: search, download, build, sites, rebuild, preview."""
+"""SARtale pipeline CLI: search, download, build, change, sites, rebuild, preview."""
 import argparse
 import json
 from pathlib import Path
@@ -6,6 +6,7 @@ from pathlib import Path
 from sartale import config
 from sartale.browse import build_preview
 from sartale.catalog import search_cmr, select_stack, utc_date, write_manifest
+from sartale.change import add_change_scores, build_change
 from sartale.download import download
 from sartale.products import build_products
 from sartale.sites import (
@@ -63,11 +64,35 @@ def _print_site_checks(sites: list[dict], out: Path) -> None:
     print(f"{len(sites)} sites -> {out}")
 
 
+def _read_json(path: Path):
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
 def cmd_sites(args) -> None:
-    sites_in = json.loads(Path(args.sites_in).read_text(encoding="utf-8"))
-    sites = build_sites(Path(args.gcov_dir), Path(args.manifest), sites_in, args.radius_m)
+    sites = build_sites(Path(args.gcov_dir), Path(args.manifest), _read_json(args.sites_in), args.radius_m)
+    add_change_scores(sites, _read_json(args.manifest), Path(args.cog_dir), args.radius_m)
     write_sites(sites, Path(args.out))
     _print_site_checks(sites, Path(args.out))
+
+
+def _print_change_checks(change: dict | None) -> None:
+    if not change:
+        return
+    print(f"change: threshold {change['threshold']}, shared scale up to {change['scale_max']}")
+    print(f"change: baseline {', '.join(change['baseline_dates'])}")
+    for e in change["excluded"]:
+        print(f"change: excluded {e['date']}: {e['reason']}")
+    for d, removed in change["removed_offsets_db"].items():
+        print(f"change: {d} removed {removed}")
+
+
+def cmd_change(args) -> None:
+    """The change layer alone, from the COGs. No other frame is written, and an existing sites.json gains its scores."""
+    out_dir, cog_dir = Path(args.out_dir), Path(args.cog_dir)
+    _print_change_checks(build_change(cog_dir, out_dir, _read_json(args.sites_in), args.radius_m))
+    path = out_dir / "sites.json"
+    if path.is_file():
+        write_sites(add_change_scores(_read_json(path), _read_json(out_dir / "manifest.json"), cog_dir, args.radius_m), path)
 
 
 def verified_dates(granules: list[dict], gcov_dir: Path) -> list[str]:
@@ -89,17 +114,19 @@ def verified_dates(granules: list[dict], gcov_dir: Path) -> list[str]:
 
 
 def cmd_rebuild(args) -> None:
-    """`build` and `sites` on every verified date, with the same checks printed."""
-    gcov_dir, out_dir = Path(args.gcov_dir), Path(args.out_dir)
-    search = json.loads(Path(args.manifest_in).read_text(encoding="utf-8"))
+    """`build`, `change` and `sites` on every verified date, with the same checks printed."""
+    gcov_dir, out_dir, cog_dir = Path(args.gcov_dir), Path(args.out_dir), Path(args.cog_dir)
+    search = _read_json(args.manifest_in)
     dates = verified_dates(search["granules"], gcov_dir)
     if not dates:
         raise ValueError(f"No verified GCOV file in {gcov_dir}")
     print(f"{len(dates)} dates: {', '.join(dates)}", flush=True)
-    manifest = build_products(gcov_dir, dates, Path(args.manifest_in), out_dir, Path(args.cog_dir))
+    manifest = build_products(gcov_dir, dates, Path(args.manifest_in), out_dir, cog_dir)
     _print_build_checks(manifest, out_dir)
-    sites_in = json.loads(Path(args.sites_in).read_text(encoding="utf-8"))
+    sites_in = _read_json(args.sites_in)
+    _print_change_checks(build_change(cog_dir, out_dir, sites_in, args.radius_m))
     sites = build_sites(gcov_dir, out_dir / "manifest.json", sites_in, args.radius_m)
+    add_change_scores(sites, _read_json(out_dir / "manifest.json"), cog_dir, args.radius_m)
     write_sites(sites, out_dir / "sites.json")
     _print_site_checks(sites, out_dir / "sites.json")
 
@@ -127,15 +154,22 @@ def main(argv=None) -> None:
     b.add_argument("--out-dir", default=str(REPO_ROOT / "app" / "public" / "data"))
     b.add_argument("--cog-dir", default=str(REPO_ROOT / "data" / "cog"))
     b.set_defaults(func=cmd_build)
+    c = sub.add_parser("change", help="statistical change layer from the COGs; touches no other frame")
+    c.add_argument("--cog-dir", default=str(REPO_ROOT / "data" / "cog"))
+    c.add_argument("--out-dir", default=str(REPO_ROOT / "app" / "public" / "data"))
+    c.add_argument("--sites-in", default=str(REPO_ROOT / "processing" / "sites_in.json"))
+    c.add_argument("--radius-m", type=float, default=150.0)
+    c.set_defaults(func=cmd_change)
     t = sub.add_parser("sites", help="sample site curves and the stable control")
     t.add_argument("--gcov-dir", required=True, help="directory holding <granule>.h5 files")
     t.add_argument("--manifest", required=True, help="app manifest.json written by `build`")
     t.add_argument("--sites-in", required=True,
                    help="JSON list of {id, name, lon, lat, role}")
     t.add_argument("--out", default=str(REPO_ROOT / "app" / "public" / "data" / "sites.json"))
+    t.add_argument("--cog-dir", default=str(REPO_ROOT / "data" / "cog"), help="where the change score COGs are")
     t.add_argument("--radius-m", type=float, default=150.0)
     t.set_defaults(func=cmd_sites)
-    r = sub.add_parser("rebuild", help="build and sites on every verified date, printing the same checks")
+    r = sub.add_parser("rebuild", help="build, change and sites on every verified date, printing the same checks")
     r.add_argument("--gcov-dir", default=str(REPO_ROOT / "data" / "gcov"), help="directory holding <granule>.h5 files")
     r.add_argument("--manifest-in", default=str(REPO_ROOT / "data" / "manifest_h0.json"),
                    help="manifest written by `search` (needs size)")
