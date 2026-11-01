@@ -1,10 +1,12 @@
-"""SARtale pipeline CLI. A later task adds `sites`."""
+"""SARtale pipeline CLI: search, build, sites."""
 import argparse
+import json
 from pathlib import Path
 
 from sartale import config
 from sartale.catalog import search_cmr, select_stack, write_manifest
 from sartale.products import build_products
+from sartale.sites import build_sites, stability_report, write_sites
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -24,6 +26,17 @@ def cmd_build(args) -> None:
     print(f"{len(manifest['dates'])} dates -> {Path(args.out_dir) / 'manifest.json'}")
 
 
+def cmd_sites(args) -> None:
+    sites_in = json.loads(Path(args.sites_in).read_text(encoding="utf-8"))
+    sites = build_sites(Path(args.gcov_dir), Path(args.manifest), sites_in, args.radius_m)
+    write_sites(sites, Path(args.out))
+    for s in sites:
+        for pol in ("hh_db", "hv_db"):
+            rep = stability_report([p[pol] for p in s["series"]])
+            print(f"{s['id']} ({s['role']}) {pol}: spread {rep['spread_db']} dB, {rep['n_valid']} valid")
+    print(f"{len(sites)} sites -> {args.out}")
+
+
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(prog="run_pipeline")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -37,6 +50,14 @@ def main(argv=None) -> None:
     b.add_argument("--out-dir", default=str(REPO_ROOT / "app" / "public" / "data"))
     b.add_argument("--cog-dir", default=str(REPO_ROOT / "data" / "cog"))
     b.set_defaults(func=cmd_build)
+    t = sub.add_parser("sites", help="sample site curves and the stable control")
+    t.add_argument("--gcov-dir", required=True, help="directory holding <granule>.h5 files")
+    t.add_argument("--manifest", required=True, help="app manifest.json written by `build`")
+    t.add_argument("--sites-in", required=True,
+                   help="JSON list of {id, name, lon, lat, role}")
+    t.add_argument("--out", default=str(REPO_ROOT / "app" / "public" / "data" / "sites.json"))
+    t.add_argument("--radius-m", type=float, default=150.0)
+    t.set_defaults(func=cmd_sites)
     args = parser.parse_args(argv)
     args.func(args)
 
