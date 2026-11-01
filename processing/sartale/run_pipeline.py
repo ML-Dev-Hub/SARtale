@@ -78,6 +78,9 @@ def cmd_sites(args) -> None:
 def _print_change_checks(change: dict | None) -> None:
     if not change:
         return
+    step = change["step"]
+    print(f"change: mean step at least {step['min_step_db']} dB and stability {step['min_stability']}, same direction in HH and HV, "
+          f"{100 * step['flagged_share']:.2f}% of the window flagged")
     print(f"change: threshold {change['threshold']}, shared scale up to {change['scale_max']}")
     print(f"change: baseline {', '.join(change['baseline_dates'])}")
     for e in change["excluded"]:

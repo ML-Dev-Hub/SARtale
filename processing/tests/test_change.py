@@ -15,7 +15,9 @@ from sartale.change import (
     EXCLUDED_REASON,
     MIN_VALID_DATES,
     SCALE_FLOOR_DB,
+    STEP_MIN_DB,
     add_change_scores,
+    best_split,
     build_change,
     change_score,
     control_threshold,
@@ -25,7 +27,14 @@ from sartale.change import (
     scene_offsets,
     score_plan,
     season_scores,
+    shuffle_dates,
     stable_pixels,
+    write_step_frame,
+    step_flags,
+    step_frame,
+    step_rule,
+    step_stability,
+    step_strength,
 )
 from sartale.gcov import Layer
 from sartale.products import FORECAST_FLAG, INTERFERENCE_DATE, INTERFERENCE_FLAG, write_cog
@@ -223,6 +232,135 @@ def test_threshold_ignores_nan_and_refuses_no_data():
         control_threshold(np.array([np.nan]))
 
 
+# --- step test --------------------------------------------------------------------
+
+def _steps(curve_hh, curve_hv=None, min_segment=2):
+    stack = _stack(curve_hh, curve_hv)
+    step, split = best_split(stack, min_segment)
+    return step[:, 0, 0], int(split[0, 0]), step_stability(stack, split, min_segment)[:, 0, 0]
+
+
+def test_a_clean_step_scores_its_size_at_the_right_date():
+    step, split, stability = _steps([-6.0, -6.1, -5.9, -14.0, -14.1, -13.9, -14.0, -14.0],
+                                    [-13.0, -13.1, -12.9, -20.0, -20.1, -19.9, -20.0, -20.0])
+    assert split == 3
+    assert step[0] == pytest.approx(-8.0, abs=0.05)
+    assert step[1] == pytest.approx(-7.0, abs=0.05)
+    assert (stability > 10).all()
+
+
+def test_a_step_up_keeps_its_sign():
+    step, split, _ = _steps([0.0, 0.1, -0.1, 0.0, 0.0, 6.0, 6.1, 5.9])
+    assert split == 5 and step[0] == pytest.approx(6.0, abs=0.05)
+
+
+def test_a_stable_noisy_pixel_scores_low():
+    rng = np.random.default_rng(4)
+    stack = (0.4 * rng.standard_normal((8, 2, 200, 200))).astype(np.float32)
+    step, split = best_split(stack)
+    size, t = step_strength(step, step_stability(stack, split))
+    assert np.percentile(np.abs(step), 99) < 2
+    assert step_flags(size, t, 3.0, 3.0).mean() == 0
+
+
+def test_a_single_spike_does_not_become_a_step_wherever_it_falls():
+    for at in range(8):
+        for height in (10.0, -30.0):
+            curve = [0.1, -0.1, 0.0, 0.1, -0.1, 0.0, 0.1, -0.1]
+            curve[at] += height
+            stack = _stack(curve)
+            step, split = best_split(stack)
+            size, t = step_strength(step, step_stability(stack, split))
+            assert not step_flags(size, t, 3.0, 3.0)[0, 0], (at, height)
+
+
+def test_scatter_inside_the_segments_lowers_stability():
+    calm = _steps([0.0, 0.1, -0.1, 0.0, 5.0, 5.1, 4.9, 5.0])[2][0]
+    rough = _steps([0.0, 2.0, -2.0, 0.0, 5.0, 7.0, 3.0, 5.0])[2][0]
+    assert rough < calm / 3
+
+
+def test_the_scatter_floor_stops_a_tiny_scatter_from_exploding_stability():
+    # A flat 0.2 dB step: without the 0.5 dB floor its zero scatter would make it infinite.
+    assert _steps([0.0, 0.0, 0.0, 0.0, 0.2, 0.2, 0.2, 0.2])[2][0] == pytest.approx(0.2 / (0.5 * 0.5 ** 0.5 * 1.0), abs=1e-3)
+
+
+def test_the_split_is_chosen_jointly_so_both_polarizations_report_the_same_date():
+    step, split, _ = _steps([0.0, 0.1, -0.1, 0.0, 0.1, 5.0, 5.1, 4.9], [0.0, 0.1, -0.1, 3.0, 3.1, 2.9, 3.0, 3.1])
+    assert split in (3, 5)
+    assert np.isfinite(step).all()
+
+
+def test_step_nan_dates_are_skipped_and_a_masked_pixel_stays_nan():
+    step, split, stability = _steps([-6.0, np.nan, -6.1, -5.9, -14.0, np.nan, -14.1, -13.9])
+    assert split == 4
+    assert step[0] == pytest.approx(-8.0, abs=0.1)
+    assert np.isfinite(stability).all()
+    nan_step, nan_split, nan_stability = _steps([np.nan] * 8)
+    assert np.isnan(nan_step).all() and nan_split == -1 and np.isnan(nan_stability).all()
+
+
+def test_too_few_dates_gives_no_step():
+    assert _steps([1.0, 2.0, 3.0])[1] == -1
+    assert _steps([1.0, np.nan, 2.0, np.nan, 3.0, np.nan])[1] == -1
+    assert _steps([1.0, 1.1, 9.0, 9.1])[1] == 2
+
+
+def test_min_segment_holds_at_both_ends():
+    assert _steps([9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])[1] in range(2, 7)
+    assert _steps([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 9.0])[1] in range(2, 7)
+    assert _steps([9.0, 9.0, 9.0, 0.0, 0.0, 0.0, 0.0, 0.0], min_segment=3)[1] == 3
+    assert _steps([9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], min_segment=3)[1] in range(3, 6)
+
+
+def test_min_segment_counts_valid_dates_not_positions():
+    # The first segment here holds one valid date, so a split at position 2 is not allowed.
+    assert _steps([9.0, np.nan, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])[1] >= 3
+
+
+def test_step_strength_averages_the_polarizations_and_needs_them_to_agree_in_direction():
+    step = np.array([[[4.0, 4.0, np.nan]], [[3.0, -3.0, np.nan]]])
+    stability = np.array([[[7.0, 7.0, np.nan]], [[1.0, 1.0, np.nan]]])
+    size, t = step_strength(step, stability)
+    assert size[0, 0] == 3.5 and t[0, 0] == pytest.approx(5.0)
+    assert size[0, 1] == 0.0 and t[0, 1] == 0.0
+    assert np.isnan(size[0, 2]) and np.isnan(t[0, 2])
+
+
+def test_step_flags_need_both_size_and_stability_and_nan_is_never_flagged():
+    size = np.array([4.0, 4.0, 2.0, np.nan])
+    t = np.array([5.0, 3.0, 5.0, np.nan])
+    assert step_flags(size, t, 3.5, 4.0).tolist() == [True, False, False, False]
+
+
+def test_shuffling_keeps_each_pixels_values_and_both_polarizations_together():
+    rng = np.random.default_rng(5)
+    values = rng.normal(size=(8, 2, 50))
+    out = shuffle_dates(values, rng)
+    np.testing.assert_allclose(np.sort(out, axis=0), np.sort(values, axis=0))
+    assert not np.array_equal(out, values)
+    # the same order for both polarizations at each pixel
+    pairs = {tuple(v) for v in values[:, :, 0]}
+    assert {tuple(v) for v in out[:, :, 0]} == pairs
+
+
+def test_step_rule_lets_at_most_one_percent_of_shuffled_pixels_pass_both_limits():
+    rng = np.random.default_rng(6)
+    noisy = rng.normal(0, 1.5, (8, 2, 300, 300)).astype(np.float32)
+    quiet = np.zeros((300, 300), bool)
+    quiet[:20, :20] = True
+    noisy[:, :, :20, :20] = rng.normal(0, 0.3, (8, 2, 20, 20))
+    rule = step_rule(noisy, quiet, ~quiet)
+    assert rule["min_step_db"] == STEP_MIN_DB
+    assert rule["min_stability"] * 2 == int(rule["min_stability"] * 2)
+    assert rule["shuffled_p99_db"] >= rule["control_p99_db"]
+    assert rule == step_rule(noisy, quiet, ~quiet)  # seeded, so a rebuild reproduces it
+    values = noisy[..., ~quiet]
+    out = shuffle_dates(values, np.random.default_rng(9))
+    size, t = step_strength(*(lambda s, o: (s, step_stability(out, o)))(*best_split(out)))
+    assert step_flags(size, t, rule["min_step_db"], rule["min_stability"]).mean() <= 0.012
+
+
 # --- which dates --------------------------------------------------------------------
 
 def _entries(dates=DATES):
@@ -267,6 +405,40 @@ def test_change_frame_uses_one_shared_scale():
     np.testing.assert_array_equal(a[0, 1], b[0, 2])  # saturates at the shared top
 
 
+def _flagged(cells):
+    """A 6 x 6 pixel map with the listed (row, col, split, step) pixels flagged."""
+    split, step, flags = np.full((6, 6), -1, np.int16), np.zeros((6, 6)), np.zeros((6, 6), bool)
+    for r, c, k, size in cells:
+        split[r, c], step[r, c], flags[r, c] = k, size, True
+    return split, step, flags
+
+
+def test_a_lone_flagged_pixel_is_not_drawn():
+    assert (step_frame(*_flagged([(0, 0, 2, 5.0)])) == 0).all()
+
+
+def test_two_flagged_pixels_draw_their_cell_in_the_commonest_class():
+    classes = step_frame(*_flagged([(0, 0, 2, 5.0), (1, 1, 2, 4.0), (2, 2, 3, -4.0), (4, 4, 4, -5.0), (5, 5, 4, -5.0)]))
+    assert classes.shape == (2, 2)
+    assert classes[0, 0] == 1 + 2 * 2  # up at split 2
+    assert classes[1, 1] == 2 + 2 * 4  # down at split 4
+    assert classes[0, 1] == classes[1, 0] == 0
+
+
+def test_the_step_frame_keeps_exact_class_colours(tmp_path):
+    from sartale.change import STEP_COLOURS
+    classes = np.zeros((40, 40), np.uint8)
+    classes[10:30, 10:30] = 5
+    classes[10:30, 12:14] = 6
+    grid = Layer(classes, X0 + np.arange(40) * 2000.0, Y0 - np.arange(40) * 2000.0, 32643, None, None)
+    write_step_frame(classes, grid, tmp_path / "f.webp")
+    with Image.open(tmp_path / "f.webp") as img:
+        pixels = np.array(img.convert("RGBA")).reshape(-1, 4)
+    shown = {tuple(p[:3]) for p in pixels[pixels[:, 3] > 0]}
+    assert shown <= {STEP_COLOURS[2][0], STEP_COLOURS[2][1]}
+    assert set(np.unique(pixels[:, 3])) <= {0, 255}
+
+
 # --- build ------------------------------------------------------------------------
 
 N = 60
@@ -282,7 +454,8 @@ def _grid():
 
 
 def _fixture(tmp_path, wild_2_july=False):
-    """Eight quiet dates, a 9 dB drop in one block on 19 Aug, a NaN corner, and a 2 Jul that may be wild."""
+    """Quiet dates, a 9 dB drop in one block on 19 Aug, a lasting 8 dB drop in another from 12 Sep, a NaN corner, and a
+    2 Jul that may be wild."""
     cog, out = tmp_path / "cog", tmp_path / "out"
     out.mkdir(parents=True)
     rng = np.random.default_rng(3)
@@ -293,6 +466,8 @@ def _fixture(tmp_path, wild_2_july=False):
             a = base + rng.normal(0, 0.4, (N, N)).astype(np.float32)
             if d == "2026-08-19":
                 a[40:50, 40:50] -= 9.0
+            if d >= "2026-09-12" and d != INTERFERENCE_DATE:
+                a[6:24, 36:54] -= 8.0
             if d == INTERFERENCE_DATE and wild_2_july:
                 a += 25.0
             a[:3, :3] = np.nan
@@ -334,14 +509,47 @@ def test_build_change_writes_scores_frames_and_the_manifest_record(tmp_path):
     assert np.isnan(score[0, 0])
 
 
+def test_build_change_records_the_step_layer(tmp_path):
+    cog, out, sites_in = _fixture(tmp_path)
+    step = build_change(cog, out, sites_in)["step"]
+    m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    assert m["change"]["step"] == step
+    assert step["dates"] == SCORED
+    assert step["split_dates"] == SCORED[2:7]
+    assert (out / step["frame"]).is_file()
+    assert step["min_step_db"] > 0 and step["min_stability"] > 0
+    assert 0 < step["flagged_share"] < 1
+    assert {c["date"] for c in step["classes"]} <= set(step["split_dates"])
+    with Image.open(out / step["frame"]) as img:
+        assert img.mode == "RGBA"
+    for name in ("change_step_HH.tif", "change_step_HV.tif", "change_step_stability.tif", "change_step_split.tif"):
+        assert (cog / name).is_file()
+    with rasterio.open(cog / "change_step_split.tif") as src:
+        split = src.read(1)
+    with rasterio.open(cog / "change_step_HH.tif") as src:
+        size = src.read(1)
+    assert src.res == (90.0, 90.0)
+    assert SCORED[int(split[5, 15])] == "2026-09-12"  # block 18 to 54 is rows 2 to 7, columns 12 to 17 at 90 m
+    assert size[5, 15] == pytest.approx(-8.0, abs=0.6)
+
+
+def test_a_one_date_drop_is_not_a_step_in_the_build(tmp_path):
+    cog, out, sites_in = _fixture(tmp_path)
+    step = build_change(cog, out, sites_in)["step"]
+    with rasterio.open(cog / "change_step_stability.tif") as src:
+        stability = src.read(1)
+    assert stability[15, 15] < step["min_stability"]  # the 19 Aug block, 40 to 50 at 30 m
+
+
 def test_2_july_cannot_change_any_output_of_build_change(tmp_path):
     a = tmp_path / "a"
     b = tmp_path / "b"
     cog_a, out_a, sites_in = _fixture(a)
     cog_b, out_b, _ = _fixture(b, wild_2_july=True)
     assert build_change(cog_a, out_a, sites_in) == build_change(cog_b, out_b, sites_in)
-    with rasterio.open(cog_a / "change_2026-10-18.tif") as x, rasterio.open(cog_b / "change_2026-10-18.tif") as y:
-        np.testing.assert_array_equal(x.read(1), y.read(1))
+    for name in ("change_2026-10-18.tif", "change_step_HH.tif", "change_step_split.tif"):
+        with rasterio.open(cog_a / name) as x, rasterio.open(cog_b / name) as y:
+            np.testing.assert_array_equal(x.read(1), y.read(1))
 
 
 def test_build_change_refuses_a_site_list_without_controls(tmp_path):
@@ -378,6 +586,39 @@ def test_site_scores_are_null_on_excluded_dates_and_for_a_build_without_the_laye
     assert all(p["change_score"] is None for s in bare for p in s["series"])
 
 
+def test_site_step_comes_from_the_site_curve_with_the_offsets_removed(tmp_path):
+    cog, out, sites_in = _fixture(tmp_path)
+    build_change(cog, out, sites_in)
+    m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    m["change"]["removed_offsets_db"] = {d: {"HH": 0.0, "HV": 0.0} for d in SCORED}
+    m["change"]["step"]["min_stability"] = 4.0  # this small fixture is mostly its own steps, so its shuffles set a high limit
+    curve = dict(zip(DATES, [40.0, -6.0, -6.1, -5.9, -6.0, -14.0, -14.1, -13.9, -14.0]))
+    sites = [{**sites_in[0], "series": [{"date": d, "hh_db": v, "hv_db": v - 7} for d, v in curve.items()]}]
+    add_change_scores(sites, m, cog)
+    step = sites[0]["step"]
+    assert step["date"] == "2026-09-12"
+    assert step["previous_date"] == "2026-08-31"
+    assert step["hh_db"] == pytest.approx(-8.0, abs=0.1)
+    assert step["hv_db"] == pytest.approx(-8.0, abs=0.1)
+    assert step["flagged"] is True
+    assert 0 <= step["map_share"] <= 1
+
+
+def test_a_steady_site_has_a_step_size_but_is_not_flagged(tmp_path):
+    cog, out, sites_in = _fixture(tmp_path)
+    build_change(cog, out, sites_in)
+    m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    sites = [{**sites_in[0], "series": [{"date": d, "hh_db": -6.0 + 0.1 * (i % 2), "hv_db": -13.0} for i, d in enumerate(DATES)]}]
+    add_change_scores(sites, m, cog)
+    assert sites[0]["step"]["flagged"] is False
+
+
+def test_a_build_without_the_layer_gives_a_null_step(tmp_path):
+    sites = [{"lon": 72.0, "lat": 34.2, "series": [{"date": d} for d in DATES]}]
+    add_change_scores(sites, {}, tmp_path)
+    assert sites[0]["step"] is None
+
+
 def test_site_score_is_null_where_nothing_is_valid(tmp_path):
     cog, out, sites_in = _fixture(tmp_path)
     build_change(cog, out, sites_in)
@@ -404,6 +645,7 @@ def test_change_command_updates_the_manifest_and_the_sites_file_and_only_those(t
     assert keep.read_bytes() == b"not re-encoded"
     written = json.loads((out / "sites.json").read_text(encoding="utf-8"))
     assert all("change_score" in p for s in written for p in s["series"])
+    assert all("step" in s for s in written)
     assert written[0]["series"][1]["hh_db"] == -6.0
     printed = capsys.readouterr().out
     assert "threshold" in printed and "baseline" in printed

@@ -204,7 +204,8 @@ def test_sites_command_writes_contract(tmp_path):
     sites = json.loads(out.read_text(encoding="utf-8"))
 
     assert [s["id"] for s in sites] == ["s1", "ctl"]
-    assert list(sites[0]) == ["id", "name", "lon", "lat", "role", "stack", "crid", "series"]
+    assert list(sites[0]) == ["id", "name", "lon", "lat", "role", "stack", "crid", "series", "step"]
+    assert sites[0]["step"] is None  # this manifest has no change layer
     assert all(s["stack"] == "084_A_019" and s["crid"] == "P05023" for s in sites)
     assert [p["date"] for p in sites[0]["series"]] == DATES
     for s in sites:

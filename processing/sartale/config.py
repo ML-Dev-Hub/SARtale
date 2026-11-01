@@ -3,6 +3,7 @@ MODE = "4005"
 POLE = "DHDH"
 BBOX = (71.4, 33.9, 72.1, 34.4)  # lon_min, lat_min, lon_max, lat_max; the CMR search area
 WINDOW = (71.2, 33.8, 73.4, 34.8)  # west, south, east, north; what is built, analysed and shown
+PLAIN_BOX = (72.10, 34.10, 72.25, 34.28)  # noisy plain ground for the step rule's shuffles; land cover not checked
 GAP_START = "2026-07-27T22:03:25Z"
 GAP_END = "2026-08-10T00:55:27Z"
 CRID = "P05023"
