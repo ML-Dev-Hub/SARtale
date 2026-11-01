@@ -285,7 +285,7 @@ def test_manifest_flags_only_2_july_and_the_forecast_orbit_date(tmp_path):
     m = build_preview_manifest(_info(ALL_DATES), _granules(ALL_DATES), 174, tmp_path)
     flags = {e["date"]: e.get("flag") for e in m["dates"]}
     assert flags["2026-07-02"] == INTERFERENCE_FLAG == (
-        "Possible radio interference over the western area (unconfirmed). "
+        "Likely radio interference in HV over the western area. "
         "Do not read this as surface change.")
     assert flags["2026-07-14"] == FORECAST_FLAG == "Forecast-orbit product; positions may be less precise."
     assert [d for d, f in flags.items() if f] == ["2026-07-02", "2026-07-14"]

@@ -9,13 +9,16 @@ import numpy as np
 from pyproj import Transformer
 
 from sartale import config
-from sartale.gcov import Layer, check_identity, read_layer
-from sartale.products import POL_TERMS, assert_same_grid, multilook_layer
+from sartale.gcov import Layer, check_identity
+from sartale.products import INTERFERENCE_DATE, POL_TERMS, assert_same_grid, read_looked
 from sartale.radiometry import to_db
 
 RADIUS_M = 150.0
 SITE_KEYS = ("id", "name", "lon", "lat", "role")
 STAMP_KEYS = ("stack", "crid")  # which manifest these curves belong to
+POL_KEYS = {"HH": "hh_db", "HV": "hv_db"}
+URBAN_MAX_SPREAD_DB = 2.0  # a stable urban control should move less than this over the season
+WATER_MAX_DB = -12.0  # a permanent water control should stay below this on every date
 
 
 def _step(coords: np.ndarray) -> float:
@@ -74,6 +77,33 @@ def stability_report(series_db: list[float | None]) -> dict:
     return {"spread_db": spread, "n_valid": len(vals)}
 
 
+def spread_without_interference_date(series: list[dict], key: str) -> float | None:
+    """Spread of one curve with the interference date left out."""
+    return stability_report([p[key] for p in series if p["date"] != INTERFERENCE_DATE])["spread_db"]
+
+
+def control_warnings(sites: list[dict]) -> list[str]:
+    """Messages for controls that do not behave: an urban control that moves, a water control that is not dark.
+
+    A control is a site whose role names "control" and "urban" or "water". Other sites are not checked. The
+    interference date is left out: it can only say something about the interference.
+    """
+    out = []
+    for s in sites:
+        role = s["role"].lower()
+        if "control" not in role:
+            continue
+        for pol, key in POL_KEYS.items():
+            vals = [p[key] for p in s["series"] if p[key] is not None and p["date"] != INTERFERENCE_DATE]
+            if not vals:
+                out.append(f"{s['id']}: no valid {pol} value")
+            elif "urban" in role and max(vals) - min(vals) > URBAN_MAX_SPREAD_DB:
+                out.append(f"{s['id']}: urban control moved {max(vals) - min(vals):.1f} dB in {pol}")
+            elif "water" in role and max(vals) > WATER_MAX_DB:
+                out.append(f"{s['id']}: water control reached {max(vals):.1f} dB in {pol}")
+    return out
+
+
 def write_sites(sites: list[dict], path: Path) -> Path:
     """Write sites.json; NaN is rejected rather than written."""
     path = Path(path)
@@ -114,9 +144,8 @@ def build_sites(gcov_dir: Path, manifest_path: Path, sites_in: list[dict],
     stacks: dict[str, np.ndarray] = {}
     grid: Layer | None = None
     for pol, term in POL_TERMS.items():
-        raw = [read_layer(f, term, config.BBOX) for f in files]
-        assert_same_grid(raw)
-        looked = [multilook_layer(layer) for layer in raw]
+        looked = [read_looked(f, term)[0] for f in files]
+        assert_same_grid(looked)
         grid = looked[0]
         stacks[pol] = np.stack([layer.power for layer in looked])
 

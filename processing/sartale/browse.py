@@ -18,19 +18,17 @@ from PIL import Image
 from sartale import config
 from sartale.catalog import parse_granule
 from sartale.gcov import Layer
-from sartale.products import bounds_3857_to_lonlat, flag_for, write_webp_3857
+from sartale.products import bounds_3857_to_lonlat, flag_for, pixel_size_m, write_webp_3857
 
 PREVIEW_MATURITY = "Provisional preview"
 # west, south, east, north in degrees: the part of the scene the app shows.
-DISPLAY_WINDOW = (71.2, 33.8, 73.4, 34.8)
+DISPLAY_WINDOW = config.WINDOW
 # HH of these three dates become red, green and blue. 2 July is never used.
 COMPOSITE_DATES = ("2026-07-26", "2026-09-12", "2026-10-18")
 # The nine images sit on one pixel grid (zero shift between dates on the real files), so their
 # footprint-fitted extents should agree. If they differ by more than this, something is wrong.
 MAX_EXTENT_SPREAD_DEG = 0.02
 POL_FILES = ("HH", "HV")
-M_PER_DEG_LAT = 110_950.0
-M_PER_DEG_LON_EQUATOR = 111_320.0
 
 
 # --- channels -------------------------------------------------------------------
@@ -94,15 +92,6 @@ def shared_extent(extents: list[tuple[float, float, float, float]],
     if np.abs(arr - mean).max() > tolerance:
         raise ValueError(f"Per-date extents differ by more than {tolerance} degrees: {extents}")
     return tuple(float(v) for v in mean)
-
-
-def pixel_size_m(extent: tuple[float, float, float, float], shape: tuple[int, int]) -> float:
-    """Mean ground size of one pixel in metres (east-west and north-south averaged), at the extent's mid latitude."""
-    west, south, east, north = extent
-    height, width = shape
-    dx, dy = (east - west) / width, (north - south) / height
-    lat = np.radians((south + north) / 2)
-    return float(np.mean([dx * M_PER_DEG_LON_EQUATOR * np.cos(lat), dy * M_PER_DEG_LAT]))
 
 
 def _layer(channel: np.ndarray, extent: tuple[float, float, float, float]) -> Layer:

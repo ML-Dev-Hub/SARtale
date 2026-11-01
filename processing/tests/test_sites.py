@@ -10,7 +10,14 @@ from pyproj import Transformer
 from gcov_fixture import CENTER_LONLAT, EPSG, write_gcov
 from sartale.gcov import Layer
 from sartale.run_pipeline import main
-from sartale.sites import sample_site, sample_site_stats, stability_report, write_sites
+from sartale.sites import (
+    control_warnings,
+    sample_site,
+    sample_site_stats,
+    spread_without_interference_date,
+    stability_report,
+    write_sites,
+)
 
 N = 20
 PX = 30.0
@@ -106,6 +113,11 @@ def test_stability_report_ignores_gaps():
     assert stability_report([-8.0, None, -6.0]) == {"spread_db": 2.0, "n_valid": 2}
 
 
+def test_spread_without_interference_date_leaves_out_2_july():
+    series = [{"date": "2026-07-02", "hv_db": -7.0}, {"date": "2026-07-14", "hv_db": -9.5}, {"date": "2026-07-26", "hv_db": -9.9}]
+    assert spread_without_interference_date(series, "hv_db") == pytest.approx(0.4)
+
+
 def test_stability_report_no_valid_values():
     assert stability_report([None, None]) == {"spread_db": None, "n_valid": 0}
 
@@ -129,6 +141,35 @@ def _app_manifest(tmp_path):
     mpath = tmp_path / "manifest.json"
     mpath.write_text(json.dumps({"stack": "084_A_019", "crid": "P05023", "dates": entries}), encoding="utf-8")
     return gdir, mpath
+
+
+def _site(role, hh, hv):
+    return {"id": "s", "name": "S", "role": role,
+            "series": [{"date": f"d{i}", "hh_db": a, "hv_db": b} for i, (a, b) in enumerate(zip(hh, hv))]}
+
+
+def test_control_warnings_passes_good_controls_and_ignores_other_sites():
+    assert control_warnings([
+        _site("Stable urban control", [1.0, 1.5], [-9.0, -9.5]),
+        _site("Permanent water control", [-20.0, -19.0], [-30.0, -29.0]),
+        _site("River stretch", [-20.0, 5.0], [-30.0, 0.0]),
+    ]) == []
+
+
+def test_control_warnings_names_a_moving_urban_control():
+    out = control_warnings([_site("Stable urban control", [1.0, 4.0], [-9.0, -9.5])])
+    assert len(out) == 1 and "HH" in out[0] and "3.0 dB" in out[0]
+
+
+def test_control_warnings_leaves_out_the_interference_date():
+    site = _site("Stable urban control", [1.0, 1.2], [-7.0, -9.9])
+    site["series"][0]["date"] = "2026-07-02"
+    assert control_warnings([site]) == []
+
+
+def test_control_warnings_names_bright_water():
+    out = control_warnings([_site("Permanent water control", [-20.0, -5.0], [-30.0, -29.0])])
+    assert len(out) == 1 and "HH" in out[0] and "-5.0 dB" in out[0]
 
 
 def test_sites_command_writes_contract(tmp_path):

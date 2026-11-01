@@ -12,8 +12,10 @@ from pyproj import Transformer
 
 from gcov_fixture import CENTER_LONLAT, EPSG, STEP, write_gcov
 from sartale import config
+from sartale.browse import DISPLAY_WINDOW
 from sartale.gcov import Layer
 from sartale.products import (
+    DISPLAY_LOOKS,
     FORECAST_FLAG,
     INTERFERENCE_FLAG,
     assert_same_grid,
@@ -26,7 +28,7 @@ from sartale.products import (
     write_cog,
     write_webp_3857,
 )
-from sartale.run_pipeline import main
+from sartale.run_pipeline import main, verified_dates
 
 NAME_FMT = ("NISAR_L2_PR_GCOV_{cycle:03d}_084_A_019_4005_DHDH_A_{ymd}T220325_{ymd}T220400_"
             "P05023_N_F_J_001")
@@ -198,6 +200,23 @@ def test_write_webp_3857_is_north_up(tmp_path, descending_y):
     assert top.max() > 150 and bottom.max() < 150  # bright north row lands at the top
 
 
+def test_write_webp_3857_max_width_caps_a_windowed_frame_only(tmp_path):
+    layer = multilook_layer(_layer(n=300), 3)
+    gray = np.full((100, 100), 128, np.uint8)
+    w = write_webp_3857(gray, layer, tmp_path / "a.webp", window=(71.0, 34.0, 72.0, 34.5))
+    c = write_webp_3857(gray, layer, tmp_path / "b.webp", window=(71.0, 34.0, 72.0, 34.5), max_width=300)
+    assert w == pytest.approx(c)  # same place on the map
+    assert Image.open(tmp_path / "a.webp").size[0] > 300
+    width, height = Image.open(tmp_path / "b.webp").size
+    assert width == 300 and height == pytest.approx(300 * (w[3] - w[1]) / (w[2] - w[0]), abs=1)
+
+
+def test_window_is_the_preview_window_and_holds_tarbela():
+    assert config.WINDOW == DISPLAY_WINDOW
+    west, south, east, north = config.WINDOW
+    assert west < 71.56 and east > 72.7 and south < 34.0 and north > 34.1
+
+
 def test_write_webp_3857_accepts_rgba(tmp_path):
     layer = multilook_layer(_layer(n=30), 3)
     rgba = np.zeros((10, 10, 4), np.uint8)
@@ -245,15 +264,16 @@ def test_build_writes_manifest_frames_and_cogs(tmp_path):
     m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
 
     assert list(m) == ["stack", "crid", "maturity", "bounds", "dates", "acquisitions", "composite",
-                       "composite_dates", "stretch_db", "gap"]
+                       "composite_dates", "stretch_db", "gap", "pixel_m", "analysis_m"]
     assert m["acquisitions"] == DATES
     assert m["composite_dates"] == [DATES[0], DATES[2], DATES[3]]
     assert m["stack"] == config.STACK_ID and m["crid"] == config.CRID
     assert m["maturity"] == "Provisional"
     assert m["gap"] == {"start": config.GAP_START, "end": config.GAP_END}
     assert m["composite"] == "frames/composite_HH.webp"
-    w, s, e, n = m["bounds"]
-    assert w < CENTER_LONLAT[0] < e and s < CENTER_LONLAT[1] < n
+    assert m["bounds"] == pytest.approx(list(config.WINDOW), abs=1e-4)
+    assert m["analysis_m"] == 3 * STEP
+    assert m["pixel_m"] == pytest.approx(3 * STEP * DISPLAY_LOOKS, rel=0.05)  # display only: 3 x 100 m x 2 here
 
     assert [d["date"] for d in m["dates"]] == DATES
     for d, g in zip(m["dates"], granules):
@@ -303,6 +323,42 @@ def test_build_flags_2_july_and_forecast_granules_like_the_preview(tmp_path):
     assert flags == {"2026-07-02": INTERFERENCE_FLAG, "2026-07-14": FORECAST_FLAG,
                      "2026-08-19": None, "2026-09-12": None}
     assert all("flag" not in e for e in m["dates"][2:])  # absent, not null
+
+
+def test_build_stretch_is_not_set_by_2_july(tmp_path):
+    dates = ["2026-07-02", "2026-07-26", "2026-08-19", "2026-09-12"]
+    gdir, mpath, granules = _make_stack(tmp_path, dates=dates)
+    name = granules[0]["name"]
+    write_gcov(gdir / f"{name}.h5", seed=0, scale=1e6, granule_id=name, release_id="P05023")  # far brighter than the rest
+    out, _ = _build(tmp_path, gdir, mpath, dates=dates)
+    with_it = json.loads((out / "manifest.json").read_text(encoding="utf-8"))["stretch_db"]
+
+    other = tmp_path / "other"
+    other.mkdir()
+    gdir2, mpath2, _ = _make_stack(other, dates=dates[1:])
+    out2, _ = _build(other, gdir2, mpath2, dates=dates[1:])
+    without = json.loads((out2 / "manifest.json").read_text(encoding="utf-8"))["stretch_db"]
+    assert with_it["HH"][1] < 30  # 1e6 x would be about +60 dB
+    assert with_it["HH"][1] == pytest.approx(without["HH"][1], abs=12)
+
+
+def test_build_cogs_stay_at_analysis_resolution_and_frames_are_coarser(tmp_path):
+    gdir, mpath, _ = _make_stack(tmp_path)
+    out, cog = _build(tmp_path, gdir, mpath)
+    with rasterio.open(cog / f"{DATES[0]}_HV.tif") as src:
+        assert src.width == 33 and src.height == 33  # 100 fixture samples, multilooked by 3
+    m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    assert m["pixel_m"] > m["analysis_m"]
+
+
+def test_build_stops_on_a_mask_value_nobody_has_checked(tmp_path):
+    gdir, mpath, granules = _make_stack(tmp_path)
+    name = granules[0]["name"]
+    mask = np.ones((100, 100), "u1")
+    mask[:3] = 2
+    write_gcov(gdir / f"{name}.h5", seed=0, mask=mask, granule_id=name, release_id="P05023")
+    with pytest.raises(ValueError, match="mask value"):
+        _build(tmp_path, gdir, mpath)
 
 
 def test_build_fails_clearly_when_a_date_has_no_file(tmp_path):
@@ -391,7 +447,7 @@ def test_build_warns_about_a_forecast_orbit_granule_and_2_july_but_still_builds(
     out, _ = _build(tmp_path, gdir, mpath, dates=dates)
     printed = capsys.readouterr().out
     assert "WARNING: 2026-07-02 is a forecast-orbit product" in printed
-    assert "WARNING: 2026-07-02 may show radio interference" in printed
+    assert "WARNING: 2026-07-02 shows likely radio interference" in printed
     assert printed.count("WARNING") == 2
     assert (out / "manifest.json").is_file()
 
@@ -400,3 +456,57 @@ def test_build_prints_no_warning_for_the_default_dates(tmp_path, capsys):
     gdir, mpath, _ = _make_stack(tmp_path)
     _build(tmp_path, gdir, mpath)
     assert "WARNING" not in capsys.readouterr().out
+
+
+# --- rebuild ------------------------------------------------------------------
+
+def _with_sizes(gdir, mpath):
+    doc = json.loads(mpath.read_text(encoding="utf-8"))
+    for g in doc["granules"]:
+        f = gdir / f"{g['name']}.h5"
+        g["size"] = f.stat().st_size if f.exists() else 7_000_000_000
+    mpath.write_text(json.dumps(doc), encoding="utf-8")
+
+
+def _rebuild(tmp_path, gdir, mpath):
+    out, cog = tmp_path / "out", tmp_path / "cog"
+    sites_in = tmp_path / "sites_in.json"
+    sites_in.write_text(json.dumps([{"id": "a", "name": "A", "lon": CENTER_LONLAT[0], "lat": CENTER_LONLAT[1],
+                                     "role": "Stable urban control", "why": "bright on every date"}]), encoding="utf-8")
+    main(["rebuild", "--gcov-dir", str(gdir), "--manifest-in", str(mpath), "--sites-in", str(sites_in),
+          "--out-dir", str(out), "--cog-dir", str(cog)])
+    return out
+
+
+def test_verified_dates_takes_files_of_the_right_size_and_ignores_part_files(tmp_path, capsys):
+    gdir, mpath, granules = _make_stack(tmp_path)
+    _with_sizes(gdir, mpath)
+    (gdir / f"{granules[1]['name']}.h5").rename(gdir / f"{granules[1]['name']}.h5.part")
+    doc = json.loads(mpath.read_text(encoding="utf-8"))
+    doc["granules"][2]["size"] += 1  # a wrong size is not verified
+    assert verified_dates(doc["granules"], gdir) == [DATES[0], DATES[3]]
+    printed = capsys.readouterr().out
+    assert f"not used: {DATES[1]} (no complete file)" in printed
+    assert f"not used: {DATES[2]} (size differs from CMR)" in printed
+
+
+def test_rebuild_builds_every_verified_date_and_samples_the_sites(tmp_path, capsys):
+    gdir, mpath, granules = _make_stack(tmp_path, extra_dates=["2026-08-31"])
+    _with_sizes(gdir, mpath)
+    (gdir / f"{granules[1]['name']}.h5.part").write_bytes(b"partial")
+    out = _rebuild(tmp_path, gdir, mpath)
+    m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    assert [d["date"] for d in m["dates"]] == DATES
+    sites = json.loads((out / "sites.json").read_text(encoding="utf-8"))
+    assert [p["date"] for p in sites[0]["series"]] == DATES
+    assert "why" not in sites[0]
+    printed = capsys.readouterr().out
+    assert sum(ln.startswith("mask ") for ln in printed.splitlines()) == len(DATES)
+    assert "a (Stable urban control) hh_db: spread" in printed
+    assert "4 dates" in printed
+
+
+def test_rebuild_refuses_a_manifest_without_sizes(tmp_path):
+    gdir, mpath, _ = _make_stack(tmp_path)
+    with pytest.raises(ValueError, match="run `search` again"):
+        _rebuild(tmp_path, gdir, mpath)

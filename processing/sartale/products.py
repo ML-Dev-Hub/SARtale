@@ -19,14 +19,21 @@ from sartale.catalog import granule_for_date, parse_granule, utc_date
 from sartale.gcov import Layer, check_identity, mask_histogram, read_layer
 from sartale.radiometry import multilook_linear, to_db
 
-MULTILOOK = 3  # 10 m -> 30 m
+MULTILOOK = 3  # 10 m -> 30 m: every measurement, COG and site curve
+DISPLAY_LOOKS = 2  # 30 m -> 60 m: web frames only, so each stays under about 3 MB
+DISPLAY_MAX_WIDTH = 3000  # pixels; the web frames only
 MATURITY = "Provisional"
 POL_TERMS = {"HH": "HHHH", "HV": "HVHV"}
 WEBP_QUALITY = 80
 INTERFERENCE_DATE = "2026-07-02"
-INTERFERENCE_FLAG = ("Possible radio interference over the western area (unconfirmed). "
+# Evidence in docs/DATA_SOURCES.md: the same pass rose about 14 dB in HV at 1239 MHz, 2 dB at 1293.5 MHz, and not in HH.
+INTERFERENCE_FLAG = ("Likely radio interference in HV over the western area. "
                      "Do not read this as surface change.")
 FORECAST_FLAG = "Forecast-orbit product; positions may be less precise."
+# Mask values confirmed on the real P05023 files: invalid, the one subswath, fill. Anything else stops the build.
+KNOWN_MASK_VALUES = frozenset({0, 1, 255})
+M_PER_DEG_LAT = 110_950.0
+M_PER_DEG_LON_EQUATOR = 111_320.0
 
 
 # --- grids ----------------------------------------------------------------------
@@ -52,6 +59,19 @@ def multilook_layer(layer: Layer, factor: int = MULTILOOK) -> Layer:
     x = layer.x[:cols].reshape(-1, factor).mean(axis=1)
     y = layer.y[:rows].reshape(-1, factor).mean(axis=1)
     return Layer(power, x, y, layer.epsg, None, None)
+
+
+def read_looked(path: Path, term: str) -> tuple[Layer, dict[int, int]]:
+    """One date and term over config.WINDOW, multilooked to 30 m, with the mask histogram of the 10 m clip.
+
+    The window is about 2 GB of 10 m samples per file and term, so callers keep only this 30 m result
+    (single precision) and never the 10 m layers of several dates at once.
+    """
+    raw = read_layer(path, term, config.WINDOW)
+    hist = mask_histogram(raw.mask)
+    looked = multilook_layer(raw)
+    looked.power = looked.power.astype(np.float32)
+    return looked, hist
 
 
 # --- rendering ------------------------------------------------------------------
@@ -148,24 +168,32 @@ def _to_premultiplied(array: np.ndarray) -> np.ndarray:
     return np.concatenate([np.moveaxis(rgb * alpha[..., None], -1, 0), alpha[None]], axis=0)
 
 
-def _window_grid(window: tuple[float, float, float, float], res: float) -> tuple[Affine, int, int]:
-    """Destination grid in EPSG:3857 that covers a lon/lat window (west, south, east, north) at about `res` metres."""
+def _window_grid(window: tuple[float, float, float, float], res: float,
+                 max_width: int | None = None) -> tuple[Affine, int, int]:
+    """Destination grid in EPSG:3857 that covers a lon/lat window (west, south, east, north) at about `res` metres.
+
+    With `max_width` the grid is coarsened if needed so it is no wider than that many pixels.
+    """
     tr = Transformer.from_crs(4326, 3857, always_xy=True)
     left, bottom = tr.transform(window[0], window[1])
     right, top = tr.transform(window[2], window[3])
+    if max_width is not None:
+        res = max(res, (right - left) / max_width)
     dw, dh = max(1, round((right - left) / res)), max(1, round((top - bottom) / res))
     return Affine((right - left) / dw, 0.0, left, 0.0, -(top - bottom) / dh, top), dw, dh
 
 
 def write_webp_3857(array: np.ndarray, layer: Layer, path: Path,
-                    window: tuple[float, float, float, float] | None = None) -> tuple[float, float, float, float]:
+                    window: tuple[float, float, float, float] | None = None,
+                    max_width: int | None = None) -> tuple[float, float, float, float]:
     """Warp an overlay to EPSG:3857 and save it as lossy WebP with alpha.
 
     MapLibre stretches image layers linearly in Web Mercator, so the picture must
     be Mercator-aligned. Returns the warped image bounds as (left, bottom, right,
     top) in Web Mercator metres. Nodata (0 in grey, alpha 0 in RGBA) stays transparent.
     With `window` (west, south, east, north in degrees) the output is cropped to that
-    window, so every frame written with the same window has identical bounds.
+    window, so every frame written with the same window has identical bounds. `max_width` caps a
+    windowed frame's width in pixels.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -177,7 +205,7 @@ def write_webp_3857(array: np.ndarray, layer: Layer, path: Path,
     left, bottom, right, top = array_bounds(h, w, transform)
     dst_tf, dw, dh = calculate_default_transform(src_crs, dst_crs, w, h, left, bottom, right, top)
     if window is not None:
-        dst_tf, dw, dh = _window_grid(window, dst_tf.a)
+        dst_tf, dw, dh = _window_grid(window, dst_tf.a, max_width)
     dst = np.zeros((4, dh, dw), dtype=np.float32)
     for i in range(4):
         reproject(np.ascontiguousarray(src_img[i]), dst[i], src_transform=transform,
@@ -201,6 +229,15 @@ def bounds_3857_to_lonlat(bounds: tuple[float, float, float, float]) -> list[flo
     return [round(v, 6) for v in (west, south, east, north)]
 
 
+def pixel_size_m(extent: tuple[float, float, float, float], shape: tuple[int, int]) -> float:
+    """Mean ground size of one pixel in metres (east-west and north-south averaged), at the extent's mid latitude."""
+    west, south, east, north = extent
+    height, width = shape
+    dx, dy = (east - west) / width, (north - south) / height
+    lat = np.radians((south + north) / 2)
+    return float(np.mean([dx * M_PER_DEG_LON_EQUATOR * np.cos(lat), dy * M_PER_DEG_LAT]))
+
+
 # --- build ----------------------------------------------------------------------
 
 def flag_for(date: str, granule: str) -> str | None:
@@ -217,14 +254,17 @@ def _warn_about(date: str, g: dict) -> None:
     if g.get("accuracy") == "F":
         print(f"WARNING: {date} is a forecast-orbit product (accuracy F); positions may be less precise.")
     if date == INTERFERENCE_DATE:
-        print(f"WARNING: {date} may show radio interference over the western area (unconfirmed); "
-              "check it by eye and do not read it as surface change.")
+        print(f"WARNING: {date} shows likely radio interference in HV over the western area; "
+              "do not read it as surface change.")
 
 
-def _print_mask_histogram(date: str, layer: Layer) -> None:
-    hist = mask_histogram(layer.mask)
+def _check_mask(date: str, hist: dict[int, int]) -> None:
+    """Print a date's mask histogram. Stops the build on a value nobody has looked at on a real file."""
     shown = ", ".join(f"{v}: {n}" for v, n in hist.items()) if hist else "no mask in file"
-    print(f"mask {date}: {shown}")
+    print(f"mask {date}: {shown}", flush=True)
+    unknown = sorted(set(hist) - KNOWN_MASK_VALUES)
+    if unknown:
+        raise ValueError(f"{date}: unexpected mask value(s) {unknown}; expected only {sorted(KNOWN_MASK_VALUES)}")
 
 
 def _remove_unlisted_frames(frames_dir: Path, listed: set[str]) -> None:
@@ -238,8 +278,9 @@ def _remove_unlisted_frames(frames_dir: Path, listed: set[str]) -> None:
 
 def build_products(gcov_dir: Path, dates: list[str], manifest_in: Path,
                    out_dir: Path, cog_dir: Path) -> dict:
-    """Read one GCOV file per date, write overlays, COGs and manifest.json; return the manifest.
+    """Read one GCOV file per date over config.WINDOW; write overlays, COGs and manifest.json; return the manifest.
 
+    COGs stay at 30 m. Web frames are multilooked once more and capped in width, for display only.
     Also removes any sites.json in out_dir (curves from another build must never sit beside this
     manifest) and any frame the new manifest does not list.
     """
@@ -261,18 +302,29 @@ def build_products(gcov_dir: Path, dates: list[str], manifest_in: Path,
         _warn_about(d, g)
     acquisitions = sorted({utc_date(g) for g in search["granules"]})
 
-    db: dict[str, list[np.ndarray]] = {}
+    db: dict[str, list[np.ndarray]] = {}  # 30 m, for the COGs
+    shown: dict[str, list[np.ndarray]] = {}  # 60 m, for the web frames
     grid: Layer | None = None
+    display: Layer | None = None
     for pol, term in POL_TERMS.items():
-        raw = [read_layer(f, term, config.BBOX) for f in files]
-        assert_same_grid(raw)
-        if pol == next(iter(POL_TERMS)):
-            for d, layer in zip(dates, raw):
-                _print_mask_histogram(d, layer)
-        looked = [multilook_layer(layer) for layer in raw]
-        grid = looked[0]
-        db[pol] = [to_db(layer.power) for layer in looked]
-    stretch = {pol: shared_stretch(np.stack(arrays)) for pol, arrays in db.items()}
+        layers = []
+        for d, f in zip(dates, files):
+            layer, hist = read_looked(f, term)
+            if pol == next(iter(POL_TERMS)):
+                _check_mask(d, hist)
+            layers.append(layer)
+        assert_same_grid(layers)
+        grid = layers[0]
+        db[pol] = [to_db(layer.power).astype(np.float32) for layer in layers]
+        coarse = [multilook_layer(layer, DISPLAY_LOOKS) for layer in layers]
+        display = coarse[0]
+        shown[pol] = [to_db(layer.power).astype(np.float32) for layer in coarse]
+    # The shared grey scale comes from the clean dates; the interference on 2 July must not set it.
+    clean = [i for i, d in enumerate(dates) if d != INTERFERENCE_DATE] or list(range(len(dates)))
+    stretch = {pol: shared_stretch(np.stack([arrays[i] for i in clean])) for pol, arrays in shown.items()}
+
+    def write_frame(array: np.ndarray, path: Path) -> tuple[float, float, float, float]:
+        return write_webp_3857(array, display, path, window=config.WINDOW, max_width=DISPLAY_MAX_WIDTH)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "sites.json").unlink(missing_ok=True)
@@ -284,8 +336,7 @@ def build_products(gcov_dir: Path, dates: list[str], manifest_in: Path,
         for pol in POL_TERMS:
             write_cog(db[pol][i], grid, cog_dir / f"{d}_{pol}.tif")
             rel[pol] = f"frames/{d}_{pol}.webp"
-            all_bounds.add(write_webp_3857(render_frame(db[pol][i], stretch[pol]), grid,
-                                           out_dir / rel[pol]))
+            all_bounds.add(write_frame(render_frame(shown[pol][i], stretch[pol]), out_dir / rel[pol]))
         entry = {"date": d, "granule": g["name"], "frames": rel}
         flag = flag_for(d, g["name"])
         if flag:
@@ -294,22 +345,27 @@ def build_products(gcov_dir: Path, dates: list[str], manifest_in: Path,
 
     e, m, l = composite_choice(dates)
     composite_dates = [dates[e], dates[m], dates[l]]
-    rgba = seasonal_composite(db["HH"][e], db["HH"][m], db["HH"][l], stretch["HH"])
-    all_bounds.add(write_webp_3857(rgba, grid, frames / "composite_HH.webp"))
+    rgba = seasonal_composite(shown["HH"][e], shown["HH"][m], shown["HH"][l], stretch["HH"])
+    all_bounds.add(write_frame(rgba, frames / "composite_HH.webp"))
     if len(all_bounds) != 1:
         raise RuntimeError(f"Overlays have differing bounds: {sorted(all_bounds)}")
+    bounds = bounds_3857_to_lonlat(all_bounds.pop())
+    with Image.open(frames / "composite_HH.webp") as img:
+        width, height = img.size
 
     manifest = {
         "stack": config.STACK_ID,
         "crid": config.CRID,
         "maturity": MATURITY,
-        "bounds": bounds_3857_to_lonlat(all_bounds.pop()),
+        "bounds": bounds,
         "dates": entries,
         "acquisitions": acquisitions,
         "composite": "frames/composite_HH.webp",
         "composite_dates": composite_dates,
         "stretch_db": {pol: [round(v, 3) for v in s] for pol, s in stretch.items()},
         "gap": {"start": config.GAP_START, "end": config.GAP_END},
+        "pixel_m": round(pixel_size_m(bounds, (height, width))),  # ground size of a web frame pixel
+        "analysis_m": round(float(np.abs(grid.x[1] - grid.x[0]))),  # pixel of the COGs and site curves
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     _remove_unlisted_frames(frames, {*(p for e_ in entries for p in e_["frames"].values()), manifest["composite"]})

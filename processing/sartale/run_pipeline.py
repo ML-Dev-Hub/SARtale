@@ -1,14 +1,20 @@
-"""SARtale pipeline CLI: search, download, build, sites, preview."""
+"""SARtale pipeline CLI: search, download, build, sites, rebuild, preview."""
 import argparse
 import json
 from pathlib import Path
 
 from sartale import config
 from sartale.browse import build_preview
-from sartale.catalog import search_cmr, select_stack, write_manifest
+from sartale.catalog import search_cmr, select_stack, utc_date, write_manifest
 from sartale.download import download
 from sartale.products import build_products
-from sartale.sites import build_sites, stability_report, write_sites
+from sartale.sites import (
+    build_sites,
+    control_warnings,
+    spread_without_interference_date,
+    stability_report,
+    write_sites,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -21,11 +27,22 @@ def cmd_search(args) -> None:
     print(f"{len(stack)} granules -> {args.out}")
 
 
+def _print_build_checks(manifest: dict, out_dir: Path) -> None:
+    sizes = [f.stat().st_size / 1e6 for f in (out_dir / "frames").iterdir()]
+    print(f"{len(sizes)} frames, largest {max(sizes):.1f} MB, total {sum(sizes):.0f} MB, "
+          f"about {manifest['pixel_m']} m per display pixel")
+    print(f"composite: {', '.join(manifest['composite_dates'])}; stretch dB: {manifest['stretch_db']}")
+    for e in manifest["dates"]:
+        if e.get("flag"):
+            print(f"flag {e['date']}: {e['flag']}")
+    print(f"{len(manifest['dates'])} dates -> {out_dir / 'manifest.json'}")
+
+
 def cmd_build(args) -> None:
     dates = [d.strip() for d in args.dates.split(",") if d.strip()]
     manifest = build_products(Path(args.gcov_dir), dates, Path(args.manifest_in),
                               Path(args.out_dir), Path(args.cog_dir))
-    print(f"{len(manifest['dates'])} dates -> {Path(args.out_dir) / 'manifest.json'}")
+    _print_build_checks(manifest, Path(args.out_dir))
 
 
 def cmd_download(args) -> None:
@@ -34,15 +51,57 @@ def cmd_download(args) -> None:
     print(f"{len(paths)} files in {args.out}")
 
 
+def _print_site_checks(sites: list[dict], out: Path) -> None:
+    for s in sites:
+        for pol in ("hh_db", "hv_db"):
+            rep = stability_report([p[pol] for p in s["series"]])
+            clean = spread_without_interference_date(s["series"], pol)
+            print(f"{s['id']} ({s['role']}) {pol}: spread {rep['spread_db']} dB, {clean} dB without 2 Jul, "
+                  f"{rep['n_valid']} valid")
+    for message in control_warnings(sites):
+        print(f"WARNING: {message}")
+    print(f"{len(sites)} sites -> {out}")
+
+
 def cmd_sites(args) -> None:
     sites_in = json.loads(Path(args.sites_in).read_text(encoding="utf-8"))
     sites = build_sites(Path(args.gcov_dir), Path(args.manifest), sites_in, args.radius_m)
     write_sites(sites, Path(args.out))
-    for s in sites:
-        for pol in ("hh_db", "hv_db"):
-            rep = stability_report([p[pol] for p in s["series"]])
-            print(f"{s['id']} ({s['role']}) {pol}: spread {rep['spread_db']} dB, {rep['n_valid']} valid")
-    print(f"{len(sites)} sites -> {args.out}")
+    _print_site_checks(sites, Path(args.out))
+
+
+def verified_dates(granules: list[dict], gcov_dir: Path) -> list[str]:
+    """Dates of the search-manifest granules with a complete file. `download` only names a file <granule>.h5
+    after its MD5 matched, so a file of CMR's size is a verified one; *.part files are never looked at."""
+    dates = []
+    for g in granules:
+        date = utc_date(g)
+        if not g.get("size"):
+            raise ValueError(f"The manifest has no size for {date}; run `search` again to refresh it")
+        path = Path(gcov_dir) / f"{g['name']}.h5"
+        if not path.is_file():
+            print(f"not used: {date} (no complete file)")
+        elif path.stat().st_size != g["size"]:
+            print(f"not used: {date} (size differs from CMR)")
+        else:
+            dates.append(date)
+    return dates
+
+
+def cmd_rebuild(args) -> None:
+    """`build` and `sites` on every verified date, with the same checks printed."""
+    gcov_dir, out_dir = Path(args.gcov_dir), Path(args.out_dir)
+    search = json.loads(Path(args.manifest_in).read_text(encoding="utf-8"))
+    dates = verified_dates(search["granules"], gcov_dir)
+    if not dates:
+        raise ValueError(f"No verified GCOV file in {gcov_dir}")
+    print(f"{len(dates)} dates: {', '.join(dates)}", flush=True)
+    manifest = build_products(gcov_dir, dates, Path(args.manifest_in), out_dir, Path(args.cog_dir))
+    _print_build_checks(manifest, out_dir)
+    sites_in = json.loads(Path(args.sites_in).read_text(encoding="utf-8"))
+    sites = build_sites(gcov_dir, out_dir / "manifest.json", sites_in, args.radius_m)
+    write_sites(sites, out_dir / "sites.json")
+    _print_site_checks(sites, out_dir / "sites.json")
 
 
 def cmd_preview(args) -> None:
@@ -76,6 +135,15 @@ def main(argv=None) -> None:
     t.add_argument("--out", default=str(REPO_ROOT / "app" / "public" / "data" / "sites.json"))
     t.add_argument("--radius-m", type=float, default=150.0)
     t.set_defaults(func=cmd_sites)
+    r = sub.add_parser("rebuild", help="build and sites on every verified date, printing the same checks")
+    r.add_argument("--gcov-dir", default=str(REPO_ROOT / "data" / "gcov"), help="directory holding <granule>.h5 files")
+    r.add_argument("--manifest-in", default=str(REPO_ROOT / "data" / "manifest_h0.json"),
+                   help="manifest written by `search` (needs size)")
+    r.add_argument("--sites-in", default=str(REPO_ROOT / "processing" / "sites_in.json"))
+    r.add_argument("--out-dir", default=str(REPO_ROOT / "app" / "public" / "data"))
+    r.add_argument("--cog-dir", default=str(REPO_ROOT / "data" / "cog"))
+    r.add_argument("--radius-m", type=float, default=150.0)
+    r.set_defaults(func=cmd_rebuild)
     p = sub.add_parser("preview", help="build web frames and manifest from NASA's public browse PNGs (display-scaled, not dB)")
     p.add_argument("--browse-dir", default=str(REPO_ROOT / "data" / "browse"),
                    help="folder with *_LATLON.png files and browse_manifest.json")
