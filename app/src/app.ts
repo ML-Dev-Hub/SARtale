@@ -279,8 +279,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     const date = dates[state.i];
     const reason = changeExclusion(m, date);
     if (reason) return `Excluded from change analysis. ${reason}`;
-    const note = m.change?.date_notes?.[date];
-    return note;
+    return m.change?.date_notes?.[date];
   }
 
   function updateLabels(): void {
