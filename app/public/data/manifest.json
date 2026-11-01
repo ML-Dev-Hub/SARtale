@@ -185,6 +185,105 @@
       "2026-09-24": "frames/change_2026-09-24.webp",
       "2026-10-06": "frames/change_2026-10-06.webp",
       "2026-10-18": "frames/change_2026-10-18.webp"
+    },
+    "step": {
+      "method": "Largest before-and-after step in HH and HV at one split per pixel, kept where both polarizations moved the same way and the size and stability together are rarely reached by shuffled dates",
+      "reference": "Single change point by a two-sample t statistic, with a permutation check of the choice of split",
+      "pixel_m": 90,
+      "dates": [
+        "2026-07-14",
+        "2026-07-26",
+        "2026-08-19",
+        "2026-08-31",
+        "2026-09-12",
+        "2026-09-24",
+        "2026-10-06",
+        "2026-10-18"
+      ],
+      "split_dates": [
+        "2026-08-19",
+        "2026-08-31",
+        "2026-09-12",
+        "2026-09-24",
+        "2026-10-06"
+      ],
+      "min_segment": 2,
+      "min_step_db": 3.0,
+      "min_stability": 3.0,
+      "control_p99_db": 1.8,
+      "control_p99_stability": 0.0,
+      "shuffled_p99_db": 3.58,
+      "shuffled_p99_stability": 2.95,
+      "scatter_floor_db": 0.5,
+      "flagged_share": 0.0139,
+      "frame": "frames/step_date.webp",
+      "classes": [
+        {
+          "date": "2026-08-19",
+          "up": [
+            255,
+            196,
+            120
+          ],
+          "down": [
+            214,
+            96,
+            16
+          ]
+        },
+        {
+          "date": "2026-08-31",
+          "up": [
+            255,
+            240,
+            130
+          ],
+          "down": [
+            181,
+            150,
+            0
+          ]
+        },
+        {
+          "date": "2026-09-12",
+          "up": [
+            150,
+            240,
+            160
+          ],
+          "down": [
+            20,
+            130,
+            60
+          ]
+        },
+        {
+          "date": "2026-09-24",
+          "up": [
+            140,
+            215,
+            255
+          ],
+          "down": [
+            20,
+            100,
+            190
+          ]
+        },
+        {
+          "date": "2026-10-06",
+          "up": [
+            240,
+            170,
+            240
+          ],
+          "down": [
+            160,
+            40,
+            160
+          ]
+        }
+      ]
     }
   }
 }

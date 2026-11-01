@@ -71,7 +71,16 @@
         "valid_fraction": 1.0,
         "change_score": 0.79
       }
-    ]
+    ],
+    "step": {
+      "date": "2026-10-06",
+      "previous_date": "2026-09-24",
+      "hh_db": -0.23,
+      "hv_db": -0.28,
+      "stability": 0.62,
+      "flagged": false,
+      "map_share": 0.0
+    }
   },
   {
     "id": "hazro-built-up",
@@ -145,7 +154,16 @@
         "valid_fraction": 1.0,
         "change_score": 0.79
       }
-    ]
+    ],
+    "step": {
+      "date": "2026-08-31",
+      "previous_date": "2026-08-19",
+      "hh_db": -0.73,
+      "hv_db": -0.79,
+      "stability": 2.08,
+      "flagged": false,
+      "map_share": 0.0
+    }
   },
   {
     "id": "tarbela-pool",
@@ -219,7 +237,16 @@
         "valid_fraction": 1.0,
         "change_score": 0.97
       }
-    ]
+    ],
+    "step": {
+      "date": "2026-10-06",
+      "previous_date": "2026-09-24",
+      "hh_db": -0.53,
+      "hv_db": 0.18,
+      "stability": 0.0,
+      "flagged": false,
+      "map_share": 0.0
+    }
   },
   {
     "id": "tarbela-shore",
@@ -293,7 +320,16 @@
         "valid_fraction": 1.0,
         "change_score": 1.49
       }
-    ]
+    ],
+    "step": {
+      "date": "2026-08-19",
+      "previous_date": "2026-07-26",
+      "hh_db": -8.14,
+      "hv_db": -5.26,
+      "stability": 6.12,
+      "flagged": true,
+      "map_share": 0.9
+    }
   },
   {
     "id": "swabi-plain",
@@ -367,7 +403,16 @@
         "valid_fraction": 1.0,
         "change_score": 1.58
       }
-    ]
+    ],
+    "step": {
+      "date": "2026-08-19",
+      "previous_date": "2026-07-26",
+      "hh_db": 3.75,
+      "hv_db": 3.03,
+      "stability": 3.83,
+      "flagged": true,
+      "map_share": 0.273
+    }
   },
   {
     "id": "mardan-plain",
@@ -441,7 +486,16 @@
         "valid_fraction": 1.0,
         "change_score": 1.28
       }
-    ]
+    ],
+    "step": {
+      "date": "2026-08-31",
+      "previous_date": "2026-08-19",
+      "hh_db": 3.84,
+      "hv_db": 2.24,
+      "stability": 4.36,
+      "flagged": true,
+      "map_share": 0.444
+    }
   },
   {
     "id": "indus-attock",
@@ -515,6 +569,15 @@
         "valid_fraction": 1.0,
         "change_score": 3.08
       }
-    ]
+    ],
+    "step": {
+      "date": "2026-09-24",
+      "previous_date": "2026-09-12",
+      "hh_db": 4.82,
+      "hv_db": 3.0,
+      "stability": 6.14,
+      "flagged": true,
+      "map_share": 0.875
+    }
   }
 ]
