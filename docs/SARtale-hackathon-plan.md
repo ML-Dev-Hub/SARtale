@@ -145,6 +145,17 @@ Stack 084 A 019 also contains Peshawar, Nowshera, Charsadda, Mardan, Swabi, Swat
 - **File size:** about 7.3 GB each, so roughly 66 GB for the 084 stack if whole files are needed. That is about 7 hours at a sustained 20 Mbps, so start with four dates. `I:` has 749 GB free. `C:` has only 43 GB, so keep data on `I:`.
 - **Possible newer dates:** a 12-day pattern suggests 30 Oct and 11 Nov on track 84. Do not rely on them, given the pause below.
 
+### First look at real scenes (1 Nov 2026)
+
+NASA's browse images are public, so all 9 track 84 dates were checked without a login. They are low-resolution previews, not science data, so this is a first look only.
+
+- **2 July looks unusable over the western pilot.** A bright green haze covers roughly the Peshawar-Charsadda area. It is absent on the other 8 dates and in a control area further north. It may be radio interference, but that is unconfirmed until HV pixels are inspected. **Do not treat it as surface change.**
+- **The other 8 dates look clean at this scale.** Rivers, reservoirs and the bright Peshawar urban area are visible.
+- **Default first four dates:** 26 Jul, 19 Aug, 12 Sep and 18 Oct.
+- **Possible story:** the interference question itself fits the "What NISAR Missed" view, once confirmed.
+
+NASA's [sample data](https://science.nasa.gov/mission/nisar/sample-data/) includes two public GCOV files from 2008 over a different area. They were used only to test the file reader, and they confirmed the coordinate, projection, mask and looks layout. They are older product versions and should not appear as project results. The real `P05023` files still need checking.
+
 ### Data status warnings
 
 - **Production pause:** provisional production [paused on 23 Oct](https://www.earthdata.nasa.gov/data/alerts-outages/nisar-provisional-data-product-production-paused) for a software upgrade. Processing is expected to resume after 4 Nov, then catch up within days. This explains why the catalogue currently stops at 23 Oct.

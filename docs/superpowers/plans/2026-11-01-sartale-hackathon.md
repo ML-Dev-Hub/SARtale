@@ -273,7 +273,7 @@ Expected: at least the 9 dates in the spec, all `P05023`. If the CRID differs, s
 
 - [ ] **Step 6: Pick four Tier 1 dates and start downloads**
 
-Default: 2 Jul, 19 Aug, 12 Sep, 18 Oct. Avoid accuracy `F` granules (14 Jul) in Tier 1, because `F` means forecast orbit data. Each file is about 7.3 GB. Try Harmony extraction of `HHHH` and `HVHV` first; if it fails within 20 minutes, download whole files to `I:\SARtale\data\gcov\`.
+Default: 26 Jul, 19 Aug, 12 Sep, 18 Oct. Avoid 2 Jul: its public browse image shows a bright green haze over the western pilot that may be radio interference. Avoid accuracy `F` granules (14 Jul) in Tier 1, because `F` means forecast orbit data. Each file is about 7.3 GB. Try Harmony extraction of `HHHH` and `HVHV` first; if it fails within 20 minutes, download whole files to `I:\SARtale\data\gcov\`.
 
 - [ ] **Step 7: Commit**
 
@@ -390,7 +390,7 @@ Expected: 4 passed.
 
 - [ ] **Step 5: Add the `build` command and run it**
 
-Run: `python -m sartale.run_pipeline build --dates 2026-07-02,2026-08-19,2026-09-12,2026-10-18`
+Run: `python -m sartale.run_pipeline build --dates 2026-07-26,2026-08-19,2026-09-12,2026-10-18`
 Expected: `app/public/data/manifest.json`, one WebP per date and polarization, one composite, and COGs in `data/cog/`. Each WebP is under about 3 MB.
 
 - [ ] **Step 6: Commit**
