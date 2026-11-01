@@ -54,15 +54,16 @@ class RadarMap implements MapLike {
       maxPitch: 0,
     });
     this.map.touchZoomRotate.disableRotation();
-    // Fit to the data the first time the container has a real size; keep the canvas in step after that.
-    let fitted = false;
+    // Fit to the frame bounds so the image fills the stage, and keep it fitted while the layout settles.
+    // Once the person pans or zooms, their view is left alone.
+    let userMoved = false;
+    this.map.on("movestart", (e) => {
+      if ((e as { originalEvent?: unknown }).originalEvent) userMoved = true;
+    });
     new ResizeObserver(() => {
       if (container.clientWidth === 0 || container.clientHeight === 0) return;
       this.map.resize();
-      if (!fitted && !this.decorative) {
-        fitted = true;
-        this.fit();
-      }
+      if (!userMoved && !this.decorative) this.fit();
     }).observe(container);
     this.ready = new Promise((resolve) => this.map.once("load", () => resolve()));
     void this.ready.then(() => this.addOverlays());
@@ -70,7 +71,7 @@ class RadarMap implements MapLike {
 
   fit(): void {
     const [w, s, e, n] = this.bounds;
-    this.map.fitBounds([[w, s], [e, n]], { padding: 24, animate: false });
+    this.map.fitBounds([[w, s], [e, n]], { padding: 8, animate: false });
   }
 
   async setImage(url: string, corners: Corners): Promise<void> {
@@ -106,7 +107,11 @@ class RadarMap implements MapLike {
         el.className = "place";
         el.textContent = String(f.properties?.name ?? "");
         if (this.decorative) el.setAttribute("aria-hidden", "true");
-        new maplibregl.Marker({ element: el }).setLngLat(f.geometry.coordinates as [number, number]).addTo(this.map);
+        // A place may name "top" (label below its point) or "bottom" (label above it), so close neighbours do not overlap.
+        const side = f.properties?.anchor === "top" || f.properties?.anchor === "bottom" ? (f.properties.anchor as "top" | "bottom") : undefined;
+        new maplibregl.Marker({ element: el, anchor: side ?? "center", offset: [0, side === "top" ? 6 : side === "bottom" ? -6 : 0] })
+          .setLngLat(f.geometry.coordinates as [number, number])
+          .addTo(this.map);
       }
     }
   }

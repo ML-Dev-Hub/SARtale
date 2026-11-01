@@ -5,7 +5,7 @@
     { "type": "Feature", "properties": { "name": "Nowshera" }, "geometry": { "type": "Point", "coordinates": [71.98, 34.02] } },
     { "type": "Feature", "properties": { "name": "Charsadda" }, "geometry": { "type": "Point", "coordinates": [71.73, 34.15] } },
     { "type": "Feature", "properties": { "name": "Mardan" }, "geometry": { "type": "Point", "coordinates": [72.05, 34.2] } },
-    { "type": "Feature", "properties": { "name": "Swabi" }, "geometry": { "type": "Point", "coordinates": [72.47, 34.12] } },
-    { "type": "Feature", "properties": { "name": "Tarbela Reservoir" }, "geometry": { "type": "Point", "coordinates": [72.7, 34.08] } }
+    { "type": "Feature", "properties": { "name": "Swabi", "anchor": "bottom" }, "geometry": { "type": "Point", "coordinates": [72.47, 34.12] } },
+    { "type": "Feature", "properties": { "name": "Tarbela Reservoir", "anchor": "top" }, "geometry": { "type": "Point", "coordinates": [72.7, 34.08] } }
   ]
 }

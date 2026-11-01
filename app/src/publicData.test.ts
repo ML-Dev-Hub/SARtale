@@ -60,7 +60,7 @@ describe("the data the app ships (app/public/data)", () => {
   test("place labels are the six hand-entered points", () => {
     const places = JSON.parse(placesJson) as {
       type: string;
-      features: { geometry: { type: string; coordinates: [number, number] }; properties: { name: string } }[];
+      features: { geometry: { type: string; coordinates: [number, number] }; properties: { name: string; anchor?: string } }[];
     };
     expect(places.type).toBe("FeatureCollection");
     const got = Object.fromEntries(places.features.map((f) => [f.properties.name, f.geometry.coordinates]));
@@ -73,6 +73,11 @@ describe("the data the app ships (app/public/data)", () => {
       "Tarbela Reservoir": [72.7, 34.08],
     });
     for (const f of places.features) expect(f.geometry.type).toBe("Point");
+    // Swabi is north-west of Tarbela and about 20 km away. Its label sits above its point and Tarbela's below its own,
+    // so the two cannot overlap at any zoom.
+    const anchors = Object.fromEntries(places.features.map((f) => [f.properties.name, f.properties.anchor]));
+    expect(anchors["Swabi"]).toBe("bottom");
+    expect(anchors["Tarbela Reservoir"]).toBe("top");
     expect(findBannedClaims(JSON.stringify(places))).toEqual([]);
   });
 });
