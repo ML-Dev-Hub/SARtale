@@ -1,0 +1,56 @@
+{
+  "stack": "synthetic-demo",
+  "crid": "none",
+  "maturity": "Synthetic demo",
+  "bounds": [
+    0.0,
+    0.0,
+    1.0,
+    1.0
+  ],
+  "dates": [
+    {
+      "date": "2026-07-02",
+      "granule": "synthetic-demo-1",
+      "frames": {
+        "HH": "frames/2026-07-02_HH.webp",
+        "HV": "frames/2026-07-02_HV.webp"
+      }
+    },
+    {
+      "date": "2026-07-14",
+      "granule": "synthetic-demo-2",
+      "frames": {
+        "HH": "frames/2026-07-14_HH.webp",
+        "HV": "frames/2026-07-14_HV.webp"
+      }
+    },
+    {
+      "date": "2026-07-26",
+      "granule": "synthetic-demo-3",
+      "frames": {
+        "HH": "frames/2026-07-26_HH.webp",
+        "HV": "frames/2026-07-26_HV.webp"
+      }
+    },
+    {
+      "date": "2026-08-19",
+      "granule": "synthetic-demo-4",
+      "frames": {
+        "HH": "frames/2026-08-19_HH.webp",
+        "HV": "frames/2026-08-19_HV.webp"
+      }
+    }
+  ],
+  "composite": "frames/composite_HH.webp",
+  "stretch_db": {
+    "HH": [
+      0,
+      1
+    ],
+    "HV": [
+      0,
+      1
+    ]
+  }
+}

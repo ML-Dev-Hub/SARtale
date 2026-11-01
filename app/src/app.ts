@@ -1,0 +1,285 @@
+import { setComposite, setFrame, type MapLike } from "./map";
+import { formatDate, maturityBanner, orderedDates } from "./timeline";
+import type { Manifest, Pol } from "./types";
+
+/** What the app needs from the two stacked maps (the "after" map underneath, the "before" map clipped on top). */
+export interface MapHost {
+  after: MapLike;
+  before: MapLike;
+}
+
+export type HostFactory = (afterEl: HTMLElement, beforeEl: HTMLElement) => MapHost;
+
+const PLAY_STEP_MS = 800;
+
+const TEMPLATE = `
+<div class="shell">
+  <header class="top">
+    <h1 class="brand">SARtale</h1>
+    <p class="view">The Dance</p>
+    <p class="lede">Step through the season's radar images. Brighter areas sent more of the signal back.</p>
+  </header>
+  <main class="stage" data-role="stage" aria-label="Radar map">
+    <p class="maturity" data-role="maturity"></p>
+    <div class="viewport">
+      <div class="map map-after" data-role="after"></div>
+      <div class="map map-before" data-role="before" hidden></div>
+      <div class="swipe" data-role="swipe" role="slider" tabindex="0" hidden
+           aria-label="Before and after divider" aria-orientation="horizontal"
+           aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+        <span class="grip" aria-hidden="true"></span>
+      </div>
+      <p class="stamp stamp-before" data-role="stamp-before" hidden></p>
+      <p class="stamp stamp-after" data-role="stamp-after"></p>
+      <div class="notice" data-role="notice" role="alert" hidden>
+        <span data-role="notice-text"></span>
+        <button type="button" class="btn small" data-role="retry">Try again</button>
+      </div>
+    </div>
+  </main>
+  <section class="dock" aria-label="Controls">
+    <div class="row timeline">
+      <button type="button" class="btn play" data-role="play">Play</button>
+      <div class="slider-block">
+        <label class="slider-label" for="date-slider">
+          Date <output class="date-out" data-role="date-out" for="date-slider"></output>
+        </label>
+        <div class="track">
+          <div class="ticks" data-role="ticks" aria-hidden="true"></div>
+          <input id="date-slider" data-role="slider" type="range" min="0" step="1" value="0" />
+        </div>
+        <div class="ends" aria-hidden="true"><span data-role="first"></span><span data-role="last"></span></div>
+      </div>
+    </div>
+    <div class="row options">
+      <fieldset class="pol" data-role="pol">
+        <legend>Polarization</legend>
+        <label class="seg seg-hh"><input type="radio" name="pol" value="HH" checked /><span>HH</span></label>
+        <label class="seg seg-hv"><input type="radio" name="pol" value="HV" /><span>HV</span></label>
+      </fieldset>
+      <div class="compare">
+        <button type="button" class="btn toggle" data-role="swipe-toggle" aria-pressed="false">Before and after</button>
+        <label class="before-pick" data-role="before-pick" hidden>Before
+          <select data-role="before-select"></select>
+        </label>
+      </div>
+      <button type="button" class="btn toggle composite" data-role="composite-toggle" aria-pressed="false">Seasonal composite</button>
+    </div>
+    <p class="hint" data-role="hint" hidden></p>
+  </section>
+</div>`;
+
+export interface AppHandle {
+  /** Resolves when the map has finished the most recent update. */
+  settled(): Promise<void>;
+  destroy(): void;
+}
+
+export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory): AppHandle {
+  root.innerHTML = TEMPLATE;
+  const q = <T extends HTMLElement>(role: string): T => {
+    const el = root.querySelector<T>(`[data-role="${role}"]`);
+    if (!el) throw new Error(`missing element ${role}`);
+    return el;
+  };
+
+  const dates = orderedDates(m);
+  const last = dates.length - 1;
+  const stageEl = q("stage");
+  const afterEl = q("after");
+  const beforeEl = q("before");
+  const swipeEl = q("swipe");
+  const maturityEl = q("maturity");
+  const stampBefore = q("stamp-before");
+  const stampAfter = q("stamp-after");
+  const noticeEl = q("notice");
+  const noticeText = q("notice-text");
+  const retryBtn = q<HTMLButtonElement>("retry");
+  const playBtn = q<HTMLButtonElement>("play");
+  const slider = q<HTMLInputElement>("slider");
+  const dateOut = q("date-out");
+  const ticks = q("ticks");
+  const polSet = q<HTMLFieldSetElement>("pol");
+  const swipeToggle = q<HTMLButtonElement>("swipe-toggle");
+  const beforePick = q("before-pick");
+  const beforeSelect = q<HTMLSelectElement>("before-select");
+  const compositeToggle = q<HTMLButtonElement>("composite-toggle");
+  const hint = q("hint");
+
+  const host = createHost(afterEl, beforeEl);
+
+  const state = { i: 0, beforeI: 0, pol: "HH" as Pol, composite: false, swipe: false, fraction: 0.5, playing: false };
+  let seq = 0;
+  let pending: Promise<void> = Promise.resolve();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  // Maturity label: always visible.
+  const banner = maturityBanner(m);
+  maturityEl.textContent = banner.text;
+  maturityEl.dataset.kind = banner.kind;
+  document.title = `SARtale: The Dance (${banner.kind === "synthetic" ? "synthetic demo" : "provisional data"})`;
+
+  // Slider, ticks, end labels, before picker.
+  slider.max = String(last);
+  ticks.innerHTML = dates
+    .map((_, i) => `<i style="left:${last === 0 ? 0 : (i / last) * 100}%"></i>`)
+    .join("");
+  q("first").textContent = formatDate(dates[0]);
+  q("last").textContent = formatDate(dates[last]);
+  beforeSelect.innerHTML = dates.map((d, i) => `<option value="${i}">${formatDate(d)}</option>`).join("");
+  compositeToggle.hidden = !m.composite;
+  if (dates.length < 2) {
+    slider.disabled = true;
+    playBtn.disabled = true;
+    swipeToggle.disabled = true;
+  }
+
+  function showNotice(message: string | null): void {
+    noticeEl.hidden = message === null;
+    noticeText.textContent = message ?? "";
+  }
+
+  function updateLabels(): void {
+    dateOut.textContent = formatDate(dates[state.i]);
+    slider.setAttribute("aria-valuetext", formatDate(dates[state.i]));
+    slider.value = String(state.i);
+    const polText = state.composite ? "HH seasonal composite" : state.pol;
+    stampAfter.textContent = state.composite ? polText : `${formatDate(dates[state.i])}, ${state.pol}`;
+    stampBefore.textContent = `${formatDate(dates[state.beforeI])}, ${state.pol}`;
+    stampBefore.hidden = !(state.swipe && !state.composite);
+    playBtn.textContent = state.playing ? "Pause" : "Play";
+    playBtn.setAttribute("aria-pressed", String(state.playing));
+    swipeToggle.setAttribute("aria-pressed", String(state.swipe));
+    compositeToggle.setAttribute("aria-pressed", String(state.composite));
+    beforeEl.hidden = !(state.swipe && !state.composite);
+    swipeEl.hidden = beforeEl.hidden;
+    beforePick.hidden = !state.swipe || state.composite;
+    const locked = state.composite;
+    slider.disabled = locked || dates.length < 2;
+    playBtn.disabled = locked || dates.length < 2;
+    swipeToggle.disabled = locked || dates.length < 2;
+    polSet.disabled = locked;
+    hint.hidden = !locked;
+    hint.textContent = locked
+      ? "Composite colours: red for early dates, green for the middle, blue for late. Colour shows a difference in backscatter, not proven physical change. Switch the composite off to use the date controls."
+      : "";
+    stageEl.style.setProperty("--swipe", `${state.fraction * 100}%`);
+    beforeEl.style.clipPath = `inset(0 ${100 - state.fraction * 100}% 0 0)`;
+    swipeEl.setAttribute("aria-valuenow", String(Math.round(state.fraction * 100)));
+  }
+
+  /** Draw whatever the state says. Newer calls supersede older ones; only the newest reports errors. */
+  function refresh(): Promise<void> {
+    const mine = ++seq;
+    updateLabels();
+    const jobs: Promise<void>[] = [
+      state.composite ? setComposite(host.after, m) : setFrame(host.after, m, dates[state.i], state.pol),
+    ];
+    if (state.swipe && !state.composite) jobs.push(setFrame(host.before, m, dates[state.beforeI], state.pol));
+    pending = Promise.all(jobs).then(
+      () => {
+        if (mine === seq) showNotice(null);
+      },
+      (err: unknown) => {
+        if (mine !== seq) return;
+        stopPlaying();
+        stampAfter.textContent += " (not loaded)";
+        showNotice(err instanceof Error ? err.message : String(err));
+      },
+    );
+    return pending;
+  }
+
+  function stopPlaying(): void {
+    state.playing = false;
+    if (timer) clearTimeout(timer);
+    timer = undefined;
+    updateLabels();
+  }
+
+  async function tick(): Promise<void> {
+    if (!state.playing) return;
+    if (state.i >= last) return stopPlaying();
+    state.i += 1;
+    await refresh();
+    if (!state.playing) return;
+    timer = setTimeout(() => void tick(), PLAY_STEP_MS);
+  }
+
+  function startPlaying(): void {
+    if (state.i >= last) state.i = 0;
+    state.playing = true;
+    updateLabels();
+    void tick();
+  }
+
+  slider.addEventListener("input", () => {
+    state.i = Number(slider.value);
+    void refresh();
+  });
+  playBtn.addEventListener("click", () => (state.playing ? stopPlaying() : startPlaying()));
+  polSet.addEventListener("change", (e) => {
+    const t = e.target as HTMLInputElement;
+    if (t.name === "pol") {
+      state.pol = t.value as Pol;
+      void refresh();
+    }
+  });
+  swipeToggle.addEventListener("click", () => {
+    state.swipe = !state.swipe;
+    void refresh();
+  });
+  beforeSelect.addEventListener("change", () => {
+    state.beforeI = Number(beforeSelect.value);
+    void refresh();
+  });
+  compositeToggle.addEventListener("click", () => {
+    state.composite = !state.composite;
+    if (state.composite) stopPlaying();
+    void refresh();
+  });
+  retryBtn.addEventListener("click", () => void refresh());
+
+  // Swipe divider: drag with pointer or move with the keyboard.
+  function setFraction(f: number): void {
+    state.fraction = Math.min(1, Math.max(0, f));
+    updateLabels();
+  }
+  swipeEl.addEventListener("pointerdown", (e) => {
+    swipeEl.setPointerCapture(e.pointerId);
+    swipeEl.classList.add("dragging");
+  });
+  swipeEl.addEventListener("pointermove", (e) => {
+    if (!swipeEl.hasPointerCapture(e.pointerId)) return;
+    const r = stageEl.getBoundingClientRect();
+    if (r.width > 0) setFraction((e.clientX - r.left) / r.width);
+  });
+  const endDrag = (): void => swipeEl.classList.remove("dragging");
+  swipeEl.addEventListener("pointerup", endDrag);
+  swipeEl.addEventListener("pointercancel", endDrag);
+  swipeEl.addEventListener("keydown", (e) => {
+    const step = e.shiftKey ? 0.2 : 0.05;
+    const next: Record<string, number> = {
+      ArrowLeft: state.fraction - step,
+      ArrowDown: state.fraction - step,
+      ArrowRight: state.fraction + step,
+      ArrowUp: state.fraction + step,
+      Home: 0,
+      End: 1,
+    };
+    if (e.key in next) {
+      e.preventDefault();
+      setFraction(next[e.key]);
+    }
+  });
+
+  void refresh();
+
+  return {
+    settled: () => pending,
+    destroy: () => {
+      stopPlaying();
+      root.innerHTML = "";
+    },
+  };
+}
