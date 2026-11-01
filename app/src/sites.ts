@@ -1,4 +1,4 @@
-import type { Site } from "./types";
+import type { Manifest, Site } from "./types";
 
 export interface ChartSeries {
   /** UTC seconds, as uPlot expects for a time axis. */
@@ -25,6 +25,18 @@ export function toChartSeries(site: Site): ChartSeries {
 function isSite(v: unknown): v is Site {
   const s = v as Site;
   return !!s && typeof s.id === "string" && typeof s.name === "string" && Array.isArray(s.series);
+}
+
+/**
+ * The sites that belong to this manifest: stamped with its `stack` and `crid`. Sites with no stamp, or
+ * another one, are dropped. Returns null when none remain, so the view says "No site curves yet".
+ */
+export function sitesForManifest(sites: Site[] | null, m: Manifest): Site[] | null {
+  if (!sites) return null;
+  const own = sites.filter(
+    (s) => typeof s.stack === "string" && typeof s.crid === "string" && s.stack === m.stack && s.crid === m.crid,
+  );
+  return own.length ? own : null;
 }
 
 /** Loads data/sites.json. Returns null if it is absent or unusable; the app then shows "No site curves yet". */

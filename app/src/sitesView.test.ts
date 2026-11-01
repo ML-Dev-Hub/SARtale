@@ -11,6 +11,8 @@ const mk = (id: string, name: string, hv: (number | null)[]): Site => ({
   lon: 0.3,
   lat: 0.4,
   role: "demo",
+  stack: fixtureManifest.stack,
+  crid: fixtureManifest.crid,
   series: ["2026-07-02", "2026-07-14", "2026-07-26"].map((date, i) => ({
     date,
     hh_db: -10 - i,

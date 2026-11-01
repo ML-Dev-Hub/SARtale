@@ -37,13 +37,21 @@ export interface SitePoint {
   valid_fraction: number | null;
 }
 
-/** A site and its HH/HV curve, as written to data/sites.json. */
+/**
+ * A site and its HH/HV curve, as written to data/sites.json.
+ *
+ * Contract: `stack` and `crid` copy the manifest the curves were sampled for. The app shows a site only
+ * when both equal the manifest's, so stale or demo curves never appear beside another build. A site
+ * with no stamp (or the wrong one) is dropped.
+ */
 export interface Site {
   id: string;
   name: string;
   lon: number;
   lat: number;
   role: string;
+  stack: string;
+  crid: string;
   series: SitePoint[];
 }
 

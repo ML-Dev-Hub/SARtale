@@ -146,14 +146,8 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const viewSites = q<HTMLButtonElement>("view-sites");
   const viewMissed = q<HTMLButtonElement>("view-missed");
 
-  const host = createHost(afterEl, beforeEl);
-
-  const state = { i: 0, beforeI: 0, pol: "HH" as Pol, composite: false, swipe: false, fraction: 0.5, playing: false };
-  let seq = 0;
-  let pending: Promise<void> = Promise.resolve();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-
-  // Maturity label: always visible.
+  // Maturity label: always visible. Set before the map is created, so it is on the page even if the map cannot start
+  // (for example when WebGL is unavailable).
   const banner = maturityBanner(m);
   maturityEl.textContent = banner.text;
   maturityEl.dataset.kind = banner.kind;
@@ -161,6 +155,14 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   sitesMaturity.dataset.kind = banner.kind;
   missedMaturity.textContent = banner.text;
   missedMaturity.dataset.kind = banner.kind;
+
+  const host = createHost(afterEl, beforeEl);
+
+  const state = { i: 0, beforeI: 0, pol: "HH" as Pol, composite: false, swipe: false, fraction: 0.5, playing: false };
+  let seq = 0;
+  let pending: Promise<void> = Promise.resolve();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
   const maturityTag = { synthetic: "synthetic demo", preview: "real NISAR preview", provisional: "provisional data" }[banner.kind];
   const isPreview = banner.kind === "preview";
   // Limits of the preview images, shown on The Dance. Not shown for calibrated or synthetic data.

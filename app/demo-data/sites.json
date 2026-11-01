@@ -5,6 +5,8 @@
     "lon": 0.3,
     "lat": 0.7,
     "role": "synthetic demo site",
+    "stack": "synthetic-demo",
+    "crid": "none",
     "series": [
       {
         "date": "2026-07-02",
@@ -38,6 +40,8 @@
     "lon": 0.7,
     "lat": 0.6,
     "role": "synthetic demo site with a gap",
+    "stack": "synthetic-demo",
+    "crid": "none",
     "series": [
       {
         "date": "2026-07-02",
@@ -71,6 +75,8 @@
     "lon": 0.5,
     "lat": 0.3,
     "role": "synthetic demo stable control",
+    "stack": "synthetic-demo",
+    "crid": "none",
     "series": [
       {
         "date": "2026-07-02",

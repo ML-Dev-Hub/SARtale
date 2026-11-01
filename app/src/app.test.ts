@@ -166,6 +166,8 @@ describe("views", () => {
       lon: 0.3,
       lat: 0.4,
       role: "demo",
+      stack: fixtureManifest.stack,
+      crid: fixtureManifest.crid,
       series: [
         { date: "2026-07-02", hh_db: -10, hv_db: -18, valid_fraction: 1 },
         { date: "2026-07-14", hh_db: -11, hv_db: null, valid_fraction: 0 },
@@ -385,6 +387,20 @@ describe("real preview manifest", () => {
     expect($("hint").textContent).toContain("12 Sep 2026");
     expect($("hint").textContent).toContain("18 Oct 2026");
     expect($("hint").textContent).not.toMatch(/backscatter/i);
+  });
+
+  test("the maturity banner is on the page before the map is created", () => {
+    const root = document.createElement("div");
+    document.body.append(root);
+    let seen = "";
+    let seenKind = "";
+    mountApp(root, previewManifest, () => {
+      seen = root.querySelector('[data-role="maturity"]')!.textContent ?? "";
+      seenKind = root.querySelector<HTMLElement>('[data-role="missed-maturity"]')!.dataset.kind ?? "";
+      return { after: fakeMap(), before: fakeMap() } satisfies MapHost;
+    });
+    expect(seen).toBe("REAL NISAR PREVIEW: LOW-RESOLUTION BROWSE IMAGES, NOT CALIBRATED");
+    expect(seenKind).toBe("preview");
   });
 
   test("the Dance view states the pixel size and that brightness is not a measurement", async () => {
