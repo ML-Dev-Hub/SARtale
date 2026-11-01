@@ -51,7 +51,7 @@ class RadarMap implements MapLike {
     if (!decorative) {
       // A scale bar in metres, and zoom buttons for keyboard and mouse users. Touch users pinch.
       this.map.addControl(new maplibregl.ScaleControl({ maxWidth: 110, unit: "metric" }), "bottom-left");
-      this.map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "bottom-right");
+      this.map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "bottom-left");
     }
     // Fit to the frame bounds so the image fills the stage, and keep it fitted while the layout settles.
     // Once the person pans or zooms, their view is left alone.
@@ -67,9 +67,28 @@ class RadarMap implements MapLike {
     void this.ready.then(() => this.addOverlays());
   }
 
+  /**
+   * Fit the study area to the stage. On a wide stage the picture is made to fill it side to side, so there are no
+   * empty bands left and right, as long as that crops no more than a third off the top and bottom. Otherwise the
+   * whole area is shown. Either way the person can pan to the rest.
+   */
   fit(): void {
     const [w, s, e, n] = this.bounds;
-    this.map.fitBounds([[w, s], [e, n]], { padding: 8, animate: false });
+    const el = this.map.getContainer();
+    // A tall, narrow stage (a phone held upright) cannot show the whole area at a readable size, so it shows the middle
+    // two thirds, which holds every site and place label. Pinching shows the rest.
+    const narrow = el.clientHeight > 0 && el.clientWidth / el.clientHeight < 1;
+    const dw = e - w;
+    const box: [[number, number], [number, number]] = narrow ? [[w + 0.11 * dw, s], [w + 0.79 * dw, n]] : [[w, s], [e, n]];
+    const cam = this.map.cameraForBounds(box, { padding: 8 });
+    if (!cam || !el.clientHeight) return void this.map.fitBounds(box, { padding: 8, animate: false });
+    const sw = maplibregl.MercatorCoordinate.fromLngLat(box[0]);
+    const ne = maplibregl.MercatorCoordinate.fromLngLat(box[1]);
+    const areaAspect = Math.abs(ne.x - sw.x) / Math.abs(sw.y - ne.y);
+    const stageAspect = el.clientWidth / el.clientHeight;
+    const crop = 1 - areaAspect / stageAspect;
+    const zoom = stageAspect > areaAspect && crop <= 0.34 ? (cam.zoom ?? 0) + Math.log2(stageAspect / areaAspect) : cam.zoom;
+    this.map.jumpTo({ center: cam.center, zoom, padding: { top: 0, right: 0, bottom: 0, left: 0 } });
   }
 
   /** Move the camera. `padding` keeps the target clear of floating panels. A person who moves the map is left alone. */
