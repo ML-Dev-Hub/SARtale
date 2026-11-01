@@ -8,13 +8,8 @@ from pyproj import Transformer
 
 from sartale.radiometry import mask_power
 
-# NOTE: this layout follows the public NISAR GCOV docs and the NISAR/ISCE3
-# convention. The reader was run on two public single-pol NISAR sample GCOV files
-# dated 2008 (older product versions over a different area), which confirmed the
-# coordinate, projection and looks layout. Those samples have no HV term, and their
-# mask holds only 0 and 255, so they cannot confirm what the mask values mean on a
-# real file. The HV term and the P05023 files are still unread until the first real
-# run (the Earthdata login now works). If a real file differs, fix it here only.
+# This layout was confirmed on the real P05023 files: HH and HV terms, 10 m pixels, EPSG:32643, mask values
+# 0, 1 and 255 (one subswath), and granuleId and compositeReleaseId. If a later release differs, fix it here only.
 GRID_GROUP = "/science/LSAR/GCOV/grids/frequencyA"
 LOOKS = "numberOfLooks"
 MASK = "mask"

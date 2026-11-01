@@ -7,13 +7,13 @@ Written 2026-11-01, updated 2026-11-02. The Space Apps FAQ says a submission "mu
 - Work on this repository began on 2026-11-01, before the 14 Nov 2026 hackathon start. This must be reviewed against the event rules and disclosed as required.
 - The team's reading of the rule, and what existed before this work, is in section 3 of `docs/SARtale-hackathon-plan.md`. The team is to tell the Islamabad Local Lead exactly what exists and get written guidance. If the Local Lead objects, their instruction applies, which may mean discarding this work.
 - Before the repository: public pages were read, a metadata-only catalogue search was run, and a plan and a concept image were created. On 2026-11-01 the repository, app and pipeline code were written.
-- On 2026-11-01 and 2026-11-02 NASA's public browse preview images for nine track 84 dates were downloaded (no login) and the catalogue was read for metadata. The Earthdata login now works, and the nine calibrated GCOV files are being downloaded (five verified at the time of writing); none has been processed yet. Two public 2008 single-pol NISAR sample GCOV files (no HV term, mask only 0 and 255) were downloaded only to test the file reader. HV and the real P05023 files remain unread until the first real run. Sources are listed in `docs/DATA_SOURCES.md`.
+- On 2026-11-01 and 2026-11-02 NASA's public browse preview images for nine track 84 dates were downloaded (no login) and the catalogue was read for metadata. Two public 2008 single-pol NISAR sample GCOV files were downloaded only to test the file reader. On 2026-11-02 the calibrated P05023 GCOV files were downloaded and the first calibrated build was run, with OPERA DSWx-S1 tiles and Flood Forecasting Division bulletins read for the checks. Sources are listed in `docs/DATA_SOURCES.md`.
 
 ## Tools used
 
 | Tool | Used for | Where |
 |---|---|---|
-| Claude Code (Anthropic) | Planning, writing code (app and pipeline), writing tests, code review, writing documentation. Also ran the checks on the browse previews (which colour channel is which polarization, and where the images sit on the map), with the numbers recorded in the project's working notes | Whole repository, including this file |
+| Claude Code (Anthropic) | Planning, writing code (app and pipeline), writing tests, code review, writing documentation. Also ran the checks on the browse previews and the first calibrated build, chose the sites from the real stack, compared them with OPERA and the bulletins, and drafted the site cards, with the numbers recorded in the project's working notes | Whole repository, including this file |
 | OpenAI Codex | Plan review | Review comments on the plan. It also produced the concept storyboard image `docs/assets/sartale-concept-storyboard.png` |
 
 The concept storyboard image is a planning aid. It is an AI-generated mock-up and is not data or a screenshot of the app.
@@ -24,7 +24,7 @@ The team logo (`app/logo/SARtale.png`, with smaller copies in `app/public/brand/
 
 ## Human responsibility
 
-Saeed Ahmad and Shaharyar Sajid are responsible for the submission. Any claim about real NISAR data must be checked by a team member against the data before it is written into the app. The app now shows real browse previews, and its only statements about them are limits and cautions: the pixels are display-scaled and not calibrated, placement is good to about 2 km, 2 July may show radio interference (unconfirmed, seen by eye on the preview only), and 14 July is a forecast-orbit product. The team should look at all nine frames themselves before submission. No finding about the ground is claimed.
+Saeed Ahmad and Shaharyar Sajid are responsible for the submission. Any claim about real NISAR data must be checked by a team member against the data before it is written into the app. The site choices and every card were drafted by an AI tool from the data and have not yet been checked by a person, so a team member must read each card against its curve and open the 2 July evidence in `docs/DATA_SOURCES.md` before submission. The cards keep their explanations as hypotheses, and no flood, damage or crop finding is claimed.
 
 ## To complete before submission
 
