@@ -405,6 +405,6 @@ NISAR: [availability](https://nisar-docs.asf.alaska.edu/availability-overview/),
 
 2026 flood context: [FFD bulletin, 6 Sep 2026](https://ffd.pmd.gov.pk/b/0729b315-6fbb-4422-afdb-241fec938528), [The Nation, 27 Jul 2026](https://www.nation.com.pk/27-Jul-2026/fresh-spell-rainfall-increases-water-flows-kabul-indus-rivers-across-kp), [24 News, 18 Aug 2026](https://www.24newshd.tv/18-Aug-2026/ndma-warns-flash-floods-glofs-landslides-monsoon-rains-persist), [Arab News, Sep 2026](https://www.arabnews.pk/pakistan/pakistan-warns-of-fresh-floods-as-monsoon-death-toll-reaches-180-3000233).
 
-**Confidence note:** the 78,500 cusecs figure comes from one bulletin row, read without its column header in view, and the date of that peak is unknown. Search found no major 2026 flood in the pilot, but PDMA situation reports were not reviewed, so this is unproven. Check them during the event: a local flood on a date NISAR covered would be a strong addition to the story.
+**Confidence note:** the 78,500 cusecs figure comes from one bulletin row, read without its column header in view. That peak was on 23 Jul 2026 (bulletin 039/26). Search found no major 2026 flood in the pilot, but PDMA situation reports were not reviewed, so this is unproven. Check them during the event: a local flood on a date NISAR covered would be a strong addition to the story.
 
 **Independent review:** Codex reviewed this plan, and its findings on SAR processing, sizing, feasibility and rule risk have been applied. Codex could not retrieve the official FAQ itself.
