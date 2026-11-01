@@ -11,7 +11,7 @@ Written 2026-11-01, updated 2026-11-02 after the first calibrated build. Space A
 | Item | Source | Licence | Access date |
 |---|---|---|---|
 | Calibrated web frames, `manifest.json` and `sites.json` (`app/public/data/`) | Made by `run_pipeline rebuild` from NISAR GCOV files (see "NISAR GCOV data" below). 30 m analysis, about 67 m on the map | NASA data, openly available. Exact wording to confirm | 2026-11-02 |
-| Change frames and scores (`app/public/data/frames/change_<date>.webp`, the `change` record in `manifest.json`, `change_score` in `sites.json`) | Made by `run_pipeline change` from the calibrated 30 m COGs (see "Statistical change layer") | Derived from NASA data. Exact wording to confirm | 2026-11-02 |
+| Change frames and scores (`app/public/data/frames/step_date.webp` and `change_<date>.webp`, the `change` record in `manifest.json`, `step` and `change_score` in `sites.json`) | Made by `run_pipeline change` from the calibrated 30 m COGs (see "Before-and-after step layer" and "Unusual dates layer") | Derived from NASA data. Exact wording to confirm | 2026-11-02 |
 | Place labels (`app/public/data/overlays/places.geojson`) | **Approximate, hand-entered** labels for Peshawar, Nowshera, Charsadda, Mardan, Swabi and Tarbela Reservoir. Typed in by the team from general knowledge, not copied from a dataset. Positions are rough, to about a few kilometres | Part of this repository, Apache License 2.0 | Not applicable |
 | Site list (`processing/sites_in.json`) | Chosen by the team's tooling from the real stack, each with its reason | Part of this repository, Apache License 2.0 | Not applicable |
 | River and reservoir figures in `app/src/content/` | A few dated numbers quoted, with the source named, from the Flood Forecasting Division's public daily bulletins (see "Flood Forecasting Division bulletins" below) | Pakistan Meteorological Department. Reuse terms to confirm; the bulletins themselves are not redistributed | 2026-11-02 |
@@ -200,7 +200,94 @@ Tarbela reservoir level, feet:
 | 6 Oct | 1520.04 | NISAR pass |
 | 15 Oct | 1518.80 | Last bulletin, 3 days before the 18 Oct pass |
 
-### Statistical change layer
+### Before-and-after step layer (the main Change view)
+
+Numbers from `processing/checks/step_evidence.py` on 2026-11-02. Built by `run_pipeline change` (also part of `rebuild`) from the 30 m COGs.
+
+**Verdict.** With HH and HV moving the same way, a mean step of at least 3 dB and a stability of at least 3.0, the step layer is enough to separate the known changes from the controls (0 to 1% of control pixels, against 90% at the Tarbela shore around 19 Aug and 88% at Attock around 24 Sep within 150 m), but it cannot say what changed, because plain ground flags as strongly (35 to 68%) with no named cause, and the Unusual dates layer alone is still not enough to place a lasting change.
+
+A step is a change in backscatter. It does not name a cause, and land cover here is not established.
+
+**Why this layer exists.** The z-score layer (next section) judges a date against the season, so a pixel that stays dark for most of the season has dark as its usual state and the shore does not stand out in August. A step test asks when the season split into a before and an after, so that problem goes away. The idea and a first prototype came from the team's coordinator, who had seen the known sites. That prototype used HH with no scene normalisation and no stability test. Its "13 km" box near 71.925, 34.275 read 6 km across in the code; both sizes are reported here.
+
+**Method.** Scene offsets are removed, then linear power is averaged once more, 3 x 3, to 90 m, because a split chosen from several needs quieter pixels. The test uses eight dates: 2 Jul is left out, and 14 Jul is in, keeping its flag, because without it no step before 31 Aug could be placed. For each pixel, every split with at least 2 valid dates on each side is tried, and the one with the largest joint stability of HH and HV is kept, so both polarizations report one date. A step is mean dB after minus mean dB before. Stability is |step| over its standard error, from the scatter inside the two segments: a two-sample t statistic, with the scatter floored at 0.5 dB, about what the controls show at 90 m (0.41 to 0.44 dB). A pixel with fewer than 4 valid dates has no score. The date given is the first date after the step, so it fell between that pass and the one before.
+
+**What choosing the best split inflates.** Dates were shuffled per pixel, which keeps a pixel's values and removes their order. Against one fixed split, the best of five doubles the median step (0.55 to 1.14 dB in HH on the plain box, 0.20 to 0.40 on stable ground) and raises the 99th percentile about 1.4 times (2.99 to 4.16 dB). The stability 99th percentile goes from 3.33 to 4.88 on the plain box. So a size limit alone is not safe: HH of at least 3 dB would fire on about 1% of shuffled pixels at one fixed split, and more at the best of five.
+
+**The rule.** A pixel is flagged where HH and HV move in the same direction at the split, their mean |step| is at least 3 dB, and the root mean square of their stabilities is at least 3.0. The size limit is the project's standing limit that a change under about 3 dB at one site needs other support. The stability limit is computed in `build_change`: the smallest multiple of 0.5 that leaves at most 1% of control pixels (293 pixels within 500 m of the three controls) and 1% of shuffled pixels in the plain box passing both limits (2.95, rounded to 3.0). The shuffle is seeded, so a rebuild repeats it.
+
+**This rule was not blind, and it changed.** The first rule took the 99th percentile of each limit separately, on the smaller of HH and HV. That came to 3.5 dB and 4.0, and I then saw it flag 13% at the shore and 5% east of Mardan within 450 m. Looking at why, two faults showed up that do not depend on the sites: 1% on each limit compounds to about 0.08% together, far stricter than meant, and asking each polarization to pass alone loses steps that are weaker in HV. I replaced it with one joint 1% budget and chose how to combine HH and HV on synthetic steps added to shuffled plain pixels, with no known site involved. The choice still followed seeing the sites, so treat the limits as chosen with the known sites in view. Both results are given below.
+
+**Combining HH and HV.** Best limits with shuffled false alarms at most 1% on the plain box, and the share of synthetic steps found:
+
+| Rule | Best limits | False alarms | 5 dB in both | 5 dB HH, 3 dB HV | Mean over all sizes |
+|---|---|---|---|---|---|
+| Each polarization passes alone | 2.5 dB, 3.0 | 0.69% | 90% | 61% | 63% |
+| Mean size, RMS stability, same direction (used) | 3.0 dB, 3.5 | 0.70% | 91% | 79% | 68% |
+| HH only | 3.5 dB, 3.0 | 0.92% | 90% | 90% | 70% |
+| Either polarization | 3.5 dB, 3.5 | 0.91% | 93% | 87% | 71% |
+
+The grid's best stability limit for the rule used is 3.5 because 3.0 sat just above 1% in that draw; the build's own seeded shuffle lands at 3.0, with false alarms of 1.0%. HH only and either score slightly higher, but they do not ask the two polarizations to agree. Where either polarization passes on the real data, they agree in direction at 96.5% of pixels. On the real data at the same limits, the rule flags 1.39% of the window against 2.54% for either polarization, 8.5% of the plain box against 12.6%, and 52% at Attock within 450 m against 61%. Asking each to pass alone would give 30% at Attock and 32% east of Mardan. HV is the weaker: at Attock alone it passes at half the rate of HH.
+
+**False alarms under shuffles, percent.**
+
+| Limits | Stable ground | Plain box | Box at 71.925, 13 km | Whole window |
+|---|---|---|---|---|
+| 3.0 dB, 3.0 (rule) | 0.001 | 1.006 | 0.459 | 0.253 |
+| 2.5 dB, 3.0 | 0.002 | 1.784 | 0.803 | 0.492 |
+| 3.5 dB, 4.0 | 0.000 | 0.261 | 0.094 | 0.077 |
+
+A per-pixel shuffle breaks up patches, which real weather does not. So the dates were also shuffled together, in one order for all pixels, 200 times. At the rule the plain box flags a median of 0.38%, 3.5% at the 90th percentile and 6.9% at most; the whole window 0.15%, 0.72% and 1.26%. The real order flags 8.5% and 1.39%, more than any of the 200 orders.
+
+**Percent of 90 m pixels flagged.**
+
+| Area | Pixels | 3.0 dB, 3.0 (rule) | 2.5 dB, 3.0 | 3.5 dB, 4.0 | Main step dates |
+|---|---|---|---|---|---|
+| Peshawar, 500 m (control) | 99 | 0.0 | 0.0 | 0.0 | none |
+| Hazro, 500 m (control) | 96 | 1.0 | 1.0 | 1.0 | one pixel |
+| Tarbela pool, 1 km (water control) | 387 | 0.0 | 0.0 | 0.0 | none |
+| **Tarbela shore, 150 m** | 10 | **90** | 90 | 90 | all down, 19 Aug |
+| Tarbela shore, 450 m | 78 | 27 | 28 | 27 | all down, 19 Aug |
+| **Attock, 150 m** | 8 | **88** | 88 | 75 | up: 24 Sep 57%, 6 Oct 29%, 12 Sep 14% |
+| Attock, 450 m | 79 | 52 | 56 | 39 | up: 24 Sep 68%, 12 Sep 20%, 6 Oct 12% |
+| Plain near Swabi, 450 m | 79 | 35 | 41 | 28 | all up, 19 Aug |
+| Plain east of Mardan, 450 m | 79 | 68 | 78 | 38 | up: 19 Aug 46%, 31 Aug 39% |
+| Plain box, 72.10 to 72.25 E | 34,502 | 8.5 | 13.4 | 3.8 | up: 19 Aug 41%, 24 Sep 23% |
+| Box at 71.925, 6 km | 4,489 | 1.4 | 2.7 | 0.6 | mixed |
+| Box at 71.925, 13 km | 20,880 | 3.4 | 6.0 | 1.4 | up: 6 Oct 34%, 12 Sep 22% |
+| Tarbela box | 114,707 | 0.8 | 1.1 | 0.4 | down 19 Aug 22%, up 19 Aug 20%, up 6 Oct 19% |
+| Attock box | 18,868 | 5.0 | 6.9 | 3.3 | up: 24 Sep 37%, 6 Oct 25%, 12 Sep 17% |
+| **Whole window** | 2,814,517 | **1.39** | 2.30 | 0.65 | up 19 Aug 39%, up 12 Sep 17%, up 6 Oct 10%, down 24 Sep 8% |
+
+Only about 20% of flagged pixels in the window step down. The steady ground of a control barely moves: its 99th percentile mean step is 1.8 dB.
+
+**Sites, from each site's own curve.** The card shows these, so they can be read off the chart.
+
+| Site | Step between | HH | HV | Stability | Passes | Map pixels flagged |
+|---|---|---|---|---|---|---|
+| Peshawar city | 24 Sep, 6 Oct | -0.23 | -0.28 | 0.6 | No | 0% |
+| Near Hazro | 19, 31 Aug | -0.73 | -0.79 | 2.1 | No | 0% |
+| Tarbela pool | 24 Sep, 6 Oct | -0.53 | +0.18 | 0.0 | No | 0% |
+| Tarbela shore | 26 Jul, 19 Aug | -8.14 | -5.26 | 6.1 | Yes | 90% |
+| Plain near Swabi | 26 Jul, 19 Aug | +3.75 | +3.03 | 3.8 | Yes | 27% |
+| Plain east of Mardan | 19, 31 Aug | +3.84 | +2.24 | 4.4 | Yes | 44% |
+| Indus at Attock | 12, 24 Sep | +4.82 | +3.00 | 6.1 | Yes | 88% |
+
+**What a single split misses.** The shore's second step is missed. After August it climbs by HH +3.10 dB and HV +1.43 dB between 12 and 24 Sep, a mean of 2.3 dB, stability 5.4: stable, but under the size limit even when tested alone. In the window only 1.4% of flagged pixels show a second step by the same rule. Short pulses are also missed: of 42 pixels in the Tarbela box that went dark in August and came back by late September, 7% are flagged, because a before and an after cannot describe a return. The Unusual dates view catches many of those.
+
+**How firm are the steps?**
+
+- **One date.** Dropping any one date from 19 Aug on keeps 86 to 90% of flagged pixels, except 6 Oct (71%) and 18 Oct (78%). Dropping a July date keeps 46 to 51%. That is partly built in: a step at 19 Aug has only those two dates before it, so without either the split cannot exist. For the same reason the shore cannot be tested this way, and its step rests on two dates, one of them the flagged 14 Jul. 24% of flagged pixels survive every single drop.
+- **14 July.** It still reads low on plain ground after normalising. With 1 dB more added to it, 73% of flagged pixels stay flagged in the window and 71% in the plain box, and 100% at the shore. So some of the step-ups at 19 Aug come from that date.
+- **Mardan.** Its strong signal is not the 6 Oct patch: the site is south of the patch, dropping 6 Oct keeps 89% of its flagged pixels, and no date from 19 Aug on keeps fewer than 89%. The two July dates keep 50% and 65%, as above. Its date is rough: 19 and 31 Aug split it almost evenly, and a straight line fits 26% of its flagged pixels better than a step. It is a real rise, more gradual than a step, and its cause is unknown.
+- **6 October.** The unexplained brightening does make steps. In the patch, 33% of flagged pixels are dated up at 6 Oct, and only 44% survive dropping that date. Treat those steps as weak.
+- **Step or slope?** A line fits better at 15% of flagged pixels in the window, 42% at Attock, 0% at the shore. Where a slope fits, a date is only a rough middle.
+
+**Display.** `frames/step_date.webp`, 16 KB, lossless. Hue is the date, the light tint is up, the deep shade is down. Lossy WebP would blur small patches and bilinear warping would invent colours between dates, so classes are warped by nearest neighbour. The map's image layer has no mipmaps, so a fine frame loses patches at the default zoom. Instead each 270 m cell is drawn in its commonest class if at least 2 of its 9 pixels are flagged: lone pixels drop out and small patches stay, drawn a little wider than measured (2.7% of cells against 1.39% of pixels). COGs at 90 m: `data/cog/change_step_HH.tif`, `_HV`, `_stability` (0 where HH and HV disagree in direction) and `_split` (position in the eight dates).
+
+### Unusual dates layer (z-scores)
+
+This is the secondary view. Its verdict below still stands for what it is: it cannot place a lasting change, which is why the step layer above is the main one. It still catches short pulses the step layer misses.
 
 Numbers from `processing/checks/change_evidence.py` on 2026-11-02. The layer is built by `run_pipeline change` (also part of `rebuild`) from the 30 m COGs. No deep learning is used.
 
@@ -341,7 +428,7 @@ Licences are read from the installed package metadata in the `sartale` conda env
 | osmnx | 2.1.1 | MIT | Listed, not imported yet (planned road analysis) |
 | Python | 3.12 | Python Software Foundation licence (to confirm the exact text for the conda build) | Yes |
 
-`distmetrics` 1.0.8 (Apache-2.0) was read to decide the change method and is not a dependency; see "Statistical change layer".
+`distmetrics` 1.0.8 (Apache-2.0) was read to decide the change method and is not a dependency; see "Unusual dates layer".
 
 ## Still to do
 
