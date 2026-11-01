@@ -116,5 +116,75 @@
     "end": "2026-08-10T00:55:27Z"
   },
   "pixel_m": 67,
-  "analysis_m": 30
+  "analysis_m": 30,
+  "change": {
+    "method": "Largest robust z-score of HH and HV, each date against the season's other dates",
+    "reference": "Modified z-score: Iglewicz and Hoaglin (1993), per pixel and per polarization",
+    "library": "numpy",
+    "version": "2.5.4",
+    "threshold": 3.5,
+    "scale_max": 7.0,
+    "baseline_dates": [
+      "2026-07-26",
+      "2026-08-19",
+      "2026-08-31",
+      "2026-09-12",
+      "2026-09-24",
+      "2026-10-06",
+      "2026-10-18"
+    ],
+    "excluded": [
+      {
+        "date": "2026-07-02",
+        "reason": "Likely radio interference in HV on this date."
+      }
+    ],
+    "removed_offsets_db": {
+      "2026-07-14": {
+        "HH": -0.59,
+        "HV": -0.601
+      },
+      "2026-07-26": {
+        "HH": 0.151,
+        "HV": 0.123
+      },
+      "2026-08-19": {
+        "HH": 0.027,
+        "HV": -0.021
+      },
+      "2026-08-31": {
+        "HH": -0.172,
+        "HV": 0.035
+      },
+      "2026-09-12": {
+        "HH": 0.106,
+        "HV": 0.001
+      },
+      "2026-09-24": {
+        "HH": -0.143,
+        "HV": -0.082
+      },
+      "2026-10-06": {
+        "HH": -0.117,
+        "HV": -0.079
+      },
+      "2026-10-18": {
+        "HH": 0.123,
+        "HV": 0.032
+      }
+    },
+    "date_notes": {
+      "2026-10-06": "Patches of the northern plain read about 1.5 dB brighter on this date, in HH and HV. The cause is unexplained, and no rain record was compared."
+    },
+    "frames": {
+      "2026-07-14": "frames/change_2026-07-14.webp",
+      "2026-07-26": "frames/change_2026-07-26.webp",
+      "2026-08-19": "frames/change_2026-08-19.webp",
+      "2026-08-31": "frames/change_2026-08-31.webp",
+      "2026-09-12": "frames/change_2026-09-12.webp",
+      "2026-09-24": "frames/change_2026-09-24.webp",
+      "2026-10-06": "frames/change_2026-10-06.webp",
+      "2026-10-18": "frames/change_2026-10-18.webp"
+    }
+  }
 }
