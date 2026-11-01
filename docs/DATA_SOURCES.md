@@ -4,7 +4,7 @@ Written 2026-11-01, updated 2026-11-02. Space Apps rules say we must confirm tha
 
 ## Status in one paragraph
 
-**The app shows real NISAR images, but only NASA's low-resolution browse previews.** Nine dates of track 84 were downloaded from NASA's public browse archive without a login (details below). Their pixel values are scaled for display and are not calibrated, so the app shows no decibel values, no curves and no statistics. **No calibrated GCOV file has been downloaded**, because that needs an Earthdata login. The catalogue (CMR) was also read for metadata only. Two public 2008 NISAR sample GCOV files were used to test the file reader and are not results. Every other dataset below is **planned and not yet used or downloaded**.
+**The app shows real NISAR images, but only NASA's low-resolution browse previews.** Nine dates of track 84 were downloaded from NASA's public browse archive without a login (details below). Their pixel values are scaled for display and are not calibrated, so the app shows no decibel values, no curves and no statistics. **No calibrated GCOV file has been read or processed yet.** The Earthdata login now works, and the nine calibrated `P05023` GCOV files are being downloaded into `data/gcov/` (git-ignored); five were verified (size and MD5) at the time of writing. The catalogue (CMR) was also read for metadata. Two public 2008 NISAR sample GCOV files were used to test the file reader and are not results. Every other dataset below is **planned and not yet used or downloaded**.
 
 ## Data in the repository now
 
@@ -27,8 +27,8 @@ NASA publishes a quick-look PNG set next to each NISAR GCOV granule in the ASF b
 | What the pixels are | Display-scaled 8-bit values. **Not calibrated, not dB.** The app never shows them as measurements |
 | Pixel size | About 174 m (measured: 0.0019 degrees east-west and 0.00156 degrees north-south, from the footprint fit) |
 | Channel layout | Red and blue are HH (identical on all nine images), green is HV. Checked against the `_NATIVE` greyscale images by histogram and by the difference of channel means across the nine dates |
-| Georeferencing | No sidecar file is published. The valid-data bounding box was mapped onto the lon/lat bounding box of the scene footprint from CMR. The four footprint corners land on the data corners to within a few pixels (typically 0 to 3, worst 10, which is about 1.7 km). Tarbela reservoir and Peshawar fall where they should. Overall the placement is good to about 2 km. The nine images lie on one pixel grid (no shift between dates), so one shared extent is used |
-| Display window | Longitude 70.9 to 72.8, latitude 33.6 to 34.8. The western edge of the scene footprint cuts through this window, so part of its west side is empty |
+| Georeferencing | No sidecar file is published. The valid-data bounding box was mapped onto the lon/lat bounding box of the scene footprint from CMR. The four footprint corners land on the data corners to within a few pixels (typically 0 to 3, worst 10, which is about 1.7 km). This is **not an independent check at the corners**: the fit maps the valid-data bounding box onto the footprint's bounding box, so one coordinate of each corner is matched by construction. The coordinates that are not extremes (the other coordinate of each corner), and landmarks such as Tarbela reservoir and Peshawar, are the real check. Tarbela reservoir and Peshawar fall where they should. Overall the placement is good to about 2 km. The nine images lie on one pixel grid (no shift between dates), so one shared extent is used |
+| Display window | Longitude 71.2 to 73.4, latitude 33.8 to 34.8, chosen from the real frames: about 96 percent of it holds data on all nine dates, and the tilted west edge of the footprint (longitude about 71.37 at Peshawar's latitude) stays in view |
 | Maturity | Provisional. Not validated. NASA expects reprocessing |
 | Date cautions | 2 Jul: possible radio interference over the western area, unconfirmed (seen by eye on the browse image only). 14 Jul: forecast-orbit product (the `F` in the granule name), so positions may be less precise |
 | Licence | NASA data is openly available. The exact data-use and citation wording is **to confirm** against the NISAR and ASF pages before submission |
@@ -52,24 +52,24 @@ These nine granules are the ones in the table below. Their footprints (`processi
 
 ### NISAR sample GCOV files from 2008 (reader test only)
 
-Two public NISAR sample GCOV files dated 2008 (`NISAR_L2_PR_GCOV_001_030_A_019_2800_SHNA_A_20081012...` and `..._002_030_..._20081127...`, from NASA's [sample data page](https://science.nasa.gov/mission/nisar/sample-data/)) are kept in `data/sample/` (git-ignored). They are older product versions over a different area. They were used **only** to run `read_layer` and the multilook step and to confirm the HDF5 layout. They appear in no result, image or figure.
+Two public NISAR sample GCOV files dated 2008 (`NISAR_L2_PR_GCOV_001_030_A_019_2800_SHNA_A_20081012...` and `..._002_030_..._20081127...`, from NASA's [sample data page](https://science.nasa.gov/mission/nisar/sample-data/)) are kept in `data/sample/` (git-ignored). They are older product versions over a different area. They were used **only** to run `read_layer` and the multilook step and to confirm the coordinate, projection and looks layout, and the field names `identification/granuleId` and `identification/compositeReleaseId`. They are single-pol files with no HV term, and their mask holds only 0 and 255, so they cannot confirm what the mask values mean on a real file or that HV reads correctly. They appear in no result, image or figure.
 
-## NISAR GCOV data (calibrated, not downloaded)
+## NISAR GCOV data (calibrated, downloading, not yet processed)
 
 | Item | Detail |
 |---|---|
 | Product | NISAR L2 GCOV (geocoded polarimetric covariance), provisional. CMR short name `NISAR_L2_GCOV_PROVISIONAL_V1` |
-| Archive | NASA Earthdata / Alaska Satellite Facility (ASF). A free Earthdata Login is needed to download |
+| Archive | NASA Earthdata / Alaska Satellite Facility (ASF). A free Earthdata Login is needed to download. The login works. `run_pipeline download` fetches the files (resumable, size and MD5 checked against the catalogue) |
 | Search | Catalogue search by bounding box 71.4, 33.9, 72.1, 34.4 (lon min, lat min, lon max, lat max), run 2026-11-01 (14:04 UTC) |
 | Stack chosen | Track 84, ascending, frame 19 (`084_A_019`), mode 4005, polarization DHDH, source A |
 | Processing version | CRID `P05023`. One version only, never mixed |
 | Maturity | Provisional. Not validated. NASA expects reprocessing |
 | Licence | NASA data is openly available. The exact data-use and citation wording is **to confirm** against the NISAR and ASF pages before submission |
-| Access date | Metadata only. **No GCOV file has been downloaded.** The real `P05023` files are unread |
+| Access date | Metadata on 2026-11-01. Downloads of all nine files into `data/gcov/` started 2026-11-02 (five verified so far). The real `P05023` files, including HV and the mask, are **unread** until the first real run |
 
 ### Granules found in the catalogue search
 
-These nine names come from the search manifest `data/manifest_h0.json` (git-ignored, written by `run_pipeline search`). The browse previews of these granules are used by the app. **None of the GCOV HDF5 files has been downloaded or processed.** Accuracy and coverage are the codes from the file name, shown as they appear.
+These nine names come from the search manifest `data/manifest_h0.json` (git-ignored, written by `run_pipeline search`). The browse previews of these granules are used by the app. **None of the GCOV HDF5 files has been processed** (the downloads are in progress). Accuracy and coverage are the codes from the file name, shown as they appear.
 
 | Date (UTC) | Cycle | Accuracy | Coverage | Granule name |
 |---|---|---|---|---|
@@ -131,7 +131,7 @@ Licences are read from the installed package metadata in the `sartale` conda env
 | pyproj | 3.8.0 | MIT | Yes |
 | pillow | 13.0.0 | MIT-CMU | Yes (reads the browse PNGs, writes WebP; also the demo and logo scripts) |
 | pytest | 9.2.0 | MIT | Tests |
-| requests | 2.34.2 | Apache-2.0 | Listed, not imported by the pipeline code yet |
+| requests | 2.34.2 | Apache-2.0 | Yes (`run_pipeline download`) |
 | networkx | 3.7 | BSD-3-Clause | Listed, not imported yet (planned road analysis) |
 | osmnx | 2.1.1 | MIT | Listed, not imported yet (planned road analysis) |
 | Python | 3.12 | Python Software Foundation licence (to confirm the exact text for the conda build) | Yes |

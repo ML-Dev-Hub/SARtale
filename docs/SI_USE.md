@@ -7,7 +7,7 @@ Written 2026-11-01, updated 2026-11-02. The Space Apps FAQ says a submission "mu
 - Work on this repository began on 2026-11-01, before the 14 Nov 2026 hackathon start. This must be reviewed against the event rules and disclosed as required.
 - The team's reading of the rule, and what existed before this work, is in section 3 of `docs/SARtale-hackathon-plan.md`. The team is to tell the Islamabad Local Lead exactly what exists and get written guidance. If the Local Lead objects, their instruction applies, which may mean discarding this work.
 - Before the repository: public pages were read, a metadata-only catalogue search was run, and a plan and a concept image were created. On 2026-11-01 the repository, app and pipeline code were written.
-- On 2026-11-01 and 2026-11-02 NASA's public browse preview images for nine track 84 dates were downloaded (no login) and the catalogue was read for metadata. No calibrated NISAR GCOV file has been downloaded, because that needs an Earthdata login. Two public 2008 NISAR sample GCOV files were downloaded only to test the file reader. Sources are listed in `docs/DATA_SOURCES.md`.
+- On 2026-11-01 and 2026-11-02 NASA's public browse preview images for nine track 84 dates were downloaded (no login) and the catalogue was read for metadata. The Earthdata login now works, and the nine calibrated GCOV files are being downloaded (five verified at the time of writing); none has been processed yet. Two public 2008 single-pol NISAR sample GCOV files (no HV term, mask only 0 and 255) were downloaded only to test the file reader. HV and the real P05023 files remain unread until the first real run. Sources are listed in `docs/DATA_SOURCES.md`.
 
 ## Tools used
 

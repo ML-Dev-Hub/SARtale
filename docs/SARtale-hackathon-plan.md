@@ -108,7 +108,7 @@ So **tell the Local Lead exactly what exists, and get written guidance before do
 
 1. **Hook.** The Kabul River valley floods again and again, most recently in 2025. Satellites usually show up after the disaster.
 2. **Meet NISAR.** Radar sees through monsoon cloud and returns every 12 days.
-3. **The dance.** Play the season from 2 July to the latest date. Farmland pulses, river bars emerge and vanish, the city stays still.
+3. **The dance.** Play the season from 26 July (the first of the four default dates: 26 Jul, 19 Aug, 12 Sep, 18 Oct) to the latest date. 2 July and 14 July carry cautions and stay out of the default set. Farmland pulses, river bars emerge and vanish, the city stays still.
 4. **Why it moved.** Tap a site for HH and HV curves and a stated hypothesis. HH and HV respond differently, and the app shows how.
 5. **What NISAR did not see.** No full-coverage pass happened between 26 July and 12 August, partly because of a permanent data gap. Whatever peaked in that window went unobserved, and showing that builds trust. Confirm event timing before stating this.
 6. **Why it matters.** Show one decision linked to evidence: a crossing beside a river stretch that NISAR saw change, inside the 2025 flood outline, with few alternatives if closed. If no such link appears in the data, end on the strongest surface-change story instead.
@@ -154,7 +154,7 @@ NASA's browse images are public, so all 9 track 84 dates were checked without a 
 - **Default first four dates:** 26 Jul, 19 Aug, 12 Sep and 18 Oct.
 - **Possible story:** the interference question itself fits the "What NISAR Missed" view, once confirmed.
 
-NASA's [sample data](https://science.nasa.gov/mission/nisar/sample-data/) includes two public GCOV files from 2008 over a different area. They were used only to test the file reader, and they confirmed the coordinate, projection, mask and looks layout. They are older product versions and should not appear as project results. The real `P05023` files still need checking.
+NASA's [sample data](https://science.nasa.gov/mission/nisar/sample-data/) includes two public GCOV files from 2008 over a different area. They were used only to test the file reader, and they confirmed the coordinate, projection and looks layout. They are single-pol files with no HV term, and their mask holds only 0 and 255, so they cannot confirm what the mask values mean on a real file or that the HV term reads correctly. They are older product versions and should not appear as project results. The real `P05023` files, including HV and the mask, are unread until the first real run (the Earthdata login now works).
 
 ### Data status warnings
 
