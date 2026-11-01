@@ -1,0 +1,8 @@
+data/
+.superpowers/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+app/dist/
+app/public/data/raw/
