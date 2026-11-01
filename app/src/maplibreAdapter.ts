@@ -3,24 +3,16 @@ import type { FeatureCollection } from "geojson";
 import "maplibre-gl/dist/maplibre-gl.css";
 // The worker is a separate self-contained file. Bundle it ourselves so nothing is fetched from outside the page.
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
-import type { HostFactory, MapHost } from "./app";
+import type { Camera, HostFactory, MapHost, Padding } from "./app";
+import { loadImage } from "./images";
 import type { MapLike } from "./map";
 import type { Corners, Manifest, Site } from "./types";
 
 maplibregl.setWorkerUrl(workerUrl);
 
 const BACKGROUND = "#0b151b";
+const reducedMotion = (): boolean => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 const OVERLAY_FILES = ["rivers", "roads", "places"] as const;
-
-/** Loads an image and rejects if it is missing or not an image. Also warms the browser cache. */
-function loadImage(url: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve();
-    img.onerror = () => reject(new Error(`image not found or unreadable`));
-    img.src = url;
-  });
-}
 
 /** Optional GeoJSON overlays. A missing file (or a dev server answering with index.html) is skipped quietly. */
 async function fetchOverlay(name: string): Promise<FeatureCollection | null> {
@@ -38,6 +30,7 @@ class RadarMap implements MapLike {
   readonly map: maplibregl.Map;
   private readonly ready: Promise<void>;
   private hasImage = false;
+  private userMoved = false;
   private seq = 0;
   private overlaySeq = 0;
 
@@ -55,16 +48,20 @@ class RadarMap implements MapLike {
       maxPitch: 0,
     });
     this.map.touchZoomRotate.disableRotation();
+    if (!decorative) {
+      // A scale bar in metres, and zoom buttons for keyboard and mouse users. Touch users pinch.
+      this.map.addControl(new maplibregl.ScaleControl({ maxWidth: 110, unit: "metric" }), "bottom-left");
+      this.map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "bottom-right");
+    }
     // Fit to the frame bounds so the image fills the stage, and keep it fitted while the layout settles.
     // Once the person pans or zooms, their view is left alone.
-    let userMoved = false;
     this.map.on("movestart", (e) => {
-      if ((e as { originalEvent?: unknown }).originalEvent) userMoved = true;
+      if ((e as { originalEvent?: unknown }).originalEvent) this.userMoved = true;
     });
     new ResizeObserver(() => {
       if (container.clientWidth === 0 || container.clientHeight === 0) return;
       this.map.resize();
-      if (!userMoved && !this.decorative) this.fit();
+      if (!this.userMoved && !this.decorative) this.fit();
     }).observe(container);
     this.ready = new Promise((resolve) => this.map.once("load", () => resolve()));
     void this.ready.then(() => this.addOverlays());
@@ -73,6 +70,35 @@ class RadarMap implements MapLike {
   fit(): void {
     const [w, s, e, n] = this.bounds;
     this.map.fitBounds([[w, s], [e, n]], { padding: 8, animate: false });
+  }
+
+  /** Move the camera. `padding` keeps the target clear of floating panels. A person who moves the map is left alone. */
+  moveTo(camera: Camera, padding: Padding): void {
+    this.userMoved = true;
+    const animate = !reducedMotion();
+    const pad = { top: padding.top + 8, right: padding.right + 8, bottom: padding.bottom + 8, left: padding.left + 8 };
+    if ("fit" in camera) {
+      const [w, s, e, n] = this.bounds;
+      this.map.fitBounds([[w, s], [e, n]], { padding: pad, animate, duration: 1400 });
+    } else {
+      this.map.easeTo({ center: camera.center, zoom: camera.zoom, padding: pad, animate, duration: 1400 });
+    }
+  }
+
+  /** Resolves once the image source has taken its new picture, or after a short wait so a stall never blocks the app. */
+  private whenSourceLoaded(id: string): Promise<void> {
+    return new Promise((resolve) => {
+      const finish = (): void => {
+        this.map.off("sourcedata", onData);
+        clearTimeout(timer);
+        resolve();
+      };
+      const onData = (e: { sourceId?: string; isSourceLoaded?: boolean }): void => {
+        if (e.sourceId === id && e.isSourceLoaded) finish();
+      };
+      const timer = setTimeout(finish, 1500);
+      this.map.on("sourcedata", onData);
+    });
   }
 
   async setImage(url: string, corners: Corners): Promise<void> {
@@ -88,7 +114,9 @@ class RadarMap implements MapLike {
       );
       this.hasImage = true;
     } else {
+      const loaded = this.whenSourceLoaded("radar");
       (this.map.getSource("radar") as maplibregl.ImageSource).updateImage({ url, coordinates: corners });
+      await loaded;
     }
   }
 
@@ -172,7 +200,7 @@ export function hostFactoryFor(m: Manifest): HostFactory {
       from.on("move", () => {
         if (syncing) return;
         syncing = true;
-        to.jumpTo({ center: from.getCenter(), zoom: from.getZoom() });
+        to.jumpTo({ center: from.getCenter(), zoom: from.getZoom(), padding: from.getPadding() });
         syncing = false;
       });
     };
@@ -180,8 +208,13 @@ export function hostFactoryFor(m: Manifest): HostFactory {
     follow(before.map, after.map);
     // The before map starts hidden; when it appears it takes over the camera of the visible map.
     new ResizeObserver(() => {
-      if (beforeEl.clientWidth > 0) before.map.jumpTo({ center: after.map.getCenter(), zoom: after.map.getZoom() });
+      if (beforeEl.clientWidth > 0) before.map.jumpTo({ center: after.map.getCenter(), zoom: after.map.getZoom(), padding: after.map.getPadding() });
     }).observe(beforeEl);
-    return { after, before, setSiteMarkers: (sites, onSelect) => after.setSiteMarkers(sites, onSelect) };
+    return {
+      after,
+      before,
+      setSiteMarkers: (sites, onSelect) => after.setSiteMarkers(sites, onSelect),
+      moveTo: (camera, padding) => after.moveTo(camera, padding),
+    };
   };
 }

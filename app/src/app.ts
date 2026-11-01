@@ -4,12 +4,24 @@ import { createSitesView, type ChartFactory } from "./sitesView";
 import { changeExclusion, flagFor, formatDate, maturityBanner, orderedDates } from "./timeline";
 import type { Manifest, Pol, Site } from "./types";
 
+/** Where to point the map: the whole study area, or a centre and zoom. */
+export type Camera = { fit: true } | { center: [number, number]; zoom: number };
+/** Pixels of the map hidden under floating panels, so the target is drawn clear of them. */
+export interface Padding {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
 /** What the app needs from the two stacked maps (the "after" map underneath, the "before" map clipped on top). */
 export interface MapHost {
   after: MapLike;
   before: MapLike;
   /** Optional: put a tappable marker on the map for each site. */
   setSiteMarkers?(sites: Site[], onSelect: (id: string) => void): void;
+  /** Optional: move the camera, easing unless the person prefers reduced motion. */
+  moveTo?(camera: Camera, padding: Padding): void;
 }
 
 export interface AppOptions {
