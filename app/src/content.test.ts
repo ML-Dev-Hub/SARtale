@@ -36,10 +36,14 @@ describe("app copy", () => {
     expect(Object.values(EVIDENCE_LABELS)).toEqual(["Observed", "Reference agrees", "Hypothesis", "Not observed"]);
   });
 
-  test("every card has all slots, and hypotheses say may indicate unless still placeholder text", () => {
-    const cards = Object.values(siteCards);
-    expect(cards.length).toBeGreaterThan(0);
-    for (const c of cards) {
+  test("no placeholder demo cards or stories ship: only real cards and the missed-view copy", () => {
+    expect(Object.keys(story)).toEqual(["what-nisar-missed"]);
+    expect(Object.keys(siteCards).filter((id) => /^demo-/.test(id))).toEqual([]);
+    expect(JSON.stringify([story, siteCards])).not.toMatch(/demo/i);
+  });
+
+  test("every shipped card has all slots, and hypotheses say may indicate unless still placeholder text", () => {
+    for (const c of [...Object.values(siteCards), cardFor("no-such-site")]) {
       for (const k of ["observation", "hypothesis", "test", "limits"] as const) expect(c[k].length).toBeGreaterThan(0);
       expect(Object.keys(BADGE_LABELS)).toContain(c.evidence);
       expect(Array.isArray(c.dates)).toBe(true);

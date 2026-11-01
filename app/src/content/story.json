@@ -1,16 +1,4 @@
 {
-  "demo-a": {
-    "title": "Demo site A",
-    "summary": "Placeholder text: replace after real curves are reviewed."
-  },
-  "demo-b": {
-    "title": "Demo site B",
-    "summary": "Placeholder text: replace after real curves are reviewed."
-  },
-  "demo-c": {
-    "title": "Demo site C",
-    "summary": "Placeholder text: replace after real curves are reviewed."
-  },
   "what-nisar-missed": {
     "title": "What NISAR Missed",
     "summary": "This view shows only which dates NISAR imaged this area and when it recorded nothing. It does not say what happened on the ground."
