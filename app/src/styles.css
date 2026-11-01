@@ -37,7 +37,13 @@ body { background: var(--ink-0); font-size: 1rem; line-height: 1.45; }
 }
 
 /* Header */
-.top { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 14px; row-gap: 0; padding: 0 4px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; column-gap: 14px; row-gap: 4px; padding: 0 4px; }
+/* The logo's lettering is dark green, so it sits on a light panel to stay readable on the dark theme. */
+.logo-panel { display: inline-flex; flex: none; padding: 3px; border-radius: 8px; background: #f3f7f4; }
+.logo { display: block; width: 56px; height: 56px; }
+@media (max-width: 480px) {
+  .logo { width: 44px; height: 44px; }
+}
 .brand { margin: 0; font-size: 1.5rem; font-weight: 800; font-stretch: 75%; letter-spacing: 0.01em; }
 .view { margin: 0; font-size: 1.15rem; font-weight: 500; color: var(--teal); }
 .lede { margin: 0; flex-basis: 100%; color: var(--muted); font-size: 0.9rem; max-width: 62ch; }

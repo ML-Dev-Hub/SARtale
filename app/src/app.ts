@@ -25,6 +25,7 @@ const PLAY_STEP_MS = 800;
 const TEMPLATE = `
 <div class="shell">
   <header class="top">
+    <span class="logo-panel"><img class="logo" src="brand/logo-256.png" width="56" height="56" alt="SARtale Pakistan logo" /></span>
     <h1 class="brand">SARtale</h1>
     <p class="view" data-role="view-name" aria-live="polite">The Dance</p>
     <nav class="views" aria-label="Views">
