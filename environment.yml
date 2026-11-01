@@ -1,0 +1,15 @@
+name: sartale
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy
+  - h5py
+  - rasterio
+  - gdal
+  - pyproj
+  - pillow
+  - pytest
+  - requests
+  - networkx
+  - osmnx
