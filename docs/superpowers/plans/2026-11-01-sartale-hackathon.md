@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-> **Do not start Task 1 before the hackathon begins (08:00 KST, Saturday 14 Nov 2026), unless the Seoul organisers confirm otherwise in writing.** Task 0 is the only pre-event work.
+> **Status note:** on 1 Nov 2026 the team chose to start building before the event and accepted the eligibility risk. Disclose this as the rules require. Real-data steps still wait for Earthdata credentials.
 
 **Execution method (chosen by the team):** Subagent-driven, using superpowers:subagent-driven-development, from Task 1 once the event starts.
 
@@ -16,8 +16,8 @@
 
 ## Global Constraints
 
-- Team: 2 people on team SARcastic Scientists, Seoul Local Event, primarily online, `Asia/Seoul`.
-- Start: 08:00 KST Sat 14 Nov. **Planning deadline: 12:59 KST Sun 15 Nov**, as listed on the Seoul event page, until the organisers confirm the real time.
+- Team: 2 people on team SARcastic Scientists, Islamabad Local Event, virtual and in-person, `Asia/Karachi`.
+- Hacking starts 11:00 PKT Sat 14 Nov. **Pitch materials due 17:00 PKT Sun 15 Nov**, live pitch 18:30 PKT, **global portal submission by 23:59 PKT Sun 15 Nov**.
 - Primary stack: `084_A_019`, mode `4005`, polarization `DHDH`, source `A`, full frame only, Frequency A, 10 m pixels.
 - Data version: one CRID only, `P05023` unless Task 2 finds another. Never mix CRIDs, tracks, modes or BETA data in one series.
 - Permanent gap: `2026-07-27T22:03:25Z` to `2026-08-10T00:55:27Z`.
@@ -105,20 +105,21 @@ The stretch values above are examples only. The pipeline computes the real ones.
 
 ### Who does what, and when
 
-Assign Person A (data and science) and Person B (app and story) in Task 0. Times are KST. Both people work about 21 hours in the 29-hour window, with about 6 hours of sleep each.
+Assign Person A (data and science) and Person B (app and story) in Task 0. Times are Pakistan time (PKT).
 
-| When | Person A | Person B | Gate |
+| PKT | Person A: data and science | Person B: app and story | Gate |
 |---|---|---|---|
-| Sat 08:00-10:00 | Task 1, Task 2, start downloads | Task 7 scaffold, open project page | Data is downloading |
-| Sat 10:00-14:00 | Task 3 | Task 7 with placeholder frames | **First real NISAR image on the map by 14:00** |
-| Sat 14:00-19:00 | Task 4 | Task 7 finished; Task 9 | Four-date series in the app |
-| Sat 19:00-Sun 00:00 | Task 5, Task 6 | Task 8 with real curves | **Tier 1 works end to end by midnight** |
-| Sun 00:00-05:00 | Sleep, then take over | Task 10 draft, then sleep | Tier 1 is submittable |
-| Sun 05:00-09:00 | Task 11 only if Tier 1 is solid | Polish, demo recording | Stop adding features at 09:00 |
-| Sun 09:00-11:00 | Clean rerun; check numbers | Final demo, offline test | Freeze |
-| Sun 11:00 | **Task 12: submit** | **Task 12: submit** | About 2 hours early |
-
-If the organisers confirm a later deadline, keep this timetable and use the extra time for Task 11 and polish.
+| Fri 13 Nov | Read challenge resources | Read submission and judging guides | Changes noted |
+| Sat 09:00-11:00 | Check-in, opening, mentor briefing | Same | Mentors know the project |
+| Sat 11:00-13:30 | Rerun catalogue search; start downloads | Check real manifest in the app; open project page | **Gate 1:** data is downloading |
+| Sat 13:30-18:30 | Read one file; fix reader if the layout differs; inspect pixels | Replace demo data as frames arrive | **Gate 2:** first real NISAR image on the map |
+| Sat 18:30-Sun 00:00 | Four dates, overlays, composite, three sites | Site cards from real curves | **Gate 3:** four-date series in the app |
+| Sun 00:00-09:00 | Stable control, OPERA and HLS checks; sleep in turns | Real copy; sleep in turns | **Gate 4:** Tier 1 works end to end |
+| Sun 09:15-13:00 | Tier 2 only if Tier 1 is solid | Pitch deck; demo recording | **Gate 5:** features stop at 13:00 |
+| Sun 13:00-16:00 | Clean rerun; recheck numbers | Pitch rehearsal; offline and phone test | Freeze |
+| Sun 16:00 | Submit pitch deck and materials | Same | About 1 hour early |
+| Sun 18:30-19:30 | Live pitch to local judges | Same | |
+| Sun 21:30 | Final portal submission | Same | **Well before 23:59 PKT** |
 
 ---
 
@@ -129,15 +130,15 @@ If the organisers confirm a later deadline, keep this timetable and use the extr
 
 - [ ] **Step 1: Confirm both members are fully registered**
 
-Check that each person has done the NASA registration **and** the Seoul Participation Confirmation form. Expected: both have a confirmation email from the organisers. Without Step 2 the Seoul page says a person may be moved to the waitlist.
+Check that both people are registered for the Islamabad event itself, not waitlisted. The team page moving to Islamabad does not prove this for each person. Expected: both see Islamabad as their confirmed event.
 
-- [ ] **Step 2: Email seoul@nasaspaceappskr.org**
+- [ ] **Step 2: Contact the Islamabad Local Lead**
 
-Send your own short message asking three things, and keep the reply:
+The Local Lead is Abdullah Zafar; the contact route is on the event page. Send your own short message asking three things, and keep the reply:
 
-1. "What is the exact project submission deadline in KST? The event page lists 15 Nov at 12:59."
-2. "NASA says not to begin project work early, and your schedule says to start preparing data, tools, team roles and a build plan. May we download and inspect NISAR data before 14 Nov, or only prepare tools and plans?"
-3. "We have a written build plan and one AI-generated concept image. Is that acceptable?"
+1. "Will we attend in person or virtually, and what do we need to do for either?"
+2. "Our team moved from Seoul to Islamabad. Are we correctly registered?"
+3. "We started work before 14 Nov. What must we disclose, and does it affect eligibility?"
 
 - [ ] **Step 3: Assign Person A and Person B, and update the team page**
 
@@ -661,7 +662,7 @@ git commit -m "feat: show what NISAR did not observe"
 
 - [ ] **Step 1: Finish the six-beat story and judging check**
 
-Check the app against the criteria the Seoul site lists:
+Check the app against the criteria below, which the Seoul site listed. Confirm them in NASA's 13 Nov Judging Guide:
 
 | Criterion | Evidence in the project |
 |---|---|
@@ -765,9 +766,9 @@ Expected: all pass.
 
 Go through the 13 Nov Project Submission Guide item by item. Check the demo format, licence, data list, SI statement, no personal data, and a "not an official warning service" statement.
 
-- [ ] **Step 4: Submit on the project page by 11:00 KST**
+- [ ] **Step 4: Submit pitch materials by 16:00 PKT, then the global portal by 21:30 PKT**
 
-Expected: the page shows the project as submitted. Take a screenshot.
+Local pitch materials are due at 17:00 and the portal closes at 23:59. Expected: the project page shows the project as submitted. Take a screenshot.
 
 - [ ] **Step 5: Commit and tag**
 

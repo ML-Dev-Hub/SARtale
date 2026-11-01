@@ -2,7 +2,7 @@
 
 NASA Space Apps Challenge, 14-15 November 2026. Plan dated 1 November 2026.
 
-Team: **SARcastic Scientists** (Saeed Ahmad and Shaharyar Sajid), Seoul Local Event.
+Team: **SARcastic Scientists** (Saeed Ahmad and Shaharyar Sajid), Islamabad Local Event.
 
 This replaces the build plan in [deep-research-report.md](deep-research-report.md) for the hackathon. That report stays useful as background and for the long-term pilot. Section 12 lists what changed and why. The task-by-task build plan is in [the implementation plan](superpowers/plans/2026-11-01-sartale-hackathon.md).
 
@@ -16,7 +16,7 @@ Four facts checked today shape everything else:
 
 | Finding | Evidence | What it changes |
 |---|---|---|
-| **We may not start project work before the hackathon.** | FAQ: "Teams are not allowed to begin working on the challenges prior to the hackathon." The site banner repeats it. Seoul's schedule does say to "start preparing your data, tools, team roles, and build plan". | No code or data processing before 14 Nov unless the Seoul organisers confirm it. See section 3. |
+| **We may not start project work before the hackathon.** | FAQ: "Teams are not allowed to begin working on the challenges prior to the hackathon." The site banner repeats it. | The team chose to start on 1 Nov and accepted this risk. Disclose it. See section 3. |
 | **Usable NISAR data exists over the pilot.** | NASA's catalogue returns 63 GCOV files in our search box. Track 84A frame 19 covers all of it, in one consistent mode, on 9 dates so far. | The biggest open question in the old plan is closed. See section 5. |
 | **No flood capture is established in NISAR data here.** | One FFD bulletin suggests a low 2026 peak on the Kabul at Nowshera (about 78,500 cusecs against a 391,300 record). A low flood was reported on 27 July, with rain forecast to 29 July. The last full-coverage pass before the gap was 26 July, and the next was 12 August. | The app must not claim to detect a flood. Seasonal change is the safer story, and it is what the challenge asks for. PDMA reports still need checking. |
 | **The 2025 flood maps cannot validate NISAR.** | UNOSAT and FAO mapped 2025. Calibrated NISAR data starts 17 June 2026. | They become historical context only. Validation uses same-season OPERA and HLS data. See section 9. |
@@ -50,8 +50,8 @@ The core ask: "build an interactive application that uses radar remote sensing d
 | Rule | Value | Source |
 |---|---|---|
 | Dates | 14-15 Nov 2026 | [FAQ](https://www.spaceappschallenge.org/resources/participant-faqs/) |
-| Deadline | "according to the ending time of your Local Event". Seoul lists submission at **12:59 on 15 Nov** and says details will follow. Plan for 12:59 KST until confirmed. | FAQ; [Seoul event](https://www.spaceappschallenge.org/2026/local-events/seoul/) |
-| Start | 08:00 KST on 14 Nov | Seoul event |
+| Deadlines | Pitch materials **17:00 PKT**, live pitch **18:30 PKT**, global portal **23:59 PKT**, all on 15 Nov | [Islamabad event](https://www.spaceappschallenge.org/2026/local-events/islamabad/) |
+| Start | Check-in 09:00, hacking 11:00 PKT on 14 Nov | Islamabad event |
 | Team size | Max 6. Local Event min 1, Universal Event min 2. One team, one challenge. | FAQ |
 | Where to submit | The team's project page on spaceappschallenge.org | FAQ |
 | AI tools | Allowed. The submission "must include a description of how SI tools were used". NASA's term is Super Intelligence (SI). | FAQ |
@@ -65,21 +65,22 @@ These arrive on **13 November**: the [challenge resources](https://www.spaceapps
 
 So the **official 2026 demo format and video length are unknown**. Do not build around remembered rules from earlier years. Re-read this plan against all three documents on 13 November.
 
-### Seoul specifics
+### Islamabad specifics
 
-Source: [Seoul event page](https://www.spaceappschallenge.org/2026/local-events/seoul/) and [Seoul site](https://nasaspaceappskr.org/2026/en/).
+Source: [Islamabad event page](https://www.spaceappschallenge.org/2026/local-events/islamabad/).
 
-- **Judging criteria:** "impact, creativity, validity, relevance, and presentation". Check against the NASA guide on 13 Nov.
-- **Path to global:** Seoul judges submitted projects, gives Local Awards, and recommends outstanding projects for global judging. Local Nominees are listed for 2 Dec.
-- **Format:** primarily online, with limited in-person places for selected participants or teams.
-- **Required step:** NASA registration **and** the Seoul Participation Confirmation form. Without it, a person may be moved to the waitlist.
-- **Competition:** in 2025, 37 Seoul teams finished and 4 advanced to Global Judging.
+- **Local Lead:** Abdullah Zafar.
+- **Format:** virtual and in-person. The venue was not listed on the page when checked.
+- **Extra deliverable:** a pitch deck for local judges, plus a live pitch to the panel.
+- **Mentors:** on-site mentors and a Saturday mentor briefing.
+- **Team size:** 1 to 6.
+- **Judging criteria:** the Seoul site listed impact, creativity, validity, relevance and presentation. Islamabad did not state them on the part of the page read. Confirm in NASA's guide on 13 Nov.
 
 The 2025 award categories were: Best Use of Data, Best Use of Technology, Galactic Impact, Best Mission Concept, Most Inspirational, Best Use of Storytelling, Global Connection, Art & Technology, and Local Impact. This plan best fits **Best Use of Data, Best Use of Storytelling and Local Impact**, if those return in 2026.
 
 ## 3. Staying inside the "no early work" rule
 
-NASA's rule and Seoul's schedule point in different directions. NASA says not to begin project work. Seoul's 28 October entry says to "start preparing your data, tools, team roles, and build plan". A plan and tool setup therefore have clear local support, but data preparation needs a direct answer. **Email seoul@nasaspaceappskr.org this week** and keep the reply.
+NASA's rule stands: "Teams are not allowed to begin working on the challenges prior to the hackathon." The team decided on 1 Nov to start building early and accepted that risk. Ask the Islamabad Local Lead what must be disclosed, and keep the reply.
 
 The list below is my reading of the rule, not an official one.
 
@@ -99,7 +100,7 @@ So **tell the Local Lead exactly what exists, and get written guidance before do
 
 ## 4. Who it serves and the story
 
-**Primary audience: Seoul local judges, then global judges and the public.** They need to understand NISAR within a minute. Keep all submitted material in English.
+**Primary audience: Islamabad local judges, then global judges and the public.** They need to understand NISAR within a minute. Keep all submitted material in English.
 
 **Secondary audience: district planners and NGOs in KP.** They are the reason the end of the story matters, but we have not spoken to any. Do not claim real-world validation.
 
@@ -277,19 +278,21 @@ Static web app: MapLibre + uPlot, with local river and road GeoJSON
 
 ## 8. Event schedule
 
-This assumes 2 people and a 29-hour window, from 08:00 KST Saturday to 12:59 KST Sunday. Each person works about 21 hours and sleeps about 6. **Treat 12:59 KST as the deadline until the organisers confirm the real time.** If it turns out to be 23:59, keep this timetable and use the extra time for Tier 2 and polish.
+This assumes 2 people. There are 30 hours from the 11:00 start to the 17:00 Sunday pitch deadline, with a further 7 hours to the portal deadline. Times are Pakistan time (PKT).
 
-| KST | Person A: data and science | Person B: app and story | Gate |
+| PKT | Person A: data and science | Person B: app and story | Gate |
 |---|---|---|---|
 | Fri 13 Nov | Read challenge resources | Read submission and judging guides | Changes noted |
-| Sat 08:00-10:00 | Rerun catalogue search; start downloads | Create app shell; open project page | **Gate 1:** data is downloading |
-| Sat 10:00-14:00 | Read one file; inspect pixels | Map controls with placeholder images | **Gate 2:** first real NISAR image on the map |
-| Sat 14:00-19:00 | Four dates, overlays, composite | Date slider, swipe, gap timeline | **Gate 3:** four-date series in the app |
-| Sat 19:00-Sun 00:00 | Three sites, stable control, OPERA and HLS checks | Site cards from real curves | **Gate 4:** Tier 1 works end to end |
-| Sun 00:00-05:00 | Sleep, then take over checks | Draft story and docs, then sleep | Tier 1 is submittable |
-| Sun 05:00-09:00 | Tier 2 only if Tier 1 is solid | Polish; record demo | **Gate 5:** features stop at 09:00 |
-| Sun 09:00-11:00 | Clean rerun; recheck numbers | Final demo; offline and phone test | Freeze |
-| Sun 11:00 | Submit | Submit | About 2 hours early |
+| Sat 09:00-11:00 | Check-in, opening, mentor briefing | Same | Mentors know the project |
+| Sat 11:00-13:30 | Rerun catalogue search; start downloads | Check real manifest in the app; open project page | **Gate 1:** data is downloading |
+| Sat 13:30-18:30 | Read one file; fix reader if the layout differs; inspect pixels | Replace demo data as frames arrive | **Gate 2:** first real NISAR image on the map |
+| Sat 18:30-Sun 00:00 | Four dates, overlays, composite, three sites | Site cards from real curves | **Gate 3:** four-date series in the app |
+| Sun 00:00-09:00 | Stable control, OPERA and HLS checks; sleep in turns | Real copy; sleep in turns | **Gate 4:** Tier 1 works end to end |
+| Sun 09:15-13:00 | Tier 2 only if Tier 1 is solid | Pitch deck; demo recording | **Gate 5:** features stop at 13:00 |
+| Sun 13:00-16:00 | Clean rerun; recheck numbers | Pitch rehearsal; offline and phone test | Freeze |
+| Sun 16:00 | Submit pitch deck and materials | Same | About 1 hour early |
+| Sun 18:30-19:30 | Live pitch to local judges | Same | |
+| Sun 21:30 | Final portal submission | Same | **Well before 23:59 PKT** |
 
 ### If a gate fails
 
@@ -331,7 +334,8 @@ Set the water comparison up carefully: the OPERA layers have 30 m pixels and are
 
 Replace this with the official list on 13 November.
 
-- [ ] Project page complete on spaceappschallenge.org before the Local Event deadline
+- [ ] Pitch deck submitted by 17:00 PKT and live pitch rehearsed
+- [ ] Project page complete on spaceappschallenge.org by 23:59 PKT
 - [ ] Public open-source repo with a licence (Apache 2.0 unless the team prefers another OSI licence)
 - [ ] Working app link, plus an offline backup
 - [ ] Demo media in the 2026 required format
@@ -349,7 +353,7 @@ Replace this with the official list on 13 November.
 | Pre-event work breaks the rule | Medium | Severe | Section 3; Local Lead reply in writing |
 | New data or reprocessing changes the archive mid-event | Medium | Medium | Pin one CRID; save the manifest at hour 0 |
 | Download is slow | Medium | High | Start at 08:00; begin with four dates; extract layers if possible |
-| Submission deadline is earlier than assumed, or misread | Medium | Severe | Confirm with organisers; plan for 12:59 KST; submit by 11:00 |
+| Pitch deadline is missed by building too late | Medium | Severe | Features stop at 13:00; submit pitch materials by 16:00 |
 | One of two people is unavailable or blocked | Medium | High | Tier 1 first; shared repo; gates reviewed together |
 | Seasonal signal is weak or hard to explain | Medium | High | Choose varied floodplain sites; report honestly |
 | Radar change gets read as flood or damage | High | High | Language rules in section 6 |
@@ -369,7 +373,7 @@ Replace this with the official list on 13 November.
 | Granules unverified | Coverage and dates confirmed from the catalogue | Checked today |
 | Validate with UNOSAT and FAO | Same-season OPERA and HLS | Different years cannot validate each other |
 | Flood classification with six evidence states | Hypothesis cards tied to observed patterns | No flood capture is established |
-| Fixed 36-hour schedule ending at 11:59 p.m. | 29-hour Seoul schedule for two people | Seoul event page |
+| Fixed 36-hour schedule ending at 11:59 p.m. | Islamabad schedule for two people, with a pitch at 18:30 | Islamabad event page |
 | FastAPI, TiTiler, PostGIS, object storage | Static site with image overlays | Less to fail; suits two people |
 | Valid-data mask assumed available | Quality handling to be built and checked | GCOV spec |
 | `citeturn` markers | Plain links | Citations were unreadable |
@@ -382,7 +386,7 @@ Replace this with the official list on 13 November.
 
 ## 13. Sources
 
-Seoul: [event page](https://www.spaceappschallenge.org/2026/local-events/seoul/), [Seoul site](https://nasaspaceappskr.org/2026/en/), [project journey](https://nasaspaceappskr.org/2026/en/bulletin/project-journey-seoul-to-global/).
+Islamabad: [event page](https://www.spaceappschallenge.org/2026/local-events/islamabad/). Seoul criteria source: [Seoul site](https://nasaspaceappskr.org/2026/en/).
 
 Space Apps: [challenge statement](https://www.spaceappschallenge.org/2026/challenges/dancing-with-the-sars/), [FAQ](https://www.spaceappschallenge.org/resources/participant-faqs/), [Terms](https://www.spaceappschallenge.org/legal/), [2025 awards](https://www.spaceappschallenge.org/2025/awards/).
 
