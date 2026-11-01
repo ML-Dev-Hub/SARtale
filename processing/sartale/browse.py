@@ -22,7 +22,7 @@ from sartale.products import bounds_3857_to_lonlat, write_webp_3857
 
 PREVIEW_MATURITY = "Provisional preview"
 # west, south, east, north in degrees: the part of the scene the app shows.
-DISPLAY_WINDOW = (70.9, 33.6, 72.8, 34.8)
+DISPLAY_WINDOW = (71.2, 33.8, 73.4, 34.8)
 # HH of these three dates become red, green and blue. 2 July is never used.
 COMPOSITE_DATES = ("2026-07-26", "2026-09-12", "2026-10-18")
 INTERFERENCE_DATE = "2026-07-02"

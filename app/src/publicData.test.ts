@@ -25,7 +25,8 @@ describe("the data the app ships (app/public/data)", () => {
     }
     expect(manifest.crid).toBe("P05023");
     expect(manifest.gap).toEqual({ start: "2026-07-27T22:03:25Z", end: "2026-08-10T00:55:27Z" });
-    expect(manifest.bounds).toEqual([70.9, 33.6, 72.8, 34.8]);
+    expect(manifest.bounds).toEqual([71.2, 33.8, 73.4, 34.8]);
+    expect(manifest.acquisitions).toEqual(REAL_DATES);
     expect(manifest.pixel_m).toBeGreaterThan(150);
     expect(manifest.pixel_m).toBeLessThan(200);
   });

@@ -128,6 +128,30 @@ def test_frames_share_identical_bounds_and_the_display_window(tmp_path):
     assert set(info["frames"]) == set(DATES)
 
 
+FOOTPRINTS = Path(__file__).resolve().parents[1] / "reference" / "cmr_footprints.json"
+PESHAWAR = (71.56, 34.01)
+
+
+def _west_edge_lon(corners, lat):
+    """Smallest longitude at which the footprint polygon's edges cross `lat`."""
+    lons = []
+    for (x0, y0), (x1, y1) in zip(corners, corners[1:] + corners[:1]):
+        if min(y0, y1) <= lat <= max(y0, y1) and y0 != y1:
+            lons.append(x0 + (lat - y0) / (y1 - y0) * (x1 - x0))
+    return min(lons)
+
+
+def test_display_window_keeps_the_tilted_west_edge_in_view_at_peshawar_and_is_mostly_data():
+    fps = json.loads(FOOTPRINTS.read_text(encoding="utf-8"))["footprints"]
+    west, south, east, north = DISPLAY_WINDOW
+    assert south < PESHAWAR[1] < north and west < PESHAWAR[0] < east
+    for corners in fps.values():
+        edge = _west_edge_lon(corners, PESHAWAR[1])
+        assert west < edge < PESHAWAR[0], "the footprint's west edge must be inside the window, west of Peshawar"
+        # no more than a fifth of the window's width lies west of the footprint at the window's mid latitude
+        assert _west_edge_lon(corners, (south + north) / 2) - west < 0.2 * (east - west)
+
+
 def test_frames_are_webp_with_alpha_and_transparent_fill(tmp_path):
     frames = {}
     for d in DATES:
@@ -140,7 +164,7 @@ def test_frames_are_webp_with_alpha_and_transparent_fill(tmp_path):
     rgba = np.asarray(img.convert("RGBA"))
     assert rgba[..., 3].min() == 0 and rgba[..., 3].max() == 255
     h, w = rgba.shape[:2]
-    # EXTENT spans 70.5..74.4; the window is 70.9..72.8, so the fill edge (72.45) is inside it
+    # EXTENT spans 70.5..74.4; the window is 71.2..73.4, so the fill edge (72.45) is inside it
     assert rgba[h // 2, 5, 3] == 0          # far west of the window: fill
     assert rgba[h // 2, w - 5, 3] == 255    # far east: real pixels
 
@@ -220,7 +244,7 @@ ALL_DATES = ["2026-07-02", "2026-07-14", "2026-07-26", "2026-08-19", "2026-08-31
 
 def _info(dates):
     return {
-        "bounds": [70.9, 33.6, 72.8, 34.8],
+        "bounds": list(DISPLAY_WINDOW),
         "frames": {d: {"HH": f"frames/{d}_HH.webp", "HV": f"frames/{d}_HV.webp"} for d in dates},
         "composite": "frames/composite_HH.webp",
         "composite_dates": list(COMPOSITE),
@@ -232,7 +256,7 @@ def test_manifest_is_a_provisional_preview_with_no_stretch(tmp_path):
     assert m["maturity"] == "Provisional preview"
     assert m["stretch_db"] is None
     assert m["gap"] == {"start": config.GAP_START, "end": config.GAP_END}
-    assert m["bounds"] == [70.9, 33.6, 72.8, 34.8]
+    assert m["bounds"] == list(DISPLAY_WINDOW)
     assert [e["date"] for e in m["dates"]] == ALL_DATES
     assert m["pixel_m"] == 174
     assert m["crid"] == "P05023" and m["stack"] == config.STACK_ID
