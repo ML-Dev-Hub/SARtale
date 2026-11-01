@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { mountApp, type MapHost } from "./app";
+import { findBannedClaims } from "./content";
 import { fixtureManifest } from "./fixtures";
 import type { MapLike } from "./map";
+import type { Site } from "./types";
 
 function fakeMap(fail = false): MapLike & { urls: string[] } {
   const urls: string[] = [];
@@ -15,11 +17,11 @@ function fakeMap(fail = false): MapLike & { urls: string[] } {
   };
 }
 
-function setup(manifest = fixtureManifest, failing = false) {
+function setup(manifest = fixtureManifest, failing = false, opts?: Parameters<typeof mountApp>[3], hostExtra: Partial<MapHost> = {}) {
   const root = document.createElement("div");
   document.body.append(root);
   const host = { after: fakeMap(failing), before: fakeMap() } satisfies MapHost;
-  const app = mountApp(root, manifest, () => host);
+  const app = mountApp(root, manifest, () => ({ ...host, ...hostExtra }), opts);
   const $ = <T extends HTMLElement>(role: string) => root.querySelector<T>(`[data-role="${role}"]`)!;
   return { root, host, app, $ };
 }
@@ -153,5 +155,112 @@ describe("app shell", () => {
       await new Promise((r) => setTimeout(r, 1000));
       expect($("slider").getAttribute("aria-valuetext")).toBe("14 Jul 2026");
     });
+  });
+});
+
+describe("views", () => {
+  const demoSites: Site[] = [
+    {
+      id: "demo-a",
+      name: "Demo site A",
+      lon: 0.3,
+      lat: 0.4,
+      role: "demo",
+      series: [
+        { date: "2026-07-02", hh_db: -10, hv_db: -18, valid_fraction: 1 },
+        { date: "2026-07-14", hh_db: -11, hv_db: null, valid_fraction: 0 },
+      ],
+    },
+  ];
+
+  test("starts on The Dance with the sites view hidden", async () => {
+    const { app, $ } = setup();
+    await app.settled();
+    expect($("stage").hidden).toBe(false);
+    expect($("sites-view").hidden).toBe(true);
+    expect($("view-dance").getAttribute("aria-pressed")).toBe("true");
+    expect($("view-sites").getAttribute("aria-pressed")).toBe("false");
+  });
+
+  test("the switch shows Site Stories and hides the map and its controls", async () => {
+    const { app, $ } = setup(fixtureManifest, false, { sites: demoSites });
+    await app.settled();
+    $("view-sites").click();
+    expect($("sites-view").hidden).toBe(false);
+    expect($("stage").hidden).toBe(true);
+    expect($("dock").hidden).toBe(true);
+    expect($("view-sites").getAttribute("aria-pressed")).toBe("true");
+    expect($("view-name").textContent).toBe("Site Stories");
+    $("view-dance").click();
+    expect($("stage").hidden).toBe(false);
+    expect($("sites-view").hidden).toBe(true);
+    expect($("view-name").textContent).toBe("The Dance");
+  });
+
+  test("the maturity label stays visible in the sites view", async () => {
+    const { app, $ } = setup({ ...fixtureManifest, maturity: "Synthetic demo" });
+    await app.settled();
+    $("view-sites").click();
+    expect($("sites-maturity").textContent).toBe("SYNTHETIC DEMO: NOT NISAR DATA");
+    expect($("sites-maturity").hidden).toBe(false);
+  });
+
+  test("without a sites file the view says No site curves yet", async () => {
+    const { app, $ } = setup(fixtureManifest, false, { sites: null });
+    await app.settled();
+    $("view-sites").click();
+    expect($("empty").textContent).toBe("No site curves yet");
+    expect($("empty").hidden).toBe(false);
+  });
+
+  test("tapping a list item opens its card", async () => {
+    const { app, root, $ } = setup(fixtureManifest, false, { sites: demoSites });
+    await app.settled();
+    $("view-sites").click();
+    root.querySelector<HTMLButtonElement>('[data-site="demo-a"]')!.click();
+    expect($("card").hidden).toBe(false);
+    expect($("card-title").textContent).toBe("Demo site A");
+  });
+
+  test("site markers on the map open the card and switch view", async () => {
+    let tap: ((id: string) => void) | undefined;
+    const placed: Site[][] = [];
+    const { app, $ } = setup(fixtureManifest, false, { sites: demoSites }, {
+      setSiteMarkers: (list, onSelect) => {
+        placed.push(list);
+        tap = onSelect;
+      },
+    });
+    await app.settled();
+    expect(placed).toEqual([demoSites]);
+    tap!("demo-a");
+    expect($("sites-view").hidden).toBe(false);
+    expect($("stage").hidden).toBe(true);
+    expect($("card-title").textContent).toBe("Demo site A");
+  });
+
+  test("the visible text of both views is free of banned claims", async () => {
+    const { app, root, $ } = setup(fixtureManifest, false, { sites: demoSites });
+    await app.settled();
+    expect(findBannedClaims(root.textContent ?? "")).toEqual([]);
+    $("view-sites").click();
+    root.querySelector<HTMLButtonElement>('[data-site="demo-a"]')!.click();
+    expect(findBannedClaims(root.textContent ?? "")).toEqual([]);
+  });
+
+  test("no markers are placed when there are no sites", async () => {
+    let called = false;
+    const { app } = setup(fixtureManifest, false, { sites: null }, { setSiteMarkers: () => (called = true) as unknown as void });
+    await app.settled();
+    expect(called).toBe(false);
+  });
+
+  test("switching away from The Dance stops playback", async () => {
+    const { app, $ } = setup();
+    await app.settled();
+    $("play").click();
+    expect($("play").textContent).toBe("Pause");
+    $("view-sites").click();
+    expect($("play").textContent).toBe("Play");
   });
 });

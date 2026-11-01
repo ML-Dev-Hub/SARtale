@@ -19,12 +19,22 @@ export interface Manifest {
   gap?: { start: string; end: string };
 }
 
-/** Reserved for the Site Stories view (a later task). */
+/** One acquisition at a site. null means no valid value on that date (a gap, never zero). */
+export interface SitePoint {
+  date: string;
+  hh_db: number | null;
+  hv_db: number | null;
+  valid_fraction: number | null;
+}
+
+/** A site and its HH/HV curve, as written to data/sites.json. */
 export interface Site {
   id: string;
   name: string;
   lon: number;
   lat: number;
+  role: string;
+  series: SitePoint[];
 }
 
 /** Image source corners, clockwise from top-left, as [lon, lat]. */

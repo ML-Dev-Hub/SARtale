@@ -5,7 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import type { HostFactory, MapHost } from "./app";
 import type { MapLike } from "./map";
-import type { Corners, Manifest } from "./types";
+import type { Corners, Manifest, Site } from "./types";
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -111,6 +111,18 @@ class RadarMap implements MapLike {
     }
   }
 
+  /** One tappable marker per site. Each is a real button so it works by keyboard and touch. */
+  setSiteMarkers(sites: Site[], onSelect: (id: string) => void): void {
+    for (const site of sites) {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "site-marker";
+      el.setAttribute("aria-label", `Open site story: ${site.name}`);
+      el.addEventListener("click", () => onSelect(site.id));
+      new maplibregl.Marker({ element: el }).setLngLat([site.lon, site.lat]).addTo(this.map);
+    }
+  }
+
   private addLines(name: string, data: FeatureCollection, color: string, width: number): void {
     this.map.addSource(`overlay-${name}`, { type: "geojson", data });
     this.map.addLayer({
@@ -142,6 +154,6 @@ export function hostFactoryFor(m: Manifest): HostFactory {
     new ResizeObserver(() => {
       if (beforeEl.clientWidth > 0) before.map.jumpTo({ center: after.map.getCenter(), zoom: after.map.getZoom() });
     }).observe(beforeEl);
-    return { after, before };
+    return { after, before, setSiteMarkers: (sites, onSelect) => after.setSiteMarkers(sites, onSelect) };
   };
 }

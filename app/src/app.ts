@@ -1,11 +1,20 @@
 import { setComposite, setFrame, type MapLike } from "./map";
+import { createSitesView, type ChartFactory } from "./sitesView";
 import { formatDate, maturityBanner, orderedDates } from "./timeline";
-import type { Manifest, Pol } from "./types";
+import type { Manifest, Pol, Site } from "./types";
 
 /** What the app needs from the two stacked maps (the "after" map underneath, the "before" map clipped on top). */
 export interface MapHost {
   after: MapLike;
   before: MapLike;
+  /** Optional: put a tappable marker on the map for each site. */
+  setSiteMarkers?(sites: Site[], onSelect: (id: string) => void): void;
+}
+
+export interface AppOptions {
+  /** Site curves from data/sites.json, or null/undefined when the file is absent. */
+  sites?: Site[] | null;
+  createChart?: ChartFactory;
 }
 
 export type HostFactory = (afterEl: HTMLElement, beforeEl: HTMLElement) => MapHost;
@@ -16,8 +25,12 @@ const TEMPLATE = `
 <div class="shell">
   <header class="top">
     <h1 class="brand">SARtale</h1>
-    <p class="view">The Dance</p>
-    <p class="lede">Step through the season's radar images. Brighter areas sent more of the signal back.</p>
+    <p class="view" data-role="view-name" aria-live="polite">The Dance</p>
+    <nav class="views" aria-label="Views">
+      <button type="button" class="btn view-btn" data-role="view-dance" aria-pressed="true">The Dance</button>
+      <button type="button" class="btn view-btn" data-role="view-sites" aria-pressed="false">Site Stories</button>
+    </nav>
+    <p class="lede" data-role="lede">Step through the season's radar images. Brighter areas sent more of the signal back.</p>
   </header>
   <main class="stage" data-role="stage" aria-label="Radar map">
     <p class="maturity" data-role="maturity"></p>
@@ -37,7 +50,11 @@ const TEMPLATE = `
       </div>
     </div>
   </main>
-  <section class="dock" aria-label="Controls">
+  <section class="sites-view" data-role="sites-view" aria-label="Site Stories" hidden>
+    <p class="maturity" data-role="sites-maturity"></p>
+    <div class="sites-scroll" data-role="sites-root"></div>
+  </section>
+  <section class="dock" data-role="dock" aria-label="Controls">
     <div class="row timeline">
       <button type="button" class="btn play" data-role="play">Play</button>
       <div class="slider-block">
@@ -75,7 +92,7 @@ export interface AppHandle {
   destroy(): void;
 }
 
-export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory): AppHandle {
+export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory, opts: AppOptions = {}): AppHandle {
   root.innerHTML = TEMPLATE;
   const q = <T extends HTMLElement>(role: string): T => {
     const el = root.querySelector<T>(`[data-role="${role}"]`);
@@ -105,6 +122,13 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const beforeSelect = q<HTMLSelectElement>("before-select");
   const compositeToggle = q<HTMLButtonElement>("composite-toggle");
   const hint = q("hint");
+  const dockEl = q("dock");
+  const sitesViewEl = q("sites-view");
+  const sitesMaturity = q("sites-maturity");
+  const viewName = q("view-name");
+  const ledeEl = q("lede");
+  const viewDance = q<HTMLButtonElement>("view-dance");
+  const viewSites = q<HTMLButtonElement>("view-sites");
 
   const host = createHost(afterEl, beforeEl);
 
@@ -117,7 +141,27 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const banner = maturityBanner(m);
   maturityEl.textContent = banner.text;
   maturityEl.dataset.kind = banner.kind;
-  document.title = `SARtale: The Dance (${banner.kind === "synthetic" ? "synthetic demo" : "provisional data"})`;
+  sitesMaturity.textContent = banner.text;
+  sitesMaturity.dataset.kind = banner.kind;
+  const maturityTag = banner.kind === "synthetic" ? "synthetic demo" : "provisional data";
+
+  // Views: The Dance (map) and Site Stories (curves and cards).
+  const sitesView = createSitesView(q("sites-root"), { sites: opts.sites ?? null, manifest: m, createChart: opts.createChart });
+  function showView(view: "dance" | "sites"): void {
+    const sitesOn = view === "sites";
+    if (sitesOn) stopPlaying();
+    stageEl.hidden = sitesOn;
+    dockEl.hidden = sitesOn;
+    ledeEl.hidden = sitesOn;
+    sitesViewEl.hidden = !sitesOn;
+    viewDance.setAttribute("aria-pressed", String(!sitesOn));
+    viewSites.setAttribute("aria-pressed", String(sitesOn));
+    const name = sitesOn ? "Site Stories" : "The Dance";
+    viewName.textContent = name;
+    document.title = `SARtale: ${name} (${maturityTag})`;
+  }
+  viewDance.addEventListener("click", () => showView("dance"));
+  viewSites.addEventListener("click", () => showView("sites"));
 
   // Slider, ticks, end labels, before picker.
   slider.max = String(last);
@@ -274,11 +318,20 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   });
 
   void refresh();
+  showView("dance");
+
+  if (opts.sites?.length) {
+    host.setSiteMarkers?.(opts.sites, (id) => {
+      showView("sites");
+      sitesView.select(id);
+    });
+  }
 
   return {
     settled: () => pending,
     destroy: () => {
       stopPlaying();
+      sitesView.destroy();
       root.innerHTML = "";
     },
   };

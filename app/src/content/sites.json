@@ -1,0 +1,26 @@
+{
+  "demo-a": {
+    "dates": [],
+    "observation": "Placeholder text: replace after real curves are reviewed.",
+    "hypothesis": "Placeholder text: replace after real curves are reviewed.",
+    "test": "Placeholder text: replace after real curves are reviewed.",
+    "limits": "Placeholder text: replace after real curves are reviewed.",
+    "evidence": "hypothesis"
+  },
+  "demo-b": {
+    "dates": [],
+    "observation": "Placeholder text: replace after real curves are reviewed.",
+    "hypothesis": "Placeholder text: replace after real curves are reviewed.",
+    "test": "Placeholder text: replace after real curves are reviewed.",
+    "limits": "Placeholder text: replace after real curves are reviewed.",
+    "evidence": "hypothesis"
+  },
+  "demo-c": {
+    "dates": [],
+    "observation": "Placeholder text: replace after real curves are reviewed.",
+    "hypothesis": "Placeholder text: replace after real curves are reviewed.",
+    "test": "Placeholder text: replace after real curves are reviewed.",
+    "limits": "Placeholder text: replace after real curves are reviewed.",
+    "evidence": "hypothesis"
+  }
+}
