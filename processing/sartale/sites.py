@@ -50,11 +50,11 @@ def sample_site_stats(power_stack: np.ndarray, layer: Layer, lon: float, lat: fl
     power_stack is (dates, y, x) linear power. dB is None where no pixel in the
     radius is valid. The valid fraction is valid pixels over in-radius pixels.
     """
-    stack = np.asarray(power_stack, dtype=np.float64)
+    stack = np.asarray(power_stack)
     if stack.ndim != 3 or stack.shape[1:] != layer.power.shape:
         raise ValueError(f"Stack shape {stack.shape} does not match layer grid {layer.power.shape}")
     inside = _footprint(layer, lon, lat, radius_m)
-    values = stack[:, inside]  # (dates, n_inside)
+    values = stack[:, inside].astype(np.float64)  # (dates, n_inside); the stack itself is not copied
     valid = np.isfinite(values) & (values > 0)
     n_valid = valid.sum(axis=1)
     sums = np.where(valid, values, 0.0).sum(axis=1)

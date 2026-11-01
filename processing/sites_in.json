@@ -33,10 +33,10 @@
   },
   {
     "id": "swabi-plain",
-    "name": "Plain south-west of Swabi",
+    "name": "Plain west-north-west of Swabi",
     "lon": 72.3484,
     "lat": 34.1489,
-    "role": "Field area, rises in August and falls by October",
+    "role": "Plain area, rises in August and falls part way by October",
     "why": "Among the strongest seasonal HH and HV spreads on the plain, in a block of cells that moved together."
   },
   {
@@ -44,7 +44,7 @@
     "name": "Plain east of Mardan",
     "lon": 72.1833,
     "lat": 34.218,
-    "role": "Field area, rises from July to late September",
+    "role": "Plain area, rises from July to late September",
     "why": "One of the largest blocks that was dark in July and stayed brighter through October, unlike the Swabi site, which falls more."
   },
   {

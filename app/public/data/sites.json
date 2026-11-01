@@ -261,10 +261,10 @@
   },
   {
     "id": "swabi-plain",
-    "name": "Plain south-west of Swabi",
+    "name": "Plain west-north-west of Swabi",
     "lon": 72.3484,
     "lat": 34.1489,
-    "role": "Field area, rises in August and falls by October",
+    "role": "Plain area, rises in August and falls part way by October",
     "stack": "084_A_019",
     "crid": "P05023",
     "series": [
@@ -329,7 +329,7 @@
     "name": "Plain east of Mardan",
     "lon": 72.1833,
     "lat": 34.218,
-    "role": "Field area, rises from July to late September",
+    "role": "Plain area, rises from July to late September",
     "stack": "084_A_019",
     "crid": "P05023",
     "series": [

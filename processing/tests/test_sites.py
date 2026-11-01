@@ -1,5 +1,6 @@
 import json
 import sys
+import tracemalloc
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -59,6 +60,23 @@ def masked_stack(stack):
 def test_sample_site_averages_in_linear_power(stack, layer):
     # mean of 1 and 100 is 50.5 -> 17.03 dB (the dB mean would be 10.0)
     assert sample_site(stack, layer, LON, LAT)[0] == pytest.approx(17.03, abs=0.01)
+
+
+def test_sample_site_does_not_copy_the_whole_stack_to_double_precision():
+    n = 1500
+    layer = Layer(np.ones((2, 2)), X0 + np.arange(n) * PX, Y0 + np.arange(n) * PX, EPSG, None, None)
+    layer.power = np.empty((n, n), "f4")
+    stack = np.ones((2, n, n), "f4")
+    lon, lat = TO_LONLAT.transform(X0 + 700 * PX, Y0 + 700 * PX)
+    tracemalloc.start()
+    sample_site_stats(stack, layer, lon, lat)
+    peak = tracemalloc.get_traced_memory()[1]
+    tracemalloc.stop()
+    assert peak < 2 * stack.nbytes  # a float64 copy alone would take 2 x stack.nbytes
+
+
+def test_sample_site_gives_the_same_answer_in_single_precision(stack, layer):
+    assert sample_site(stack.astype("f4"), layer, LON, LAT) == pytest.approx(sample_site(stack, layer, LON, LAT), abs=1e-5)
 
 
 def test_sample_site_returns_one_value_per_date(stack, layer):
