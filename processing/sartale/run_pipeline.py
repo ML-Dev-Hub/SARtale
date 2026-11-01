@@ -1,9 +1,10 @@
-"""SARtale pipeline CLI: search, build, sites."""
+"""SARtale pipeline CLI: search, build, sites, preview."""
 import argparse
 import json
 from pathlib import Path
 
 from sartale import config
+from sartale.browse import build_preview
 from sartale.catalog import search_cmr, select_stack, write_manifest
 from sartale.products import build_products
 from sartale.sites import build_sites, stability_report, write_sites
@@ -37,6 +38,11 @@ def cmd_sites(args) -> None:
     print(f"{len(sites)} sites -> {args.out}")
 
 
+def cmd_preview(args) -> None:
+    manifest = build_preview(Path(args.browse_dir), Path(args.footprints), Path(args.out_dir))
+    print(f"{len(manifest['dates'])} dates, {manifest['pixel_m']} m per pixel -> {Path(args.out_dir) / 'manifest.json'}")
+
+
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(prog="run_pipeline")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -58,6 +64,13 @@ def main(argv=None) -> None:
     t.add_argument("--out", default=str(REPO_ROOT / "app" / "public" / "data" / "sites.json"))
     t.add_argument("--radius-m", type=float, default=150.0)
     t.set_defaults(func=cmd_sites)
+    p = sub.add_parser("preview", help="build web frames and manifest from NASA's public browse PNGs (display-scaled, not dB)")
+    p.add_argument("--browse-dir", default=str(REPO_ROOT / "data" / "browse"),
+                   help="folder with *_LATLON.png files and browse_manifest.json")
+    p.add_argument("--footprints", default=str(REPO_ROOT / "processing" / "reference" / "cmr_footprints.json"),
+                   help="CMR footprints JSON: {'footprints': {granule: [[lon, lat] x 4]}}")
+    p.add_argument("--out-dir", default=str(REPO_ROOT / "app" / "public" / "data"))
+    p.set_defaults(func=cmd_preview)
     args = parser.parse_args(argv)
     args.func(args)
 

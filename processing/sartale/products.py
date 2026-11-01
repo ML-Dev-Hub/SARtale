@@ -136,12 +136,24 @@ def _to_premultiplied(array: np.ndarray) -> np.ndarray:
     return np.concatenate([np.moveaxis(rgb * alpha[..., None], -1, 0), alpha[None]], axis=0)
 
 
-def write_webp_3857(array: np.ndarray, layer: Layer, path: Path) -> tuple[float, float, float, float]:
+def _window_grid(window: tuple[float, float, float, float], res: float) -> tuple[Affine, int, int]:
+    """Destination grid in EPSG:3857 that covers a lon/lat window (west, south, east, north) at about `res` metres."""
+    tr = Transformer.from_crs(4326, 3857, always_xy=True)
+    left, bottom = tr.transform(window[0], window[1])
+    right, top = tr.transform(window[2], window[3])
+    dw, dh = max(1, round((right - left) / res)), max(1, round((top - bottom) / res))
+    return Affine((right - left) / dw, 0.0, left, 0.0, -(top - bottom) / dh, top), dw, dh
+
+
+def write_webp_3857(array: np.ndarray, layer: Layer, path: Path,
+                    window: tuple[float, float, float, float] | None = None) -> tuple[float, float, float, float]:
     """Warp an overlay to EPSG:3857 and save it as lossy WebP with alpha.
 
     MapLibre stretches image layers linearly in Web Mercator, so the picture must
     be Mercator-aligned. Returns the warped image bounds as (left, bottom, right,
     top) in Web Mercator metres. Nodata (0 in grey, alpha 0 in RGBA) stays transparent.
+    With `window` (west, south, east, north in degrees) the output is cropped to that
+    window, so every frame written with the same window has identical bounds.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -152,6 +164,8 @@ def write_webp_3857(array: np.ndarray, layer: Layer, path: Path) -> tuple[float,
     src_crs, dst_crs = f"EPSG:{layer.epsg}", "EPSG:3857"
     left, bottom, right, top = array_bounds(h, w, transform)
     dst_tf, dw, dh = calculate_default_transform(src_crs, dst_crs, w, h, left, bottom, right, top)
+    if window is not None:
+        dst_tf, dw, dh = _window_grid(window, dst_tf.a)
     dst = np.zeros((4, dh, dw), dtype=np.float32)
     for i in range(4):
         reproject(np.ascontiguousarray(src_img[i]), dst[i], src_transform=transform,

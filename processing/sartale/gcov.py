@@ -9,8 +9,10 @@ from pyproj import Transformer
 from sartale.radiometry import mask_power
 
 # NOTE: this layout follows the public NISAR GCOV docs and the NISAR/ISCE3
-# convention. It is NOT yet verified against a real GCOV file (no Earthdata
-# access when written). If a real file differs, fix it here only.
+# convention. It has been run on two public NISAR sample GCOV files dated 2008
+# (older product versions over a different area), which confirmed the coordinate,
+# projection, mask and looks layout. It has NOT been run on a real P05023 file
+# (no Earthdata login). If a real file differs, fix it here only.
 GRID_GROUP = "/science/LSAR/GCOV/grids/frequencyA"
 LOOKS = "numberOfLooks"
 MASK = "mask"
