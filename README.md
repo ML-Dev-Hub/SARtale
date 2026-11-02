@@ -25,7 +25,7 @@ The app opens on the lake story and keeps the earlier Peshawar chapter as a down
 
 - **Indicative screening only.** A status says whether the radar signal over a lake zone changed. It is not a measurement of lake volume or of hazard.
 - **Provisional data.** The images come from NASA's provisional GCOV product (`NISAR_L2_GCOV_PROVISIONAL_V1`, CRID `P05023`). They are not validated and NASA expects to reprocess them. Only passes from 17 June 2026 are used.
-- **Optical agreement is poor.** A Sentinel-2 cross-check on four lakes agreed only at Attabad (radar 0.218 km2, optical 0.185 km2, overlap IoU 0.11). At Khurdopin radar gave 0.036 against 0.885 km2 optical, at Passu 0.048 against 0.239, and at Shisper, where no lake is expected, 0.041 against 0.288 (the optical method also flags water there). Areas are water inside a search circle and under-count lakes whose shores sit in radar shadow.
+- **Optical agreement is poor.** A Sentinel-2 cross-check on four lakes found similar areas only at Attabad (radar 0.218 km2, optical 0.185 km2), and even there the overlap was low (IoU 0.11). Elsewhere the areas disagreed widely: Khurdopin radar 0.036 against 0.885 km2 optical, Passu 0.048 against 0.239, and Shisper, where no lake is expected, 0.041 against 0.288 (the optical method also flags water there). Areas are water inside a search circle and under-count lakes whose shores sit in radar shadow.
 - **Official warnings come from PMD and NDMA** (and PDMA, GBDMA). This is not a warning service and does not forecast floods.
 - The method constants (drop 3.0 dB, 3 px speckle box, at least 3 looks, at least half of the zone observable, noise floor 0.005 km2, change factor 2.0) are recorded in `app/public/data/lakes.json`. They were set by the team and not tuned against ground truth.
 
@@ -73,6 +73,29 @@ Lake inputs are in `processing/lakes_in.json`, each with the source of its coord
 ## The Peshawar chapter
 
 The earlier chapter follows one monsoon season in the Peshawar Valley through calibrated NISAR images from July to October 2026: a date line, HH and HV polarizations, a seasonal colour composite, backscatter curves at sampled sites, what NISAR did not observe, and a How we know page. It uses track 84 `P05023` GCOV files rebuilt with `python -m sartale.run_pipeline rebuild`, and the same Provisional caution applies. A change in backscatter is not proof of a physical change, and each card keeps its explanation as a hypothesis. Its data and checks are described in `docs/DATA_SOURCES.md`.
+
+### Peshawar chapter: rebuild
+
+Run from `processing/` unless a path says otherwise. You need an Earthdata login with the data terms accepted, in `~/.netrc` (the download step reads it and never prints it).
+
+```bash
+conda run -n sartale python -m sartale.run_pipeline search --out ../data/manifest_h0.json     # catalogue metadata only; keeps stack 084_A_019, P05023
+conda run -n sartale python -m sartale.run_pipeline download --manifest ../data/manifest_h0.json --dates 2026-07-26,2026-08-19   # into data/gcov/, resumable, size and MD5 checked; about 8 GB for all nine dates
+conda run -n sartale python -m sartale.run_pipeline rebuild    # about 30 minutes, peaks near 8 GB of memory
+```
+
+**Warning: `rebuild` overwrites the Peshawar files in `app/public/data/`** (frames, `manifest.json`, `sites.json`) and removes any it no longer lists. `lakes.json` and the lake images are written by `lakes-build` and are separate. After a rebuild, read the printed checks, look at every date by eye, and rerun `npm --prefix app test -- --run`: `app/src/publicData.test.ts` compares every value a site card quotes with the new curves, so a card that no longer matches fails.
+
+Asset scripts, run from the repository root:
+
+```bash
+conda run -n sartale python app/scripts/make_brand_assets.py   # small logo files in app/public/brand/
+conda run -n sartale python app/scripts/make_hero_image.py     # start-screen picture from the seasonal composite frame
+```
+
+`app/demo-data/` (made by `app/scripts/make_demo_data.py`) is a synthetic test fixture. It is not served and should not be copied over `app/public/data/` for a commit.
+
+Peshawar limits: the 2 July pass is flagged as likely radio interference in HV and is left out of the change layer. The Change view is a statistical flag on backscatter steps, not proof of what changed on the ground.
 
 ## Repository layout
 
