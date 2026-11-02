@@ -816,15 +816,14 @@ describe("the lake start screen", () => {
 describe("the lake start picture", () => {
   const attabadOf = (lakes: LakesFile) => lakes.lakes.find((l) => l.id === "attabad")!;
 
-  test("shows Attabad's radar picture with the water layer and a dated caption", async () => {
+  test("shows Attabad's radar picture alone, with a dated caption", async () => {
     const a = attabadOf(realLakes);
-    const { app, $ } = setupReal({ sites: realSites, lakes: realLakes });
+    const { app, root, $ } = setupReal({ sites: realSites, lakes: realLakes });
     await app.settled();
     expect($<HTMLImageElement>("hero-img").getAttribute("src")).toBe(`data/${a.images!.latest_hh}`);
-    expect($<HTMLImageElement>("hero-water").getAttribute("src")).toBe(`data/${a.images!.water}`);
-    expect($<HTMLImageElement>("hero-water").hidden).toBe(false);
+    expect(root.querySelector('[data-role="hero-water"]')).toBeNull();
     expect($("hero-caption").textContent).toBe(
-      "Attabad Lake, Hunza: NISAR HH radar on 23 Oct 2026, water in blue. Radar-geometry picture, not a map. Provisional data.",
+      "Attabad Lake, Hunza: NISAR HH radar on 23 Oct 2026. The lake is the long dark band. Radar-geometry picture, not a map. Provisional data.",
     );
   });
 
@@ -834,7 +833,6 @@ describe("the lake start picture", () => {
       const { app, $ } = setupReal({ sites: realSites, lakes });
       await app.settled();
       expect($<HTMLImageElement>("hero-img").getAttribute("src")).toBe("brand/hero-radar.webp");
-      expect($<HTMLImageElement>("hero-water").hidden).toBe(true);
       expect($("hero-caption").textContent).toContain("26 Jul 2026, 12 Sep 2026 and 18 Oct 2026");
       document.body.innerHTML = "";
     }

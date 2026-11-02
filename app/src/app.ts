@@ -95,7 +95,6 @@ const TEMPLATE = `
     <section class="hero" data-role="hero" aria-labelledby="hero-title">
       <img class="hero-img" data-role="hero-img" src="brand/hero-radar.webp" width="1280" height="704" fetchpriority="high"
            alt="NISAR radar picture of the Peshawar Valley, with the dark Tarbela Reservoir on the right." />
-      <img class="hero-water" data-role="hero-water" width="1280" height="704" alt="" hidden />
       <div class="hero-shade" aria-hidden="true"></div>
       <div class="hero-copy">
         <p class="hero-badge" data-role="hero-maturity"></p>
@@ -403,13 +402,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
       const img = q<HTMLImageElement>("hero-img");
       img.src = dataUrl(hh);
       img.alt = "NISAR HH radar picture of Attabad Lake, Hunza, with the lake dark.";
-      const water = attabad.images?.water;
-      if (water) {
-        const w = q<HTMLImageElement>("hero-water");
-        w.src = dataUrl(water);
-        w.hidden = false;
-      }
-      heroLakePicture = `Attabad Lake, Hunza: NISAR HH radar${attabad.status.latest_date ? ` on ${formatDate(attabad.status.latest_date)}` : ""}${water ? ", water in blue" : ""}. Radar-geometry picture, not a map. Provisional data.`;
+      heroLakePicture = `Attabad Lake, Hunza: NISAR HH radar${attabad.status.latest_date ? ` on ${formatDate(attabad.status.latest_date)}` : ""}. The lake is the long dark band. Radar-geometry picture, not a map. Provisional data.`;
     } else {
       q<HTMLImageElement>("hero-img").alt = "NISAR radar picture of the Peshawar Valley, a sample of what the radar sees through cloud.";
     }
