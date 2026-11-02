@@ -33,4 +33,5 @@ MIN_LOOKS = 3  # valid same-track passes needed for a trend
 MIN_OBSERVABLE = 0.5  # share of the lake zone that must be observable
 NOISE_FLOOR_KM2 = 0.005
 CHANGE_FACTOR = 2.0
+SPECKLE_BOX = 3  # boxcar width (pixels) applied to linear power before dB
 CLOUD_WINDOW = ("2026-06-17", "2026-08-04")  # inclusive; headline cloud count

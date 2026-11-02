@@ -10,7 +10,7 @@ from pyproj import Transformer
 from sartale import config
 from sartale.lakes import Lake
 from sartale.lakestatus import SeriesPoint, cloud_window_looks, lake_status
-from sartale.lakewater import dark_mask, lake_zone, pass_water, screen_passes, shadow_prone
+from sartale.lakewater import dark_mask, despeckle, lake_zone, pass_water, screen_passes, shadow_prone
 from sartale.products import render_frame, shared_stretch
 from sartale.radiometry import to_db
 
@@ -181,7 +181,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path) -> dict:
     epsg = passes[0]["epsg"]
     px = float(abs(xs[1] - xs[0])) if len(xs) > 1 else 1.0
     for p in passes:
-        p["hh_db"], p["hv_db"] = to_db(p["hh"]), to_db(p["hv"])
+        p["hh_db"], p["hv_db"] = to_db(despeckle(p["hh"])), to_db(despeckle(p["hv"]))
     by_track: dict[str, list[dict]] = {}
     for p in passes:
         by_track.setdefault(p["key"], []).append(p)
@@ -228,22 +228,31 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path) -> dict:
             "images": images, "bounds": _bounds(xs, ys, epsg, px)}
 
 
+def _track_medians(lk: dict) -> dict[str, float]:
+    """Per track key: median over non-excluded passes of the per-pass zone water area."""
+    by: dict[str, list[float]] = {}
+    for p in lk["series"]:
+        if p["excluded"] is None and p["area_km2"] is not None:
+            by.setdefault(p["track"], []).append(p["area_km2"])
+    return {k: float(np.median(v)) for k, v in by.items()}
+
+
 def attabad_gate(doc: dict) -> dict:
-    """Numbers for the Attabad sanity check (R-T5b): attabad's latest valid area vs shisper's."""
+    """Attabad sanity check (R-T5e): on every track both lakes have, attabad's median pass area must
+    beat shisper's, and the median of the per-track ratios must be >= 2."""
     by_id = {lk["id"]: lk for lk in doc["lakes"]}
-
-    def latest_area(lk):
-        pts = [p for p in lk["series"] if p["excluded"] is None and p["area_km2"] is not None
-               and p["observable_share"] >= config.MIN_OBSERVABLE]
-        return max(pts, key=lambda p: p["date"])["area_km2"] if pts else None
-
     a, s = by_id.get("attabad"), by_id.get("shisper")
-    a_area, s_area = (latest_area(a) if a else None), (latest_area(s) if s else None)
+    am = _track_medians(a) if a else {}
+    sm = _track_medians(s) if s else {}
+    tracks = sorted(set(am) & set(sm))
+    ratios = {k: am[k] / max(sm[k], config.NOISE_FLOOR_KM2) for k in tracks}
     status = a["status"]["status"] if a else None
     cw = a["cloud_window_looks"] if a else 0
-    ok = (a_area is not None and s_area is not None and a_area >= 2 * s_area
+    median_ratio = float(np.median(list(ratios.values()))) if ratios else None
+    ok = (bool(tracks) and all(am[k] > sm[k] for k in tracks) and median_ratio >= 2
           and status not in ("Not observable", "Not enough NISAR looks yet") and cw >= 3)
-    return {"attabad_area_km2": a_area, "shisper_area_km2": s_area, "attabad_status": status,
+    return {"tracks": {k: {"attabad": am[k], "shisper": sm[k], "ratio": ratios[k]} for k in tracks},
+            "median_ratio": median_ratio, "attabad_status": status,
             "attabad_cloud_window_looks": cw, "pass": ok}
 
 
@@ -252,6 +261,6 @@ def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str) -
         "version": 1, "built": built, "notes": NOTES, "crid": config.CRID, "cloud_window": list(config.CLOUD_WINDOW),
         "constants": {"drop_db": config.DROP_DB, "min_looks": config.MIN_LOOKS,
                       "min_observable": config.MIN_OBSERVABLE, "noise_floor_km2": config.NOISE_FLOOR_KM2,
-                      "change_factor": config.CHANGE_FACTOR},
+                      "change_factor": config.CHANGE_FACTOR, "speckle_box": config.SPECKLE_BOX},
         "lakes": [build_lake(lake, Path(cache_dir), Path(out_dir)) for lake in lakes],
     }

@@ -217,9 +217,10 @@ def cmd_lakes_build(args) -> None:
               f"track {st['track']}, latest {st['latest_date']}, directions {''.join(lk['directions']) or '-'}, "
               f"excluded {len(lk['excluded'])}, limits {lk['limits']}")
     g = attabad_gate(doc)
-    print(f"gate: attabad area {g['attabad_area_km2']} km2 vs shisper {g['shisper_area_km2']} km2 (need >= 2x), "
-          f"attabad status {g['attabad_status']}, cloud-window looks {g['attabad_cloud_window_looks']} (need >= 3): "
-          f"{'PASS' if g['pass'] else 'FAIL'}")
+    for k, v in g["tracks"].items():
+        print(f"gate track {k}: attabad {v['attabad']:.3f} km2, shisper {v['shisper']:.3f} km2, ratio {v['ratio']:.2f}")
+    print(f"gate: median ratio {g['median_ratio']} (need >= 2), attabad status {g['attabad_status']}, "
+          f"cloud-window looks {g['attabad_cloud_window_looks']} (need >= 3): {'PASS' if g['pass'] else 'FAIL'}")
     print(f"{len(doc['lakes'])} lakes -> {out / 'lakes.json'}")
 
 

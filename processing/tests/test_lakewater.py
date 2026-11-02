@@ -114,3 +114,23 @@ def test_lake_zone_polygon_buffered_200m():
     assert zone[50, 75]  # ~15 px = 150 m beyond the edge, inside the 200 m buffer
     assert not zone[50, 90]  # ~300 m beyond
     assert not zone[5, 5]
+
+
+def test_despeckle_constant_field_unchanged():
+    from sartale.lakewater import despeckle
+    assert np.allclose(despeckle(np.full((9, 9), 0.2)), 0.2)
+
+
+def test_despeckle_fills_single_nan():
+    from sartale.lakewater import despeckle
+    p = np.full((9, 9), 0.2)
+    p[4, 4] = np.nan
+    out = despeckle(p)
+    assert np.isfinite(out[4, 4]) and out[4, 4] == pytest.approx(0.2)
+
+
+def test_despeckle_all_nan_neighbourhood_stays_nan():
+    from sartale.lakewater import despeckle
+    p = np.full((9, 9), 0.2)
+    p[2:7, 2:7] = np.nan
+    assert np.isnan(despeckle(p)[4, 4])

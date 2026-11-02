@@ -8,12 +8,26 @@ import numpy as np
 from pyproj import Transformer
 from rasterio.features import geometry_mask
 from rasterio.transform import Affine
-from scipy.ndimage import distance_transform_edt
+from scipy.ndimage import distance_transform_edt, uniform_filter
 
-from sartale.config import BRIGHT_PASS_DB, DROP_DB
+from sartale.config import BRIGHT_PASS_DB, DROP_DB, SPECKLE_BOX
 from sartale.lakes import Lake
 
 OUTLINE_BUFFER_M = 200.0
+
+
+def despeckle(power: np.ndarray, box: int = SPECKLE_BOX) -> np.ndarray:
+    """NaN-aware boxcar mean of linear power: mean of the finite neighbours in a box x box window.
+
+    The output is NaN where fewer than half of the box is finite.
+    """
+    p = np.asarray(power, dtype=np.float64)
+    finite = np.isfinite(p)
+    total = uniform_filter(np.where(finite, p, 0.0), size=box, mode="reflect")
+    share = uniform_filter(finite.astype(np.float64), size=box, mode="reflect")
+    with np.errstate(invalid="ignore", divide="ignore"):
+        mean = total / share
+    return np.where(share >= 0.5 - 1e-9, mean, np.nan)
 
 
 def screen_passes(hh_db_by_pass: dict[str, np.ndarray]) -> dict[str, str]:
