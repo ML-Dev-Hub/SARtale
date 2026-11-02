@@ -35,7 +35,7 @@ export function resolveLakeBeats(file: LakesFile | null): ResolvedBeat[] {
       lake_name: featured.name,
       lake_looks: String(featured.status.looks),
       lake_latest: featured.status.latest_date ? formatDate(featured.status.latest_date) : "no date",
-      lake_sentence: statusSentence(featured),
+      lake_sentence: statusSentence(featured, file!.constants.change_factor),
       lake_cloud_looks: String(featured.cloud_window_looks),
       lake_coord: featured.coord_source,
       lake_area_label: featured.area_label,

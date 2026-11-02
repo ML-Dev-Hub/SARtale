@@ -1,4 +1,4 @@
-import { cloudHeadline, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
+import { cloudHeadline, methodLimits, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
 import { dataUrl, formatDate } from "./timeline";
 
 /** One line on the lake chart: a track's valid passes, or the passes that were left out. */
@@ -112,7 +112,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     b.append(
       el("span", `lw-chip lw-status-${slug(lake.status.status)}`, lake.status.status),
       el("span", "lw-name", lake.name),
-      el("span", "lw-sentence", statusSentence(lake)),
+      el("span", "lw-sentence", statusSentence(lake, file!.constants.change_factor)),
       el("span", "lw-coord", `Coordinates: ${lake.coord_source}`),
     );
     b.addEventListener("click", () => select(lake.id));
@@ -189,7 +189,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     head.append(el("h2", "lw-title", lake.name), el("span", `lw-chip lw-status-${slug(lake.status.status)}`, lake.status.status));
     detail.append(
       head,
-      el("p", "lw-sentence-big", statusSentence(lake)),
+      el("p", "lw-sentence-big", statusSentence(lake, file!.constants.change_factor)),
       el("p", "lw-scope", `Measures: ${lake.area_label}. Indicative screening on provisional data. Official warnings come from PMD and NDMA.`),
       pictures(lake),
     );
@@ -211,7 +211,11 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     detail.append(chartSec);
 
     for (const check of (file?.checks ?? []).filter((c) => c.lake === lake.id)) detail.append(el("p", "lw-check", checkLine(check)));
-    if (lake.limits.length) detail.append(section("Limits", lake.limits));
+    // Standing limits of the method, shown for every lake; the lake's own limits follow when it has any.
+    const method = section("Method limits", methodLimits(file!));
+    method.dataset.role = "lw-method-limits";
+    detail.append(method);
+    if (lake.limits.length) detail.append(section("Limits for this lake", lake.limits));
     if (lake.excluded.length) detail.append(section("Excluded passes", lake.excluded.map((x) => `${x.pass}: ${x.reason}`)));
     if (lake.downstream) detail.append(el("p", "lw-downstream", `Downstream: ${lake.downstream}${lake.downstream_source ? ` (${lake.downstream_source})` : ""}`));
     detail.append(el("p", "lw-coords", `Coordinates: ${lake.coord_source}`));

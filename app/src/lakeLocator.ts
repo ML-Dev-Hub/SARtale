@@ -4,6 +4,15 @@ import type { LocatorFactory } from "./lakeWatchView";
 const BACKGROUND = "#0b151b"; // same base style as maplibreAdapter.ts: a plain background, no outside tiles
 
 /**
+ * True when a MapLibre movestart/zoomstart event came from the person: drag, scroll, pinch and the +/- buttons all
+ * carry the DOM event as `originalEvent`. Programmatic moves (our fitBounds, and Map.resize(), which fires movestart
+ * when the hidden view first gets a size) carry none, so they must not stop the locator from framing the lakes.
+ */
+export function isUserMove(e: unknown): boolean {
+  return typeof e === "object" && e !== null && !!(e as { originalEvent?: unknown }).originalEvent;
+}
+
+/**
  * A small map with one button per lake. MapLibre is loaded after first paint (dynamic import), the way lazyHost.ts
  * loads the main map, so Lake Watch adds nothing to the opening download. If it cannot start (no WebGL) the lake list
  * still works and a short line says the locator is unavailable.
@@ -36,24 +45,28 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
       m.touchZoomRotate.disableRotation();
       m.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "top-right");
       map = m;
-      // Any move or zoom that did not start in our own fit() is the person's, including the +/- buttons.
-      m.on("movestart", () => {
-        if (!fitting) userMoved = true;
-      });
-      m.on("zoomstart", () => {
-        if (!fitting) userMoved = true;
-      });
+      // Only moves the person made (drag, scroll, pinch, +/- buttons) stop the automatic framing; see isUserMove.
+      const onStart = (e: unknown): void => {
+        if (!fitting && isUserMove(e)) userMoved = true;
+      };
+      m.on("movestart", onStart);
+      m.on("zoomstart", onStart);
+      // Runs on every size change, including the first time the view becomes visible with a non-zero size
+      // (the map may have been created while Lake Watch was hidden, e.g. when the start screen opened first).
       const fit = (): void => {
         if (!el.clientWidth || !el.clientHeight) return;
-        m.resize();
-        if (userMoved) return; // once the person has zoomed or panned, leave their view alone
-        const w = Math.min(...lakes.map((l) => l.bounds?.[0] ?? l.lon));
-        const e = Math.max(...lakes.map((l) => l.bounds?.[2] ?? l.lon));
-        const s = Math.min(...lakes.map((l) => l.bounds?.[1] ?? l.lat));
-        const n = Math.max(...lakes.map((l) => l.bounds?.[3] ?? l.lat));
         fitting = true;
-        m.fitBounds([[w, s], [e, n]], { padding: 30, animate: false, maxZoom: 9 });
-        fitting = false;
+        try {
+          m.resize();
+          if (userMoved) return; // once the person has zoomed or panned, leave their view alone
+          const w = Math.min(...lakes.map((l) => l.bounds?.[0] ?? l.lon));
+          const e = Math.max(...lakes.map((l) => l.bounds?.[2] ?? l.lon));
+          const s = Math.min(...lakes.map((l) => l.bounds?.[1] ?? l.lat));
+          const n = Math.max(...lakes.map((l) => l.bounds?.[3] ?? l.lat));
+          m.fitBounds([[w, s], [e, n]], { padding: 30, animate: false, maxZoom: 9 });
+        } finally {
+          fitting = false;
+        }
       };
       m.on("load", () => {
         // Where a lake has bounds they draw its frame; the marker always comes from lon/lat.

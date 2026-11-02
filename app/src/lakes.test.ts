@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { fixtureLakes } from "./fixtures";
-import { loadLakes, sortLakes, statusSentence, STATUS_ORDER } from "./lakes";
+import { loadLakes, methodLimits, opticalCheckSentence, sortLakes, statusSentence, STATUS_ORDER } from "./lakes";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -49,19 +49,19 @@ describe("sortLakes", () => {
 describe("statusSentence", () => {
   const by = (id: string) => fixtureLakes.lakes.find((l) => l.id === id)!;
   test("test_statusSentence_includes_date_looks_and_noise", () => {
-    expect(statusSentence(by("grow-new"))).toBe(
-      "Growing: +0.031 km² since earlier 156A passes (noise ±0.005 km²), 9 looks, latest 23 Oct 2026",
+    expect(statusSentence(by("grow-new"), 2)).toBe(
+      "Growing: +0.031 km² since earlier 156A passes (noise ±0.005 km²; change must exceed 2× noise), 9 looks, latest 23 Oct 2026",
     );
-    const s = statusSentence(by("shrink"));
+    const s = statusSentence(by("shrink"), 2);
     expect(s).toContain("-0.040 km²");
   });
   test("test_statusSentence_point_only_lake_says_search_window", () => {
-    expect(statusSentence(by("shrink"))).toContain("in the search window");
-    expect(statusSentence(by("grow-new"))).not.toContain("search window");
+    expect(statusSentence(by("shrink"), 2)).toContain("in the search window");
+    expect(statusSentence(by("grow-new"), 2)).not.toContain("search window");
   });
   test("null-change statuses use the reason and never show 0 km²", () => {
     for (const id of ["few", "hidden", "control"]) {
-      const s = statusSentence(by(id));
+      const s = statusSentence(by(id), 2);
       expect(s).toContain(by(id).status.reason);
       expect(s).not.toMatch(/\b0 km²/);
     }

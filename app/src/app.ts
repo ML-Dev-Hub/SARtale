@@ -402,7 +402,8 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
       const img = q<HTMLImageElement>("hero-img");
       img.src = dataUrl(hh);
       img.alt = "NISAR HH radar picture of Attabad Lake, Hunza, with the lake dark.";
-      heroLakePicture = `Attabad Lake, Hunza: NISAR HH radar${attabad.status.latest_date ? ` on ${formatDate(attabad.status.latest_date)}` : ""}. The lake is the long dark band. Radar-geometry picture, not a map. Provisional data.`;
+      const picDate = attabad.images?.date ?? attabad.status.latest_date; // the pictured pass, not just the newest status date
+      heroLakePicture = `Attabad Lake, Hunza: NISAR HH radar${picDate ? ` on ${formatDate(picDate)}` : ""}. The lake is the long dark band. Radar-geometry picture, not a map. Provisional data.`;
     } else {
       q<HTMLImageElement>("hero-img").alt = "NISAR radar picture of the Peshawar Valley, a sample of what the radar sees through cloud.";
     }

@@ -827,6 +827,13 @@ describe("the lake start picture", () => {
     );
   });
 
+  test("the caption date is the pictured pass's date, not the newest status date", async () => {
+    const lakes = { ...realLakes, lakes: realLakes.lakes.map((l) => (l.id === "attabad" ? { ...l, images: { ...l.images!, date: "2026-10-11" } } : l)) };
+    const { app, $ } = setupReal({ sites: realSites, lakes });
+    await app.settled();
+    expect($("hero-caption").textContent).toContain("NISAR HH radar on 11 Oct 2026.");
+  });
+
   test("falls back to the Peshawar composite and its caption without lakes or without Attabad images", async () => {
     const noImages = { ...realLakes, lakes: realLakes.lakes.map((l) => (l.id === "attabad" ? { ...l, images: null } : l)) };
     for (const lakes of [null, noImages]) {

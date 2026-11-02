@@ -43,7 +43,8 @@ export interface Lake {
   limits: string[];
   series: LakeSeriesPoint[];
   excluded: { pass: string; reason: string }[];
-  images: { latest_hh: string | null; water: string | null } | null;
+  /** `date`/`track`: the pictured pass, the status track's latest valid pass (absent in older builds). */
+  images: { latest_hh: string | null; water: string | null; date?: string | null; track?: string | null } | null;
   bounds: [number, number, number, number] | null;
 }
 
@@ -116,7 +117,7 @@ function rank(l: Lake): number {
   return i < 0 ? STATUS_ORDER.length : i;
 }
 
-/** Status order, then newest latest_date first. Control lakes go last. Returns a new array. */
+/** Status order, then newest latest_date first, then name. Control lakes go last. Returns a new array. */
 export function sortLakes(lakes: Lake[]): Lake[] {
   return [...lakes].sort((a, b) => {
     const ca = a.role === "control" ? 1 : 0;
@@ -125,25 +126,27 @@ export function sortLakes(lakes: Lake[]): Lake[] {
     if (rank(a) !== rank(b)) return rank(a) - rank(b);
     const da = a.status.latest_date ?? "";
     const db = b.status.latest_date ?? "";
-    return da < db ? 1 : da > db ? -1 : 0;
+    if (da !== db) return da < db ? 1 : -1;
+    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
   });
 }
 
 const km2 = (v: number) => v.toFixed(3);
 
-/** One plain sentence for a lake's status. Never shows a zero area for a lake that was not measured. */
-export function statusSentence(lake: Lake): string {
+/** One plain sentence for a lake's status. Never shows a zero area for a lake that was not measured. `changeFactor` is lakes.json constants.change_factor. */
+export function statusSentence(lake: Lake, changeFactor: number): string {
   const s = lake.status;
-  const scope = lake.area_label.includes("search window") ? " in the search window" : "";
   const measured = s.change_km2 !== null && s.noise_km2 !== null && s.track !== null;
   if (!measured) {
     const latest = s.latest_date ? `, latest ${formatDate(s.latest_date)}` : "";
-    return `${s.status}${scope}: ${s.reason}${latest}`;
+    return `${s.status}: ${s.reason}${latest}`;
   }
-  const change = s.change_km2 as number;
-  const sign = change > 0 ? "+" : change < 0 ? "-" : "";
+  const scope = lake.area_label.includes("search window") ? " in the search window" : "";
+  const shown = km2(Math.abs(s.change_km2 as number));
+  // Round first, then pick the sign, so a change that rounds to zero never prints as "-0.000".
+  const sign = Number(shown) === 0 ? "" : (s.change_km2 as number) > 0 ? "+" : "-";
   const when = s.latest_date ? `, latest ${formatDate(s.latest_date)}` : "";
-  return `${s.status}: ${sign}${km2(Math.abs(change))} km²${scope} since earlier ${s.track} passes (noise ±${km2(s.noise_km2 as number)} km²), ${s.looks} looks${when}`;
+  return `${s.status}: ${sign}${shown} km²${scope} since earlier ${s.track} passes (noise ±${km2(s.noise_km2 as number)} km²; change must exceed ${changeFactor}× noise), ${s.looks} looks${when}`;
 }
 
 /**
@@ -165,11 +168,53 @@ export function featuredLake(file: LakesFile | null | undefined): Lake | null {
   return best;
 }
 
-/** The headline count: valid looks in the cloud window, and how many lakes had at least one. */
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** "17 June" from "2026-06-17": day and full month, no year (the headline's own style). */
+export function dayMonth(iso: string): string {
+  const [, m, d] = iso.split("-").map(Number);
+  return `${d} ${MONTHS[m - 1]}`;
+}
+
+/**
+ * The headline count: valid looks in the cloud window, and how many lakes had at least one. SUPARCO's 2 Jul and 5 Aug
+ * updates both say cloud limited optical imagery; the 5 Aug one still used images from 6 Jul to 5 Aug, so the
+ * headline must not imply SUPARCO had no images in between.
+ */
 export function cloudHeadline(file: LakesFile): string {
   const looks = file.lakes.reduce((n, l) => n + l.cloud_window_looks, 0);
   const watched = file.lakes.filter((l) => l.cloud_window_looks > 0).length;
-  return `Between SUPARCO's 16 Jun image and its 5 Aug update, NISAR made ${looks} valid looks across ${watched} lakes.`;
+  return `From ${dayMonth(file.cloud_window[0])} to ${dayMonth(file.cloud_window[1])}, while SUPARCO's updates reported cloud limiting optical imagery, NISAR made ${looks} valid looks across ${watched} lakes.`;
+}
+
+export const NOT_VALIDATED = "Not validated: frozen lakes, lakes under 0.05 km², and wind-roughened water.";
+
+/** 0.0049 -> "0.005", 0.0138 -> "0.014", 0.1137 -> "0.11": two significant figures, at least three decimals below 0.01. */
+const iouText = (v: number): string => (v < 0.01 ? v.toFixed(3) : String(Number(v.toPrecision(2))));
+
+/** One plain sentence on the Sentinel-2 cross-check, built from the `checks` rows; null when there are none with an IoU. */
+export function opticalCheckSentence(checks: LakeCheck[]): string | null {
+  const rows = checks.filter((c) => c.iou !== null);
+  if (!rows.length) return null;
+  const ious = rows.map((c) => c.iou as number);
+  const lo = Math.min(...ious);
+  const hi = Math.max(...ious);
+  const maxDays = Math.max(...rows.map((c) => c.days_apart));
+  const when = maxDays === 0 ? "a same-day check" : `checks up to ${maxDays} days apart`;
+  const range = lo === hi ? `IoU ${iouText(lo)}` : `IoU ${iouText(lo)}–${iouText(hi)}`;
+  const how = hi < 0.5 ? `overlapped optical water poorly at every lake checked (${range})` : `overlapped optical water with ${range} across the ${rows.length} lakes checked`;
+  return `In ${when} against Sentinel-2, radar water ${how}; treat areas as indicative.`;
+}
+
+/**
+ * The method's standing limits, shown for every lake whatever its own `limits` say: the build notes, what was not
+ * validated, and how the Sentinel-2 cross-check went.
+ */
+export function methodLimits(file: LakesFile): string[] {
+  const out = [file.notes, NOT_VALIDATED];
+  const optical = opticalCheckSentence(file.checks);
+  if (optical) out.push(optical);
+  return out.filter((t) => !!t);
 }
 
 /** The numbers and dates that copy quotes, taken from lakes.json so the words cannot drift from the data. */

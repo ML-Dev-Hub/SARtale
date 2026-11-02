@@ -37,7 +37,7 @@ describe("Lake Watch", () => {
   test("test_headline_sums_cloud_window_looks", () => {
     const { root } = setup();
     const h = root.querySelector<HTMLElement>('[data-role="lw-headline"]')!;
-    expect(h.textContent).toBe("Between SUPARCO's 16 Jun image and its 5 Aug update, NISAR made 49 valid looks across 7 lakes.");
+    expect(h.textContent).toBe("From 17 June to 4 August, while SUPARCO's updates reported cloud limiting optical imagery, NISAR made 49 valid looks across 7 lakes.");
     expect(h.closest("a")?.getAttribute("href") ?? h.getAttribute("href")).toBe("#cloud-gap");
   });
 
@@ -56,10 +56,24 @@ describe("Lake Watch", () => {
     const { root, view } = setup();
     for (const id of ["hidden", "few", "control"]) {
       view.select(id);
-      const text = root.querySelector<HTMLElement>('[data-role="lw-detail"]')!.textContent!;
+      const detail = root.querySelector<HTMLElement>('[data-role="lw-detail"]')!.cloneNode(true) as HTMLElement;
+      detail.querySelector('[data-role="lw-method-limits"]')?.remove(); // standing text quotes "0.05 km²" on purpose
+      const text = detail.textContent!;
       expect(text).toContain(`Fixture reason for ${id}.`);
       expect(text).not.toMatch(/\d\s*km²/);
       expect(text).not.toContain("0 km²");
+    }
+  });
+
+  test("standing method limits show for a lake with no limits of its own, and never 'None recorded'", () => {
+    const { root, view } = setup({ ...fixtureLakes, notes: "Fixture build notes." });
+    for (const l of fixtureLakes.lakes) {
+      view.select(l.id);
+      const detail = root.querySelector<HTMLElement>('[data-role="lw-detail"]')!;
+      const method = detail.querySelector<HTMLElement>('[data-role="lw-method-limits"]')!;
+      expect(method.textContent).toContain("Fixture build notes.");
+      expect(method.textContent).toContain("Not validated: frozen lakes, lakes under 0.05 km², and wind-roughened water.");
+      expect(detail.textContent).not.toContain("None recorded");
     }
   });
 
@@ -98,7 +112,9 @@ describe("Lake Watch", () => {
     const { root, view, charts } = setup({ ...fixtureLakes, lakes: [lake] });
     view.select("few");
     expect(charts).toHaveLength(0);
-    const text = root.querySelector<HTMLElement>('[data-role="lw-detail"]')!.textContent!;
+    const detail = root.querySelector<HTMLElement>('[data-role="lw-detail"]')!.cloneNode(true) as HTMLElement;
+    detail.querySelector('[data-role="lw-method-limits"]')?.remove(); // standing text quotes "0.05 km²" on purpose
+    const text = detail.textContent!;
     expect(text).toContain("Fixture reason for few.");
     expect(text).not.toMatch(/\d\s*km²/);
   });
