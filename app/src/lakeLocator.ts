@@ -13,6 +13,8 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
   let map: { remove(): void } | undefined;
   let ro: ResizeObserver | undefined;
   let gone = false;
+  let userMoved = false;
+  let pending: string | undefined;
 
   void (async () => {
     try {
@@ -31,11 +33,15 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
         maxPitch: 0,
       });
       m.touchZoomRotate.disableRotation();
-      m.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "bottom-left");
+      m.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "top-right");
       map = m;
+      m.on("movestart", (e) => {
+        if ((e as { originalEvent?: unknown }).originalEvent) userMoved = true;
+      });
       const fit = (): void => {
         if (!el.clientWidth || !el.clientHeight) return;
         m.resize();
+        if (userMoved) return; // once the person has zoomed or panned, leave their view alone
         const w = Math.min(...lakes.map((l) => l.bounds?.[0] ?? l.lon));
         const e = Math.max(...lakes.map((l) => l.bounds?.[2] ?? l.lon));
         const s = Math.min(...lakes.map((l) => l.bounds?.[1] ?? l.lat));
@@ -53,6 +59,15 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
         m.addSource("frames", { type: "geojson", data: { type: "FeatureCollection", features } });
         m.addLayer({ id: "frames", type: "line", source: "frames", paint: { "line-color": "#4fd1c5", "line-width": 1 } });
       });
+      // Town (for reference): orientation only, not data. Plain text markers, because the blank base style has no fonts for map text.
+      const towns = [["Gilgit", 74.31, 35.92], ["Karimabad / Hunza", 74.66, 36.32], ["Chitral", 71.79, 35.85], ["Skardu", 75.63, 35.3]] as const;
+      for (const [name, lon, lat] of towns) {
+        const t = document.createElement("span");
+        t.className = "lw-town";
+        t.textContent = name;
+        t.setAttribute("aria-hidden", "true");
+        new maplibregl.Marker({ element: t, anchor: "top" }).setLngLat([lon, lat]).addTo(m);
+      }
       for (const l of lakes) {
         const b = document.createElement("button");
         b.type = "button";
@@ -65,6 +80,7 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
         buttons.set(l.id, b);
         new maplibregl.Marker({ element: b }).setLngLat([l.lon, l.lat]).addTo(m);
       }
+      if (pending) for (const [k, b] of buttons) b.toggleAttribute("data-selected", k === pending);
       ro = new ResizeObserver(fit);
       ro.observe(el);
       fit();
@@ -75,6 +91,7 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
 
   return {
     highlight(id) {
+      pending = id; // applied when the markers arrive, if they have not yet
       for (const [k, b] of buttons) b.toggleAttribute("data-selected", k === id);
     },
     destroy() {

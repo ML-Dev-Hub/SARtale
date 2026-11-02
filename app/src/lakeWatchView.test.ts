@@ -92,6 +92,26 @@ describe("Lake Watch", () => {
     expect(d.series.find((s) => s.excluded)!.values.filter((v) => v !== null)).toEqual([9.0]);
   });
 
+  test("too few looks hides the chart and any area number even with series points", () => {
+    const pt = (date: string) => ({ date, track: "156A", area_km2: 1.234, observable_share: 1, excluded: null });
+    const lake: Lake = { ...fixtureLakes.lakes.find((l) => l.id === "few")!, series: [pt("2026-07-01"), pt("2026-07-13")] };
+    const { root, view, charts } = setup({ ...fixtureLakes, lakes: [lake] });
+    view.select("few");
+    expect(charts).toHaveLength(0);
+    const text = root.querySelector<HTMLElement>('[data-role="lw-detail"]')!.textContent!;
+    expect(text).toContain("Fixture reason for few.");
+    expect(text).not.toMatch(/\d\s*km²/);
+  });
+
+  test("every cross-check row for the lake is shown", () => {
+    const row = (s2: string) => ({ lake: "stable", nisar_date: "2026-08-01", nisar_track: "156A", s2_date: s2, s2_id: "x", days_apart: 1, s2_window_cloud_pct: 5, scope: "zone", radar_km2: 1.1, optical_km2: 1.0, area_error_pct: 10, iou: 0.8, zone_valid_share: 1, window_radar_km2: 1, window_optical_km2: 1, window_area_error_pct: 0, window_iou: 0.8 });
+    const { root, view } = setup({ ...fixtureLakes, checks: [row("2026-08-02"), row("2026-08-20")] });
+    view.select("stable");
+    const lines = [...root.querySelectorAll(".lw-check")].map((e) => e.textContent!);
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toContain("One NISAR pass vs one Sentinel-2 scene:");
+  });
+
   test("onBrief receives the selected lake", () => {
     const got: string[] = [];
     const { root, view } = setup(fixtureLakes, { onBrief: (l) => void got.push(l.id) });

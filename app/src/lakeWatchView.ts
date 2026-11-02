@@ -80,9 +80,10 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
   return e;
 }
 
+/** A single-pass comparison, so it carries its own dates instead of looks and noise. */
 function checkLine(c: LakeCheck): string {
   const iou = c.iou === null ? "" : `, overlap (IoU) ${c.iou.toFixed(2)}`;
-  return `Optical cross-check: NISAR ${c.radar_km2.toFixed(3)} km² on ${formatDate(c.nisar_date)} (${c.nisar_track}), Sentinel-2 ${c.optical_km2.toFixed(3)} km² on ${formatDate(c.s2_date)} (${c.days_apart} days apart, ${Math.round(c.s2_window_cloud_pct)}% cloud in the window)${iou}.`;
+  return `One NISAR pass vs one Sentinel-2 scene: NISAR ${c.radar_km2.toFixed(3)} km² on ${formatDate(c.nisar_date)} (${c.nisar_track}), Sentinel-2 ${c.optical_km2.toFixed(3)} km² on ${formatDate(c.s2_date)} (${c.days_apart} days apart, ${Math.round(c.s2_window_cloud_pct)}% cloud in the window)${iou}.`;
 }
 
 export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): LakeWatchHandle {
@@ -98,6 +99,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   if (!has) return { select() {}, destroy: () => void (root.innerHTML = "") };
 
   const looks = lakes.reduce((n, l) => n + l.cloud_window_looks, 0);
+  // k counts lakes with at least one valid look in the cloud window (ruling R-T8a), not all lakes in the file.
   const watched = lakes.filter((l) => l.cloud_window_looks > 0).length;
   q("lw-headline").textContent = `Between SUPARCO's 16 Jun image and its 5 Aug update, NISAR made ${looks} valid looks across ${watched} lakes.`;
 
@@ -195,10 +197,14 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
       pictures(lake),
     );
 
+    // With too few looks or no observable zone the earlier points are not a trend: show the reason, not a chart.
+    const noTrend = lake.status.status === "Not observable" || lake.status.status === "Not enough NISAR looks yet";
     const data = lakeChartData(lake);
     const chartSec = el("section", "lw-section");
     chartSec.append(el("h3", undefined, "Area by track"));
-    if (!data.series.length) {
+    if (noTrend) {
+      chartSec.append(el("p", "lw-none", lake.status.reason));
+    } else if (!data.series.length) {
       chartSec.append(el("p", "lw-none", "No area curve yet"));
     } else if (opts.createChart) {
       const host = el("div", "lw-chart");
@@ -207,8 +213,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     }
     detail.append(chartSec);
 
-    const check = (file?.checks ?? []).find((c) => c.lake === lake.id);
-    if (check) detail.append(el("p", "lw-check", checkLine(check)));
+    for (const check of (file?.checks ?? []).filter((c) => c.lake === lake.id)) detail.append(el("p", "lw-check", checkLine(check)));
     if (lake.limits.length) detail.append(section("Limits", lake.limits));
     if (lake.excluded.length) detail.append(section("Excluded passes", lake.excluded.map((x) => `${x.pass}: ${x.reason}`)));
     if (lake.downstream) detail.append(el("p", "lw-downstream", `Downstream: ${lake.downstream}${lake.downstream_source ? ` (${lake.downstream_source})` : ""}`));

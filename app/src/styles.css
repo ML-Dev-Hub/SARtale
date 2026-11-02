@@ -743,14 +743,14 @@ button { font: inherit; }
     right: 0;
     bottom: 0;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 0;
     margin: 0;
     padding-bottom: env(safe-area-inset-bottom);
     border-top: 1px solid var(--line-strong);
     background: var(--ink-0);
   }
-  .btn.view-btn { min-height: 58px; padding: 0 4px; border: 0; border-radius: 0; font-size: 0.8rem; line-height: 1.15; }
+  .btn.view-btn { min-height: 58px; padding: 0 2px; border: 0; border-radius: 0; font-size: 0.72rem; line-height: 1.15; overflow-wrap: anywhere; }
   .btn.view-btn[aria-pressed="true"] { box-shadow: inset 0 3px 0 var(--teal); background: var(--ink-2); }
   .foot { padding: 5px 10px; font-size: 0.68rem; }
   .evidence-toc ul { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
@@ -855,6 +855,7 @@ button { font: inherit; }
 .lw-status-stable { border-color: var(--teal); color: var(--teal); }
 .lw-status-not-observable, .lw-status-not-enough-nisar-looks-yet, .lw-status-not-seen-this-pass { border-style: dashed; color: var(--muted); }
 .lw-locator { height: 180px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #0b151b; color: var(--muted); font-size: 0.85rem; }
+.lw-town { color: #93a8b0; font-size: 0.7rem; pointer-events: none; padding-top: 3px; text-shadow: 0 0 3px #0b151b; }
 .lw-marker { width: 20px; height: 20px; }
 .lw-marker[data-control="true"] { background: var(--muted); box-shadow: 0 0 0 2px var(--muted); }
 .lw-marker[data-selected] { background: var(--teal); box-shadow: 0 0 0 3px var(--teal); }

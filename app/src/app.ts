@@ -2,7 +2,7 @@ import { heroCopy, storyBeats, type StoryStep } from "./content";
 import { createEvidenceView } from "./evidenceView";
 import { setChangeOverlay, setComposite, setFrame, setStepOverlay, type MapLike } from "./map";
 import { createMissedView } from "./missedView";
-import type { LakesFile } from "./lakes";
+import type { Lake, LakesFile } from "./lakes";
 import { createLakeWatchView, type LakeChartFactory, type LocatorFactory } from "./lakeWatchView";
 import type { Preloader } from "./preload";
 import { createSitesView, type ChartFactory } from "./sitesView";
@@ -42,7 +42,7 @@ export interface AppOptions {
   /** Small map that marks the lakes. */
   createLakeLocator?: LocatorFactory;
   /** Called by "Print lake brief". */
-  onLakeBrief?: (lake: import("./lakes").Lake) => void;
+  onLakeBrief?: (lake: Lake) => void;
   /** Fetches frames in the background so stepping through dates does not stall. Absent in tests. */
   preload?: Preloader;
 }
