@@ -18,6 +18,8 @@ POINT_LABEL = "water area in the search window"
 OUTLINE_LABEL = "water area in the lake outline (buffered 200 m)"
 WATER_RGBA = (0x2b, 0x8c, 0xff, 200)
 SHADOW_RGBA = (128, 128, 128, 120)
+NOTES = ("Areas are water within a 1 km search circle (or outline) and underestimate lakes whose shores sit "
+         "in radar shadow; images are radar-geometry pictures, not georeferenced overlays.")
 NO_LOOKS_REASON = "No valid NISAR pass yet."
 
 
@@ -226,9 +228,28 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path) -> dict:
             "images": images, "bounds": _bounds(xs, ys, epsg, px)}
 
 
+def attabad_gate(doc: dict) -> dict:
+    """Numbers for the Attabad sanity check (R-T5b): attabad's latest valid area vs shisper's."""
+    by_id = {lk["id"]: lk for lk in doc["lakes"]}
+
+    def latest_area(lk):
+        pts = [p for p in lk["series"] if p["excluded"] is None and p["area_km2"] is not None
+               and p["observable_share"] >= config.MIN_OBSERVABLE]
+        return max(pts, key=lambda p: p["date"])["area_km2"] if pts else None
+
+    a, s = by_id.get("attabad"), by_id.get("shisper")
+    a_area, s_area = (latest_area(a) if a else None), (latest_area(s) if s else None)
+    status = a["status"]["status"] if a else None
+    cw = a["cloud_window_looks"] if a else 0
+    ok = (a_area is not None and s_area is not None and a_area >= 2 * s_area
+          and status not in ("Not observable", "Not enough NISAR looks yet") and cw >= 3)
+    return {"attabad_area_km2": a_area, "shisper_area_km2": s_area, "attabad_status": status,
+            "attabad_cloud_window_looks": cw, "pass": ok}
+
+
 def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str) -> dict:
     return {
-        "version": 1, "built": built, "crid": config.CRID, "cloud_window": list(config.CLOUD_WINDOW),
+        "version": 1, "built": built, "notes": NOTES, "crid": config.CRID, "cloud_window": list(config.CLOUD_WINDOW),
         "constants": {"drop_db": config.DROP_DB, "min_looks": config.MIN_LOOKS,
                       "min_observable": config.MIN_OBSERVABLE, "noise_floor_km2": config.NOISE_FLOOR_KM2,
                       "change_factor": config.CHANGE_FACTOR},

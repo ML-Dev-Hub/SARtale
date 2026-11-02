@@ -11,7 +11,7 @@ from sartale.catalog import search_cmr, select_stack, utc_date, write_manifest
 from sartale.change import add_change_scores, build_change
 from sartale.download import download
 from sartale.lake_catalog import Pass, coverage_report, search_lake_passes, select_lake_passes
-from sartale.lakebuild import build_lakes
+from sartale.lakebuild import attabad_gate, build_lakes
 from sartale.lakes import load_lakes
 from sartale.remote import fetch_lake_passes
 from sartale.products import build_products
@@ -216,6 +216,10 @@ def cmd_lakes_build(args) -> None:
         print(f"{lk['id']}: {st['status']}, looks {st['looks']}, cloud-window looks {lk['cloud_window_looks']}, "
               f"track {st['track']}, latest {st['latest_date']}, directions {''.join(lk['directions']) or '-'}, "
               f"excluded {len(lk['excluded'])}, limits {lk['limits']}")
+    g = attabad_gate(doc)
+    print(f"gate: attabad area {g['attabad_area_km2']} km2 vs shisper {g['shisper_area_km2']} km2 (need >= 2x), "
+          f"attabad status {g['attabad_status']}, cloud-window looks {g['attabad_cloud_window_looks']} (need >= 3): "
+          f"{'PASS' if g['pass'] else 'FAIL'}")
     print(f"{len(doc['lakes'])} lakes -> {out / 'lakes.json'}")
 
 

@@ -73,6 +73,11 @@ def test_build_writes_schema_keys(built):
     assert lo < alpha["lon"] < hi and la < alpha["lat"] < ha
 
 
+def test_build_has_notes_field(built):
+    doc, _ = built
+    assert "not georeferenced overlays" in doc["notes"] and "1 km search circle" in doc["notes"]
+
+
 def test_build_json_has_no_nan(built):
     doc, _ = built
     json.dumps(doc, allow_nan=False)
