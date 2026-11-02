@@ -221,6 +221,7 @@
         "beat": 4,
         "label": "One lake in depth",
         "title": "{lake_name} in depth",
+        "noDataTitle": "One lake in depth",
         "body": [
           "{lake_name} has the most valid NISAR looks of the watched lakes: {lake_looks} valid looks, the latest on {lake_latest}.",
           "{lake_sentence}.",

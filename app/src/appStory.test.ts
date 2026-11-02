@@ -715,6 +715,20 @@ describe("the lake story", () => {
     expect(beatId($)).toBe("downstream-peshawar");
   });
 
+  test("no raw {token} shows anywhere in the Story view without lake data or without a watch lake", async () => {
+    const noWatch = { ...fixtureLakes, lakes: fixtureLakes.lakes.map((l) => ({ ...l, role: "control" as const })) };
+    for (const lakes of [null, noWatch]) {
+      const { app, $ } = setupReal(lakeOpts(lakes));
+      await app.settled();
+      $("view-story").click();
+      for (let n = 0; n < 6; n++) {
+        expect($("lakestory-view").textContent).not.toMatch(/\{\w+\}/);
+        if (n < 5) $("ls-next").click();
+      }
+      document.body.innerHTML = "";
+    }
+  });
+
   test("the Peshawar beat opens the Dance view or the guided tour", async () => {
     const { app, $ } = setupReal(lakeOpts(realLakes));
     await app.settled();
@@ -796,5 +810,33 @@ describe("the lake start screen", () => {
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     root.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+describe("the lake start picture", () => {
+  const attabadOf = (lakes: LakesFile) => lakes.lakes.find((l) => l.id === "attabad")!;
+
+  test("shows Attabad's radar picture with the water layer and a dated caption", async () => {
+    const a = attabadOf(realLakes);
+    const { app, $ } = setupReal({ sites: realSites, lakes: realLakes });
+    await app.settled();
+    expect($<HTMLImageElement>("hero-img").getAttribute("src")).toBe(`data/${a.images!.latest_hh}`);
+    expect($<HTMLImageElement>("hero-water").getAttribute("src")).toBe(`data/${a.images!.water}`);
+    expect($<HTMLImageElement>("hero-water").hidden).toBe(false);
+    expect($("hero-caption").textContent).toBe(
+      "Attabad Lake, Hunza: NISAR HH radar on 23 Oct 2026, water in blue. Radar-geometry picture, not a map. Provisional data.",
+    );
+  });
+
+  test("falls back to the Peshawar composite and its caption without lakes or without Attabad images", async () => {
+    const noImages = { ...realLakes, lakes: realLakes.lakes.map((l) => (l.id === "attabad" ? { ...l, images: null } : l)) };
+    for (const lakes of [null, noImages]) {
+      const { app, $ } = setupReal({ sites: realSites, lakes });
+      await app.settled();
+      expect($<HTMLImageElement>("hero-img").getAttribute("src")).toBe("brand/hero-radar.webp");
+      expect($<HTMLImageElement>("hero-water").hidden).toBe(true);
+      expect($("hero-caption").textContent).toContain("26 Jul 2026, 12 Sep 2026 and 18 Oct 2026");
+      document.body.innerHTML = "";
+    }
   });
 });

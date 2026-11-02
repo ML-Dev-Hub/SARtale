@@ -138,6 +138,8 @@ export interface LakeBeat {
   beat: number;
   label: string;
   title: string;
+  /** Used in place of the title when the beat's data is missing. */
+  noDataTitle?: string;
   body: string[];
   quote?: { text: string; cite: string };
   /** Shown instead of the body when lakes.json is not in this build. */

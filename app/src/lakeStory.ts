@@ -57,7 +57,7 @@ export function resolveLakeBeats(file: LakesFile | null): ResolvedBeat[] {
       id: b.id,
       beat: b.beat,
       label: b.label,
-      title: fillTokens(b.title, tokens),
+      title: needsData && b.noDataTitle ? b.noDataTitle : fillTokens(b.title, tokens),
       body: lines.map((t) => fillTokens(t, tokens)).filter((t) => t.trim() !== ""),
       quote: b.quote,
       actions,

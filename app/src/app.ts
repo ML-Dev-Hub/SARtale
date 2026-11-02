@@ -95,6 +95,7 @@ const TEMPLATE = `
     <section class="hero" data-role="hero" aria-labelledby="hero-title">
       <img class="hero-img" data-role="hero-img" src="brand/hero-radar.webp" width="1280" height="704" fetchpriority="high"
            alt="NISAR radar picture of the Peshawar Valley, with the dark Tarbela Reservoir on the right." />
+      <img class="hero-water" data-role="hero-water" width="1280" height="704" alt="" hidden />
       <div class="hero-shade" aria-hidden="true"></div>
       <div class="hero-copy">
         <p class="hero-badge" data-role="hero-maturity"></p>
@@ -384,6 +385,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
       : "A synthetic demonstration of the app. It is not NISAR data.";
   // The picture is the real calibrated composite, so it appears only for calibrated data. The finding needs the
   // build it was written from: its sites and its step map.
+  let heroLakePicture = "";
   const showFinding = !lakeMode && provisional && !!m.change?.step && siteIds.has("tarbela-shore");
   q<HTMLImageElement>("hero-img").hidden = !provisional;
   q("hero-finding").hidden = !showFinding && !lakeMode;
@@ -394,7 +396,23 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     q("hero-screening").textContent = lakeHero.screening;
     q("hero-finding-text").textContent = cloudHeadline(opts.lakes!);
     q("hero-finding-source").textContent = lakeHero.headlineSource;
-    q<HTMLImageElement>("hero-img").alt = "NISAR radar picture of the Peshawar Valley, a sample of what the radar sees through cloud.";
+    const attabad = opts.lakes!.lakes.find((l) => l.id === "attabad");
+    const hh = attabad?.images?.latest_hh;
+    if (attabad && hh) {
+      // R-T10a: a lake picture leads the lake start screen. Without one, the Peshawar composite stays.
+      const img = q<HTMLImageElement>("hero-img");
+      img.src = dataUrl(hh);
+      img.alt = "NISAR HH radar picture of Attabad Lake, Hunza, with the lake dark.";
+      const water = attabad.images?.water;
+      if (water) {
+        const w = q<HTMLImageElement>("hero-water");
+        w.src = dataUrl(water);
+        w.hidden = false;
+      }
+      heroLakePicture = `Attabad Lake, Hunza: NISAR HH radar${attabad.status.latest_date ? ` on ${formatDate(attabad.status.latest_date)}` : ""}${water ? ", water in blue" : ""}. Radar-geometry picture, not a map. Provisional data.`;
+    } else {
+      q<HTMLImageElement>("hero-img").alt = "NISAR radar picture of the Peshawar Valley, a sample of what the radar sees through cloud.";
+    }
     heroEl.classList.add("hero-lakes");
     // The Peshawar chapter moves to a quieter row under the main buttons.
     const start = q("hero-start");
@@ -414,8 +432,8 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   }
   const [cr, cg, cb] = (m.composite_dates ?? []).map(formatDate);
   q("hero-caption").hidden = !provisional;
-  q("hero-caption").textContent =
-    (lakeMode ? "Sample picture, Peshawar Valley. " : "") +
+  q("hero-caption").textContent = heroLakePicture ||
+    (lakeMode && !heroLakePicture ? "Sample picture, Peshawar Valley. " : "") +
     (cr && cg && cb
       ? `NISAR HH on ${cr}, ${cg} and ${cb}, drawn as red, green and blue. Provisional data.`
       : "NISAR HH seasonal composite. Provisional data.");
