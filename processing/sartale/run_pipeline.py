@@ -161,26 +161,46 @@ def cmd_lakes_search(args) -> None:
     print(f"{len(lakes)} lakes -> {out}")
 
 
-def cmd_lakes_fetch(args) -> None:
-    """Cache a window for every selected pass of every lake in the register (restartable)."""
+def fetch_all(lakes, doc: dict, out: Path, session, fetch=fetch_lake_passes) -> list[str]:
+    """Fetch pass by pass so one persistent failure does not stop the run. Returns one note per failed pass."""
     import time
 
-    import requests
-
-    lakes = load_lakes(Path(args.lakes_in))
-    doc = json.loads(Path(args.passes).read_text(encoding="utf-8"))["lakes"]
-    session, t0, total = requests.Session(), time.time(), 0
+    failures, total, t0 = [], 0.0, time.time()
     for lake in lakes:
         if lake.id not in doc:
             print(f"{lake.id}: not in passes.json, run lakes-search first")
             continue
         passes = [Pass(**row) for rows in doc[lake.id].values() for row in rows]
         stats: dict = {}
-        paths = fetch_lake_passes(lake, passes, Path(args.out), session, stats)
+        cached = 0
+        for p in passes:
+            try:
+                cached += len(fetch(lake, [p], out, session, stats))
+            except Exception as e:  # noqa: BLE001 - keep going; the summary lists it
+                note = f"{lake.id} {p.date} {p.key}: {type(e).__name__}"  # no URL: it is signed
+                failures.append(note)
+                print(f"FAILED {note}", flush=True)
         mb = stats.get("fetched", 0) / 1e6
         total += mb
-        print(f"{lake.id}: {len(paths)}/{len(passes)} passes cached, {mb:.1f} MB fetched, {stats.get('requests', 0)} requests", flush=True)
+        print(f"{lake.id}: {cached}/{len(passes)} passes cached, {mb:.1f} MB fetched, {stats.get('requests', 0)} requests", flush=True)
     print(f"total {total:.1f} MB in {time.time() - t0:.0f} s")
+    if failures:
+        print(f"{len(failures)} passes failed (rerun lakes-fetch to retry):")
+        for n in failures:
+            print(f"  {n}")
+    return failures
+
+
+def cmd_lakes_fetch(args) -> None:
+    """Cache a window for every selected pass of every lake in the register (restartable)."""
+    import sys
+
+    import requests
+
+    lakes = load_lakes(Path(args.lakes_in))
+    doc = json.loads(Path(args.passes).read_text(encoding="utf-8"))["lakes"]
+    if fetch_all(lakes, doc, Path(args.out), requests.Session()):
+        sys.exit(1)
 
 
 def main(argv=None) -> None:

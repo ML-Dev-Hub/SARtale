@@ -86,31 +86,55 @@ def test_read_window_matches_local_read_layer(fixture_h5):
 
 
 def test_rangefile_retries_after_disconnect(fixture_h5):
-    s = FakeSession(fixture_h5, fail_first=1)
-    f = remote.RangeFile(s, URL, block=4096)
+    s = FakeSession(fixture_h5)
+    f = remote.RangeFile(s, URL, block=4096)  # constructed fine; now drop the next block read
+    s.fail_first, before = 1, s.calls
     assert f.read() == fixture_h5.read_bytes()
-    assert s.calls > f.requests + 1  # at least one failed attempt was retried
+    assert s.calls - before == f.requests + 1  # one failed attempt, retried
+    assert f.requests >= 1
 
 
 def test_rangefile_reresolves_after_403(fixture_h5):
     s = FakeSession(fixture_h5)
     f = remote.RangeFile(s, URL, block=4096)
-    orig, state = s.get, {"n": 0}
+    orig, seen = s.get, {"n": 0, "resolves": 0}
 
     def get(url, headers=None, **kw):
-        if headers["Range"] != "bytes=0-0" and state["n"] == 0:
-            state["n"] = 1
+        if headers["Range"] == "bytes=0-0":
+            seen["resolves"] += 1
+        elif seen["n"] == 0:
+            seen["n"] = 1
             return FakeResponse(url, 403, {}, b"")
-        return orig(url, headers=headers, **kw)
+        r = orig(url, headers=headers, **kw)
+        if headers["Range"] == "bytes=0-0":
+            r.url = "https://signed.test/renewed"
+        return r
 
     s.get = get
     assert f.read(100) == fixture_h5.read_bytes()[:100]
+    assert seen["resolves"] == 1 and f.url == "https://signed.test/renewed"
 
 
-def test_fetch_leaves_no_partial_cache(tmp_path, fixture_h5):
+def test_fetch_leaves_no_partial_cache_when_connection_never_works(tmp_path, fixture_h5):
     cache = tmp_path / "cache"
     with pytest.raises(requests.ConnectionError):
         remote.fetch_lake_passes(_mk_lake(), [_pass()], cache, FakeSession(fixture_h5, always_fail=True))
+    assert not list(cache.rglob("*.npz")) and not list(cache.rglob("*.npz.part"))
+
+
+def test_fetch_leaves_no_partial_cache(tmp_path, fixture_h5, monkeypatch):
+    cache = tmp_path / "cache"
+    seen = {}
+
+    def boom(fh, **arrays):
+        fh.write(b"half")  # the .part is open and non-empty when the write fails
+        seen["part"] = Path(fh.name)
+        raise OSError("disk dropped")
+
+    monkeypatch.setattr(remote.np, "savez_compressed", boom)
+    with pytest.raises(OSError):
+        remote.fetch_lake_passes(_mk_lake(), [_pass()], cache, FakeSession(fixture_h5))
+    assert seen["part"].name.endswith(".npz.part")
     assert not list(cache.rglob("*.npz")) and not list(cache.rglob("*.npz.part"))
 
 
