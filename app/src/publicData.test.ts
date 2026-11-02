@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import manifestJson from "../public/data/manifest.json";
 import placesJson from "../public/data/overlays/places.geojson?raw";
+import lakesJson from "../public/data/lakes.json";
 import sitesJson from "../public/data/sites.json";
 import { cardFor, findBannedClaims, heroCopy, storyBeats, type StoryQuote } from "./content";
 import { FORECAST_FLAG, INTERFERENCE_FLAG } from "./fixtures";
@@ -105,7 +106,14 @@ describe("the data the app ships (app/public/data)", () => {
     expect(JSON.stringify(manifestJson)).not.toMatch(/synthetic|demo|preview/i);
     expect(dataFiles.some((f) => /demo|synthetic/i.test(f))).toBe(false);
     const frames = dataFiles.filter((f) => f.startsWith("frames/"));
-    expect(dataFiles.sort()).toEqual([...frames, "manifest.json", "overlays/places.geojson", "sites.json"].sort());
+    // Lake images are derived from lakes.json: every file under lakes/ is referenced by an `images` entry, and every
+    // referenced image exists. No lake list is hard-coded, so a rebuild with more lakes keeps passing.
+    const lakeImages = (lakesJson as unknown as { lakes: { images: { latest_hh: string | null; water: string | null } | null }[] }).lakes
+      .flatMap((l) => (l.images ? [l.images.latest_hh, l.images.water] : []))
+      .filter((p): p is string => typeof p === "string");
+    expect(dataFiles.filter((f) => f.startsWith("lakes/")).sort()).toEqual([...lakeImages].sort());
+    const lakeFiles = dataFiles.filter((f) => f.startsWith("lakes/"));
+    expect(dataFiles.sort()).toEqual([...frames, ...lakeFiles, "lakes.json", "manifest.json", "overlays/places.geojson", "sites.json"].sort());
   });
 
   test("the site curves belong to this manifest and cover every built date", () => {
