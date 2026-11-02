@@ -1,0 +1,51 @@
+"""The glacial-lake register: where each lake is, where that came from, and its search box."""
+import json
+import math
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
+
+ROLES = ("watch", "control", "story")
+KM_PER_DEG_LAT = 111.32
+
+
+@dataclass(frozen=True)
+class Lake:
+    id: str
+    name: str
+    lon: float
+    lat: float
+    coord_source: str
+    outline: str | None  # path or URL of a published polygon
+    role: Literal["watch", "control", "story"]
+    downstream: str | None
+    downstream_source: str | None
+
+
+def load_lakes(path: Path) -> list[Lake]:
+    """Read the register. Every lake needs a coordinate source and a known role; ids are unique."""
+    lakes, seen = [], set()
+    for row in json.loads(Path(path).read_text(encoding="utf-8")):
+        lake_id = row.get("id")
+        if not str(row.get("coord_source") or "").strip():
+            raise ValueError(f"Lake {lake_id}: coord_source is required")
+        if row.get("role") not in ROLES:
+            raise ValueError(f"Lake {lake_id}: role must be one of {ROLES}, got {row.get('role')!r}")
+        if lake_id in seen:
+            raise ValueError(f"Duplicate lake id {lake_id}")
+        if row.get("downstream") and not row.get("downstream_source"):
+            raise ValueError(f"Lake {lake_id}: downstream needs a downstream_source")
+        seen.add(lake_id)
+        lakes.append(Lake(
+            id=lake_id, name=row["name"], lon=float(row["lon"]), lat=float(row["lat"]),
+            coord_source=row["coord_source"], outline=row.get("outline"), role=row["role"],
+            downstream=row.get("downstream"), downstream_source=row.get("downstream_source"),
+        ))
+    return lakes
+
+
+def lake_bbox(lake: Lake, half_km: float = 3.0) -> tuple[float, float, float, float]:
+    """(lon_min, lat_min, lon_max, lat_max) of a square `half_km` each side of the lake point."""
+    dlat = half_km / KM_PER_DEG_LAT
+    dlon = half_km / (KM_PER_DEG_LAT * math.cos(math.radians(lake.lat)))
+    return (lake.lon - dlon, lake.lat - dlat, lake.lon + dlon, lake.lat + dlat)

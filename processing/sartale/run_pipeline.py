@@ -1,6 +1,8 @@
-"""SARtale pipeline CLI: search, download, build, change, sites, rebuild, preview."""
+"""SARtale pipeline CLI: search, download, build, change, sites, rebuild, preview, lakes-search."""
 import argparse
 import json
+from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sartale import config
@@ -8,6 +10,8 @@ from sartale.browse import build_preview
 from sartale.catalog import search_cmr, select_stack, utc_date, write_manifest
 from sartale.change import add_change_scores, build_change
 from sartale.download import download
+from sartale.lake_catalog import coverage_report, search_lake_passes, select_lake_passes
+from sartale.lakes import load_lakes
 from sartale.products import build_products
 from sartale.sites import (
     build_sites,
@@ -139,6 +143,23 @@ def cmd_preview(args) -> None:
     print(f"{len(manifest['dates'])} dates, {manifest['pixel_m']} m per pixel -> {Path(args.out_dir) / 'manifest.json'}")
 
 
+def cmd_lakes_search(args) -> None:
+    """Search CMR for the passes over every lake, write passes.json, print one coverage line per lake."""
+    lakes = load_lakes(Path(args.lakes_in))
+    passes = {lake.id: select_lake_passes(search_lake_passes(lake)) for lake in lakes}
+    doc = {
+        "searched": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "lakes": {lid: {k: [asdict(p) for p in v] for k, v in by_key.items()} for lid, by_key in passes.items()},
+    }
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    for row in coverage_report(lakes, passes):
+        tracks = ", ".join(f"{k} x{n}" for k, n in sorted(row["tracks"].items())) or "no passes"
+        print(f"{row['id']} ({row['role']}): {tracks}; enough looks: {'yes' if row['enough_looks'] else 'no'}")
+    print(f"{len(lakes)} lakes -> {out}")
+
+
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(prog="run_pipeline")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -188,6 +209,10 @@ def main(argv=None) -> None:
                    help="CMR footprints JSON: {'footprints': {granule: [[lon, lat] x 4]}}")
     p.add_argument("--out-dir", default=str(REPO_ROOT / "app" / "public" / "data"))
     p.set_defaults(func=cmd_preview)
+    k = sub.add_parser("lakes-search", help="search CMR for NISAR passes over each lake and report coverage")
+    k.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    k.add_argument("--out", default=str(REPO_ROOT / "data" / "lakes" / "passes.json"))
+    k.set_defaults(func=cmd_lakes_search)
     args = parser.parse_args(argv)
     args.func(args)
 
