@@ -1,4 +1,4 @@
-"""SARtale pipeline CLI: search, download, build, change, sites, rebuild, preview, lakes-search."""
+"""SARtale pipeline CLI: search, download, build, change, sites, rebuild, preview, lakes-search, lakes-fetch."""
 import argparse
 import json
 from dataclasses import asdict
@@ -10,8 +10,9 @@ from sartale.browse import build_preview
 from sartale.catalog import search_cmr, select_stack, utc_date, write_manifest
 from sartale.change import add_change_scores, build_change
 from sartale.download import download
-from sartale.lake_catalog import coverage_report, search_lake_passes, select_lake_passes
+from sartale.lake_catalog import Pass, coverage_report, search_lake_passes, select_lake_passes
 from sartale.lakes import load_lakes
+from sartale.remote import fetch_lake_passes
 from sartale.products import build_products
 from sartale.sites import (
     build_sites,
@@ -160,6 +161,28 @@ def cmd_lakes_search(args) -> None:
     print(f"{len(lakes)} lakes -> {out}")
 
 
+def cmd_lakes_fetch(args) -> None:
+    """Cache a window for every selected pass of every lake in the register (restartable)."""
+    import time
+
+    import requests
+
+    lakes = load_lakes(Path(args.lakes_in))
+    doc = json.loads(Path(args.passes).read_text(encoding="utf-8"))["lakes"]
+    session, t0, total = requests.Session(), time.time(), 0
+    for lake in lakes:
+        if lake.id not in doc:
+            print(f"{lake.id}: not in passes.json, run lakes-search first")
+            continue
+        passes = [Pass(**row) for rows in doc[lake.id].values() for row in rows]
+        stats: dict = {}
+        paths = fetch_lake_passes(lake, passes, Path(args.out), session, stats)
+        mb = stats.get("fetched", 0) / 1e6
+        total += mb
+        print(f"{lake.id}: {len(paths)}/{len(passes)} passes cached, {mb:.1f} MB fetched, {stats.get('requests', 0)} requests", flush=True)
+    print(f"total {total:.1f} MB in {time.time() - t0:.0f} s")
+
+
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(prog="run_pipeline")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -213,6 +236,12 @@ def main(argv=None) -> None:
     k.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
     k.add_argument("--out", default=str(REPO_ROOT / "data" / "lakes" / "passes.json"))
     k.set_defaults(func=cmd_lakes_search)
+
+    lf = sub.add_parser("lakes-fetch", help="cache a 6 km window per lake pass over HTTP range requests (restartable)")
+    lf.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    lf.add_argument("--passes", default=str(REPO_ROOT / "data" / "lakes" / "passes.json"))
+    lf.add_argument("--out", default=str(REPO_ROOT / "data" / "lakes"))
+    lf.set_defaults(func=cmd_lakes_fetch)
     args = parser.parse_args(argv)
     args.func(args)
 
