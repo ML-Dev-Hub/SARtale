@@ -385,6 +385,26 @@ On six of eight rows a flagged water-like pixel is many times likelier than chan
 
 **Reading the frames.** Web frames average the 30 m score in 2 x 2 blocks, then apply the threshold, so isolated pixels fade and the map shows fewer than the shares above. The eight frames total 2.8 MB. Score COGs are `data/cog/change_<date>.tif`.
 
+## Lake Watch sources (added 2 Nov 2026)
+
+Lake Watch (`lakes.json`, per-lake images) is built by `run_pipeline lakes-search`, `lakes-fetch`, `lakes-build` and `lakes-check`. OpenStreetMap is **not used** by Lake Watch.
+
+| Item | Use | Licence or terms | Access date |
+|---|---|---|---|
+| NISAR GCOV via HTTPS range reads (ASF, `NISAR_L2_GCOV_PROVISIONAL_V1`, CRID `P05023`, mode 4005, DHDH, Frequency A, HHHH and HVHV) | Small windows (6 km) read from each pass over HTTPS range requests, 232 passes, about 5.4 GB in total. Whole files are not downloaded. Passes from 2026-06-17 only. Windows are cached in `data/lakes/` (git-ignored); only derived data is committed | NASA data, openly available. Provisional product, not validated. Exact citation wording: terms not confirmed | 2026-11-02 |
+| HMAGLOFDB (https://github.com/fidelsteiner/HMAGLOFDB) | Coordinates of four lakes (Rogheli, Yarkhun, Shazore, Bindo Gol), each with the event date recorded in `processing/lakes_in.json` | CC0 1.0 Universal (read from the repository's `LICENSE` file) | 2026-11-02 |
+| Shrestha et al. 2023, ESSD 15:3941 | Table 3 coordinates for Khurdopin, Ghulkin, Karambar and Batura | CC BY 4.0 (stated on the journal article page). Attribution required | 2026-11-02 |
+| Muhammad et al. 2021, doi 10.1080/19475705.2021.1975833 | Shisper map frame (36 21-22 N, 74 34-36 E, Fig. 2) used to place the Shisper search circle. Only the frame is used, no outline | Journal licence: terms not confirmed. Cited, not redistributed | 2026-11-02 |
+| Passu event table, doi:10.1016/j.rcar.2025.03.005 | Coordinate for Passu lake | Journal licence: terms not confirmed. Cited, not redistributed | 2026-11-02 |
+| SUPARCO space4climate, GLOF Status Update, 2 Jul 2026 (space4climate.gov.pk) | One quoted sentence (the cloud-cover statement) and the figures cited in the design. Nothing else is copied | Terms not confirmed. Quoted text only, with the source named | 2026-11-02 |
+| Sentinel-2 L2A via Earth Search | Optical water cross-check (MNDWI) for Attabad, Khurdopin, Passu and Shisper. Only derived areas are kept | Copernicus Sentinel data terms (free, full and open; attribution "Contains modified Copernicus Sentinel data"). Exact legal notice wording: terms not confirmed | 2026-11-02 |
+| Radio Pakistan, 7 May 2022 | Source for the Shisper downstream note (event report). Cited, not copied | Terms not confirmed. Cited only | 2026-11-02 |
+| Attabad coordinates | Chosen by the team on 2 Nov 2026 from lake visibility in NISAR passes | Part of this repository, Apache License 2.0 | Not applicable |
+
+Sentinel-2 cross-check result (from `lakes.json`, `checks`): agreement is poor except at Attabad. Attabad radar 0.218 against optical 0.185 km2 (IoU 0.11); Khurdopin 0.036 against 0.885; Passu 0.048 against 0.239; Shisper (no lake expected) 0.041 against 0.288, where optical also flags water. Areas are water inside a search circle and under-count lakes whose shores sit in radar shadow.
+
+SUPARCO quote, verbatim: "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes." (space4climate.gov.pk, GLOF Status Update, 2 Jul 2026.)
+
 ## Other datasets (planned, not yet used or downloaded)
 
 All of these are listed in the plan (`docs/SARtale-hackathon-plan.md`, section 5). Their licence status has **not** been verified for this project unless stated.
@@ -395,7 +415,7 @@ All of these are listed in the plan (`docs/SARtale-hackathon-plan.md`, section 5
 | HLS (Harmonized Landsat Sentinel-2) | Crop and vegetation check | NASA data, openly available. Specific terms to confirm | Not accessed |
 | NISAR SME2 soil moisture | Stretch goal only. Not fully calibrated | NASA data, openly available. Specific terms to confirm | Not accessed |
 | GPM IMERG | Rain timing | NASA data, openly available. Specific terms to confirm | Not accessed |
-| OpenStreetMap | Roads, bridges, hospitals, schools (the app can load optional overlays from `data/overlays/`; the only overlay in the current build is the hand-entered place labels, not OSM) | ODbL 1.0. Attribution "© OpenStreetMap contributors" is required if used. Share-alike duties to confirm | Not accessed |
+| OpenStreetMap | Not used by Lake Watch or the Peshawar chapter. Planned only for optional roads, bridges, hospitals and schools overlays (the only overlay in the current build is the hand-entered place labels, not OSM) | ODbL 1.0. Attribution "© OpenStreetMap contributors" is required if used. Share-alike duties to confirm | Not accessed |
 | UNOSAT August 2025 flood map | Historical context only | To confirm | Not accessed |
 | WorldPop | Rough population near road links | To confirm | Not accessed |
 | HydroRIVERS and HydroBASINS (HydroSHEDS) | River and catchment context | To confirm | Not accessed |
