@@ -879,3 +879,22 @@ button { font: inherit; }
   .lw-grid { grid-template-columns: 1fr; }
   .lw-headline { font-size: 1rem; }
 }
+
+/* Lake brief: hidden on screen, the only thing shown when printing. */
+.lake-brief { display: none; }
+@media print {
+  @page { size: A4; margin: 16mm; }
+  body > *:not(.lake-brief) { display: none !important; }
+  .lake-brief { display: block; color: #000; background: #fff; font: 10.5pt/1.4 system-ui, sans-serif; }
+  .lake-brief h1 { margin: 0 0 4pt; font-size: 18pt; }
+  .lake-brief h2 { margin: 12pt 0 3pt; font-size: 11pt; border-bottom: 0.5pt solid #888; }
+  .lake-brief p, .lake-brief ul { margin: 0 0 4pt; }
+  .lake-brief ul { padding-left: 16pt; }
+  .lake-brief-meta { color: #333; font-size: 9.5pt; }
+  .lake-brief-status { font-size: 11.5pt; }
+  .lake-brief-passes { width: 100%; border-collapse: collapse; margin-bottom: 4pt; }
+  .lake-brief-passes th, .lake-brief-passes td { border: 0.5pt solid #888; padding: 2pt 5pt; text-align: left; }
+  .lake-brief-passes th:nth-child(n+3), .lake-brief-passes td:nth-child(n+3) { text-align: right; }
+  .lake-brief h2, .lake-brief-passes tr { break-after: avoid; break-inside: avoid; }
+  .lake-brief-footer { margin-top: 14pt; padding-top: 5pt; border-top: 0.5pt solid #000; font-size: 9pt; }
+}

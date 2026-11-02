@@ -5,6 +5,7 @@ import { createUplotChart, createUplotLakeChart } from "./chart";
 import { createLakeLocator } from "./lakeLocator";
 import { loadImage } from "./images";
 import { createPreloader } from "./preload";
+import { printBrief } from "./lakeBrief";
 import { loadLakes } from "./lakes";
 import { sitesForManifest, loadSites } from "./sites";
 import { mountOrShowError, showStartupError } from "./startup";
@@ -15,7 +16,7 @@ const root = document.getElementById("app")!;
 Promise.all([loadManifest("data/manifest.json"), loadSites("data/sites.json"), loadLakes("data/lakes.json")]).then(
   ([m, sites, lakes]) =>
     // Curves from another build (or with no stamp) are dropped: the view then says "No site curves yet".
-    mountOrShowError(root, m, lazyHostFactory(m), { sites: sitesForManifest(sites, m), lakes, createChart: createUplotChart, createLakeChart: createUplotLakeChart, createLakeLocator, preload: createPreloader(loadImage) }),
+    mountOrShowError(root, m, lazyHostFactory(m), { sites: sitesForManifest(sites, m), lakes, createChart: createUplotChart, createLakeChart: createUplotLakeChart, createLakeLocator, onLakeBrief: (lake) => lakes && printBrief(lake, lakes), preload: createPreloader(loadImage) }),
   (err: unknown) =>
     showStartupError(
       root,
