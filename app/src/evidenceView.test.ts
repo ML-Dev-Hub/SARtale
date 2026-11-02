@@ -198,12 +198,14 @@ describe("How we know: lake method", () => {
 
   test("states the two-view rule, the search circle and the data file's own note", () => {
     const { text } = withLakes();
-    expect(text).toMatch(/dark from both an ascending and a descending view/);
-    expect(text).toMatch(/dark from one side only is treated as terrain shadow/i);
+    expect(text).toMatch(/dark in one viewing direction's season median image \(ascending or descending\) but not in the other's/);
+    expect(text).toContain("inside the lake zone, not shadow-prone, and valid");
+    expect(text).toMatch(/robust z-score above 3\.5/);
+    expect(text).toMatch(/that is radar shadow, not water/);
     expect(text).toContain("1 km search circle");
     expect(text).toContain("underestimate lakes whose shores sit in radar shadow");
     expect(text).toContain(realLakes.notes);
-    expect(text).toMatch(/only with its own earlier passes from the same viewing direction/);
+    expect(text).toMatch(/only with its own earlier passes from the same track/);
   });
 
   test("lists every Sentinel-2 cross-check row from lakes.json", () => {
@@ -225,7 +227,7 @@ describe("How we know: lake method", () => {
 
   test("says agreement is poor except at Attabad, that neither source is a clean reference, and that this is not a validation", () => {
     const { text } = withLakes();
-    expect(text).toMatch(/Agreement is poor except at Attabad/);
+    expect(text).toContain("similar only at Attabad, and even there the overlap was low (IoU 0.11); elsewhere the areas disagreed widely");
     expect(text).toMatch(/Shisper/);
     expect(text).toMatch(/ice or shadow/);
     expect(text).toMatch(/neither is a clean reference/);

@@ -64,6 +64,38 @@ describe("statusSentence", () => {
       const s = statusSentence(by(id), 2);
       expect(s).toContain(by(id).status.reason);
       expect(s).not.toMatch(/\b0 km²/);
+      expect(s).not.toContain("search window");
     }
+  });
+  test("a change that rounds to zero never prints as -0.000", () => {
+    const l = by("stable");
+    const s = statusSentence({ ...l, status: { ...l.status, change_km2: -0.0002 } }, 2);
+    expect(s).toContain(" 0.000 km²");
+    expect(s).not.toContain("-0.000");
+  });
+  test("uses the change factor it is given", () => {
+    expect(statusSentence(by("grow-new"), 3)).toContain("change must exceed 3× noise");
+  });
+});
+
+describe("sortLakes tie-break", () => {
+  test("same status and date fall back to name order", () => {
+    const l = fixtureLakes.lakes.find((x) => x.id === "stable")!;
+    const ids = sortLakes([{ ...l, id: "z", name: "Zeta" }, { ...l, id: "a", name: "Alpha" }, { ...l, id: "m", name: "Mu" }]).map((x) => x.id);
+    expect(ids).toEqual(["a", "m", "z"]);
+  });
+});
+
+describe("methodLimits", () => {
+  const mk = (iou: number | null, days = 0) => ({ lake: "x", nisar_date: "2026-08-17", nisar_track: "055A", s2_date: "2026-08-17", s2_id: "s", days_apart: days, s2_window_cloud_pct: 1, scope: "w", radar_km2: 0.1, optical_km2: 0.2, area_error_pct: 1, iou, zone_valid_share: 1, window_radar_km2: 0, window_optical_km2: 0, window_area_error_pct: null, window_iou: null });
+  test("notes, the not-validated list and an IoU range from the checks", () => {
+    const out = methodLimits({ ...fixtureLakes, notes: "N.", checks: [mk(0.0049), mk(0.1137), mk(null)] });
+    expect(out).toEqual([
+      "N.",
+      "Not validated: frozen lakes, lakes under 0.05 km², and wind-roughened water.",
+      "In a same-day check against Sentinel-2, radar water overlapped optical water poorly at every lake checked (IoU 0.005–0.11); treat areas as indicative.",
+    ]);
+    expect(opticalCheckSentence([mk(0.0138, 3)])).toBe("In checks up to 3 days apart against Sentinel-2, radar water overlapped optical water poorly at every lake checked (IoU 0.014); treat areas as indicative.");
+    expect(opticalCheckSentence([mk(null)])).toBeNull();
   });
 });

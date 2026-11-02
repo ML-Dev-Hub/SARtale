@@ -401,9 +401,9 @@ Lake Watch (`lakes.json`, per-lake images) is built by `run_pipeline lakes-searc
 | Radio Pakistan, 7 May 2022 | Source for the Shisper downstream note (event report). Cited, not copied | Terms not confirmed. Cited only | 2026-11-02 |
 | Attabad coordinates | Chosen by the team on 2 Nov 2026 from lake visibility in NISAR passes | Part of this repository, Apache License 2.0 | Not applicable |
 
-Sentinel-2 cross-check result (from `lakes.json`, `checks`): agreement is poor except at Attabad. Attabad radar 0.218 against optical 0.185 km2 (IoU 0.11); Khurdopin 0.036 against 0.885; Passu 0.048 against 0.239; Shisper (no lake expected) 0.041 against 0.288, where optical also flags water. Areas are water inside a search circle and under-count lakes whose shores sit in radar shadow.
+Sentinel-2 cross-check result (from `lakes.json`, `checks`): areas were similar only at Attabad, and even there the overlap was low: Attabad radar 0.218 against optical 0.185 km2 (IoU 0.11); elsewhere the areas disagreed widely: Khurdopin 0.036 against 0.885; Passu 0.048 against 0.239; Shisper (no lake expected) 0.087 against 0.288, where optical also flags water. Areas are water inside a search circle and under-count lakes whose shores sit in radar shadow.
 
-SUPARCO quote, verbatim: "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes." (space4climate.gov.pk, GLOF Status Update, 2 Jul 2026.)
+SUPARCO quote, verbatim: "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days." (space4climate.gov.pk, GLOF Status Update, 2 Jul 2026.)
 
 ## Other datasets (planned, not yet used or downloaded)
 

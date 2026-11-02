@@ -81,6 +81,8 @@ export interface LakesFile {
     noise_floor_km2: number;
     change_factor: number;
     speckle_box: number;
+    /** Robust z-score limit of the second pass screen (absent in older builds). */
+    outlier_z?: number;
   };
   lakes: Lake[];
   checks: LakeCheck[];
@@ -223,6 +225,7 @@ export function lakeTokens(file: LakesFile): Record<string, string> {
   return {
     drop_db: String(c.drop_db),
     speckle_box: String(c.speckle_box),
+    outlier_z: c.outlier_z === undefined ? "the limit in lakes.json" : String(c.outlier_z),
     min_looks: String(c.min_looks),
     min_observable: String(c.min_observable),
     min_observable_pct: String(Math.round(c.min_observable * 100)),

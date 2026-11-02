@@ -20,17 +20,18 @@
       "title": "Lake method",
       "needs": "lakes",
       "paragraphs": [
-        "Lake Watch reads NISAR GCOV passes (provisional product, processing version {crid}), HH and HV, from {cloud_start} on. Calibrated passes only, and one viewing track is never mixed with another. The cloud window for the headline count is {cloud_start} to {cloud_end}, between SUPARCO's 16 Jun image and its 5 Aug update.",
+        "Lake Watch reads NISAR GCOV passes (provisional product, processing version {crid}), HH and HV, from {cloud_start} on. Calibrated passes only, and one viewing track is never mixed with another. The cloud window for the headline count is {cloud_start} to {cloud_end}, while SUPARCO's 2 Jul and 5 Aug updates reported cloud limiting optical imagery. SUPARCO's 2 Jul update rests on one 16 Jun image; its 5 Aug update used images from 6 Jul to 5 Aug and reports 105 lakes unfrozen, up from 40 (space4climate.gov.pk, GLOF monitoring status 5 August 2026).",
         "Water rule. A pixel is dark when both HH and HV are at least {drop_db} dB below the median of the search window in that pass. Each pass is first averaged over a {speckle_box} by {speckle_box} pixel box to calm speckle.",
-        "Two-view rule. A pixel counts as persistent water only if it is dark from both an ascending and a descending view. Dark from one side only is treated as terrain shadow and left out. A single pass is then read as water when it is dark in that pass, inside the lake zone, not terrain shadow, and valid.",
+        "Two-view rule. A pixel is shadow-prone when it is dark in one viewing direction's season median image (ascending or descending) but not in the other's: that is radar shadow, not water. A single pass is then read as water when it is dark in that pass, inside the lake zone, not shadow-prone, and valid.",
         "Each area is the water inside a 1 km search circle around the lake's coordinates, or inside an outline where the lake has one. Lakes larger than the circle are only partly counted, and lakes whose shores sit in radar shadow are underestimated. The data file's own note reads: \"{notes}\""
       ],
       "list": [
         "A pass whose window brightness is far from its own track's median is left out, listed on the lake with its reason, and never read as growth or shrinkage.",
+        "A pass is also left out when the share of dark pixels in its window, or its window-median HV, is an outlier among its own track's passes (robust z-score above {outlier_z}). The 5 Sep 2026 pass on track 156A, anomalous over the Hunza lakes, is left out by hand wherever this test does not already catch it; each lake lists the reason.",
         "A trend needs at least {min_looks} valid looks from the same track. With fewer, the status is Not enough NISAR looks yet.",
         "At least {min_observable_pct}% of the lake zone ({min_observable}) must be observable, not hidden by shadow or missing. Otherwise the status is Not observable, and no area is shown.",
         "Noise is the spread of that lake's own pass-to-pass differences, never below {noise_floor_km2} km². A lake is Growing or Shrinking only when its latest area differs from the median of its earlier same-track looks by more than {change_factor} times that noise.",
-        "The status compares each lake only with its own earlier passes from the same viewing direction. A small change can move a label between passes, so read the numbers and their noise, not only the label."
+        "The status compares each lake only with its own earlier passes from the same track. A small change can move a label between passes, so read the numbers and their noise, not only the label."
       ]
     },
     {
@@ -41,7 +42,7 @@
         "Where a clear Sentinel-2 scene was close in time, we compared one NISAR pass with it inside each lake's 1 km zone. The rows below are copied from the data file."
       ],
       "afterTable": [
-        "Agreement is poor except at Attabad. Sentinel-2 optical water (MNDWI) also flags water at the Shisper site, where there is no lake, probably ice or shadow. So neither is a clean reference.",
+        "Radar and optical areas were similar only at Attabad, and even there the overlap was low (IoU 0.11); elsewhere the areas disagreed widely. Sentinel-2 optical water (MNDWI) also flags water at the Shisper site, where there is no lake, probably ice or shadow. So neither is a clean reference.",
         "This 1 km zone comparison is not a validation of lake extent. It compares two rough water maps of the same small circle, on one date each.",
         "The SUPARCO area comparison was skipped because no SUPARCO lake IDs or locations have been supplied.",
         "Not validated: frozen lakes, lakes under 0.05 km², and wind-roughened water."

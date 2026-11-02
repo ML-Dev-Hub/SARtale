@@ -606,7 +606,7 @@ describe("leaving the story", () => {
 
 const realLakes = lakesJson as unknown as LakesFile;
 const SUPARCO =
-  "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes.";
+  "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days.";
 const BEAT_IDS = ["cloud-gap", "how-radar-sees", "lake-watch", "one-lake", "downstream-peshawar", "limits-next"];
 
 /** A copy of the fixture lakes made of watch lakes with the given looks and latest dates. */
@@ -766,8 +766,8 @@ describe("the lake start screen", () => {
     await app.settled();
     const text = $("hero").textContent!;
     expect(text).toContain("disaster teams in Gilgit-Baltistan and upper Khyber Pakhtunkhwa");
-    expect(text).toMatch(/glacial lakes/);
-    expect(text).toContain("NISAR radar saw change while clouds blocked optical satellites");
+    expect(text).toMatch(/glacial lakes/i);
+    expect(text).toContain("how often NISAR radar looked at each glacial lake while clouds blocked optical satellites, and whether the radar water area moved beyond its own noise");
     expect(text).toContain("Indicative screening on provisional NISAR data; official warnings come from PMD and NDMA.");
     expect($("hero-title").textContent).not.toContain("Peshawar");
     expect($("hero-story").textContent).toBe("Start the story");

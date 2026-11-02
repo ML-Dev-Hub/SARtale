@@ -122,7 +122,7 @@ export const fixtureLakes: LakesFile = {
   notes: "fixture",
   crid: "P05023",
   cloud_window: ["2026-06-17", "2026-08-04"],
-  constants: { drop_db: 3, min_looks: 3, min_observable: 0.5, noise_floor_km2: 0.005, change_factor: 2, speckle_box: 3 },
+  constants: { drop_db: 3, min_looks: 3, min_observable: 0.5, noise_floor_km2: 0.005, change_factor: 2, speckle_box: 3, outlier_z: 3.5 },
   lakes: [
     fixtureLake("control", "Not seen this pass", "2026-10-30", { role: "control" }),
     fixtureLake("hidden", "Not observable", null),

@@ -1,6 +1,6 @@
 {
  "version": 1,
- "built": "2026-11-02T14:03:16Z",
+ "built": "2026-11-02T15:22:59Z",
  "notes": "Areas are water within a 1 km search circle (or outline) and underestimate lakes whose shores sit in radar shadow; images are radar-geometry pictures, not georeferenced overlays.",
  "crid": "P05023",
  "cloud_window": [
@@ -13,7 +13,11 @@
   "min_observable": 0.5,
   "noise_floor_km2": 0.005,
   "change_factor": 2.0,
-  "speckle_box": 3
+  "speckle_box": 3,
+  "bright_pass_db": 3.0,
+  "outlier_z": 3.5,
+  "outlier_share_floor": 0.01,
+  "outlier_hv_floor_db": 1.0
  },
  "lakes": [
   {
@@ -31,10 +35,10 @@
     "status": "Stable",
     "track": "156A",
     "latest_date": "2026-10-23",
-    "looks": 8,
-    "change_km2": -0.014899999999999997,
-    "noise_km2": 0.01549317,
-    "reason": "Track 156A: 0.127 km2 on 2026-10-23 vs median 0.142 of 7 earlier looks (noise 0.015 km2)."
+    "looks": 7,
+    "change_km2": -0.006450000000000011,
+    "noise_km2": 0.012898620000000019,
+    "reason": "Track 156A: 0.128 km2 on 2026-10-23 vs median 0.135 of 6 earlier looks (noise 0.013 km2)."
    },
    "cloud_window_looks": 7,
    "directions": [
@@ -46,169 +50,169 @@
     {
      "date": "2026-06-18",
      "track": "055A",
-     "area_km2": 0.231,
-     "observable_share": 0.6805197286710615,
+     "area_km2": 0.2312,
+     "observable_share": 0.6825260342027324,
      "excluded": null
     },
     {
      "date": "2026-06-25",
      "track": "156A",
-     "area_km2": 0.1626,
-     "observable_share": 0.680678959268813,
+     "area_km2": 0.1637,
+     "observable_share": 0.6826852648004841,
      "excluded": null
     },
     {
      "date": "2026-06-30",
      "track": "055A",
-     "area_km2": 0.2339,
-     "observable_share": 0.6804241903124104,
+     "area_km2": 0.2345,
+     "observable_share": 0.6824304958440814,
      "excluded": null
     },
     {
      "date": "2026-06-30",
      "track": "063D",
-     "area_km2": 0.2952,
-     "observable_share": 0.6395974650488838,
+     "area_km2": 0.2941,
+     "observable_share": 0.6414126938632527,
      "excluded": null
     },
     {
      "date": "2026-07-07",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.6805834209101621,
+     "observable_share": 0.682589726441833,
      "excluded": "window median HH 25.4 dB from the track median"
     },
     {
      "date": "2026-07-12",
      "track": "055A",
-     "area_km2": 0.1874,
-     "observable_share": 0.680487882551511,
+     "area_km2": 0.1873,
+     "observable_share": 0.6824941880831821,
      "excluded": null
     },
     {
      "date": "2026-07-24",
      "track": "055A",
-     "area_km2": 0.2384,
-     "observable_share": 0.680487882551511,
+     "area_km2": 0.2385,
+     "observable_share": 0.6824941880831821,
      "excluded": null
     },
     {
      "date": "2026-07-24",
      "track": "063D",
-     "area_km2": 0.2709,
-     "observable_share": 0.6153944141906309,
+     "area_km2": 0.2696,
+     "observable_share": 0.6170822585267985,
      "excluded": null
     },
     {
      "date": "2026-08-12",
      "track": "156A",
-     "area_km2": 0.1499,
-     "observable_share": 0.6806152670297124,
+     "area_km2": 0.1531,
+     "observable_share": 0.6826215725613834,
      "excluded": null
     },
     {
      "date": "2026-08-17",
      "track": "055A",
-     "area_km2": 0.2183,
-     "observable_share": 0.680487882551511,
+     "area_km2": 0.2184,
+     "observable_share": 0.6824941880831821,
      "excluded": null
     },
     {
      "date": "2026-08-17",
      "track": "063D",
-     "area_km2": 0.2577,
-     "observable_share": 0.6264131715550461,
+     "area_km2": 0.2568,
+     "observable_share": 0.6281647081303143,
      "excluded": null
     },
     {
      "date": "2026-08-24",
      "track": "156A",
-     "area_km2": 0.1417,
-     "observable_share": 0.6805834209101621,
+     "area_km2": 0.1444,
+     "observable_share": 0.682589726441833,
      "excluded": null
     },
     {
      "date": "2026-08-29",
      "track": "055A",
-     "area_km2": 0.2236,
-     "observable_share": 0.680487882551511,
+     "area_km2": 0.2241,
+     "observable_share": 0.6824941880831821,
      "excluded": null
     },
     {
      "date": "2026-09-05",
      "track": "156A",
-     "area_km2": 0.6562,
-     "observable_share": 0.6806471131492627,
-     "excluded": null
+     "area_km2": null,
+     "observable_share": 0.6826534186809338,
+     "excluded": "window dark share 24.1% is an outlier on its track (robust z +3.7, limit 3.5)"
     },
     {
      "date": "2026-09-10",
      "track": "055A",
-     "area_km2": 0.2135,
-     "observable_share": 0.6803604980733098,
+     "area_km2": 0.2136,
+     "observable_share": 0.6823668036049807,
      "excluded": null
     },
     {
      "date": "2026-09-10",
      "track": "063D",
-     "area_km2": 0.2531,
-     "observable_share": 0.6398203878857361,
+     "area_km2": 0.252,
+     "observable_share": 0.641635616700105,
      "excluded": null
     },
     {
      "date": "2026-09-17",
      "track": "156A",
-     "area_km2": 0.1227,
-     "observable_share": 0.6805515747906118,
+     "area_km2": 0.1253,
+     "observable_share": 0.6825578803222827,
      "excluded": null
     },
     {
      "date": "2026-09-22",
      "track": "055A",
-     "area_km2": 0.2032,
-     "observable_share": 0.6804241903124104,
+     "area_km2": 0.2035,
+     "observable_share": 0.6824304958440814,
      "excluded": null
     },
     {
      "date": "2026-09-29",
      "track": "156A",
-     "area_km2": 0.1196,
-     "observable_share": 0.6806152670297124,
+     "area_km2": 0.12,
+     "observable_share": 0.6826215725613834,
      "excluded": null
     },
     {
      "date": "2026-10-04",
      "track": "055A",
-     "area_km2": 0.1963,
-     "observable_share": 0.6804560364319607,
+     "area_km2": 0.1965,
+     "observable_share": 0.6824623419636318,
      "excluded": null
     },
     {
      "date": "2026-10-04",
      "track": "063D",
-     "area_km2": 0.2511,
-     "observable_share": 0.6335148562147702,
+     "area_km2": 0.2498,
+     "observable_share": 0.6351708544313875,
      "excluded": null
     },
     {
      "date": "2026-10-11",
      "track": "156A",
-     "area_km2": 0.1153,
-     "observable_share": 0.680678959268813,
+     "area_km2": 0.1196,
+     "observable_share": 0.6826852648004841,
      "excluded": null
     },
     {
      "date": "2026-10-16",
      "track": "055A",
-     "area_km2": 0.2302,
-     "observable_share": 0.6804241903124104,
+     "area_km2": 0.2304,
+     "observable_share": 0.6824304958440814,
      "excluded": null
     },
     {
      "date": "2026-10-23",
      "track": "156A",
-     "area_km2": 0.1268,
-     "observable_share": 0.6805834209101621,
+     "area_km2": 0.1284,
+     "observable_share": 0.682589726441833,
      "excluded": null
     }
    ],
@@ -216,11 +220,17 @@
     {
      "pass": "2026-07-07_156A",
      "reason": "window median HH 25.4 dB from the track median"
+    },
+    {
+     "pass": "2026-09-05_156A",
+     "reason": "window dark share 24.1% is an outlier on its track (robust z +3.7, limit 3.5)"
     }
    ],
    "images": {
     "latest_hh": "lakes/attabad/latest_hh.webp",
-    "water": "lakes/attabad/water.webp"
+    "water": "lakes/attabad/water.webp",
+    "date": "2026-10-23",
+    "track": "156A"
    },
    "bounds": [
     74.82645972021969,
@@ -244,10 +254,10 @@
     "status": "Stable",
     "track": "156A",
     "latest_date": "2026-10-23",
-    "looks": 8,
-    "change_km2": 0.004399999999999987,
-    "noise_km2": 0.0378063,
-    "reason": "Track 156A: 0.080 km2 on 2026-10-23 vs median 0.076 of 7 earlier looks (noise 0.038 km2)."
+    "looks": 7,
+    "change_km2": 0.005049999999999999,
+    "noise_km2": 0.02831766000000001,
+    "reason": "Track 156A: 0.080 km2 on 2026-10-23 vs median 0.075 of 6 earlier looks (noise 0.028 km2)."
    },
    "cloud_window_looks": 3,
    "directions": [
@@ -259,169 +269,169 @@
     {
      "date": "2026-06-18",
      "track": "055A",
-     "area_km2": 0.0409,
-     "observable_share": 0.0584678061045864,
+     "area_km2": 0.0411,
+     "observable_share": 0.05827683885546962,
      "excluded": null
     },
     {
      "date": "2026-06-25",
      "track": "156A",
-     "area_km2": 0.0939,
-     "observable_share": 0.6459148922626436,
+     "area_km2": 0.0927,
+     "observable_share": 0.6469015563830803,
      "excluded": null
     },
     {
      "date": "2026-06-30",
      "track": "055A",
      "area_km2": 0.0432,
-     "observable_share": 0.05560329736783475,
+     "observable_share": 0.055412330118717976,
      "excluded": null
     },
     {
      "date": "2026-06-30",
      "track": "063D",
-     "area_km2": 0.1,
-     "observable_share": 0.6935293930424266,
+     "area_km2": 0.1022,
+     "observable_share": 0.6930838027944874,
      "excluded": null
     },
     {
      "date": "2026-07-07",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.6470606957573443,
+     "observable_share": 0.648047359877781,
      "excluded": "window median HH 23.7 dB from the track median"
     },
     {
      "date": "2026-07-12",
      "track": "055A",
      "area_km2": 0.0408,
-     "observable_share": 0.05779942073267768,
+     "observable_share": 0.057608453483560904,
      "excluded": null
     },
     {
      "date": "2026-07-24",
      "track": "055A",
      "area_km2": 0.0457,
-     "observable_share": 0.060823068843693304,
+     "observable_share": 0.06066392946942933,
      "excluded": null
     },
     {
      "date": "2026-07-24",
      "track": "063D",
-     "area_km2": 0.1037,
-     "observable_share": 0.6935930487921321,
+     "area_km2": 0.1049,
+     "observable_share": 0.693147458544193,
      "excluded": null
     },
     {
      "date": "2026-08-12",
      "track": "156A",
-     "area_km2": 0.0717,
-     "observable_share": 0.6463923103854355,
+     "area_km2": 0.0736,
+     "observable_share": 0.6473789745058722,
      "excluded": null
     },
     {
      "date": "2026-08-17",
      "track": "055A",
-     "area_km2": 0.0409,
-     "observable_share": 0.0648652089499984,
+     "area_km2": 0.0408,
+     "observable_share": 0.06470606957573442,
      "excluded": null
     },
     {
      "date": "2026-08-17",
      "track": "063D",
-     "area_km2": 0.0854,
-     "observable_share": 0.6934020815430154,
+     "area_km2": 0.0874,
+     "observable_share": 0.6930201470447818,
      "excluded": null
     },
     {
      "date": "2026-08-24",
      "track": "156A",
-     "area_km2": 0.0758,
-     "observable_share": 0.646169515261466,
+     "area_km2": 0.0771,
+     "observable_share": 0.6471561793819026,
      "excluded": null
     },
     {
      "date": "2026-08-29",
      "track": "055A",
-     "area_km2": 0.0428,
-     "observable_share": 0.057958560106941656,
+     "area_km2": 0.0427,
+     "observable_share": 0.05776759285782488,
      "excluded": null
     },
     {
      "date": "2026-09-05",
      "track": "156A",
-     "area_km2": 0.555,
-     "observable_share": 0.6462968267608772,
-     "excluded": null
+     "area_km2": null,
+     "observable_share": 0.6472834908813139,
+     "excluded": "window dark share 30.6% is an outlier on its track (robust z +13.3, limit 3.5)"
     },
     {
      "date": "2026-09-10",
      "track": "055A",
      "area_km2": 0.0391,
-     "observable_share": 0.05528501861930679,
+     "observable_share": 0.055094051370190016,
      "excluded": null
     },
     {
      "date": "2026-09-10",
      "track": "063D",
-     "area_km2": 0.0897,
-     "observable_share": 0.6938158439161017,
+     "area_km2": 0.0917,
+     "observable_share": 0.6933702536681626,
      "excluded": null
     },
     {
      "date": "2026-09-17",
      "track": "156A",
-     "area_km2": 0.0651,
-     "observable_share": 0.646010375887202,
+     "area_km2": 0.0666,
+     "observable_share": 0.6469970400076387,
      "excluded": null
     },
     {
      "date": "2026-09-22",
      "track": "055A",
-     "area_km2": 0.0384,
-     "observable_share": 0.06340112670676978,
+     "area_km2": 0.0385,
+     "observable_share": 0.06324198733250581,
      "excluded": null
     },
     {
      "date": "2026-09-29",
      "track": "156A",
-     "area_km2": 0.0918,
-     "observable_share": 0.6462013431363188,
+     "area_km2": 0.0903,
+     "observable_share": 0.6471880072567555,
      "excluded": null
     },
     {
      "date": "2026-10-04",
      "track": "055A",
-     "area_km2": 0.0404,
-     "observable_share": 0.06177790508927719,
+     "area_km2": 0.0405,
+     "observable_share": 0.06161876571501321,
      "excluded": null
     },
     {
      "date": "2026-10-04",
      "track": "063D",
-     "area_km2": 0.092,
-     "observable_share": 0.6937521881663962,
+     "area_km2": 0.0933,
+     "observable_share": 0.693306597918457,
      "excluded": null
     },
     {
      "date": "2026-10-11",
      "track": "156A",
-     "area_km2": 0.0675,
-     "observable_share": 0.6461058595117604,
+     "area_km2": 0.0691,
+     "observable_share": 0.647092523632197,
      "excluded": null
     },
     {
      "date": "2026-10-16",
      "track": "055A",
-     "area_km2": 0.0385,
-     "observable_share": 0.06133231484133805,
+     "area_km2": 0.0384,
+     "observable_share": 0.06117317546707406,
      "excluded": null
     },
     {
      "date": "2026-10-23",
      "track": "156A",
-     "area_km2": 0.0802,
-     "observable_share": 0.6459148922626436,
+     "area_km2": 0.0804,
+     "observable_share": 0.6469015563830803,
      "excluded": null
     }
    ],
@@ -429,11 +439,17 @@
     {
      "pass": "2026-07-07_156A",
      "reason": "window median HH 23.7 dB from the track median"
+    },
+    {
+     "pass": "2026-09-05_156A",
+     "reason": "window dark share 30.6% is an outlier on its track (robust z +13.3, limit 3.5)"
     }
    ],
    "images": {
     "latest_hh": "lakes/shisper/latest_hh.webp",
-    "water": "lakes/shisper/water.webp"
+    "water": "lakes/shisper/water.webp",
+    "date": "2026-10-23",
+    "track": "156A"
    },
    "bounds": [
     74.54921433068948,
@@ -457,12 +473,12 @@
     "status": "Stable",
     "track": "156A",
     "latest_date": "2026-10-23",
-    "looks": 8,
-    "change_km2": -0.0092,
-    "noise_km2": 0.026612669999999995,
-    "reason": "Track 156A: 0.038 km2 on 2026-10-23 vs median 0.047 of 7 earlier looks (noise 0.027 km2)."
+    "looks": 7,
+    "change_km2": -0.0097,
+    "noise_km2": 0.022238999999999988,
+    "reason": "Track 156A: 0.038 km2 on 2026-10-23 vs median 0.048 of 6 earlier looks (noise 0.022 km2)."
    },
-   "cloud_window_looks": 7,
+   "cloud_window_looks": 6,
    "directions": [
     "A",
     "D"
@@ -472,169 +488,169 @@
     {
      "date": "2026-06-18",
      "track": "055A",
-     "area_km2": 0.0514,
-     "observable_share": 0.8905976374693539,
+     "area_km2": 0.0517,
+     "observable_share": 0.89158467857484,
      "excluded": null
     },
     {
      "date": "2026-06-25",
      "track": "156A",
-     "area_km2": 0.0614,
-     "observable_share": 0.8960422835673576,
+     "area_km2": 0.0647,
+     "observable_share": 0.8970293246728437,
      "excluded": null
     },
     {
      "date": "2026-06-30",
      "track": "055A",
-     "area_km2": 0.0548,
-     "observable_share": 0.8905021173623714,
+     "area_km2": 0.0555,
+     "observable_share": 0.8914891584678575,
      "excluded": null
     },
     {
      "date": "2026-06-30",
      "track": "063D",
-     "area_km2": 0.0737,
-     "observable_share": 0.8936224408571337,
+     "area_km2": 0.0796,
+     "observable_share": 0.8947050020696024,
      "excluded": null
     },
     {
      "date": "2026-07-07",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.8960422835673576,
+     "observable_share": 0.8970293246728437,
      "excluded": "window median HH 20.1 dB from the track median"
     },
     {
      "date": "2026-07-12",
      "track": "055A",
-     "area_km2": 0.0117,
-     "observable_share": 0.8904702773267106,
-     "excluded": null
+     "area_km2": null,
+     "observable_share": 0.8914573184321967,
+     "excluded": "window dark share 6.5% is an outlier on its track (robust z -8.7, limit 3.5)"
     },
     {
      "date": "2026-07-24",
      "track": "055A",
-     "area_km2": 0.0454,
-     "observable_share": 0.8904702773267106,
+     "area_km2": 0.0457,
+     "observable_share": 0.8914573184321967,
      "excluded": null
     },
     {
      "date": "2026-07-24",
      "track": "063D",
-     "area_km2": 0.0659,
-     "observable_share": 0.893781641035438,
+     "area_km2": 0.0719,
+     "observable_share": 0.8948323622122457,
      "excluded": null
     },
     {
      "date": "2026-08-12",
      "track": "156A",
-     "area_km2": 0.0472,
-     "observable_share": 0.8960741236030184,
+     "area_km2": 0.0497,
+     "observable_share": 0.8970611647085045,
      "excluded": null
     },
     {
      "date": "2026-08-17",
      "track": "055A",
-     "area_km2": 0.0475,
-     "observable_share": 0.8905339573980323,
+     "area_km2": 0.048,
+     "observable_share": 0.8915209985035183,
      "excluded": null
     },
     {
      "date": "2026-08-17",
      "track": "063D",
-     "area_km2": 0.0692,
-     "observable_share": 0.8938134810710988,
+     "area_km2": 0.0746,
+     "observable_share": 0.8949278823192282,
      "excluded": null
     },
     {
      "date": "2026-08-24",
      "track": "156A",
-     "area_km2": 0.0445,
-     "observable_share": 0.8960422835673576,
+     "area_km2": 0.045,
+     "observable_share": 0.8970293246728437,
      "excluded": null
     },
     {
      "date": "2026-08-29",
      "track": "055A",
-     "area_km2": 0.0454,
-     "observable_share": 0.8904384372910498,
+     "area_km2": 0.0452,
+     "observable_share": 0.8914254783965359,
      "excluded": null
     },
     {
      "date": "2026-09-05",
      "track": "156A",
-     "area_km2": 0.2019,
-     "observable_share": 0.8960422835673576,
-     "excluded": null
+     "area_km2": null,
+     "observable_share": 0.8970293246728437,
+     "excluded": "anomalous over Hunza lakes; spec \u00a75"
     },
     {
      "date": "2026-09-10",
      "track": "055A",
-     "area_km2": 0.0441,
-     "observable_share": 0.8904384372910498,
+     "area_km2": 0.0443,
+     "observable_share": 0.8914254783965359,
      "excluded": null
     },
     {
      "date": "2026-09-10",
      "track": "063D",
-     "area_km2": 0.0669,
-     "observable_share": 0.8937498009997771,
+     "area_km2": 0.073,
+     "observable_share": 0.8948323622122457,
      "excluded": null
     },
     {
      "date": "2026-09-17",
      "track": "156A",
-     "area_km2": 0.0459,
-     "observable_share": 0.8961059636386792,
+     "area_km2": 0.0461,
+     "observable_share": 0.8970930047441653,
      "excluded": null
     },
     {
      "date": "2026-09-22",
      "track": "055A",
-     "area_km2": 0.0458,
-     "observable_share": 0.890406597255389,
+     "area_km2": 0.0465,
+     "observable_share": 0.8913936383608749,
      "excluded": null
     },
     {
      "date": "2026-09-29",
      "track": "156A",
-     "area_km2": 0.0613,
-     "observable_share": 0.8960422835673576,
+     "area_km2": 0.0626,
+     "observable_share": 0.8970293246728437,
      "excluded": null
     },
     {
      "date": "2026-10-04",
      "track": "055A",
-     "area_km2": 0.0458,
-     "observable_share": 0.890406597255389,
+     "area_km2": 0.0466,
+     "observable_share": 0.8913936383608749,
      "excluded": null
     },
     {
      "date": "2026-10-04",
      "track": "063D",
-     "area_km2": 0.0605,
-     "observable_share": 0.893781641035438,
+     "area_km2": 0.066,
+     "observable_share": 0.8948005221765848,
      "excluded": null
     },
     {
      "date": "2026-10-11",
      "track": "156A",
-     "area_km2": 0.0408,
-     "observable_share": 0.8960422835673576,
+     "area_km2": 0.0432,
+     "observable_share": 0.8970293246728437,
      "excluded": null
     },
     {
      "date": "2026-10-16",
      "track": "055A",
-     "area_km2": 0.0409,
-     "observable_share": 0.8905657974336931,
+     "area_km2": 0.0404,
+     "observable_share": 0.8915528385391792,
      "excluded": null
     },
     {
      "date": "2026-10-23",
      "track": "156A",
-     "area_km2": 0.038,
-     "observable_share": 0.8960422835673576,
+     "area_km2": 0.0382,
+     "observable_share": 0.8970293246728437,
      "excluded": null
     }
    ],
@@ -642,11 +658,21 @@
     {
      "pass": "2026-07-07_156A",
      "reason": "window median HH 20.1 dB from the track median"
+    },
+    {
+     "pass": "2026-07-12_055A",
+     "reason": "window dark share 6.5% is an outlier on its track (robust z -8.7, limit 3.5)"
+    },
+    {
+     "pass": "2026-09-05_156A",
+     "reason": "anomalous over Hunza lakes; spec \u00a75"
     }
    ],
    "images": {
     "latest_hh": "lakes/passu/latest_hh.webp",
-    "water": "lakes/passu/water.webp"
+    "water": "lakes/passu/water.webp",
+    "date": "2026-10-23",
+    "track": "156A"
    },
    "bounds": [
     74.84537883154682,
@@ -671,9 +697,9 @@
     "track": "135D",
     "latest_date": "2026-10-21",
     "looks": 6,
-    "change_km2": -0.0040999999999999995,
-    "noise_km2": 0.022387259999999996,
-    "reason": "Track 135D: 0.038 km2 on 2026-10-21 vs median 0.042 of 5 earlier looks (noise 0.022 km2)."
+    "change_km2": -0.004700000000000003,
+    "noise_km2": 0.02186835,
+    "reason": "Track 135D: 0.038 km2 on 2026-10-21 vs median 0.043 of 5 earlier looks (noise 0.022 km2)."
    },
    "cloud_window_looks": 9,
    "directions": [
@@ -685,204 +711,204 @@
     {
      "date": "2026-06-18",
      "track": "055A",
-     "area_km2": 0.0382,
-     "observable_share": 0.7319348061373909,
+     "area_km2": 0.0375,
+     "observable_share": 0.7328579614184758,
      "excluded": null
     },
     {
      "date": "2026-06-23",
      "track": "135D",
-     "area_km2": 0.0593,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.0604,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-06-25",
      "track": "156A",
-     "area_km2": 0.131,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.1258,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-06-30",
      "track": "055A",
-     "area_km2": 0.0363,
-     "observable_share": 0.7321576367224805,
+     "area_km2": 0.0357,
+     "observable_share": 0.7330807920035652,
      "excluded": null
     },
     {
      "date": "2026-06-30",
      "track": "063D",
-     "area_km2": 0.0771,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.0786,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-07-07",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.7334946202330171,
+     "observable_share": 0.734417775514102,
      "excluded": "window median HH 18.7 dB from the track median"
     },
     {
      "date": "2026-07-12",
      "track": "055A",
-     "area_km2": 0.0472,
-     "observable_share": 0.7320939708410263,
+     "area_km2": 0.0474,
+     "observable_share": 0.7330171261221111,
      "excluded": null
     },
     {
      "date": "2026-07-17",
      "track": "135D",
-     "area_km2": 0.0397,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.0402,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-07-24",
      "track": "055A",
-     "area_km2": 0.055,
-     "observable_share": 0.7320621379002993,
+     "area_km2": 0.0543,
+     "observable_share": 0.7329852931813841,
      "excluded": null
     },
     {
      "date": "2026-07-24",
      "track": "063D",
-     "area_km2": 0.0578,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.0594,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-08-10",
      "track": "135D",
-     "area_km2": 0.0291,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.0301,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-08-12",
      "track": "156A",
-     "area_km2": 0.1239,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.1208,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-08-17",
      "track": "055A",
      "area_km2": 0.0382,
-     "observable_share": 0.7320303049595722,
+     "observable_share": 0.732953460240657,
      "excluded": null
     },
     {
      "date": "2026-08-17",
      "track": "063D",
-     "area_km2": 0.0543,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.0555,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-08-24",
      "track": "156A",
-     "area_km2": 0.1615,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.16,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-08-29",
      "track": "055A",
-     "area_km2": 0.034,
-     "observable_share": 0.7323168014261158,
+     "area_km2": 0.0334,
+     "observable_share": 0.7332399567072007,
      "excluded": null
     },
     {
      "date": "2026-09-03",
      "track": "135D",
-     "area_km2": 0.049,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.0495,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-09-05",
      "track": "156A",
-     "area_km2": 0.1837,
-     "observable_share": 0.7334946202330171,
-     "excluded": null
+     "area_km2": null,
+     "observable_share": 0.734417775514102,
+     "excluded": "anomalous over Hunza lakes; spec \u00a75"
     },
     {
      "date": "2026-09-10",
      "track": "055A",
-     "area_km2": 0.0359,
-     "observable_share": 0.7320621379002993,
+     "area_km2": 0.0355,
+     "observable_share": 0.7329852931813841,
      "excluded": null
     },
     {
      "date": "2026-09-10",
      "track": "063D",
-     "area_km2": 0.0574,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.0581,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-09-17",
      "track": "156A",
-     "area_km2": 0.1625,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.1633,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-09-22",
      "track": "055A",
-     "area_km2": 0.032,
-     "observable_share": 0.7322213026039346,
+     "area_km2": 0.0317,
+     "observable_share": 0.7331444578850194,
      "excluded": null
     },
     {
      "date": "2026-09-27",
      "track": "135D",
-     "area_km2": 0.0418,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.0425,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-09-29",
      "track": "156A",
-     "area_km2": 0.1291,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.1264,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-10-04",
      "track": "055A",
-     "area_km2": 0.0339,
-     "observable_share": 0.7320303049595722,
+     "area_km2": 0.0337,
+     "observable_share": 0.732953460240657,
      "excluded": null
     },
     {
      "date": "2026-10-04",
      "track": "063D",
-     "area_km2": 0.0504,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.052,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-10-11",
      "track": "156A",
-     "area_km2": 0.1152,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.1151,
+     "observable_share": 0.734417775514102,
      "excluded": null
     },
     {
      "date": "2026-10-16",
      "track": "055A",
-     "area_km2": 0.0308,
-     "observable_share": 0.731998472018845,
+     "area_km2": 0.0307,
+     "observable_share": 0.7329216272999299,
      "excluded": null
     },
     {
      "date": "2026-10-21",
      "track": "135D",
-     "area_km2": 0.0377,
-     "observable_share": 0.7114980581906156,
+     "area_km2": 0.0378,
+     "observable_share": 0.712166549945884,
      "excluded": null
     }
    ],
@@ -890,11 +916,17 @@
     {
      "pass": "2026-07-07_156A",
      "reason": "window median HH 18.7 dB from the track median"
+    },
+    {
+     "pass": "2026-09-05_156A",
+     "reason": "anomalous over Hunza lakes; spec \u00a75"
     }
    ],
    "images": {
     "latest_hh": "lakes/khurdopin/latest_hh.webp",
-    "water": "lakes/khurdopin/water.webp"
+    "water": "lakes/khurdopin/water.webp",
+    "date": "2026-10-21",
+    "track": "135D"
    },
    "bounds": [
     75.43622431926968,
@@ -918,12 +950,12 @@
     "status": "Stable",
     "track": "156A",
     "latest_date": "2026-10-23",
-    "looks": 8,
-    "change_km2": -0.010800000000000032,
-    "noise_km2": 0.05255817000000005,
-    "reason": "Track 156A: 0.467 km2 on 2026-10-23 vs median 0.478 of 7 earlier looks (noise 0.053 km2)."
+    "looks": 7,
+    "change_km2": -0.012149999999999994,
+    "noise_km2": 0.04655363999999997,
+    "reason": "Track 156A: 0.467 km2 on 2026-10-23 vs median 0.479 of 6 earlier looks (noise 0.047 km2)."
    },
-   "cloud_window_looks": 7,
+   "cloud_window_looks": 6,
    "directions": [
     "A",
     "D"
@@ -933,169 +965,169 @@
     {
      "date": "2026-06-18",
      "track": "055A",
-     "area_km2": 0.5385,
-     "observable_share": 0.8659856151740819,
+     "area_km2": 0.5378,
+     "observable_share": 0.8652536439437337,
      "excluded": null
     },
     {
      "date": "2026-06-25",
      "track": "156A",
-     "area_km2": 0.5217,
-     "observable_share": 0.9112723569473618,
+     "area_km2": 0.5207,
+     "observable_share": 0.9105403857170136,
      "excluded": null
     },
     {
      "date": "2026-06-30",
      "track": "055A",
-     "area_km2": 0.5401,
-     "observable_share": 0.8653809432881421,
+     "area_km2": 0.5399,
+     "observable_share": 0.8646489720577939,
      "excluded": null
     },
     {
      "date": "2026-06-30",
      "track": "063D",
-     "area_km2": 0.5451,
-     "observable_share": 0.9304309082808223,
+     "area_km2": 0.5457,
+     "observable_share": 0.9296989370504742,
      "excluded": null
     },
     {
      "date": "2026-07-07",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.9111132327668513,
+     "observable_share": 0.9103812615365031,
      "excluded": "window median HH 22.0 dB from the track median"
     },
     {
      "date": "2026-07-12",
      "track": "055A",
-     "area_km2": 0.489,
-     "observable_share": 0.8661129145184903,
-     "excluded": null
+     "area_km2": null,
+     "observable_share": 0.8653809432881421,
+     "excluded": "window dark share 12.0% is an outlier on its track (robust z -5.2, limit 3.5)"
     },
     {
      "date": "2026-07-24",
      "track": "055A",
-     "area_km2": 0.5353,
-     "observable_share": 0.8657946661574693,
+     "area_km2": 0.5351,
+     "observable_share": 0.8650626949271212,
      "excluded": null
     },
     {
      "date": "2026-07-24",
      "track": "063D",
-     "area_km2": 0.5365,
-     "observable_share": 0.9304309082808223,
+     "area_km2": 0.5368,
+     "observable_share": 0.9296989370504742,
      "excluded": null
     },
     {
      "date": "2026-08-12",
      "track": "156A",
-     "area_km2": 0.4885,
-     "observable_share": 0.9111450576029534,
+     "area_km2": 0.4874,
+     "observable_share": 0.9104130863726052,
      "excluded": null
     },
     {
      "date": "2026-08-17",
      "track": "055A",
-     "area_km2": 0.5324,
-     "observable_share": 0.8658264909935713,
+     "area_km2": 0.5323,
+     "observable_share": 0.8650945197632233,
      "excluded": null
     },
     {
      "date": "2026-08-17",
      "track": "063D",
-     "area_km2": 0.5367,
-     "observable_share": 0.9304309082808223,
+     "area_km2": 0.537,
+     "observable_share": 0.9296989370504742,
      "excluded": null
     },
     {
      "date": "2026-08-24",
      "track": "156A",
-     "area_km2": 0.4813,
-     "observable_share": 0.9112405321112597,
+     "area_km2": 0.4804,
+     "observable_share": 0.9105085608809115,
      "excluded": null
     },
     {
      "date": "2026-08-29",
      "track": "055A",
-     "area_km2": 0.5312,
-     "observable_share": 0.8664311628795112,
+     "area_km2": 0.5306,
+     "observable_share": 0.865699191649163,
      "excluded": null
     },
     {
      "date": "2026-09-05",
      "track": "156A",
-     "area_km2": 0.2589,
-     "observable_share": 0.9115587804722806,
-     "excluded": null
+     "area_km2": null,
+     "observable_share": 0.9108268092419324,
+     "excluded": "anomalous over Hunza lakes; spec \u00a75"
     },
     {
      "date": "2026-09-10",
      "track": "055A",
-     "area_km2": 0.5271,
-     "observable_share": 0.8660492648462861,
+     "area_km2": 0.5265,
+     "observable_share": 0.8653172936159379,
      "excluded": null
     },
     {
      "date": "2026-09-10",
      "track": "063D",
-     "area_km2": 0.5261,
-     "observable_share": 0.9304309082808223,
+     "area_km2": 0.5265,
+     "observable_share": 0.9296989370504742,
      "excluded": null
     },
     {
      "date": "2026-09-17",
      "track": "156A",
-     "area_km2": 0.4497,
-     "observable_share": 0.9111768824390555,
+     "area_km2": 0.449,
+     "observable_share": 0.9104449112087073,
      "excluded": null
     },
     {
      "date": "2026-09-22",
      "track": "055A",
-     "area_km2": 0.5253,
-     "observable_share": 0.8664311628795112,
+     "area_km2": 0.5249,
+     "observable_share": 0.865699191649163,
      "excluded": null
     },
     {
      "date": "2026-09-29",
      "track": "156A",
-     "area_km2": 0.4782,
-     "observable_share": 0.9107949844058303,
+     "area_km2": 0.4775,
+     "observable_share": 0.9100630131754821,
      "excluded": null
     },
     {
      "date": "2026-10-04",
      "track": "055A",
-     "area_km2": 0.5219,
-     "observable_share": 0.8656355419769588,
+     "area_km2": 0.5216,
+     "observable_share": 0.8649035707466106,
      "excluded": null
     },
     {
      "date": "2026-10-04",
      "track": "063D",
-     "area_km2": 0.5119,
-     "observable_share": 0.9304309082808223,
+     "area_km2": 0.5123,
+     "observable_share": 0.9296989370504742,
      "excluded": null
     },
     {
      "date": "2026-10-11",
      "track": "156A",
-     "area_km2": 0.4405,
-     "observable_share": 0.9113360066195659,
+     "area_km2": 0.4398,
+     "observable_share": 0.9106040353892177,
      "excluded": null
     },
     {
      "date": "2026-10-16",
      "track": "055A",
-     "area_km2": 0.5216,
-     "observable_share": 0.8655082426325504,
+     "area_km2": 0.5209,
+     "observable_share": 0.8647762714022023,
      "excluded": null
     },
     {
      "date": "2026-10-23",
      "track": "156A",
-     "area_km2": 0.4674,
-     "observable_share": 0.9112087072751576,
+     "area_km2": 0.4668,
+     "observable_share": 0.9104767360448094,
      "excluded": null
     }
    ],
@@ -1103,11 +1135,21 @@
     {
      "pass": "2026-07-07_156A",
      "reason": "window median HH 22.0 dB from the track median"
+    },
+    {
+     "pass": "2026-07-12_055A",
+     "reason": "window dark share 12.0% is an outlier on its track (robust z -5.2, limit 3.5)"
+    },
+    {
+     "pass": "2026-09-05_156A",
+     "reason": "anomalous over Hunza lakes; spec \u00a75"
     }
    ],
    "images": {
     "latest_hh": "lakes/ghulkin/latest_hh.webp",
-    "water": "lakes/ghulkin/water.webp"
+    "water": "lakes/ghulkin/water.webp",
+    "date": "2026-10-23",
+    "track": "156A"
    },
    "bounds": [
     74.84645666739493,
@@ -1131,10 +1173,10 @@
     "status": "Stable",
     "track": "156A",
     "latest_date": "2026-10-23",
-    "looks": 8,
-    "change_km2": 0.0023999999999999855,
-    "noise_km2": 0.021349440000000004,
-    "reason": "Track 156A: 0.130 km2 on 2026-10-23 vs median 0.128 of 7 earlier looks (noise 0.021 km2)."
+    "looks": 7,
+    "change_km2": 0.004049999999999998,
+    "noise_km2": 0.011119499999999989,
+    "reason": "Track 156A: 0.126 km2 on 2026-10-23 vs median 0.122 of 6 earlier looks (noise 0.011 km2)."
    },
    "cloud_window_looks": 3,
    "directions": [
@@ -1146,99 +1188,99 @@
     {
      "date": "2026-06-25",
      "track": "156A",
-     "area_km2": 0.1437,
-     "observable_share": 0.8788399707127622,
+     "area_km2": 0.1409,
+     "observable_share": 0.877662114411231,
      "excluded": null
     },
     {
      "date": "2026-06-30",
      "track": "063D",
-     "area_km2": 0.1521,
-     "observable_share": 0.8904593639575972,
+     "area_km2": 0.1517,
+     "observable_share": 0.889281507656066,
      "excluded": null
     },
     {
      "date": "2026-07-07",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.8788081367586668,
+     "observable_share": 0.8776302804571355,
      "excluded": "window median HH 34.3 dB from the track median"
     },
     {
      "date": "2026-07-24",
      "track": "063D",
-     "area_km2": 0.1497,
-     "observable_share": 0.8904593639575972,
+     "area_km2": 0.1493,
+     "observable_share": 0.889281507656066,
      "excluded": null
     },
     {
      "date": "2026-08-12",
      "track": "156A",
-     "area_km2": 0.1358,
-     "observable_share": 0.8787126348963805,
+     "area_km2": 0.1349,
+     "observable_share": 0.8775347785948493,
      "excluded": null
     },
     {
      "date": "2026-08-17",
      "track": "063D",
      "area_km2": 0.1494,
-     "observable_share": 0.8904593639575972,
+     "observable_share": 0.889281507656066,
      "excluded": null
     },
     {
      "date": "2026-08-24",
      "track": "156A",
-     "area_km2": 0.1163,
-     "observable_share": 0.8788718046668577,
+     "area_km2": 0.1155,
+     "observable_share": 0.8776939483653264,
      "excluded": null
     },
     {
      "date": "2026-09-05",
      "track": "156A",
-     "area_km2": 0.4279,
-     "observable_share": 0.8786489669881896,
-     "excluded": null
+     "area_km2": null,
+     "observable_share": 0.8774711106866584,
+     "excluded": "window dark share 26.5% is an outlier on its track (robust z +16.1, limit 3.5)"
     },
     {
      "date": "2026-09-10",
      "track": "063D",
-     "area_km2": 0.1311,
-     "observable_share": 0.8904593639575972,
+     "area_km2": 0.1314,
+     "observable_share": 0.889281507656066,
      "excluded": null
     },
     {
      "date": "2026-09-17",
      "track": "156A",
-     "area_km2": 0.1187,
-     "observable_share": 0.8786171330340942,
+     "area_km2": 0.1172,
+     "observable_share": 0.877439276732563,
      "excluded": null
     },
     {
      "date": "2026-09-29",
      "track": "156A",
-     "area_km2": 0.128,
-     "observable_share": 0.8788399707127622,
+     "area_km2": 0.1258,
+     "observable_share": 0.877662114411231,
      "excluded": null
     },
     {
      "date": "2026-10-04",
      "track": "063D",
-     "area_km2": 0.1298,
-     "observable_share": 0.8904593639575972,
+     "area_km2": 0.1299,
+     "observable_share": 0.889281507656066,
      "excluded": null
     },
     {
      "date": "2026-10-11",
      "track": "156A",
-     "area_km2": 0.1198,
-     "observable_share": 0.8786171330340942,
+     "area_km2": 0.1183,
+     "observable_share": 0.877439276732563,
      "excluded": null
     },
     {
      "date": "2026-10-23",
      "track": "156A",
-     "area_km2": 0.1304,
-     "observable_share": 0.8789036386209531,
+     "area_km2": 0.1261,
+     "observable_share": 0.8777257823194219,
      "excluded": null
     }
    ],
@@ -1246,11 +1288,17 @@
     {
      "pass": "2026-07-07_156A",
      "reason": "window median HH 34.3 dB from the track median"
+    },
+    {
+     "pass": "2026-09-05_156A",
+     "reason": "window dark share 26.5% is an outlier on its track (robust z +16.1, limit 3.5)"
     }
    ],
    "images": {
     "latest_hh": "lakes/karambar/latest_hh.webp",
-    "water": "lakes/karambar/water.webp"
+    "water": "lakes/karambar/water.webp",
+    "date": "2026-10-23",
+    "track": "156A"
    },
    "bounds": [
     74.04572223277867,
@@ -1274,12 +1322,12 @@
     "status": "Stable",
     "track": "156A",
     "latest_date": "2026-10-23",
-    "looks": 8,
-    "change_km2": -0.0076999999999999985,
-    "noise_km2": 0.007264740000000002,
-    "reason": "Track 156A: 0.014 km2 on 2026-10-23 vs median 0.021 of 7 earlier looks (noise 0.007 km2)."
+    "looks": 7,
+    "change_km2": -0.007949999999999999,
+    "noise_km2": 0.005189100000000005,
+    "reason": "Track 156A: 0.015 km2 on 2026-10-23 vs median 0.023 of 6 earlier looks (noise 0.005 km2)."
    },
-   "cloud_window_looks": 7,
+   "cloud_window_looks": 6,
    "directions": [
     "A",
     "D"
@@ -1289,169 +1337,169 @@
     {
      "date": "2026-06-18",
      "track": "055A",
-     "area_km2": 0.0229,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0239,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-06-25",
      "track": "156A",
-     "area_km2": 0.0293,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0319,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-06-30",
      "track": "055A",
-     "area_km2": 0.023,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0235,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-06-30",
      "track": "063D",
      "area_km2": 0.0446,
-     "observable_share": 0.8554788198975207,
+     "observable_share": 0.8567518538557016,
      "excluded": null
     },
     {
      "date": "2026-07-07",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.8613666019541071,
+     "observable_share": 0.8628305910060151,
      "excluded": "window median HH 16.7 dB from the track median"
     },
     {
      "date": "2026-07-12",
      "track": "055A",
-     "area_km2": 0.0261,
-     "observable_share": 0.8613666019541071,
-     "excluded": null
+     "area_km2": null,
+     "observable_share": 0.8628305910060151,
+     "excluded": "window dark share 9.8% is an outlier on its track (robust z -5.0, limit 3.5)"
     },
     {
      "date": "2026-07-24",
      "track": "055A",
-     "area_km2": 0.028,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0287,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-07-24",
      "track": "063D",
-     "area_km2": 0.0118,
-     "observable_share": 0.8554151681996117,
+     "area_km2": 0.0119,
+     "observable_share": 0.8566882021577925,
      "excluded": null
     },
     {
      "date": "2026-08-12",
      "track": "156A",
-     "area_km2": 0.0215,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0242,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-08-17",
      "track": "055A",
-     "area_km2": 0.0127,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0124,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-08-17",
      "track": "063D",
      "area_km2": 0.0278,
-     "observable_share": 0.8553515165017027,
+     "observable_share": 0.8566245504598835,
      "excluded": null
     },
     {
      "date": "2026-08-24",
      "track": "156A",
-     "area_km2": 0.0222,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0253,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-08-29",
      "track": "055A",
-     "area_km2": 0.0164,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0151,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-09-05",
      "track": "156A",
-     "area_km2": 0.2684,
-     "observable_share": 0.8613666019541071,
-     "excluded": null
+     "area_km2": null,
+     "observable_share": 0.8628305910060151,
+     "excluded": "anomalous over Hunza lakes; spec \u00a75"
     },
     {
      "date": "2026-09-10",
      "track": "055A",
-     "area_km2": 0.0156,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0144,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-09-10",
      "track": "063D",
-     "area_km2": 0.0206,
-     "observable_share": 0.8554469940485663,
+     "area_km2": 0.0207,
+     "observable_share": 0.8567200280067471,
      "excluded": null
     },
     {
      "date": "2026-09-17",
      "track": "156A",
-     "area_km2": 0.019,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0206,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-09-22",
      "track": "055A",
-     "area_km2": 0.0143,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0127,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-09-29",
      "track": "156A",
-     "area_km2": 0.0185,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0192,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-10-04",
      "track": "055A",
-     "area_km2": 0.0164,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0149,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-10-04",
      "track": "063D",
      "area_km2": 0.0258,
-     "observable_share": 0.8556379491422934,
+     "observable_share": 0.8569109831004742,
      "excluded": null
     },
     {
      "date": "2026-10-11",
      "track": "156A",
-     "area_km2": 0.0205,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0227,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-10-16",
      "track": "055A",
-     "area_km2": 0.0105,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0091,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     },
     {
      "date": "2026-10-23",
      "track": "156A",
-     "area_km2": 0.0138,
-     "observable_share": 0.8613666019541071,
+     "area_km2": 0.0155,
+     "observable_share": 0.8628305910060151,
      "excluded": null
     }
    ],
@@ -1459,11 +1507,21 @@
     {
      "pass": "2026-07-07_156A",
      "reason": "window median HH 16.7 dB from the track median"
+    },
+    {
+     "pass": "2026-07-12_055A",
+     "reason": "window dark share 9.8% is an outlier on its track (robust z -5.0, limit 3.5)"
+    },
+    {
+     "pass": "2026-09-05_156A",
+     "reason": "anomalous over Hunza lakes; spec \u00a75"
     }
    ],
    "images": {
     "latest_hh": "lakes/batura/latest_hh.webp",
-    "water": "lakes/batura/water.webp"
+    "water": "lakes/batura/water.webp",
+    "date": "2026-10-23",
+    "track": "156A"
    },
    "bounds": [
     74.81633904421516,
@@ -1608,7 +1666,9 @@
    "excluded": [],
    "images": {
     "latest_hh": "lakes/rogheli/latest_hh.webp",
-    "water": "lakes/rogheli/water.webp"
+    "water": "lakes/rogheli/water.webp",
+    "date": "2026-10-23",
+    "track": "164D"
    },
    "bounds": [
     71.93268771189852,
@@ -1632,10 +1692,10 @@
     "status": "Stable",
     "track": "156A",
     "latest_date": "2026-10-23",
-    "looks": 8,
-    "change_km2": 0.10510000000000003,
-    "noise_km2": 0.11920104000000004,
-    "reason": "Track 156A: 0.246 km2 on 2026-10-23 vs median 0.141 of 7 earlier looks (noise 0.119 km2)."
+    "looks": 7,
+    "change_km2": 0.09240000000000001,
+    "noise_km2": 0.15700734,
+    "reason": "Track 156A: 0.252 km2 on 2026-10-23 vs median 0.160 of 6 earlier looks (noise 0.157 km2)."
    },
    "cloud_window_looks": 6,
    "directions": [
@@ -1647,169 +1707,169 @@
     {
      "date": "2026-06-25",
      "track": "156A",
-     "area_km2": 0.3792,
-     "observable_share": 0.8460388164174356,
+     "area_km2": 0.3878,
+     "observable_share": 0.8479796372892141,
      "excluded": null
     },
     {
      "date": "2026-06-25",
      "track": "164D",
-     "area_km2": 0.3848,
-     "observable_share": 0.8499204581609927,
+     "area_km2": 0.3914,
+     "observable_share": 0.8513522112631244,
      "excluded": null
     },
     {
      "date": "2026-07-02",
      "track": "084A",
      "area_km2": 0.0849,
-     "observable_share": 0.8529748647788737,
+     "observable_share": 0.8549156856506522,
      "excluded": null
     },
     {
      "date": "2026-07-07",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.8462297168310531,
+     "observable_share": 0.8481705377028317,
      "excluded": "window median HH 4.6 dB from the track median"
     },
     {
      "date": "2026-07-14",
      "track": "084A",
-     "area_km2": 0.3349,
-     "observable_share": 0.852879414572065,
+     "area_km2": 0.3427,
+     "observable_share": 0.8548202354438434,
      "excluded": null
     },
     {
      "date": "2026-07-19",
      "track": "164D",
-     "area_km2": 0.262,
-     "observable_share": 0.8499204581609927,
+     "area_km2": 0.2735,
+     "observable_share": 0.8513840279987274,
      "excluded": null
     },
     {
      "date": "2026-07-26",
      "track": "084A",
-     "area_km2": 0.2251,
-     "observable_share": 0.8530703149856824,
+     "area_km2": 0.2288,
+     "observable_share": 0.855011135857461,
      "excluded": null
     },
     {
      "date": "2026-08-12",
      "track": "156A",
-     "area_km2": 0.1763,
-     "observable_share": 0.8461342666242444,
+     "area_km2": 0.1786,
+     "observable_share": 0.8480750874960229,
      "excluded": null
     },
     {
      "date": "2026-08-12",
      "track": "164D",
-     "area_km2": 0.2078,
-     "observable_share": 0.8499840916321986,
+     "area_km2": 0.2191,
+     "observable_share": 0.8514794782055362,
      "excluded": null
     },
     {
      "date": "2026-08-19",
      "track": "084A",
-     "area_km2": 0.1088,
-     "observable_share": 0.8529430480432708,
+     "area_km2": 0.1104,
+     "observable_share": 0.8548838689150493,
      "excluded": null
     },
     {
      "date": "2026-08-24",
      "track": "156A",
-     "area_km2": 0.1138,
-     "observable_share": 0.8461979000954503,
+     "area_km2": 0.1134,
+     "observable_share": 0.8481387209672288,
      "excluded": null
     },
     {
      "date": "2026-08-31",
      "track": "084A",
-     "area_km2": 0.2019,
-     "observable_share": 0.8529430480432708,
+     "area_km2": 0.2057,
+     "observable_share": 0.8548838689150493,
      "excluded": null
     },
     {
      "date": "2026-09-05",
      "track": "156A",
-     "area_km2": 0.1387,
-     "observable_share": 0.8461024498886415,
-     "excluded": null
+     "area_km2": null,
+     "observable_share": 0.84804327076042,
+     "excluded": "window dark share 24.1% is an outlier on its track (robust z +5.2, limit 3.5)"
     },
     {
      "date": "2026-09-05",
      "track": "164D",
-     "area_km2": 0.1809,
-     "observable_share": 0.8499204581609927,
+     "area_km2": 0.1933,
+     "observable_share": 0.8513840279987274,
      "excluded": null
     },
     {
      "date": "2026-09-12",
      "track": "084A",
-     "area_km2": 0.1169,
-     "observable_share": 0.8529112313076679,
+     "area_km2": 0.1167,
+     "observable_share": 0.8548520521794464,
      "excluded": null
     },
     {
      "date": "2026-09-17",
      "track": "156A",
-     "area_km2": 0.123,
-     "observable_share": 0.845879732739421,
+     "area_km2": 0.1227,
+     "observable_share": 0.8478205536111995,
      "excluded": null
     },
     {
      "date": "2026-09-24",
      "track": "084A",
-     "area_km2": 0.1393,
-     "observable_share": 0.8529748647788737,
+     "area_km2": 0.1402,
+     "observable_share": 0.8549156856506522,
      "excluded": null
     },
     {
      "date": "2026-09-29",
      "track": "156A",
-     "area_km2": 0.2393,
-     "observable_share": 0.8461342666242444,
+     "area_km2": 0.2473,
+     "observable_share": 0.8480750874960229,
      "excluded": null
     },
     {
      "date": "2026-09-29",
      "track": "164D",
-     "area_km2": 0.2592,
-     "observable_share": 0.8498886414253898,
+     "area_km2": 0.2695,
+     "observable_share": 0.8513522112631244,
      "excluded": null
     },
     {
      "date": "2026-10-06",
      "track": "084A",
-     "area_km2": 0.1515,
-     "observable_share": 0.8529748647788737,
+     "area_km2": 0.1526,
+     "observable_share": 0.8549156856506522,
      "excluded": null
     },
     {
      "date": "2026-10-11",
      "track": "156A",
-     "area_km2": 0.141,
-     "observable_share": 0.8463251670378619,
+     "area_km2": 0.1414,
+     "observable_share": 0.8482659879096405,
      "excluded": null
     },
     {
      "date": "2026-10-18",
      "track": "084A",
-     "area_km2": 0.139,
-     "observable_share": 0.8529112313076679,
+     "area_km2": 0.1395,
+     "observable_share": 0.8548520521794464,
      "excluded": null
     },
     {
      "date": "2026-10-23",
      "track": "156A",
-     "area_km2": 0.2461,
-     "observable_share": 0.8459751829462298,
+     "area_km2": 0.2524,
+     "observable_share": 0.8479160038180082,
      "excluded": null
     },
     {
      "date": "2026-10-23",
      "track": "164D",
-     "area_km2": 0.2818,
-     "observable_share": 0.8499522748965956,
+     "area_km2": 0.2919,
+     "observable_share": 0.8514476614699332,
      "excluded": null
     }
    ],
@@ -1817,11 +1877,17 @@
     {
      "pass": "2026-07-07_156A",
      "reason": "window median HH 4.6 dB from the track median"
+    },
+    {
+     "pass": "2026-09-05_156A",
+     "reason": "window dark share 24.1% is an outlier on its track (robust z +5.2, limit 3.5)"
     }
    ],
    "images": {
     "latest_hh": "lakes/yarkhun/latest_hh.webp",
-    "water": "lakes/yarkhun/water.webp"
+    "water": "lakes/yarkhun/water.webp",
+    "date": "2026-10-23",
+    "track": "156A"
    },
    "bounds": [
     72.98791303839438,
@@ -1846,11 +1912,11 @@
     "track": "164D",
     "latest_date": "2026-10-23",
     "looks": 6,
-    "change_km2": 0.026999999999999996,
-    "noise_km2": 0.017420549999999993,
-    "reason": "Track 164D: 0.202 km2 on 2026-10-23 vs median 0.175 of 5 earlier looks (noise 0.017 km2)."
+    "change_km2": 0.027099999999999985,
+    "noise_km2": 0.017865330000000006,
+    "reason": "Track 164D: 0.202 km2 on 2026-10-23 vs median 0.175 of 5 earlier looks (noise 0.018 km2)."
    },
-   "cloud_window_looks": 5,
+   "cloud_window_looks": 4,
    "directions": [
     "A",
     "D"
@@ -1860,113 +1926,120 @@
     {
      "date": "2026-06-25",
      "track": "164D",
-     "area_km2": 0.1967,
-     "observable_share": 0.8992137013338427,
+     "area_km2": 0.1965,
+     "observable_share": 0.8990863655174609,
      "excluded": null
     },
     {
      "date": "2026-07-02",
      "track": "084A",
-     "area_km2": 0.1312,
-     "observable_share": 0.8992137013338427,
+     "area_km2": 0.1324,
+     "observable_share": 0.8990863655174609,
      "excluded": null
     },
     {
      "date": "2026-07-14",
      "track": "084A",
-     "area_km2": 0.2395,
-     "observable_share": 0.8991500334256518,
-     "excluded": null
+     "area_km2": null,
+     "observable_share": 0.89902269760927,
+     "excluded": "window dark share 20.1% is an outlier on its track (robust z +4.8, limit 3.5)"
     },
     {
      "date": "2026-07-19",
      "track": "164D",
-     "area_km2": 0.1646,
-     "observable_share": 0.8992137013338427,
+     "area_km2": 0.1641,
+     "observable_share": 0.8990863655174609,
      "excluded": null
     },
     {
      "date": "2026-07-26",
      "track": "084A",
-     "area_km2": 0.1512,
-     "observable_share": 0.8991500334256518,
+     "area_km2": 0.1524,
+     "observable_share": 0.89902269760927,
      "excluded": null
     },
     {
      "date": "2026-08-12",
      "track": "164D",
-     "area_km2": 0.1603,
-     "observable_share": 0.8992137013338427,
+     "area_km2": 0.1595,
+     "observable_share": 0.8990863655174609,
      "excluded": null
     },
     {
      "date": "2026-08-19",
      "track": "084A",
-     "area_km2": 0.156,
-     "observable_share": 0.8992137013338427,
+     "area_km2": 0.1567,
+     "observable_share": 0.8990863655174609,
      "excluded": null
     },
     {
      "date": "2026-08-31",
      "track": "084A",
-     "area_km2": 0.2019,
-     "observable_share": 0.8992137013338427,
+     "area_km2": 0.2024,
+     "observable_share": 0.8990863655174609,
      "excluded": null
     },
     {
      "date": "2026-09-05",
      "track": "164D",
-     "area_km2": 0.1748,
-     "observable_share": 0.8992137013338427,
+     "area_km2": 0.1746,
+     "observable_share": 0.8990863655174609,
      "excluded": null
     },
     {
      "date": "2026-09-12",
      "track": "084A",
-     "area_km2": 0.155,
-     "observable_share": 0.8991500334256518,
+     "area_km2": 0.1534,
+     "observable_share": 0.89902269760927,
      "excluded": null
     },
     {
      "date": "2026-09-24",
      "track": "084A",
-     "area_km2": 0.1645,
-     "observable_share": 0.8992137013338427,
+     "area_km2": 0.1621,
+     "observable_share": 0.8990863655174609,
      "excluded": null
     },
     {
      "date": "2026-09-29",
      "track": "164D",
-     "area_km2": 0.1838,
-     "observable_share": 0.8991500334256518,
+     "area_km2": 0.1836,
+     "observable_share": 0.89902269760927,
      "excluded": null
     },
     {
      "date": "2026-10-06",
      "track": "084A",
-     "area_km2": 0.1651,
-     "observable_share": 0.8992137013338427,
+     "area_km2": 0.1628,
+     "observable_share": 0.8990863655174609,
      "excluded": null
     },
     {
      "date": "2026-10-18",
      "track": "084A",
-     "area_km2": 0.1645,
-     "observable_share": 0.8992137013338427,
+     "area_km2": 0.163,
+     "observable_share": 0.8990863655174609,
      "excluded": null
     },
     {
      "date": "2026-10-23",
      "track": "164D",
-     "area_km2": 0.2018,
-     "observable_share": 0.8992137013338427,
+     "area_km2": 0.2017,
+     "observable_share": 0.8990863655174609,
      "excluded": null
     }
    ],
-   "excluded": [],
+   "excluded": [
+    {
+     "pass": "2026-07-14_084A",
+     "reason": "window dark share 20.1% is an outlier on its track (robust z +4.8, limit 3.5)"
+    }
+   ],
    "images": {
     "latest_hh": "lakes/shazore/latest_hh.webp",
-    "water": "lakes/shazore/water.webp"
+    "water": "lakes/shazore/water.webp",
+    "date": "2026-10-23",
+    "track": "164D"
    },
    "bounds": [
     72.1408074084355,
@@ -2111,7 +2184,9 @@
    "excluded": [],
    "images": {
     "latest_hh": "lakes/bindo_gol/latest_hh.webp",
-    "water": "lakes/bindo_gol/water.webp"
+    "water": "lakes/bindo_gol/water.webp",
+    "date": "2026-10-23",
+    "track": "164D"
    },
    "bounds": [
     71.86249239010705,
@@ -2131,15 +2206,15 @@
    "days_apart": 0,
    "s2_window_cloud_pct": 0.0,
    "scope": "zone",
-   "radar_km2": 0.21830000000000002,
+   "radar_km2": 0.2184,
    "optical_km2": 0.1852,
-   "area_error_pct": 17.87257019438446,
-   "iou": 0.11371791333149324,
+   "area_error_pct": 17.926565874730024,
+   "iou": 0.11368653421633554,
    "zone_valid_share": 0.9999681538804497,
-   "window_radar_km2": 3.0832,
+   "window_radar_km2": 3.0889,
    "window_optical_km2": 2.5368,
-   "window_area_error_pct": 21.53894670450963,
-   "window_iou": 0.07116990050699501
+   "window_area_error_pct": 21.763639230526657,
+   "window_iou": 0.07113345138135223
   },
   {
    "lake": "khurdopin",
@@ -2150,15 +2225,15 @@
    "days_apart": 0,
    "s2_window_cloud_pct": 0.0,
    "scope": "zone",
-   "radar_km2": 0.0363,
+   "radar_km2": 0.0357,
    "optical_km2": 0.8846,
-   "area_error_pct": -95.89645037304997,
-   "iou": 0.013872068699768798,
+   "area_error_pct": -95.96427763961113,
+   "iou": 0.013434643761700253,
    "zone_valid_share": 1.0,
-   "window_radar_km2": 1.4644000000000001,
+   "window_radar_km2": 1.4651,
    "window_optical_km2": 7.3864,
-   "window_area_error_pct": -80.17437452615617,
-   "window_iou": 0.026453431059876836
+   "window_area_error_pct": -80.16489764973466,
+   "window_iou": 0.026534612128451644
   },
   {
    "lake": "passu",
@@ -2169,34 +2244,34 @@
    "days_apart": 0,
    "s2_window_cloud_pct": 0.0,
    "scope": "zone",
-   "radar_km2": 0.0475,
+   "radar_km2": 0.048,
    "optical_km2": 0.23900000000000002,
-   "area_error_pct": -80.1255230125523,
-   "iou": 0.02541159627773801,
+   "area_error_pct": -79.91631799163179,
+   "iou": 0.02536620221507681,
    "zone_valid_share": 1.0,
-   "window_radar_km2": 3.5553000000000003,
+   "window_radar_km2": 3.5608,
    "window_optical_km2": 4.9857000000000005,
-   "window_area_error_pct": -28.69005355316204,
-   "window_iou": 0.1423183404887052
+   "window_area_error_pct": -28.579738050825366,
+   "window_iou": 0.14244275421406516
   },
   {
    "lake": "shisper",
    "nisar_date": "2026-08-17",
-   "nisar_track": "055A",
+   "nisar_track": "063D",
    "s2_date": "2026-08-17",
    "s2_id": "S2C_43SDA_20260817_0_L2A",
    "days_apart": 0,
    "s2_window_cloud_pct": 0.0,
    "scope": "zone",
-   "radar_km2": 0.0409,
+   "radar_km2": 0.0874,
    "optical_km2": 0.2884,
-   "area_error_pct": -85.81830790568655,
-   "iou": 0.004882514494964907,
+   "area_error_pct": -69.69486823855756,
+   "iou": 0.01815226225955026,
    "zone_valid_share": 0.9999045163754416,
-   "window_radar_km2": 0.4073,
+   "window_radar_km2": 1.096,
    "window_optical_km2": 1.6364,
-   "window_area_error_pct": -75.10999755560988,
-   "window_iou": 0.0071456731716932785
+   "window_area_error_pct": -33.02371058420924,
+   "window_iou": 0.02768166089965398
   }
  ]
 }
