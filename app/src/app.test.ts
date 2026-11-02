@@ -698,3 +698,18 @@ describe("real preview manifest", () => {
     expect(items[2]).toBe("26 Jul 2026");
   });
 });
+
+describe("Lake Watch in the app", () => {
+  test("test_missing_lakes_file_shows_message", async () => {
+    const { app, $ } = setup(fixtureManifest, false, { lakes: null });
+    await app.settled();
+    $<HTMLButtonElement>("view-lakes").click();
+    expect($("lakes-view").hidden).toBe(false);
+    expect($("lakes-view").textContent).toContain("No lake data in this build");
+    $<HTMLButtonElement>("view-sites").click();
+    expect($("sites-view").hidden).toBe(false);
+    expect($("lakes-view").hidden).toBe(true);
+    $<HTMLButtonElement>("view-dance").click();
+    expect($("sites-view").hidden).toBe(true);
+  });
+});

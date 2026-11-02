@@ -3,6 +3,7 @@ import { createEvidenceView } from "./evidenceView";
 import { setChangeOverlay, setComposite, setFrame, setStepOverlay, type MapLike } from "./map";
 import { createMissedView } from "./missedView";
 import type { LakesFile } from "./lakes";
+import { createLakeWatchView, type LakeChartFactory, type LocatorFactory } from "./lakeWatchView";
 import type { Preloader } from "./preload";
 import { createSitesView, type ChartFactory } from "./sitesView";
 import { createStoryPanel } from "./storyPanel";
@@ -36,13 +37,19 @@ export interface AppOptions {
   /** Lake data from data/lakes.json, or null/undefined when the file is absent or unusable. */
   lakes?: LakesFile | null;
   createChart?: ChartFactory;
+  /** Area-by-track chart for Lake Watch. */
+  createLakeChart?: LakeChartFactory;
+  /** Small map that marks the lakes. */
+  createLakeLocator?: LocatorFactory;
+  /** Called by "Print lake brief". */
+  onLakeBrief?: (lake: import("./lakes").Lake) => void;
   /** Fetches frames in the background so stepping through dates does not stall. Absent in tests. */
   preload?: Preloader;
 }
 
 export type HostFactory = (afterEl: HTMLElement, beforeEl: HTMLElement) => MapHost;
 
-type View = "home" | "dance" | "sites" | "missed" | "evidence";
+type View = "home" | "lakes" | "dance" | "sites" | "missed" | "evidence";
 
 const PLAY_STEP_MS = 800;
 /** How long play waits for the next frame before it goes on without it. */
@@ -67,6 +74,7 @@ const TEMPLATE = `
     <p class="sr-only" data-role="view-name" aria-live="polite">Start</p>
     <p class="lede" data-role="lede">Step through the season's radar images. Brighter areas sent more of the signal back.</p>
     <nav class="views" aria-label="Views">
+      <button type="button" class="btn view-btn" data-role="view-lakes" aria-pressed="false">Lake Watch</button>
       <button type="button" class="btn view-btn" data-role="view-dance" aria-pressed="false">The Dance</button>
       <button type="button" class="btn view-btn" data-role="view-sites" aria-pressed="false">Site Stories</button>
       <button type="button" class="btn view-btn" data-role="view-missed" aria-pressed="false">What NISAR Missed</button>
@@ -162,6 +170,10 @@ const TEMPLATE = `
       </div>
     </div>
 
+    <section class="sites-view lakes-view" data-role="lakes-view" aria-label="Lake Watch" hidden>
+      <p class="maturity" data-role="lakes-maturity"></p>
+      <div class="sites-scroll" data-role="lakes-root"></div>
+    </section>
     <section class="sites-view" data-role="sites-view" aria-label="Site Stories" hidden>
       <p class="maturity" data-role="sites-maturity"></p>
       <div class="sites-scroll" data-role="sites-root"></div>
@@ -274,6 +286,8 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const heroEl = q("hero");
   const storyEl = q("story");
   const storyStart = q<HTMLButtonElement>("story-start");
+  const lakesViewEl = q("lakes-view");
+  const lakesMaturity = q("lakes-maturity");
   const sitesViewEl = q("sites-view");
   const sitesMaturity = q("sites-maturity");
   const missedViewEl = q("missed-view");
@@ -283,6 +297,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const viewName = q("view-name");
   const ledeEl = q("lede");
   const viewButtons: Record<Exclude<View, "home">, HTMLButtonElement> = {
+    lakes: q("view-lakes"),
     dance: q("view-dance"),
     sites: q("view-sites"),
     missed: q("view-missed"),
@@ -292,7 +307,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   // Maturity label: always visible. Set before the map is created, so it is on the page even if the map cannot start
   // (for example when WebGL is unavailable).
   const banner = maturityBanner(m);
-  for (const el of [maturityEl, sitesMaturity, missedMaturity, evidenceMaturity]) {
+  for (const el of [maturityEl, lakesMaturity, sitesMaturity, missedMaturity, evidenceMaturity]) {
     el.textContent = banner.text;
     el.dataset.kind = banner.kind;
   }
@@ -376,6 +391,12 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     createChart: opts.createChart,
     onShowDate: (date, site) => showOnMap(date, site),
   });
+  const lakeView = createLakeWatchView(q("lakes-root"), {
+    lakes: opts.lakes ?? null,
+    createChart: opts.createLakeChart,
+    createLocator: opts.createLakeLocator,
+    onBrief: opts.onLakeBrief,
+  });
   const missedView = createMissedView(q("missed-root"), { manifest: m });
   const evidenceView = createEvidenceView(q("evidence-root"), { manifest: m, sites: opts.sites ?? null });
 
@@ -391,16 +412,18 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     dockEl.hidden = !danceOn;
     ledeEl.hidden = !danceOn;
     heroEl.hidden = !home;
+    lakesViewEl.hidden = next !== "lakes";
     sitesViewEl.hidden = next !== "sites";
     missedViewEl.hidden = next !== "missed";
     evidenceViewEl.hidden = next !== "evidence";
     for (const [name, btn] of Object.entries(viewButtons)) btn.setAttribute("aria-pressed", String(name === next));
-    const name = { home: "Start", dance: "The Dance", sites: "Site Stories", missed: "What NISAR Missed", evidence: "How we know" }[next];
+    const name = { home: "Start", lakes: "Lake Watch", dance: "The Dance", sites: "Site Stories", missed: "What NISAR Missed", evidence: "How we know" }[next];
     viewName.textContent = name;
     document.title = `SARtale: ${name} (${maturityTag})`;
     updateStoryChrome();
   }
   q("home").addEventListener("click", () => showView("home"));
+  viewButtons.lakes.addEventListener("click", () => showView("lakes"));
   viewButtons.dance.addEventListener("click", () => showView("dance"));
   viewButtons.sites.addEventListener("click", () => showView("sites"));
   viewButtons.missed.addEventListener("click", () => showView("missed"));
@@ -900,6 +923,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
       axis.destroy();
       heroAxis.destroy();
       storyPanel.destroy();
+      lakeView.destroy();
       sitesView.destroy();
       missedView.destroy();
       evidenceView.destroy();

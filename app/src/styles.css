@@ -834,3 +834,47 @@ button { font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 }
+
+/* ---- Lake Watch --------------------------------------------------------------------------------------------- */
+.lw-body { max-width: 1280px; margin: 0 auto; display: grid; gap: 10px; }
+.lw-headline { margin: 0; font-size: 1.15rem; font-weight: 700; line-height: 1.35; }
+.lw-headline a { color: var(--text); text-decoration: underline; text-decoration-color: var(--teal); text-underline-offset: 4px; }
+.lw-screening { margin: 0; color: var(--muted); font-size: 0.85rem; }
+.lw-grid { display: grid; grid-template-columns: minmax(280px, 400px) 1fr; gap: 16px; align-items: start; }
+.lw-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.lw-row { display: grid; gap: 3px; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--ink-2); color: var(--text); text-align: left; cursor: pointer; }
+.lw-row[data-control="true"] { border-style: dashed; }
+.lw-row:hover { border-color: var(--teal-dim); }
+.lw-row[aria-pressed="true"] { border-color: var(--teal); background: var(--teal-dim); }
+.lw-name { font-weight: 700; }
+.lw-sentence, .lw-coord { font-size: 0.82rem; color: var(--muted); }
+.lw-row[aria-pressed="true"] .lw-sentence, .lw-row[aria-pressed="true"] .lw-coord { color: var(--text); }
+.lw-chip { justify-self: start; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); font-size: 0.75rem; font-weight: 700; background: var(--ink-3); white-space: nowrap; }
+.lw-status-growing { border-color: var(--amber); color: #ffe2b0; }
+.lw-status-shrinking { border-color: #9db8ff; color: #d5e0ff; }
+.lw-status-stable { border-color: var(--teal); color: var(--teal); }
+.lw-status-not-observable, .lw-status-not-enough-nisar-looks-yet, .lw-status-not-seen-this-pass { border-style: dashed; color: var(--muted); }
+.lw-locator { height: 180px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #0b151b; color: var(--muted); font-size: 0.85rem; }
+.lw-marker { width: 20px; height: 20px; }
+.lw-marker[data-control="true"] { background: var(--muted); box-shadow: 0 0 0 2px var(--muted); }
+.lw-marker[data-selected] { background: var(--teal); box-shadow: 0 0 0 3px var(--teal); }
+.lw-detail { min-width: 0; }
+.lw-title { margin: 0; font-size: 1.3rem; }
+.lw-sentence-big { margin: 0; font-size: 1rem; }
+.lw-scope, .lw-note, .lw-coords, .lw-downstream { margin: 0; color: var(--muted); font-size: 0.82rem; }
+.lw-check { margin: 0; font-size: 0.85rem; }
+.lw-none, .lw-prompt { margin: 0; color: var(--muted); }
+.lw-section h3 { margin: 0 0 4px; font-size: 0.95rem; }
+.lw-bullets { margin: 0; padding-left: 20px; font-size: 0.88rem; }
+.lw-pictures { display: grid; gap: 6px; }
+.lw-stack { position: relative; width: 100%; max-width: 560px; background: #000; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.lw-img { display: block; width: 100%; height: auto; }
+.lw-img-water { position: absolute; inset: 0; height: 100%; object-fit: contain; }
+.lw-opacity { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; }
+.lw-opacity input { flex: 0 1 220px; min-height: 44px; }
+.lw-chart { min-height: 260px; }
+.lw-brief { justify-self: start; }
+@media (max-width: 760px) {
+  .lw-grid { grid-template-columns: 1fr; }
+  .lw-headline { font-size: 1rem; }
+}
