@@ -162,5 +162,100 @@
   "what-nisar-missed": {
     "title": "What NISAR Missed",
     "summary": "This view shows only which dates NISAR imaged this area and when it recorded nothing. It does not say what happened on the ground. One dated report from outside NISAR: the Flood Forecasting Division's daily bulletins give the Kabul River at Nowshera as 32.6 thousand cusecs on 19 July, 78.5 on 23 July (Low flood level, and the highest figure the bulletins list for the 2026 flood season) and 53.5 on 26 July. NISAR passed on 14 and 26 July, so that rise fell between two passes, before the data gap. From 28 July to 9 August, inside the gap, the same bulletins give 38.0 to 57.8 thousand cusecs. All readings are at 06:00 Pakistan time. Source: Flood Forecasting Division, Pakistan Meteorological Department, daily flood bulletins 035/26, 039/26 and 042/26, and those of 28 July to 9 August 2026."
+  },
+  "lakeHero": {
+    "audience": "For disaster teams in Gilgit-Baltistan and upper Khyber Pakhtunkhwa.",
+    "title": "Glacial lakes through the clouds, seen by radar",
+    "lede": "NISAR is a NASA radar satellite that sees through cloud. This shows which glacial lakes NISAR radar saw change while clouds blocked optical satellites.",
+    "screening": "Indicative screening on provisional NISAR data; official warnings come from PMD and NDMA.",
+    "headlineSource": "Valid looks are NISAR passes that passed the checks on How we know. Provisional data."
+  },
+  "lakeStory": {
+    "beats": [
+      {
+        "id": "cloud-gap",
+        "beat": 1,
+        "label": "The cloud gap",
+        "title": "Clouds hid the lakes after 16 June",
+        "quote": {
+          "text": "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes.",
+          "cite": "SUPARCO, space4climate.gov.pk, 2 Jul 2026"
+        },
+        "body": [
+          "NISAR is a radar satellite, so cloud does not stop it. Between {cloud_start} and {cloud_end} it made {cloud_looks} valid looks across {cloud_lakes} of the {lake_count} lakes on this list.",
+          "A valid look is one pass that passed our checks. It is not a measure of change: Lake Watch gives that lake by lake, with the date, the look count and the noise."
+        ],
+        "noData": [
+          "NISAR is a radar satellite, so cloud does not stop it. Lake data is not in this build, so no counts are shown here."
+        ]
+      },
+      {
+        "id": "how-radar-sees",
+        "beat": 2,
+        "label": "How radar sees lakes",
+        "title": "Calm water is dark, and shadow is dark from one side only",
+        "body": [
+          "Calm water acts like a mirror for radar. The beam bounces away from the satellite, so little comes back and the lake looks dark.",
+          "Steep mountains can look dark too. Where a slope faces away from the satellite, the radar cannot see the ground behind the ridge, and that radar shadow is dark.",
+          "NISAR looks at the same ground from two directions on different passes, ascending and descending. A shadow falls on a different side of a ridge from each direction, but water stays dark from both. So a pixel counts as water only if it is dark from both views. Dark from one side only is treated as terrain shadow and left out.",
+          "The cost is that a lake whose shore lies in shadow loses some of its area in our count. How we know gives the thresholds."
+        ]
+      },
+      {
+        "id": "lake-watch",
+        "beat": 3,
+        "label": "Lake Watch",
+        "title": "Lake Watch: one status for each lake",
+        "body": [
+          "Lake Watch lists {lake_count} lakes, each with a status: Growing, Stable, Shrinking, Not seen this pass, Not observable, or Not enough NISAR looks yet.",
+          "A status compares a lake only with its own earlier passes from the same viewing direction. Growing or Shrinking needs a change larger than {change_factor} times the lake's own noise, so a label can change between passes on a small change.",
+          "Control lakes, kept to check the method, are listed last."
+        ],
+        "noData": [
+          "Lake data is not in this build. Lake Watch lists each lake with a status once data/lakes.json is present."
+        ],
+        "actions": ["lake-watch"]
+      },
+      {
+        "id": "one-lake",
+        "beat": 4,
+        "label": "One lake in depth",
+        "title": "{lake_name} in depth",
+        "body": [
+          "{lake_name} has the most valid NISAR looks of the watched lakes: {lake_looks} valid looks, the latest on {lake_latest}.",
+          "{lake_sentence}.",
+          "{lake_cloud_looks} of those looks fall between {cloud_start} and {cloud_end}.",
+          "Coordinates: {lake_coord}. The area is a {lake_area_label}.",
+          "{lake_excluded}"
+        ],
+        "noData": [
+          "Lake data is not in this build, so no lake can be shown in depth here."
+        ],
+        "actions": ["lake"]
+      },
+      {
+        "id": "downstream-peshawar",
+        "beat": 5,
+        "label": "Downstream: Peshawar",
+        "title": "A separate chapter: the Peshawar Valley",
+        "body": [
+          "The same radar was also used over the Peshawar Valley, from Tarbela Reservoir east along the Indus and Kabul rivers. We lined up nine NISAR passes, 2 July to 18 October 2026.",
+          "This chapter does not link any lake on this list to the valley. It shows what the radar saw there, what it missed, and where it needs other evidence."
+        ],
+        "actions": ["dance", "peshawar-tour"]
+      },
+      {
+        "id": "limits-next",
+        "beat": 6,
+        "label": "Limits and next steps",
+        "title": "What this does not tell you, and what comes next",
+        "body": [
+          "This is indicative screening on provisional NISAR data. Official warnings come from PMD and NDMA.",
+          "A status compares a lake only with its own earlier passes. Areas count water inside a search circle and underestimate lakes whose shores sit in radar shadow. Frozen lakes, lakes under 0.05 km² and wind-roughened water are not validated. The Sentinel-2 cross-check agrees poorly except at Attabad, so it is not a validation of lake extent.",
+          "Next steps to agree with the administration: SUPARCO's lake IDs and locations, so areas can be compared; which lakes district teams most need on the list; ground reports from those teams; and a re-run when NASA reprocesses the files."
+        ],
+        "actions": ["evidence", "lake-watch"]
+      }
+    ]
   }
 }

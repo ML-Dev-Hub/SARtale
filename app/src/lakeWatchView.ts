@@ -1,4 +1,4 @@
-import { sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
+import { cloudHeadline, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
 import { dataUrl, formatDate } from "./timeline";
 
 /** One line on the lake chart: a track's valid passes, or the passes that were left out. */
@@ -98,10 +98,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   let locator: { highlight(id: string): void; destroy(): void } | undefined;
   if (!has) return { select() {}, destroy: () => void (root.innerHTML = "") };
 
-  const looks = lakes.reduce((n, l) => n + l.cloud_window_looks, 0);
-  // k counts lakes with at least one valid look in the cloud window (ruling R-T8a), not all lakes in the file.
-  const watched = lakes.filter((l) => l.cloud_window_looks > 0).length;
-  q("lw-headline").textContent = `Between SUPARCO's 16 Jun image and its 5 Aug update, NISAR made ${looks} valid looks across ${watched} lakes.`;
+  q("lw-headline").textContent = cloudHeadline(file!);
 
   const listEl = q("lw-list");
   const rows = new Map<string, HTMLButtonElement>();

@@ -1,8 +1,9 @@
-import { heroCopy, storyBeats, type StoryStep } from "./content";
+import { heroCopy, lakeHero, storyBeats, type StoryStep } from "./content";
 import { createEvidenceView } from "./evidenceView";
 import { setChangeOverlay, setComposite, setFrame, setStepOverlay, type MapLike } from "./map";
 import { createMissedView } from "./missedView";
-import type { Lake, LakesFile } from "./lakes";
+import { cloudHeadline, type Lake, type LakesFile } from "./lakes";
+import { createLakeStoryView } from "./lakeStory";
 import { createLakeWatchView, type LakeChartFactory, type LocatorFactory } from "./lakeWatchView";
 import type { Preloader } from "./preload";
 import { createSitesView, type ChartFactory } from "./sitesView";
@@ -49,7 +50,7 @@ export interface AppOptions {
 
 export type HostFactory = (afterEl: HTMLElement, beforeEl: HTMLElement) => MapHost;
 
-type View = "home" | "lakes" | "dance" | "sites" | "missed" | "evidence";
+type View = "home" | "lakes" | "story" | "dance" | "sites" | "missed" | "evidence";
 
 const PLAY_STEP_MS = 800;
 /** How long play waits for the next frame before it goes on without it. */
@@ -75,9 +76,16 @@ const TEMPLATE = `
     <p class="lede" data-role="lede">Step through the season's radar images. Brighter areas sent more of the signal back.</p>
     <nav class="views" aria-label="Views">
       <button type="button" class="btn view-btn" data-role="view-lakes" aria-pressed="false">Lake Watch</button>
-      <button type="button" class="btn view-btn" data-role="view-dance" aria-pressed="false">The Dance</button>
-      <button type="button" class="btn view-btn" data-role="view-sites" aria-pressed="false">Site Stories</button>
-      <button type="button" class="btn view-btn" data-role="view-missed" aria-pressed="false">What NISAR Missed</button>
+      <button type="button" class="btn view-btn" data-role="view-story" aria-pressed="false">Story</button>
+      <div class="view-group" role="group" aria-label="Downstream: Peshawar" data-role="peshawar-group" data-open="false">
+        <span class="group-label" aria-hidden="true">Downstream: Peshawar</span>
+        <button type="button" class="btn view-btn group-toggle" data-role="peshawar-toggle" aria-expanded="false" aria-controls="peshawar-menu">Peshawar</button>
+        <div class="group-menu" id="peshawar-menu" data-role="peshawar-menu">
+          <button type="button" class="btn view-btn" data-role="view-dance" aria-pressed="false">The Dance</button>
+          <button type="button" class="btn view-btn" data-role="view-sites" aria-pressed="false">Site Stories</button>
+          <button type="button" class="btn view-btn" data-role="view-missed" aria-pressed="false">What NISAR Missed</button>
+        </div>
+      </div>
       <button type="button" class="btn view-btn" data-role="view-evidence" aria-pressed="false">How we know</button>
     </nav>
     <button type="button" class="btn story-btn" data-role="story-start" aria-pressed="false">Start the story</button>
@@ -90,14 +98,18 @@ const TEMPLATE = `
       <div class="hero-shade" aria-hidden="true"></div>
       <div class="hero-copy">
         <p class="hero-badge" data-role="hero-maturity"></p>
+        <p class="hero-audience" data-role="hero-audience" hidden></p>
         <h2 class="hero-title" id="hero-title" data-role="hero-title"></h2>
         <p class="hero-lede" data-role="hero-lede"></p>
+        <p class="hero-screening" data-role="hero-screening" hidden></p>
         <aside class="hero-finding" data-role="hero-finding" aria-label="Headline finding" hidden>
           <p data-role="hero-finding-text"></p>
           <p class="hero-source" data-role="hero-finding-source"></p>
         </aside>
         <div class="hero-actions">
-          <button type="button" class="btn cta" data-role="hero-start">Start the story</button>
+          <button type="button" class="btn cta" data-role="hero-story" hidden>Start the story</button>
+          <button type="button" class="btn cta-ghost" data-role="hero-lakes" hidden>Open Lake Watch</button>
+          <button type="button" class="btn cta" data-role="hero-start">Guided Peshawar tour</button>
           <button type="button" class="btn cta-ghost" data-role="hero-explore">Explore the map</button>
           <button type="button" class="link-btn" data-role="hero-method">How we know</button>
         </div>
@@ -173,6 +185,10 @@ const TEMPLATE = `
     <section class="sites-view lakes-view" data-role="lakes-view" aria-label="Lake Watch" hidden>
       <p class="maturity" data-role="lakes-maturity"></p>
       <div class="sites-scroll" data-role="lakes-root"></div>
+    </section>
+    <section class="sites-view lakestory-view" data-role="lakestory-view" aria-label="Story" hidden>
+      <p class="maturity" data-role="lakestory-maturity"></p>
+      <div class="sites-scroll" data-role="lakestory-root"></div>
     </section>
     <section class="sites-view" data-role="sites-view" aria-label="Site Stories" hidden>
       <p class="maturity" data-role="sites-maturity"></p>
@@ -288,6 +304,8 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const storyStart = q<HTMLButtonElement>("story-start");
   const lakesViewEl = q("lakes-view");
   const lakesMaturity = q("lakes-maturity");
+  const lakeStoryViewEl = q("lakestory-view");
+  const lakeStoryMaturity = q("lakestory-maturity");
   const sitesViewEl = q("sites-view");
   const sitesMaturity = q("sites-maturity");
   const missedViewEl = q("missed-view");
@@ -296,8 +314,11 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   const evidenceMaturity = q("evidence-maturity");
   const viewName = q("view-name");
   const ledeEl = q("lede");
+  const peshawarGroup = q("peshawar-group");
+  const peshawarToggle = q<HTMLButtonElement>("peshawar-toggle");
   const viewButtons: Record<Exclude<View, "home">, HTMLButtonElement> = {
     lakes: q("view-lakes"),
+    story: q("view-story"),
     dance: q("view-dance"),
     sites: q("view-sites"),
     missed: q("view-missed"),
@@ -307,7 +328,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   // Maturity label: always visible. Set before the map is created, so it is on the page even if the map cannot start
   // (for example when WebGL is unavailable).
   const banner = maturityBanner(m);
-  for (const el of [maturityEl, lakesMaturity, sitesMaturity, missedMaturity, evidenceMaturity]) {
+  for (const el of [maturityEl, lakesMaturity, lakeStoryMaturity, sitesMaturity, missedMaturity, evidenceMaturity]) {
     el.textContent = banner.text;
     el.dataset.kind = banner.kind;
   }
@@ -351,28 +372,55 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   q("hero-maturity").textContent = banner.text;
   q("hero-maturity").dataset.kind = banner.kind;
   heroEl.dataset.kind = banner.kind;
-  q("hero-title").textContent = provisional ? heroCopy.title : "The Peshawar Valley through one monsoon season";
-  q("hero-lede").textContent = provisional
+  // With lake data the start screen leads with the lakes; without it, with the Peshawar season it always had.
+  const lakeMode = provisional && !!opts.lakes?.lakes.length;
+  q("hero-title").textContent = lakeMode ? lakeHero.title : provisional ? heroCopy.title : "The Peshawar Valley through one monsoon season";
+  q("hero-lede").textContent = lakeMode
+    ? lakeHero.lede
+    : provisional
     ? heroCopy.lede
     : isPreview
       ? "Step through NASA's NISAR browse images of the valley. They are low-resolution previews scaled for display, not calibrated measurements."
       : "A synthetic demonstration of the app. It is not NISAR data.";
   // The picture is the real calibrated composite, so it appears only for calibrated data. The finding needs the
   // build it was written from: its sites and its step map.
-  const showFinding = provisional && !!m.change?.step && siteIds.has("tarbela-shore");
+  const showFinding = !lakeMode && provisional && !!m.change?.step && siteIds.has("tarbela-shore");
   q<HTMLImageElement>("hero-img").hidden = !provisional;
-  q("hero-finding").hidden = !showFinding;
-  if (showFinding) {
+  q("hero-finding").hidden = !showFinding && !lakeMode;
+  if (lakeMode) {
+    q("hero-audience").hidden = false;
+    q("hero-audience").textContent = lakeHero.audience;
+    q("hero-screening").hidden = false;
+    q("hero-screening").textContent = lakeHero.screening;
+    q("hero-finding-text").textContent = cloudHeadline(opts.lakes!);
+    q("hero-finding-source").textContent = lakeHero.headlineSource;
+    q<HTMLImageElement>("hero-img").alt = "NISAR radar picture of the Peshawar Valley, a sample of what the radar sees through cloud.";
+    heroEl.classList.add("hero-lakes");
+    // The Peshawar chapter moves to a quieter row under the main buttons.
+    const start = q("hero-start");
+    const explore = q("hero-explore");
+    start.className = "link-btn";
+    explore.className = "link-btn";
+    explore.textContent = "Explore the Peshawar map";
+    const row = document.createElement("p");
+    row.className = "hero-downstream";
+    const label = document.createElement("span");
+    label.textContent = "Downstream: Peshawar";
+    row.append(label, start, explore);
+    q("hero-method").parentElement!.after(row);
+  } else if (showFinding) {
     q("hero-finding-text").textContent = heroCopy.finding;
     q("hero-finding-source").textContent = heroCopy.findingSource;
   }
   const [cr, cg, cb] = (m.composite_dates ?? []).map(formatDate);
   q("hero-caption").hidden = !provisional;
   q("hero-caption").textContent =
-    cr && cg && cb
+    (lakeMode ? "Sample picture, Peshawar Valley. " : "") +
+    (cr && cg && cb
       ? `NISAR HH on ${cr}, ${cg} and ${cb}, drawn as red, green and blue. Provisional data.`
-      : "NISAR HH seasonal composite. Provisional data.";
+      : "NISAR HH seasonal composite. Provisional data.");
   const axisModel = buildAxis(m);
+  q("hero-strip").hidden = lakeMode;
   const heroAxis = mountAxis(q("hero-axis"), q("hero-axis-layer"), axisModel, { onPick() {}, disabled: () => true });
   {
     const gapText = axisModel.gap ? ` The hatched band is the gap in NISAR's record, ${axisModel.gap.label.replace("No data ", "")}.` : "";
@@ -383,6 +431,8 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
   // The story is calibrated data's guided tour; it uses the step map and the sites of that build.
   const storyEnabled = provisional && storyBeats.length > 0;
   for (const id of ["hero-start", "story-start"]) q(id).hidden = !storyEnabled;
+  q("hero-story").hidden = !lakeMode;
+  q("hero-lakes").hidden = !lakeMode;
 
   // ---- Views ---------------------------------------------------------------------------------------------------
   const sitesView = createSitesView(q("sites-root"), {
@@ -398,7 +448,19 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     onBrief: opts.onLakeBrief,
   });
   const missedView = createMissedView(q("missed-root"), { manifest: m });
-  const evidenceView = createEvidenceView(q("evidence-root"), { manifest: m, sites: opts.sites ?? null });
+  const evidenceView = createEvidenceView(q("evidence-root"), { manifest: m, sites: opts.sites ?? null, lakes: opts.lakes ?? null });
+  const lakeStory = createLakeStoryView(q("lakestory-root"), {
+    lakes: opts.lakes ?? null,
+    onAction: (action, lakeId) => {
+      if (action === "lake-watch") showView("lakes");
+      else if (action === "lake") {
+        showView("lakes");
+        if (lakeId) lakeView.select(lakeId);
+      } else if (action === "dance") showView("dance");
+      else if (action === "peshawar-tour") startStory(0);
+      else showView("evidence");
+    },
+  });
 
   function showView(next: View): void {
     view = next;
@@ -413,18 +475,49 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     ledeEl.hidden = !danceOn;
     heroEl.hidden = !home;
     lakesViewEl.hidden = next !== "lakes";
+    lakeStoryViewEl.hidden = next !== "story";
     sitesViewEl.hidden = next !== "sites";
     missedViewEl.hidden = next !== "missed";
     evidenceViewEl.hidden = next !== "evidence";
     for (const [name, btn] of Object.entries(viewButtons)) btn.setAttribute("aria-pressed", String(name === next));
-    const name = { home: "Start", lakes: "Lake Watch", dance: "The Dance", sites: "Site Stories", missed: "What NISAR Missed", evidence: "How we know" }[next];
+    setPeshawarMenu(false);
+    peshawarToggle.dataset.active = String(next === "dance" || next === "sites" || next === "missed");
+    const name = { home: "Start", lakes: "Lake Watch", story: "Story", dance: "The Dance", sites: "Site Stories", missed: "What NISAR Missed", evidence: "How we know" }[next];
     viewName.textContent = name;
     document.title = `SARtale: ${name} (${maturityTag})`;
     updateStoryChrome();
   }
+  /** On a phone the Peshawar group is one button that opens a small menu. Elsewhere the menu is always open. */
+  function setPeshawarMenu(open: boolean): void {
+    peshawarToggle.setAttribute("aria-expanded", String(open));
+    peshawarGroup.dataset.open = String(open);
+  }
+  peshawarToggle.addEventListener("click", () => setPeshawarMenu(peshawarToggle.getAttribute("aria-expanded") !== "true"));
+  root.addEventListener("click", (e) => {
+    const target = e.target as Element;
+    if (!peshawarGroup.contains(target)) setPeshawarMenu(false);
+    // The Lake Watch headline links to the cloud gap, which is the first beat of the story.
+    if (target.closest?.('a[href="#cloud-gap"]')) {
+      e.preventDefault();
+      lakeStory.go(0);
+      showView("story");
+    }
+  });
+  root.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && peshawarToggle.getAttribute("aria-expanded") === "true") {
+      setPeshawarMenu(false);
+      peshawarToggle.focus();
+    }
+  });
   q("home").addEventListener("click", () => showView("home"));
+  q("hero-story").addEventListener("click", () => {
+    lakeStory.go(0);
+    showView("story");
+  });
+  q("hero-lakes").addEventListener("click", () => showView("lakes"));
   viewButtons.lakes.addEventListener("click", () => showView("lakes"));
   viewButtons.dance.addEventListener("click", () => showView("dance"));
+  viewButtons.story.addEventListener("click", () => showView("story"));
   viewButtons.sites.addEventListener("click", () => showView("sites"));
   viewButtons.missed.addEventListener("click", () => showView("missed"));
   viewButtons.evidence.addEventListener("click", () => showView("evidence"));
@@ -856,7 +949,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
     storyEl.hidden = !(story.active && view === "dance");
     stageEl.dataset.story = story.active ? "on" : "off";
     storyStart.setAttribute("aria-pressed", String(story.active));
-    storyStart.textContent = story.active ? "In the story" : story.resume >= 0 ? "Resume the story" : "Start the story";
+    storyStart.textContent = story.active ? "In the tour" : story.resume >= 0 ? "Resume the Peshawar tour" : "Peshawar tour";
     storyStart.title = !story.active && story.resume >= 0 ? `Resume at step ${story.resume + 1} of ${total}` : "";
   }
 
@@ -923,6 +1016,7 @@ export function mountApp(root: HTMLElement, m: Manifest, createHost: HostFactory
       axis.destroy();
       heroAxis.destroy();
       storyPanel.destroy();
+      lakeStory.destroy();
       lakeView.destroy();
       sitesView.destroy();
       missedView.destroy();

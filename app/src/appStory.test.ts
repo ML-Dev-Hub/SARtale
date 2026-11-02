@@ -4,7 +4,9 @@ import manifestJson from "../public/data/manifest.json";
 import sitesJson from "../public/data/sites.json";
 import { mountApp, type Camera, type MapHost, type Padding } from "./app";
 import { findBannedClaims, storyBeats } from "./content";
-import { calibratedManifest, fixtureManifest, INTERFERENCE_FLAG, previewManifest } from "./fixtures";
+import lakesJson from "../public/data/lakes.json";
+import { featuredLake, type LakesFile } from "./lakes";
+import { calibratedManifest, fixtureLakes, fixtureManifest, INTERFERENCE_FLAG, previewManifest } from "./fixtures";
 import type { MapLike } from "./map";
 import { createPreloader } from "./preload";
 import type { Manifest, Site } from "./types";
@@ -52,7 +54,7 @@ describe("the opening screen", () => {
     expect($("hero-finding").hidden).toBe(false);
     expect($("hero-finding-text").textContent).toContain("Around 19 Aug the Tarbela shore went dark");
     expect($("hero-finding-text").textContent).toContain("may indicate");
-    expect($("hero-start").textContent).toBe("Start the story");
+    expect($("hero-start").textContent).toBe("Guided Peshawar tour");
     expect($("hero-maturity").textContent).toBe("Provisional NISAR data");
     expect($("hero-caption").textContent).toContain("26 Jul 2026, 12 Sep 2026 and 18 Oct 2026");
   });
@@ -185,7 +187,7 @@ describe("the guided story", () => {
     expect($("story-next").textContent).toBe("Explore the map");
     $("story-next").click();
     expect($("story").hidden).toBe(true);
-    expect($("story-start").textContent).toBe("Start the story");
+    expect($("story-start").textContent).toBe("Peshawar tour");
   });
 
   test("leaving mid-way frees the map, keeps the place and lets the person return to it", async () => {
@@ -197,7 +199,7 @@ describe("the guided story", () => {
     $("story-exit").click();
     expect($("story").hidden).toBe(true);
     expect(root.querySelector('[data-role="story-resume"]')).toBeNull();
-    expect($("story-start").textContent).toBe("Resume the story");
+    expect($("story-start").textContent).toBe("Resume the Peshawar tour");
     expect($("story-start").title).toBe(`Resume at step 4 of ${storyBeats.length}`);
     expect(moves.at(-1)!.camera).toEqual({ center: [72.871, 34.0138], zoom: 10.3 });
     // Free exploring still works.
@@ -599,5 +601,200 @@ describe("leaving the story", () => {
     const h = heard;
     preload.request(["x.webp"]);
     expect(heard).toBe(h);
+  });
+});
+
+const realLakes = lakesJson as unknown as LakesFile;
+const SUPARCO =
+  "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes.";
+const BEAT_IDS = ["cloud-gap", "how-radar-sees", "lake-watch", "one-lake", "downstream-peshawar", "limits-next"];
+
+/** A copy of the fixture lakes made of watch lakes with the given looks and latest dates. */
+function lakesWith(rows: [string, number, string, Partial<LakesFile["lakes"][number]>?][]): LakesFile {
+  const base = fixtureLakes.lakes[2];
+  return {
+    ...fixtureLakes,
+    lakes: rows.map(([id, looks, latest, extra]) => ({
+      ...base,
+      id,
+      name: `Lake ${id}`,
+      role: "watch" as const,
+      status: { ...base.status, looks, latest_date: latest },
+      ...extra,
+    })),
+  };
+}
+
+describe("the lake story", () => {
+  const beatId = ($: (r: string) => HTMLElement) => $("lakestory-view").querySelector<HTMLElement>("[data-beat]")!.dataset.beat;
+  const lakeOpts = (lakes: LakesFile | null) => ({ sites: realSites, lakes });
+
+  test("the Story view opens on the cloud gap and walks six beats in order", async () => {
+    const { app, $ } = setupReal(lakeOpts(realLakes));
+    await app.settled();
+    $("view-story").click();
+    expect($("lakestory-view").hidden).toBe(false);
+    expect($("stage").hidden).toBe(true);
+    expect($("view-name").textContent).toBe("Story");
+    const seen = [beatId($)];
+    for (let n = 0; n < 5; n++) {
+      $("ls-next").click();
+      seen.push(beatId($));
+    }
+    expect(seen).toEqual(BEAT_IDS);
+    expect($("ls-count").textContent).toBe("6 of 6");
+    expect($<HTMLButtonElement>("ls-next").disabled).toBe(true);
+  });
+
+  test("beat 1 quotes SUPARCO verbatim and cites the page and date", async () => {
+    const { app, $ } = setupReal(lakeOpts(realLakes));
+    await app.settled();
+    $("view-story").click();
+    expect($("ls-quote").textContent).toBe(SUPARCO);
+    expect($("lakestory-view").textContent).toContain("space4climate.gov.pk, 2 Jul 2026");
+    expect($("lakestory-view").querySelector("#cloud-gap")).not.toBeNull();
+  });
+
+  test("the Lake Watch headline link goes to beat 1", async () => {
+    const { app, root, $ } = setupReal(lakeOpts(realLakes));
+    await app.settled();
+    $("view-story").click();
+    $("ls-next").click();
+    $("view-lakes").click();
+    root.querySelector<HTMLAnchorElement>('a[href="#cloud-gap"]')!.click();
+    expect($("lakestory-view").hidden).toBe(false);
+    expect(beatId($)).toBe("cloud-gap");
+  });
+
+  test("featuredLake picks the watch lake with most looks, ties to the newest look, never a control or story lake", () => {
+    const f = lakesWith([
+      ["a", 6, "2026-10-23"],
+      ["b", 8, "2026-10-11"],
+      ["c", 8, "2026-10-23"],
+      ["ctl", 12, "2026-10-23", { role: "control" }],
+      ["sto", 12, "2026-10-23", { role: "story" }],
+    ]);
+    expect(featuredLake(f)?.id).toBe("c");
+    expect(featuredLake({ ...f, lakes: f.lakes.filter((l) => l.role !== "watch") })).toBeNull();
+    expect(featuredLake(null)).toBeNull();
+  });
+
+  test("beat 4 shows the lake chosen at runtime from the data it is given", async () => {
+    for (const lakes of [lakesWith([["a", 5, "2026-10-23"], ["b", 9, "2026-10-01"], ["c", 7, "2026-10-23"]]), realLakes]) {
+      const { app, $ } = setupReal(lakeOpts(lakes));
+      await app.settled();
+      $("view-story").click();
+      for (let n = 0; n < 3; n++) $("ls-next").click();
+      expect(beatId($)).toBe("one-lake");
+      const lake = featuredLake(lakes)!;
+      expect($("ls-title").textContent).toContain(lake.name);
+      expect($("lakestory-view").textContent).toContain(`${lake.status.looks} valid`);
+      expect($("lakestory-view").textContent).toContain(lake.coord_source);
+      document.body.innerHTML = "";
+    }
+    expect(featuredLake(realLakes)!.role).toBe("watch");
+  });
+
+  test("beat 4 opens that lake in Lake Watch", async () => {
+    const { app, $ } = setupReal(lakeOpts(lakesWith([["a", 5, "2026-10-23"], ["b", 9, "2026-10-01"]])));
+    await app.settled();
+    $("view-story").click();
+    for (let n = 0; n < 3; n++) $("ls-next").click();
+    $("lakestory-view").querySelector<HTMLButtonElement>('[data-action="lake"]')!.click();
+    expect($("lakes-view").hidden).toBe(false);
+    expect($("lakes-view").querySelector('.lw-row[aria-pressed="true"]')?.getAttribute("data-lake-id")).toBe("b");
+  });
+
+  test("without lake data beat 4 says so and the story still walks", async () => {
+    const { app, $ } = setupReal(lakeOpts(null));
+    await app.settled();
+    $("view-story").click();
+    for (let n = 0; n < 3; n++) $("ls-next").click();
+    expect($("lakestory-view").textContent).toContain("Lake data is not in this build");
+    $("ls-next").click();
+    expect(beatId($)).toBe("downstream-peshawar");
+  });
+
+  test("the Peshawar beat opens the Dance view or the guided tour", async () => {
+    const { app, $ } = setupReal(lakeOpts(realLakes));
+    await app.settled();
+    $("view-story").click();
+    for (let n = 0; n < 4; n++) $("ls-next").click();
+    expect(beatId($)).toBe("downstream-peshawar");
+    $("lakestory-view").querySelector<HTMLButtonElement>('[data-action="dance"]')!.click();
+    expect($("view-dance").getAttribute("aria-pressed")).toBe("true");
+    expect($("story").hidden).toBe(true);
+    $("view-story").click();
+    $("lakestory-view").querySelector<HTMLButtonElement>('[data-action="peshawar-tour"]')!.click();
+    expect($("view-dance").getAttribute("aria-pressed")).toBe("true");
+    expect($("story").hidden).toBe(false);
+    expect($("story-title").textContent).toBe(storyBeats[0].title);
+  });
+
+  test("every beat is free of banned claims and of the words detect and accurate (outside the quote)", async () => {
+    const { app, $ } = setupReal(lakeOpts(realLakes));
+    await app.settled();
+    $("view-story").click();
+    for (let n = 0; n < 6; n++) {
+      const text = $("lakestory-view").textContent!;
+      expect(findBannedClaims(text)).toEqual([]);
+      expect(text.replace(SUPARCO, "")).not.toMatch(/detect|accurate|\{\w+\}/i);
+      if (n < 5) $("ls-next").click();
+    }
+  });
+});
+
+describe("the lake start screen", () => {
+  const lakeOpts = { sites: realSites, lakes: realLakes };
+
+  test("says who it is for and what it shows, and keeps the screening line", async () => {
+    const { app, $ } = setupReal(lakeOpts);
+    await app.settled();
+    const text = $("hero").textContent!;
+    expect(text).toContain("disaster teams in Gilgit-Baltistan and upper Khyber Pakhtunkhwa");
+    expect(text).toMatch(/glacial lakes/);
+    expect(text).toContain("NISAR radar saw change while clouds blocked optical satellites");
+    expect(text).toContain("Indicative screening on provisional NISAR data; official warnings come from PMD and NDMA.");
+    expect($("hero-title").textContent).not.toContain("Peshawar");
+    expect($("hero-story").textContent).toBe("Start the story");
+    expect($("hero-story").hidden).toBe(false);
+  });
+
+  test("the start button opens the lake story and the other button reaches Lake Watch", async () => {
+    const { app, $ } = setupReal(lakeOpts);
+    await app.settled();
+    $("hero-story").click();
+    expect($("lakestory-view").hidden).toBe(false);
+    $("home").click();
+    $("hero-lakes").click();
+    expect($("lakes-view").hidden).toBe(false);
+  });
+
+  test("the nav runs Lake Watch, Story, the Peshawar group, then How we know", async () => {
+    const { app, root, $ } = setupReal(lakeOpts);
+    await app.settled();
+    const order = [...root.querySelectorAll<HTMLElement>('.views [data-role^="view-"], .views [data-role="peshawar-toggle"]')].map((b) => b.dataset.role);
+    expect(order).toEqual(["view-lakes", "view-story", "peshawar-toggle", "view-dance", "view-sites", "view-missed", "view-evidence"]);
+    const group = root.querySelector<HTMLElement>('[data-role="peshawar-group"]')!;
+    expect(group.getAttribute("aria-label")).toBe("Downstream: Peshawar");
+    expect([...group.querySelectorAll<HTMLElement>("[data-role^='view-']")].map((b) => b.dataset.role)).toEqual(["view-dance", "view-sites", "view-missed"]);
+    expect($("view-story").textContent).toBe("Story");
+  });
+
+  test("on a phone the group is one Peshawar button that opens a small menu and closes on a choice or Escape", async () => {
+    const { app, root, $ } = setupReal(lakeOpts);
+    await app.settled();
+    const toggle = $<HTMLButtonElement>("peshawar-toggle");
+    expect(toggle.textContent).toBe("Peshawar");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    toggle.click();
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    $("view-sites").click();
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.dataset.active).toBe("true");
+    toggle.click();
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    root.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
   });
 });

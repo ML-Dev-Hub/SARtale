@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { BADGE_LABELS, cardFor, EVIDENCE_LABELS, findBannedClaims, heroCopy, PLACEHOLDER, siteCards, story, storyBeats } from "./content";
+import { evidenceCopy } from "./evidenceView";
+import { BADGE_LABELS, cardFor, EVIDENCE_LABELS, findBannedClaims, heroCopy, lakeHero, lakeStoryBeats, PLACEHOLDER, siteCards, story, storyBeats } from "./content";
 
 describe("findBannedClaims", () => {
   test("catches banned wording in any case", () => {
@@ -34,6 +35,12 @@ describe("app copy", () => {
   test("all app copy is free of banned claims", () => {
     expect(findBannedClaims(JSON.stringify([story, storyBeats, heroCopy, siteCards]))).toEqual([]);
     expect(JSON.stringify([story, storyBeats, heroCopy, siteCards])).not.toMatch(/detect/i);
+  });
+
+  test("the lake story, start screen and evidence copy are free of banned claims", () => {
+    expect(findBannedClaims(JSON.stringify([lakeStoryBeats, lakeHero, evidenceCopy]))).toEqual([]);
+    const quote = lakeStoryBeats.find((b) => b.quote)!.quote!.text;
+    expect(JSON.stringify([lakeStoryBeats, lakeHero, evidenceCopy]).replace(quote, "")).not.toMatch(/detect|accurate/i);
   });
 
   test("the evidence labels are the four allowed ones", () => {

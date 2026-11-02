@@ -128,14 +128,45 @@ export interface HeroCopy {
   quotes: StoryQuote[];
 }
 
-const { beats, hero, ...siteStories } = storyJson as unknown as {
+/** The lake story's actions: buttons that take the person on from a beat. */
+export type LakeBeatAction = "lake-watch" | "lake" | "dance" | "peshawar-tour" | "evidence";
+
+/** One beat of the lake story. Text may hold {tokens}, filled from lakes.json when the story is shown. */
+export interface LakeBeat {
+  id: string;
+  /** The beat, 1 to 6. */
+  beat: number;
+  label: string;
+  title: string;
+  body: string[];
+  quote?: { text: string; cite: string };
+  /** Shown instead of the body when lakes.json is not in this build. */
+  noData?: string[];
+  actions?: LakeBeatAction[];
+}
+
+export interface LakeHeroCopy {
+  audience: string;
+  title: string;
+  lede: string;
+  screening: string;
+  headlineSource: string;
+}
+
+const { beats, hero, lakeHero: lakeHeroJson, lakeStory: lakeStoryJson, ...siteStories } = storyJson as unknown as {
   beats: StoryStep[];
   hero: HeroCopy;
+  lakeHero: LakeHeroCopy;
+  lakeStory: { beats: LakeBeat[] };
 } & Record<string, SiteStory>;
 
 /** The six-beat guided story, in order. Every step moves the map. */
 export const storyBeats: StoryStep[] = beats;
 export const heroCopy: HeroCopy = hero;
+/** The start screen's words when lake data is present. */
+export const lakeHero: LakeHeroCopy = lakeHeroJson;
+/** The six beats of the lake story, in order. */
+export const lakeStoryBeats: LakeBeat[] = lakeStoryJson.beats;
 /** Copy for single views, by id. */
 export const story: Record<string, SiteStory> = siteStories;
 export const siteCards = sitesJson as Record<string, SiteCard>;

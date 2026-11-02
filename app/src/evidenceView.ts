@@ -1,18 +1,19 @@
 import evidenceJson from "./content/evidence.json";
 import { cardFor } from "./content";
-import { maturityBanner } from "./timeline";
+import { lakeTokens, type LakesFile } from "./lakes";
+import { formatDate, maturityBanner } from "./timeline";
 import type { Manifest, Site } from "./types";
 
 interface EvidenceItem {
   text: string;
   /** Shown only when the build has this layer. */
-  needs?: "step";
+  needs?: "step" | "lakes";
 }
 
 interface EvidenceSection {
   id: string;
   title: string;
-  needs?: "step";
+  needs?: "step" | "lakes";
   paragraphs?: string[];
   afterTable?: string[];
   steps?: (string | EvidenceItem)[];
@@ -34,6 +35,8 @@ export interface EvidenceViewOptions {
   manifest: Manifest;
   /** The sites whose control results fill the table. Without them the table is left out. */
   sites?: Site[] | null;
+  /** Lake data. Without it the lake sections are left out. */
+  lakes?: LakesFile | null;
 }
 
 export interface EvidenceViewHandle {
@@ -41,9 +44,10 @@ export interface EvidenceViewHandle {
 }
 
 /** The numbers in the copy, taken from the manifest so the page cannot drift from the data it describes. */
-export function evidenceTokens(m: Manifest): Record<string, string> {
+export function evidenceTokens(m: Manifest, lakes?: LakesFile | null): Record<string, string> {
   const step = m.change?.step;
   return {
+    ...(lakes ? lakeTokens(lakes) : {}),
     analysis_m: String(m.analysis_m ?? 30),
     pixel_m: String(m.pixel_m ?? 67),
     step_pixel_m: step ? String(step.pixel_m) : "",
@@ -64,9 +68,10 @@ const asItem = (x: string | EvidenceItem): EvidenceItem => (typeof x === "string
 export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions): EvidenceViewHandle {
   const m = opts.manifest;
   const hasStep = !!m.change?.step;
-  const tokens = evidenceTokens(m);
+  const lakes = opts.lakes ?? null;
+  const tokens = evidenceTokens(m, lakes);
   const fill = (t: string): string => fillTokens(t, tokens);
-  const keep = (x: { needs?: "step" }): boolean => x.needs !== "step" || hasStep;
+  const keep = (x: { needs?: "step" | "lakes" }): boolean => (x.needs !== "step" || hasStep) && (x.needs !== "lakes" || !!lakes);
 
   const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] => {
     const e = document.createElement(tag);
@@ -96,18 +101,27 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
 
   const verdict = el("div", "evidence-verdict");
   const can = el("section", "verdict-can");
-  can.append(el("h3", undefined, "What the evidence supports"));
+  can.append(el("h3", undefined, "What the evidence supports (Peshawar chapter)"));
   const canList = el("ul");
   canList.append(...evidenceCopy.can.map((t) => el("li", undefined, fill(t))));
   can.append(canList);
   const cannot = el("section", "verdict-cannot");
-  cannot.append(el("h3", undefined, "What it cannot do"));
+  cannot.append(el("h3", undefined, "What it cannot do (Peshawar chapter)"));
   const cannotList = el("ul");
   cannotList.append(...evidenceCopy.cannot.map((t) => el("li", undefined, fill(t))));
   cannot.append(cannotList);
   verdict.append(can, cannot);
 
-  main.append(head, verdict);
+  if (lakes) {
+    head.append(el("p", "evidence-lede", "The first two sections cover Lake Watch. The rest covers the Peshawar chapter."));
+  }
+  main.append(head);
+  // The Peshawar verdict follows the lake sections, so a visitor who came for the lakes reads their method first.
+  let verdictPlaced = false;
+  const placeVerdict = (): void => {
+    if (!verdictPlaced) main.append(verdict);
+    verdictPlaced = true;
+  };
 
   /** The control table: one row per site, built from the cards so it cannot disagree with them. */
   function controlsTable(): HTMLTableElement | null {
@@ -139,8 +153,42 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
     return table;
   }
 
+  /** The Sentinel-2 cross-check rows, copied from lakes.json without adjusting any figure. */
+  function lakeChecksTable(): HTMLTableElement | null {
+    if (!lakes?.checks.length) return null;
+    const table = el("table", "evidence-table");
+    table.dataset.role = "lake-checks-table";
+    table.append(el("caption", undefined, "One NISAR pass against one Sentinel-2 scene, inside each lake's 1 km zone"));
+    const thead = el("thead");
+    const hr = el("tr");
+    for (const h of ["Lake", "NISAR date and track", "Sentinel-2 date and scene", "Radar km²", "Optical km²", "Overlap (IoU)"]) {
+      const th = el("th", undefined, h);
+      th.scope = "col";
+      hr.append(th);
+    }
+    thead.append(hr);
+    const tbody = el("tbody");
+    for (const c of lakes.checks) {
+      const tr = el("tr");
+      const name = el("th", undefined, lakes.lakes.find((l) => l.id === c.lake)?.name ?? c.lake);
+      name.scope = "row";
+      tr.append(
+        name,
+        el("td", undefined, `${formatDate(c.nisar_date)}, track ${c.nisar_track}`),
+        el("td", undefined, `${formatDate(c.s2_date)}, ${c.s2_id}`),
+        el("td", undefined, c.radar_km2.toFixed(3)),
+        el("td", undefined, c.optical_km2.toFixed(3)),
+        el("td", undefined, c.iou === null ? "n/a" : c.iou.toFixed(2)),
+      );
+      tbody.append(tr);
+    }
+    table.append(thead, tbody);
+    return table;
+  }
+
   const sections = evidenceCopy.sections.filter(keep);
   for (const sec of sections) {
+    if (sec.needs !== "lakes") placeVerdict();
     const s = el("section", "evidence-section");
     s.id = `evidence-${sec.id}`;
     s.dataset.section = sec.id;
@@ -192,6 +240,14 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
         s.append(wrap);
       }
     }
+    if (sec.id === "lake-checks") {
+      const t = lakeChecksTable();
+      if (t) {
+        const wrap = el("div", "table-wrap");
+        wrap.append(t);
+        s.append(wrap);
+      }
+    }
     for (const p of sec.afterTable ?? []) s.append(el("p", undefined, fill(p)));
     main.append(s);
 
@@ -209,6 +265,7 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
     tocList.append(li);
   }
 
+  placeVerdict();
   scroll.append(toc, main);
   root.replaceChildren(scroll);
   return {

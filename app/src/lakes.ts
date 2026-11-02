@@ -145,3 +145,50 @@ export function statusSentence(lake: Lake): string {
   const when = s.latest_date ? `, latest ${formatDate(s.latest_date)}` : "";
   return `${s.status}: ${sign}${km2(Math.abs(change))} km²${scope} since earlier ${s.track} passes (noise ±${km2(s.noise_km2 as number)} km²), ${s.looks} looks${when}`;
 }
+
+/**
+ * The lake the story shows in depth: among role "watch" lakes, the one with the most valid looks, ties going to the
+ * newest latest look, and after that to file order. Chosen at runtime from the data, never named in the copy.
+ */
+export function featuredLake(file: LakesFile | null | undefined): Lake | null {
+  let best: Lake | null = null;
+  for (const l of file?.lakes ?? []) {
+    if (l.role !== "watch") continue;
+    if (!best) {
+      best = l;
+      continue;
+    }
+    const a = l.status.looks;
+    const b = best.status.looks;
+    if (a > b || (a === b && (l.status.latest_date ?? "") > (best.status.latest_date ?? ""))) best = l;
+  }
+  return best;
+}
+
+/** The headline count: valid looks in the cloud window, and how many lakes had at least one. */
+export function cloudHeadline(file: LakesFile): string {
+  const looks = file.lakes.reduce((n, l) => n + l.cloud_window_looks, 0);
+  const watched = file.lakes.filter((l) => l.cloud_window_looks > 0).length;
+  return `Between SUPARCO's 16 Jun image and its 5 Aug update, NISAR made ${looks} valid looks across ${watched} lakes.`;
+}
+
+/** The numbers and dates that copy quotes, taken from lakes.json so the words cannot drift from the data. */
+export function lakeTokens(file: LakesFile): Record<string, string> {
+  const c = file.constants;
+  return {
+    drop_db: String(c.drop_db),
+    speckle_box: String(c.speckle_box),
+    min_looks: String(c.min_looks),
+    min_observable: String(c.min_observable),
+    min_observable_pct: String(Math.round(c.min_observable * 100)),
+    noise_floor_km2: String(c.noise_floor_km2),
+    change_factor: String(c.change_factor),
+    cloud_start: formatDate(file.cloud_window[0]),
+    cloud_end: formatDate(file.cloud_window[1]),
+    cloud_looks: String(file.lakes.reduce((n, l) => n + l.cloud_window_looks, 0)),
+    cloud_lakes: String(file.lakes.filter((l) => l.cloud_window_looks > 0).length),
+    lake_count: String(file.lakes.length),
+    crid: file.crid,
+    notes: file.notes,
+  };
+}
