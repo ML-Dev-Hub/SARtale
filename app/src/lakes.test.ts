@@ -17,6 +17,13 @@ describe("loadLakes", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => fixtureLakes })));
     expect((await loadLakes("data/lakes.json"))?.lakes.length).toBe(fixtureLakes.lakes.length);
   });
+  test("accepts a lake whose images and bounds are null", async () => {
+    const lake = { ...fixtureLakes.lakes[0], images: { latest_hh: null, water: null }, bounds: null };
+    const file = { ...fixtureLakes, lakes: [lake] };
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => file })));
+    const out = await loadLakes("data/lakes.json");
+    expect(out?.lakes[0].images).toEqual({ latest_hh: null, water: null });
+  });
   test("returns null when the shape is wrong", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ lakes: "x" }) })));
     expect(await loadLakes("data/lakes.json")).toBeNull();

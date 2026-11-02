@@ -43,7 +43,7 @@ export interface Lake {
   limits: string[];
   series: LakeSeriesPoint[];
   excluded: { pass: string; reason: string }[];
-  images: { latest_hh: string; water: string } | null;
+  images: { latest_hh: string | null; water: string | null } | null;
   bounds: [number, number, number, number] | null;
 }
 
