@@ -173,8 +173,10 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
     """
     from sartale.lakebuild import radar_water_masks
     from sartale.lakes import lake_bbox
+    from sartale.lakestatus import is_valid
 
-    passes = sorted({(p["date"], p["track"]) for p in series if p["excluded"] is None})
+    # Same validity rule as the status (not excluded, has an area, observable share >= MIN_OBSERVABLE).
+    passes = sorted({(p["date"], p["track"]) for p in series if is_valid(p)})
     if not passes:
         return {"lake": lake.id, "note": "no valid NISAR pass"}
     bbox = lake_bbox(lake)

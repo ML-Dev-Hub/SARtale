@@ -14,6 +14,11 @@ TIMEOUT = 120
 BACKOFF = (1, 2, 4)  # seconds before each retry
 
 
+def _retryable(status: int | None) -> bool:
+    """403 (expired signed URL), 429 and 5xx are worth retrying; 401, 404 and other 4xx will not fix themselves."""
+    return status is not None and (status in (403, 429) or 500 <= status < 600)
+
+
 def _sleep(seconds: float) -> None:
     time.sleep(seconds)
 
@@ -36,17 +41,20 @@ class RangeFile(io.RawIOBase):
         r.close()
 
     def _with_retries(self, request, resolve: bool = True):
-        """Run request(); on a connection error or HTTP error wait 1, 2, 4 s and retry. After a 403, re-resolve the URL."""
+        """Run request(); on a connection error, a timeout or a retryable HTTP status (403, 429, 5xx) wait 1, 2, 4 s
+        and retry. After a 403, re-resolve the URL. Other HTTP errors (401, 404, ...) raise at once."""
         for attempt in range(self.retries + 1):
             try:
                 r = request()
                 r.raise_for_status()
                 return r
             except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as e:
+                status = getattr(getattr(e, "response", None), "status_code", None)
+                if isinstance(e, requests.HTTPError) and not _retryable(status):
+                    raise
                 if attempt == self.retries:
                     raise
                 _sleep(BACKOFF[min(attempt, len(BACKOFF) - 1)])
-                status = getattr(getattr(e, "response", None), "status_code", None)
                 if status == 403 and resolve:
                     self._resolve()
 

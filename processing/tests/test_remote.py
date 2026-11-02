@@ -115,6 +115,36 @@ def test_rangefile_reresolves_after_403(fixture_h5):
     assert seen["resolves"] == 1 and f.url == "https://signed.test/renewed"
 
 
+def _status_once(fixture_h5, status):
+    """A RangeFile whose first block read answers `status`; returns (file, call counter)."""
+    s = FakeSession(fixture_h5)
+    f = remote.RangeFile(s, URL, block=4096)
+    orig, seen = s.get, {"bad": 0}
+
+    def get(url, headers=None, **kw):
+        if headers["Range"] != "bytes=0-0" and seen["bad"] == 0:
+            seen["bad"] = 1
+            return FakeResponse(url, status, {}, b"")
+        return orig(url, headers=headers, **kw)
+
+    s.get = get
+    return f, seen
+
+
+@pytest.mark.parametrize("status", [401, 404])
+def test_rangefile_does_not_retry_client_errors(fixture_h5, status):
+    f, _ = _status_once(fixture_h5, status)
+    with pytest.raises(requests.HTTPError):
+        f.read(100)
+
+
+@pytest.mark.parametrize("status", [429, 500, 503])
+def test_rangefile_retries_rate_limit_and_server_errors(fixture_h5, status):
+    f, seen = _status_once(fixture_h5, status)
+    assert f.read(100) == fixture_h5.read_bytes()[:100]
+    assert seen["bad"] == 1
+
+
 def test_fetch_leaves_no_partial_cache_when_connection_never_works(tmp_path, fixture_h5):
     cache = tmp_path / "cache"
     with pytest.raises(requests.ConnectionError):

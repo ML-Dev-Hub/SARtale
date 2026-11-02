@@ -101,7 +101,8 @@ def test_build_lists_excluded_passes_with_reason(built):
 def test_build_images_exist_and_are_small(built):
     doc, out = built
     for lid in ("alpha", "beta"):
-        for rel in lake(doc, lid)["images"].values():
+        imgs = lake(doc, lid)["images"]
+        for rel in (imgs["latest_hh"], imgs["water"]):
             f = out / rel
             assert f.exists() and f.stat().st_size < 300_000
 
@@ -111,7 +112,7 @@ def test_build_lake_without_cache(built):
     g = lake(doc, "gamma")
     assert g["status"]["status"] == "Not enough NISAR looks yet"
     assert g["series"] == [] and g["bounds"] is None
-    assert g["images"] == {"latest_hh": None, "water": None}
+    assert g["images"] == {"latest_hh": None, "water": None, "date": None, "track": None}
     assert "no NISAR windows fetched yet" in g["limits"]
     assert not (out / "lakes" / "gamma").exists()
 

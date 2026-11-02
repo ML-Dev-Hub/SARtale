@@ -29,7 +29,8 @@ def track_noise_km2(areas: list[float]) -> float:
     return max(1.4826 * median(diffs), NOISE_FLOOR_KM2)
 
 
-def _is_valid(p: SeriesPoint) -> bool:
+def is_valid(p: SeriesPoint) -> bool:
+    """A pass the status may use: not excluded, has an area, and enough of the zone observable."""
     return (
         p["excluded"] is None
         and p["area_km2"] is not None
@@ -68,7 +69,7 @@ def lake_status(
             reason=f"Under {MIN_OBSERVABLE:.0%} of the lake zone is observable on every pass.",
         )
 
-    valid = [p for p in series if _is_valid(p)]
+    valid = [p for p in series if is_valid(p)]
     by_track: dict[str, list[SeriesPoint]] = {}
     for p in valid:
         by_track.setdefault(p["track"], []).append(p)
@@ -133,4 +134,4 @@ def cloud_window_looks(
     series: list[SeriesPoint], start: str = CLOUD_WINDOW[0], end: str = CLOUD_WINDOW[1]
 ) -> int:
     """Valid, non-excluded points with enough observable zone, dated start..end inclusive."""
-    return sum(1 for p in series if _is_valid(p) and start <= p["date"] <= end)
+    return sum(1 for p in series if is_valid(p) and start <= p["date"] <= end)

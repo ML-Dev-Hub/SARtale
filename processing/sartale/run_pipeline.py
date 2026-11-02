@@ -1,6 +1,9 @@
 """SARtale pipeline CLI: search, download, build, change, sites, rebuild, preview, lakes-search, lakes-fetch, lakes-build, lakes-check."""
 import argparse
 import json
+import os
+import shutil
+import sys
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -205,6 +208,42 @@ def cmd_lakes_fetch(args) -> None:
         sys.exit(1)
 
 
+def write_json_atomic(path: Path, doc) -> None:
+    """Write JSON to `path` via a .tmp file and an atomic replace, so a crash never leaves half a file."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(doc, indent=1, allow_nan=False), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def prune_lake_images(out: Path, doc: dict) -> list[Path]:
+    """Delete files and folders under `out`/lakes/ that lakes.json no longer references. Touches nothing else.
+    Returns what was removed."""
+    root = (Path(out) / "lakes").resolve()
+    if not root.is_dir():
+        return []
+    keep = set()
+    for lk in doc["lakes"]:
+        for key in ("latest_hh", "water"):
+            rel = (lk.get("images") or {}).get(key)
+            if rel:
+                keep.add((Path(out) / rel).resolve())
+    keep_dirs = {k.parent for k in keep}
+    removed = []
+    for item in sorted(root.rglob("*"), key=lambda q: len(q.parts), reverse=True):
+        r = item.resolve()
+        if root not in r.parents:
+            continue
+        if item.is_file() and r not in keep:
+            item.unlink()
+            removed.append(item)
+        elif item.is_dir() and r not in keep_dirs and not any(item.iterdir()):
+            item.rmdir()
+            removed.append(item)
+    return removed
+
+
 def cmd_lakes_build(args) -> None:
     lakes = load_lakes(Path(args.lakes_in))
     out = Path(args.out)
@@ -212,8 +251,9 @@ def cmd_lakes_build(args) -> None:
     checks_path = Path(args.checks)
     checks = json.loads(checks_path.read_text(encoding="utf-8")) if checks_path.is_file() else []
     doc = build_lakes(lakes, Path(args.cache), out, built, checks)
-    (out).mkdir(parents=True, exist_ok=True)
-    (out / "lakes.json").write_text(json.dumps(doc, indent=1, allow_nan=False), encoding="utf-8")
+    write_json_atomic(out / "lakes.json", doc)
+    for gone in prune_lake_images(out, doc):
+        print(f"removed stale {gone.relative_to(out)}")
     for lk in doc["lakes"]:
         st = lk["status"]
         print(f"{lk['id']}: {st['status']}, looks {st['looks']}, cloud-window looks {lk['cloud_window_looks']}, "
@@ -225,6 +265,13 @@ def cmd_lakes_build(args) -> None:
     print(f"gate: median ratio {g['median_ratio']} (need >= 2), attabad status {g['attabad_status']}, "
           f"cloud-window looks {g['attabad_cloud_window_looks']} (need >= 3): {'PASS' if g['pass'] else 'FAIL'}")
     print(f"{len(doc['lakes'])} lakes -> {out / 'lakes.json'}")
+    if not g["pass"]:
+        if args.allow_gate_fail:
+            print("Attabad gate FAILED; continuing because --allow-gate-fail was given")
+        else:
+            print("Attabad gate FAILED: lakes.json was written for inspection; do not ship it "
+                  "(pass --allow-gate-fail to exit 0)")
+            sys.exit(1)
 
 
 def cmd_lakes_check(args) -> None:
@@ -246,9 +293,9 @@ def cmd_lakes_check(args) -> None:
                   f"error {row['area_error_pct'] if row['area_error_pct'] is None else round(row['area_error_pct'], 1)} %, "
                   f"IoU {row['iou'] if row['iou'] is None else round(row['iou'], 3)} | window radar {row['window_radar_km2']:.3f}, "
                   f"optical {row['window_optical_km2']:.3f}, IoU {row['window_iou']}")
-    Path(args.checks).write_text(json.dumps(rows, indent=1, allow_nan=False), encoding="utf-8")
+    write_json_atomic(Path(args.checks), rows)
     doc["checks"] = rows
-    path.write_text(json.dumps(doc, indent=1, allow_nan=False), encoding="utf-8")
+    write_json_atomic(path, doc)
     print(f"{len(rows)} checks -> {args.checks} and {path}")
 
 
@@ -317,6 +364,8 @@ def main(argv=None) -> None:
     lb.add_argument("--out", default=str(REPO_ROOT / "app" / "public" / "data"))
     lb.add_argument("--checks", default=str(REPO_ROOT / "processing" / "lake_checks.json"),
                     help="rows written by lakes-check, merged into lakes.json when the file exists")
+    lb.add_argument("--allow-gate-fail", action="store_true",
+                    help="exit 0 even when the Attabad gate fails (default: exit 1)")
     lb.set_defaults(func=cmd_lakes_build)
     lc = sub.add_parser("lakes-check", help="compare radar lake water with Sentinel-2 MNDWI water")
     lc.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))

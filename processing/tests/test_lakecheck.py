@@ -155,7 +155,19 @@ def test_check_uses_the_radar_zone_with_an_outline(tmp_path, monkeypatch):
     everywhere = np.ones(r["zone"].shape, bool)
     monkeypatch.setattr(lakecheck, "optical_on_grid", lambda scene, x, y, epsg: {
         "water": everywhere, "valid": everywhere, "window_cloud_share": 0.0, "invalid_share": 0.0})
-    series = [{"date": "2026-07-12", "track": "156A", "excluded": None}]
+    series = [{"date": "2026-07-12", "track": "156A", "excluded": None, "area_km2": 0.1, "observable_share": 1.0}]
     row = lakecheck.check_lake(lake, cache, series, log=lambda *_: None)
     assert row["optical_km2"] == pytest.approx(r["zone"].sum() * PX ** 2 / 1e6)
     assert row["radar_km2"] == pytest.approx(r["zone_mask"].sum() * PX ** 2 / 1e6)
+
+
+def test_check_skips_passes_the_status_would_not_use(monkeypatch):
+    """M6: same validity rule as the status, so an unobservable or area-less pass is never the check pass."""
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a, **k: pytest.fail("no valid pass: must not search"))
+    lake = make_lake("x")
+    series = [
+        {"date": "2026-07-12", "track": "156A", "excluded": None, "area_km2": 0.1, "observable_share": 0.2},
+        {"date": "2026-07-24", "track": "156A", "excluded": None, "area_km2": None, "observable_share": 0.9},
+        {"date": "2026-08-05", "track": "156A", "excluded": "bright", "area_km2": None, "observable_share": 0.9},
+    ]
+    assert lakecheck.check_lake(lake, "unused", series, log=lambda *_: None) == {"lake": "x", "note": "no valid NISAR pass"}

@@ -9,8 +9,17 @@ from pyproj import Transformer
 
 from sartale import config
 from sartale.lakes import Lake
-from sartale.lakestatus import SeriesPoint, cloud_window_looks, lake_status
-from sartale.lakewater import dark_mask, despeckle, lake_zone, pass_water, screen_passes, shadow_prone
+from sartale.lakestatus import SeriesPoint, cloud_window_looks, is_valid, lake_status
+from sartale.lakewater import (
+    dark_mask,
+    despeckle,
+    lake_zone,
+    pass_water,
+    screen_outliers,
+    screen_passes,
+    shadow_prone,
+    window_stats,
+)
 from sartale.products import render_frame, shared_stretch
 from sartale.radiometry import to_db
 
@@ -149,6 +158,40 @@ def _write_images(lake_out: Path, good: list[dict], latest: dict, zone, shadow, 
     return {"latest_hh": f"{rel}/latest_hh.webp", "water": f"{rel}/water.webp"}
 
 
+def screen_all(by_track: dict[str, list[dict]], manual: dict[str, str] | None = None) -> dict[str, str]:
+    """Every pass exclusion of one lake, pass id -> reason, in order of precedence:
+    1. too bright or dark overall (`screen_passes`, window-median HH);
+    2. robust outlier in window dark share or window-median HV (`screen_outliers`, ruling R-F1),
+       computed on the passes that survived step 1;
+    3. the hand list `config.MANUAL_EXCLUSIONS` for passes not already excluded.
+    Passes carry despeckled `hh_db`/`hv_db`.
+    """
+    manual = config.MANUAL_EXCLUSIONS if manual is None else manual
+    excluded: dict[str, str] = {}
+    for ps in by_track.values():
+        excluded.update(screen_passes({p["id"]: p["hh_db"] for p in ps}))
+    for ps in by_track.values():
+        stats = {p["id"]: window_stats(p["hh_db"], p["hv_db"]) for p in ps if p["id"] not in excluded}
+        excluded.update(screen_outliers({k: v[0] for k, v in stats.items()}, {k: v[1] for k, v in stats.items()}))
+    for ps in by_track.values():
+        for p in ps:
+            if p["id"] in manual and p["id"] not in excluded:
+                excluded[p["id"]] = manual[p["id"]]
+    return excluded
+
+
+def season_dark(by_track: dict[str, list[dict]], excluded: dict[str, str]) -> dict[str, np.ndarray]:
+    """Dark mask of each track's season-median image (two-view rule, R2), from non-excluded passes only."""
+    out = {}
+    for k, ps in by_track.items():
+        ok = [p for p in ps if p["id"] not in excluded]
+        if ok:
+            med_hh = _nanmedian0(np.stack([p["hh_db"] for p in ok]))
+            med_hv = _nanmedian0(np.stack([p["hv_db"] for p in ok]))
+            out[k] = dark_mask(med_hh, med_hv)[0]
+    return out
+
+
 def _analyse(passes: list[dict], xs, ys, limits: list[str]):
     """Despeckle, screen, and apply the two-view rule. Adds hh_db/hv_db to each pass in place.
 
@@ -162,23 +205,26 @@ def _analyse(passes: list[dict], xs, ys, limits: list[str]):
     for p in passes:
         by_track.setdefault(p["key"], []).append(p)
 
-    excluded: dict[str, str] = {}
-    for ps in by_track.values():
-        excluded.update(screen_passes({p["id"]: p["hh_db"] for p in ps}))
-
-    # Two-view rule on each track's season medians (R2), non-excluded passes only.
-    medians_dark = {}
-    for k, ps in by_track.items():
-        ok = [p for p in ps if p["id"] not in excluded]
-        if ok:
-            med_hh = _nanmedian0(np.stack([p["hh_db"] for p in ok]))
-            med_hv = _nanmedian0(np.stack([p["hv_db"] for p in ok]))
-            medians_dark[k] = dark_mask(med_hh, med_hv)[0]
+    excluded = screen_all(by_track)
+    medians_dark = season_dark(by_track, excluded)
     directions = {k: k[-1] for k in by_track}
     shadow = shadow_prone(medians_dark, directions) if medians_dark else None
     if shadow is None:
         limits.append("single viewing direction")
     return epsg, px, by_track, excluded, directions, shadow
+
+
+def pictured_pass(series: list[SeriesPoint], track: str | None) -> str | None:
+    """Pass id of the picture a lake shows: the status track's latest valid pass (same rule as the status:
+    not excluded, has an area, observable share >= MIN_OBSERVABLE). Without a status track, the latest
+    valid pass on any track; None if there is no valid pass."""
+    valid = [p for p in series if is_valid(p)]
+    on_track = [p for p in valid if p["track"] == track] if track else []
+    pool = on_track or valid
+    if not pool:
+        return None
+    p = max(pool, key=lambda q: (q["date"], q["track"]))
+    return f"{p['date']}_{p['track']}"
 
 
 def _no_looks() -> dict:
@@ -188,7 +234,8 @@ def _no_looks() -> dict:
 
 def _empty(entry: dict, limits: list[str]) -> dict:
     return {**entry, "status": _no_looks(), "cloud_window_looks": 0, "directions": [], "limits": limits,
-            "series": [], "excluded": [], "images": {"latest_hh": None, "water": None}, "bounds": None}
+            "series": [], "excluded": [], "images": {"latest_hh": None, "water": None, "date": None, "track": None},
+            "bounds": None}
 
 
 def build_lake(lake: Lake, cache_dir: Path, out_dir: Path) -> dict:
@@ -225,11 +272,14 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path) -> dict:
         latest_expected[p["key"]] = max(latest_expected.get(p["key"], ""), p["date"])
 
     good = [p for p in passes if p["id"] not in excluded]
-    images = {"latest_hh": None, "water": None}
-    if good:
-        latest = max(good, key=lambda q: (q["date"], q["key"]))
-        images = _write_images(Path(out_dir) / "lakes" / lake.id, good, latest, zone, shadow, ys)
-    return {**entry, "status": lake_status(series, latest_expected),
+    status = lake_status(series, latest_expected)
+    images = {"latest_hh": None, "water": None, "date": None, "track": None}
+    pictured = pictured_pass(series, status["track"])
+    if good and pictured:
+        latest = next(p for p in good if p["id"] == pictured)
+        images = {**_write_images(Path(out_dir) / "lakes" / lake.id, good, latest, zone, shadow, ys),
+                  "date": latest["date"], "track": latest["key"]}
+    return {**entry, "status": status,
             "cloud_window_looks": cloud_window_looks(series),
             "directions": sorted(set(directions.values())), "limits": limits, "series": series,
             "excluded": [{"pass": k, "reason": v} for k, v in sorted(excluded.items())],
@@ -270,7 +320,10 @@ def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, c
         "version": 1, "built": built, "notes": NOTES, "crid": config.CRID, "cloud_window": list(config.CLOUD_WINDOW),
         "constants": {"drop_db": config.DROP_DB, "min_looks": config.MIN_LOOKS,
                       "min_observable": config.MIN_OBSERVABLE, "noise_floor_km2": config.NOISE_FLOOR_KM2,
-                      "change_factor": config.CHANGE_FACTOR, "speckle_box": config.SPECKLE_BOX},
+                      "change_factor": config.CHANGE_FACTOR, "speckle_box": config.SPECKLE_BOX,
+                      "bright_pass_db": config.BRIGHT_PASS_DB, "outlier_z": config.OUTLIER_Z,
+                      "outlier_share_floor": config.OUTLIER_SHARE_FLOOR,
+                      "outlier_hv_floor_db": config.OUTLIER_HV_FLOOR_DB},
         "lakes": [build_lake(lake, Path(cache_dir), Path(out_dir)) for lake in lakes],
         "checks": list(checks or []),
     }

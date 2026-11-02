@@ -10,7 +10,15 @@ from rasterio.features import geometry_mask
 from rasterio.transform import Affine
 from scipy.ndimage import distance_transform_edt, uniform_filter
 
-from sartale.config import BRIGHT_PASS_DB, DROP_DB, SPECKLE_BOX
+from sartale.config import (
+    BRIGHT_PASS_DB,
+    DROP_DB,
+    OUTLIER_HV_FLOOR_DB,
+    OUTLIER_MIN_PASSES,
+    OUTLIER_SHARE_FLOOR,
+    OUTLIER_Z,
+    SPECKLE_BOX,
+)
 from sartale.lakes import Lake
 
 OUTLINE_BUFFER_M = 200.0
@@ -47,6 +55,53 @@ def screen_passes(hh_db_by_pass: dict[str, np.ndarray]) -> dict[str, str]:
         elif abs(m - track_median) > BRIGHT_PASS_DB:
             excluded[k] = f"window median HH {abs(m - track_median):.1f} dB from the track median"
     return excluded
+
+
+def robust_z(values: dict[str, float], floor: float) -> dict[str, float]:
+    """(value - median) / max(1.4826 * MAD, floor) for each key. `floor` keeps a near-constant track
+    from turning tiny differences into huge z-scores."""
+    if not values:
+        return {}
+    v = np.array(list(values.values()), float)
+    med = float(np.median(v))
+    scale = max(1.4826 * float(np.median(np.abs(v - med))), floor)
+    return {k: (x - med) / scale for k, x in values.items()}
+
+
+def screen_outliers(dark_share: dict[str, float], hv_median_db: dict[str, float],
+                    z_max: float = OUTLIER_Z, share_floor: float = OUTLIER_SHARE_FLOOR,
+                    hv_floor_db: float = OUTLIER_HV_FLOOR_DB,
+                    min_passes: int = OUTLIER_MIN_PASSES) -> dict[str, str]:
+    """For one track: exclude passes whose window dark-pixel share or window-median HV is a robust
+    outlier (|z| > z_max) among that track's passes. Returns excluded pass id -> reason.
+
+    Catches passes that are not uniformly too bright but read far more (or less) of the window as dark,
+    which would otherwise show up as a jump in lake area. Tracks with fewer than `min_passes` passes
+    are not screened (the median and MAD are not meaningful).
+    """
+    keys = [k for k in dark_share if np.isfinite(dark_share[k]) and np.isfinite(hv_median_db.get(k, np.nan))]
+    if len(keys) < min_passes:
+        return {}
+    zs = robust_z({k: dark_share[k] for k in keys}, share_floor)
+    zh = robust_z({k: hv_median_db[k] for k in keys}, hv_floor_db)
+    excluded = {}
+    for k in keys:
+        if abs(zs[k]) > z_max:
+            excluded[k] = (f"window dark share {dark_share[k]:.1%} is an outlier on its track "
+                           f"(robust z {zs[k]:+.1f}, limit {z_max})")
+        elif abs(zh[k]) > z_max:
+            excluded[k] = (f"window median HV {hv_median_db[k]:.1f} dB is an outlier on its track "
+                           f"(robust z {zh[k]:+.1f}, limit {z_max})")
+    return excluded
+
+
+def window_stats(hh_db: np.ndarray, hv_db: np.ndarray) -> tuple[float, float]:
+    """(dark-pixel share of the valid window pixels, window-median HV dB) of one despeckled pass."""
+    dark, valid = dark_mask(hh_db, hv_db)
+    n = int(valid.sum())
+    if not n:
+        return float("nan"), float("nan")
+    return float(dark.sum() / n), float(np.nanmedian(np.where(valid, hv_db, np.nan)))
 
 
 def dark_mask(hh_db: np.ndarray, hv_db: np.ndarray, drop_db: float = DROP_DB) -> tuple[np.ndarray, np.ndarray]:
