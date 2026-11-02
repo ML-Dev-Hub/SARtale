@@ -149,6 +149,38 @@ def _write_images(lake_out: Path, good: list[dict], latest: dict, zone, shadow, 
     return {"latest_hh": f"{rel}/latest_hh.webp", "water": f"{rel}/water.webp"}
 
 
+def _analyse(passes: list[dict], xs, ys, limits: list[str]):
+    """Despeckle, screen, and apply the two-view rule. Adds hh_db/hv_db to each pass in place.
+
+    Returns (epsg, px, by_track, excluded, directions, shadow).
+    """
+    epsg = passes[0]["epsg"]
+    px = float(abs(xs[1] - xs[0])) if len(xs) > 1 else 1.0
+    for p in passes:
+        p["hh_db"], p["hv_db"] = to_db(despeckle(p["hh"])), to_db(despeckle(p["hv"]))
+    by_track: dict[str, list[dict]] = {}
+    for p in passes:
+        by_track.setdefault(p["key"], []).append(p)
+
+    excluded: dict[str, str] = {}
+    for ps in by_track.values():
+        excluded.update(screen_passes({p["id"]: p["hh_db"] for p in ps}))
+
+    # Two-view rule on each track's season medians (R2), non-excluded passes only.
+    medians_dark = {}
+    for k, ps in by_track.items():
+        ok = [p for p in ps if p["id"] not in excluded]
+        if ok:
+            med_hh = _nanmedian0(np.stack([p["hh_db"] for p in ok]))
+            med_hv = _nanmedian0(np.stack([p["hv_db"] for p in ok]))
+            medians_dark[k] = dark_mask(med_hh, med_hv)[0]
+    directions = {k: k[-1] for k in by_track}
+    shadow = shadow_prone(medians_dark, directions) if medians_dark else None
+    if shadow is None:
+        limits.append("single viewing direction")
+    return epsg, px, by_track, excluded, directions, shadow
+
+
 def _no_looks() -> dict:
     return {"status": "Not enough NISAR looks yet", "track": None, "latest_date": None, "looks": 0,
             "change_km2": None, "noise_km2": None, "reason": NO_LOOKS_REASON}
@@ -178,31 +210,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path) -> dict:
     if not passes:
         return _empty(entry, limits + ["no usable NISAR window"])
 
-    epsg = passes[0]["epsg"]
-    px = float(abs(xs[1] - xs[0])) if len(xs) > 1 else 1.0
-    for p in passes:
-        p["hh_db"], p["hv_db"] = to_db(despeckle(p["hh"])), to_db(despeckle(p["hv"]))
-    by_track: dict[str, list[dict]] = {}
-    for p in passes:
-        by_track.setdefault(p["key"], []).append(p)
-
-    excluded: dict[str, str] = {}
-    for ps in by_track.values():
-        excluded.update(screen_passes({p["id"]: p["hh_db"] for p in ps}))
-
-    # Two-view rule on each track's season medians (R2), non-excluded passes only.
-    medians_dark = {}
-    for k, ps in by_track.items():
-        ok = [p for p in ps if p["id"] not in excluded]
-        if ok:
-            med_hh = _nanmedian0(np.stack([p["hh_db"] for p in ok]))
-            med_hv = _nanmedian0(np.stack([p["hv_db"] for p in ok]))
-            medians_dark[k] = dark_mask(med_hh, med_hv)[0]
-    directions = {k: k[-1] for k in by_track}
-    shadow = shadow_prone(medians_dark, directions) if medians_dark else None
-    if shadow is None:
-        limits.append("single viewing direction")
-
+    epsg, px, by_track, excluded, directions, shadow = _analyse(passes, xs, ys, limits)
     zone = lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline)
     series: list[SeriesPoint] = []
     for p in sorted(passes, key=lambda q: (q["date"], q["key"])):
@@ -256,11 +264,39 @@ def attabad_gate(doc: dict) -> dict:
             "attabad_cloud_window_looks": cw, "pass": ok}
 
 
-def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str) -> dict:
+def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, checks: list[dict] | None = None) -> dict:
+    """`checks` are the Sentinel-2 cross-check rows from `lakes-check`, merged in as the `checks` block."""
     return {
         "version": 1, "built": built, "notes": NOTES, "crid": config.CRID, "cloud_window": list(config.CLOUD_WINDOW),
         "constants": {"drop_db": config.DROP_DB, "min_looks": config.MIN_LOOKS,
                       "min_observable": config.MIN_OBSERVABLE, "noise_floor_km2": config.NOISE_FLOOR_KM2,
                       "change_factor": config.CHANGE_FACTOR, "speckle_box": config.SPECKLE_BOX},
         "lakes": [build_lake(lake, Path(cache_dir), Path(out_dir)) for lake in lakes],
+        "checks": list(checks or []),
     }
+
+
+def radar_water_mask(lake: Lake, cache_dir: Path, pass_id: str, zone_only: bool = True):
+    """The radar water mask of one cached pass, by the same rule `build_lake` counts area with.
+
+    `pass_id` is `<date>_<key>`. With `zone_only` the mask is limited to the lake zone (what the app
+    reports); otherwise it covers the whole window (dark, valid, not shadow-prone).
+    Returns (mask, x, y, epsg) on the common window grid. KeyError if the pass is not usable,
+    ValueError if it was excluded by the screen.
+    """
+    limits: list[str] = []
+    outline = _load_outline(lake)
+    lake_dir = Path(cache_dir) / lake.id
+    raw = _read_cache(lake_dir, limits) if lake_dir.is_dir() else []
+    passes, xs, ys = _align(raw, limits, lake) if raw else ([], None, None)
+    if pass_id not in {p["id"] for p in passes}:
+        raise KeyError(f"{lake.id}: no usable cached pass {pass_id}")
+    epsg, px, _, excluded, _, shadow = _analyse(passes, xs, ys, limits)
+    if pass_id in excluded:
+        raise ValueError(f"{lake.id} {pass_id} was excluded: {excluded[pass_id]}")
+    p = next(q for q in passes if q["id"] == pass_id)
+    dark, valid = dark_mask(p["hh_db"], p["hv_db"])
+    mask = dark & valid & (np.ones(dark.shape, bool) if shadow is None else ~shadow)
+    if zone_only:
+        mask &= lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline)
+    return mask, xs, ys, epsg

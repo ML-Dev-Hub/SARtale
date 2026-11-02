@@ -1,4 +1,4 @@
-"""SARtale pipeline CLI: search, download, build, change, sites, rebuild, preview, lakes-search, lakes-fetch, lakes-build."""
+"""SARtale pipeline CLI: search, download, build, change, sites, rebuild, preview, lakes-search, lakes-fetch, lakes-build, lakes-check."""
 import argparse
 import json
 from dataclasses import asdict
@@ -12,6 +12,7 @@ from sartale.change import add_change_scores, build_change
 from sartale.download import download
 from sartale.lake_catalog import Pass, coverage_report, search_lake_passes, select_lake_passes
 from sartale.lakebuild import attabad_gate, build_lakes
+from sartale.lakecheck import check_lake
 from sartale.lakes import load_lakes
 from sartale.remote import fetch_lake_passes
 from sartale.products import build_products
@@ -208,7 +209,9 @@ def cmd_lakes_build(args) -> None:
     lakes = load_lakes(Path(args.lakes_in))
     out = Path(args.out)
     built = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    doc = build_lakes(lakes, Path(args.cache), out, built)
+    checks_path = Path(args.checks)
+    checks = json.loads(checks_path.read_text(encoding="utf-8")) if checks_path.is_file() else []
+    doc = build_lakes(lakes, Path(args.cache), out, built, checks)
     (out).mkdir(parents=True, exist_ok=True)
     (out / "lakes.json").write_text(json.dumps(doc, indent=1, allow_nan=False), encoding="utf-8")
     for lk in doc["lakes"]:
@@ -222,6 +225,31 @@ def cmd_lakes_build(args) -> None:
     print(f"gate: median ratio {g['median_ratio']} (need >= 2), attabad status {g['attabad_status']}, "
           f"cloud-window looks {g['attabad_cloud_window_looks']} (need >= 3): {'PASS' if g['pass'] else 'FAIL'}")
     print(f"{len(doc['lakes'])} lakes -> {out / 'lakes.json'}")
+
+
+def cmd_lakes_check(args) -> None:
+    """Compare the radar water of chosen lakes with Sentinel-2 MNDWI water; write the rows and merge
+    them into lakes.json (the lakes themselves are not rebuilt)."""
+    lakes = {lk.id: lk for lk in load_lakes(Path(args.lakes_in))}
+    path = Path(args.out) / "lakes.json"
+    doc = _read_json(path)
+    rows = []
+    for lid in [x.strip() for x in args.lakes.split(",") if x.strip()]:
+        series = next(lk["series"] for lk in doc["lakes"] if lk["id"] == lid)
+        row = check_lake(lakes[lid], Path(args.cache), series)
+        rows.append(row)
+        if "note" in row:
+            print(f"{lid}: {row['note']}")
+        else:
+            print(f"{lid}: NISAR {row['nisar_date']} {row['nisar_track']} vs S2 {row['s2_date']} {row['s2_id']} | "
+                  f"zone radar {row['radar_km2']:.3f} km2, optical {row['optical_km2']:.3f} km2, "
+                  f"error {row['area_error_pct'] if row['area_error_pct'] is None else round(row['area_error_pct'], 1)} %, "
+                  f"IoU {row['iou'] if row['iou'] is None else round(row['iou'], 3)} | window radar {row['window_radar_km2']:.3f}, "
+                  f"optical {row['window_optical_km2']:.3f}, IoU {row['window_iou']}")
+    Path(args.checks).write_text(json.dumps(rows, indent=1, allow_nan=False), encoding="utf-8")
+    doc["checks"] = rows
+    path.write_text(json.dumps(doc, indent=1, allow_nan=False), encoding="utf-8")
+    print(f"{len(rows)} checks -> {args.checks} and {path}")
 
 
 def main(argv=None) -> None:
@@ -287,7 +315,16 @@ def main(argv=None) -> None:
     lb.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
     lb.add_argument("--cache", default=str(REPO_ROOT / "data" / "lakes"))
     lb.add_argument("--out", default=str(REPO_ROOT / "app" / "public" / "data"))
+    lb.add_argument("--checks", default=str(REPO_ROOT / "processing" / "lake_checks.json"),
+                    help="rows written by lakes-check, merged into lakes.json when the file exists")
     lb.set_defaults(func=cmd_lakes_build)
+    lc = sub.add_parser("lakes-check", help="compare radar lake water with Sentinel-2 MNDWI water")
+    lc.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    lc.add_argument("--cache", default=str(REPO_ROOT / "data" / "lakes"))
+    lc.add_argument("--out", default=str(REPO_ROOT / "app" / "public" / "data"), help="folder holding lakes.json")
+    lc.add_argument("--checks", default=str(REPO_ROOT / "processing" / "lake_checks.json"))
+    lc.add_argument("--lakes", default="attabad,khurdopin,passu,shisper", help="comma-separated lake ids")
+    lc.set_defaults(func=cmd_lakes_check)
     args = parser.parse_args(argv)
     args.func(args)
 
