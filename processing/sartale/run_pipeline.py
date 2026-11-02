@@ -1,4 +1,4 @@
-"""SARtale pipeline CLI: search, download, build, change, sites, rebuild, preview, lakes-search, lakes-fetch."""
+"""SARtale pipeline CLI: search, download, build, change, sites, rebuild, preview, lakes-search, lakes-fetch, lakes-build."""
 import argparse
 import json
 from dataclasses import asdict
@@ -11,6 +11,7 @@ from sartale.catalog import search_cmr, select_stack, utc_date, write_manifest
 from sartale.change import add_change_scores, build_change
 from sartale.download import download
 from sartale.lake_catalog import Pass, coverage_report, search_lake_passes, select_lake_passes
+from sartale.lakebuild import build_lakes
 from sartale.lakes import load_lakes
 from sartale.remote import fetch_lake_passes
 from sartale.products import build_products
@@ -203,6 +204,21 @@ def cmd_lakes_fetch(args) -> None:
         sys.exit(1)
 
 
+def cmd_lakes_build(args) -> None:
+    lakes = load_lakes(Path(args.lakes_in))
+    out = Path(args.out)
+    built = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    doc = build_lakes(lakes, Path(args.cache), out, built)
+    (out).mkdir(parents=True, exist_ok=True)
+    (out / "lakes.json").write_text(json.dumps(doc, indent=1, allow_nan=False), encoding="utf-8")
+    for lk in doc["lakes"]:
+        st = lk["status"]
+        print(f"{lk['id']}: {st['status']}, looks {st['looks']}, cloud-window looks {lk['cloud_window_looks']}, "
+              f"track {st['track']}, latest {st['latest_date']}, directions {''.join(lk['directions']) or '-'}, "
+              f"excluded {len(lk['excluded'])}, limits {lk['limits']}")
+    print(f"{len(doc['lakes'])} lakes -> {out / 'lakes.json'}")
+
+
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(prog="run_pipeline")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -262,6 +278,11 @@ def main(argv=None) -> None:
     lf.add_argument("--passes", default=str(REPO_ROOT / "data" / "lakes" / "passes.json"))
     lf.add_argument("--out", default=str(REPO_ROOT / "data" / "lakes"))
     lf.set_defaults(func=cmd_lakes_fetch)
+    lb = sub.add_parser("lakes-build", help="build lakes.json and per-lake images from the cached windows")
+    lb.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    lb.add_argument("--cache", default=str(REPO_ROOT / "data" / "lakes"))
+    lb.add_argument("--out", default=str(REPO_ROOT / "app" / "public" / "data"))
+    lb.set_defaults(func=cmd_lakes_build)
     args = parser.parse_args(argv)
     args.func(args)
 
