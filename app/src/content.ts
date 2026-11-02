@@ -15,6 +15,10 @@ export const BANNED_CLAIMS = [
   "change detected",
   "changes detected",
   "change detection",
+  "breach warning",
+  "predict",
+  "safe",
+  "no risk",
 ] as const;
 
 const BANNED_PATTERNS = BANNED_CLAIMS.map((phrase) => ({

@@ -2,6 +2,7 @@ import { heroCopy, storyBeats, type StoryStep } from "./content";
 import { createEvidenceView } from "./evidenceView";
 import { setChangeOverlay, setComposite, setFrame, setStepOverlay, type MapLike } from "./map";
 import { createMissedView } from "./missedView";
+import type { LakesFile } from "./lakes";
 import type { Preloader } from "./preload";
 import { createSitesView, type ChartFactory } from "./sitesView";
 import { createStoryPanel } from "./storyPanel";
@@ -32,6 +33,8 @@ export interface MapHost {
 export interface AppOptions {
   /** Site curves from data/sites.json, or null/undefined when the file is absent. */
   sites?: Site[] | null;
+  /** Lake data from data/lakes.json, or null/undefined when the file is absent or unusable. */
+  lakes?: LakesFile | null;
   createChart?: ChartFactory;
   /** Fetches frames in the background so stepping through dates does not stall. Absent in tests. */
   preload?: Preloader;

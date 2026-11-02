@@ -4,16 +4,17 @@ import { lazyHostFactory } from "./lazyHost";
 import { createUplotChart } from "./chart";
 import { loadImage } from "./images";
 import { createPreloader } from "./preload";
+import { loadLakes } from "./lakes";
 import { sitesForManifest, loadSites } from "./sites";
 import { mountOrShowError, showStartupError } from "./startup";
 import { loadManifest } from "./timeline";
 
 const root = document.getElementById("app")!;
 
-Promise.all([loadManifest("data/manifest.json"), loadSites("data/sites.json")]).then(
-  ([m, sites]) =>
+Promise.all([loadManifest("data/manifest.json"), loadSites("data/sites.json"), loadLakes("data/lakes.json")]).then(
+  ([m, sites, lakes]) =>
     // Curves from another build (or with no stamp) are dropped: the view then says "No site curves yet".
-    mountOrShowError(root, m, lazyHostFactory(m), { sites: sitesForManifest(sites, m), createChart: createUplotChart, preload: createPreloader(loadImage) }),
+    mountOrShowError(root, m, lazyHostFactory(m), { sites: sitesForManifest(sites, m), lakes, createChart: createUplotChart, preload: createPreloader(loadImage) }),
   (err: unknown) =>
     showStartupError(
       root,
