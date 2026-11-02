@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import readme from "../../README.md?raw";
+import demoScript from "../../docs/demo-script.md?raw";
 import { describe, expect, test } from "vitest";
 import { evidenceCopy } from "./evidenceView";
 import { BADGE_LABELS, cardFor, EVIDENCE_LABELS, findBannedClaims, heroCopy, lakeHero, lakeStoryBeats, PLACEHOLDER, siteCards, story, storyBeats } from "./content";
@@ -147,8 +147,7 @@ describe("the guided story", () => {
 });
 
 describe("project documents", () => {
-  test.each(["../README.md", "../docs/demo-script.md"])("%s is free of banned claims", (path) => {
-    const text = readFileSync(resolve(process.cwd(), path), "utf8");
+  test.each([["README.md", readme], ["docs/demo-script.md", demoScript]])("%s is free of banned claims", (_name, text) => {
     expect(text.length).toBeGreaterThan(500);
     expect(findBannedClaims(text)).toEqual([]);
   });
