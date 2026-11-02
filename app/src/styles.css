@@ -883,9 +883,10 @@ button { font: inherit; }
 /* Lake brief: hidden on screen, the only thing shown when printing. */
 .lake-brief { display: none; }
 @media print {
-  @page { size: A4; margin: 16mm; }
+  @page { size: A4; margin: 15mm; }
+  html, body { background: #fff !important; color: #000; min-height: 0 !important; height: auto !important; margin: 0; padding: 0; }
   body > *:not(.lake-brief) { display: none !important; }
-  .lake-brief { display: block; color: #000; background: #fff; font: 10.5pt/1.4 system-ui, sans-serif; }
+  .lake-brief { display: block; width: auto; max-width: none; margin: 0; padding: 0; color: #000; background: #fff; font: 10.5pt/1.4 system-ui, sans-serif; }
   .lake-brief h1 { margin: 0 0 4pt; font-size: 18pt; }
   .lake-brief h2 { margin: 12pt 0 3pt; font-size: 11pt; border-bottom: 0.5pt solid #888; }
   .lake-brief p, .lake-brief ul { margin: 0 0 4pt; }
