@@ -25,3 +25,12 @@ DSWX_WTR_WATER_VALUES = frozenset({DSWX_WTR_OPEN_WATER, DSWX_WTR_INUNDATED_VEGET
 DSWX_WTR_INVALID_VALUES = frozenset(
     {DSWX_WTR_HAND_MASKED, DSWX_WTR_LAYOVER_SHADOW_MASKED, DSWX_WTR_FILL}
 )
+
+# Lake Watch method constants (docs: global-constraints in the Lake Watch plan).
+DROP_DB = 4.0  # dark = HH and HV both at least this far below the window median
+BRIGHT_PASS_DB = 3.0  # a pass whose window-median HH is further than this from its track median is excluded
+MIN_LOOKS = 3  # valid same-track passes needed for a trend
+MIN_OBSERVABLE = 0.5  # share of the lake zone that must be observable
+NOISE_FLOOR_KM2 = 0.005
+CHANGE_FACTOR = 2.0
+CLOUD_WINDOW = ("2026-06-17", "2026-08-04")  # inclusive; headline cloud count

@@ -5,12 +5,13 @@ from typing import Literal
 import requests
 
 from sartale.catalog import CMR_URL, SHORT_NAME, parse_granule
+from sartale.config import MIN_LOOKS
 from sartale.lakes import Lake
 
 PAGE_SIZE = 2000
 MODE = "4005"
 CALIBRATED_FROM = "2026-06-17"  # earlier passes are not calibrated
-MIN_LOOKS = 3  # same-track passes needed for a trend
+
 
 
 @dataclass(frozen=True)
