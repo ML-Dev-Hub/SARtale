@@ -171,9 +171,8 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
     zone, the area the app reports. `window_*` repeat them over the whole ~6 km window, where the radar
     side is every dark, non-shadow pixel and so includes non-lake dark ground.
     """
-    from sartale.lakebuild import radar_water_mask
+    from sartale.lakebuild import radar_water_masks
     from sartale.lakes import lake_bbox
-    from sartale.lakewater import lake_zone
 
     passes = sorted({(p["date"], p["track"]) for p in series if p["excluded"] is None})
     if not passes:
@@ -195,7 +194,8 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
         if (scene["id"], d) in tried:
             continue
         tried.add((scene["id"], d))
-        mask, x, y, epsg = radar_water_mask(lake, cache_dir, pass_id, zone_only=True)
+        radar = radar_water_masks(lake, cache_dir, pass_id)
+        x, y, epsg = radar["x"], radar["y"], radar["epsg"]
         try:
             opt = optical_on_grid(scene, x, y, epsg)
         except Exception as e:  # noqa: BLE001 - a scene that will not read is skipped, and said so
@@ -205,11 +205,10 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
         log(f"{lake.id} {pass_id} vs {scene['id']} ({apart} d apart): window cloud/no-data {pct:.1f}%")
         if pct > max_cloud:
             continue
-        wide, *_ = radar_water_mask(lake, cache_dir, pass_id, zone_only=False)
         px = float(abs(x[1] - x[0]))
-        zone = lake_zone((len(y), len(x)), x, y, epsg, lake)
-        zone_cmp = compare_masks(mask, opt["water"], px, valid=opt["valid"] & zone)
-        win_cmp = compare_masks(wide, opt["water"], px, valid=opt["valid"])
+        zone = radar["zone"]  # the exact zone the radar side used (outline or circle)
+        zone_cmp = compare_masks(radar["zone_mask"], opt["water"], px, valid=opt["valid"] & zone)
+        win_cmp = compare_masks(radar["window"], opt["water"], px, valid=opt["valid"])
         return {"lake": lake.id, "nisar_date": d, "nisar_track": track, "s2_date": scene["date"],
                 "s2_id": scene["id"], "days_apart": apart, "s2_window_cloud_pct": round(pct, 1),
                 "scope": "zone", **_pair(zone_cmp),

@@ -276,13 +276,13 @@ def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, c
     }
 
 
-def radar_water_mask(lake: Lake, cache_dir: Path, pass_id: str, zone_only: bool = True):
-    """The radar water mask of one cached pass, by the same rule `build_lake` counts area with.
+def radar_water_masks(lake: Lake, cache_dir: Path, pass_id: str) -> dict:
+    """Radar water of one cached pass, by the same rule `build_lake` counts area with.
 
-    `pass_id` is `<date>_<key>`. With `zone_only` the mask is limited to the lake zone (what the app
-    reports); otherwise it covers the whole window (dark, valid, not shadow-prone).
-    Returns (mask, x, y, epsg) on the common window grid. KeyError if the pass is not usable,
-    ValueError if it was excluded by the screen.
+    `pass_id` is `<date>_<key>`. Returns {"window": dark, valid, non-shadow mask over the whole window,
+    "zone_mask": the same limited to the lake zone, "zone": the zone itself (outline if the lake has a
+    readable one, else the 1 km circle), "x", "y", "epsg"}. KeyError if the pass is not usable,
+    ValueError if the screen excluded it.
     """
     limits: list[str] = []
     outline = _load_outline(lake)
@@ -296,7 +296,12 @@ def radar_water_mask(lake: Lake, cache_dir: Path, pass_id: str, zone_only: bool 
         raise ValueError(f"{lake.id} {pass_id} was excluded: {excluded[pass_id]}")
     p = next(q for q in passes if q["id"] == pass_id)
     dark, valid = dark_mask(p["hh_db"], p["hv_db"])
-    mask = dark & valid & (np.ones(dark.shape, bool) if shadow is None else ~shadow)
-    if zone_only:
-        mask &= lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline)
-    return mask, xs, ys, epsg
+    window = dark & valid & (np.ones(dark.shape, bool) if shadow is None else ~shadow)
+    zone = lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline)
+    return {"window": window, "zone_mask": window & zone, "zone": zone, "x": xs, "y": ys, "epsg": epsg}
+
+
+def radar_water_mask(lake: Lake, cache_dir: Path, pass_id: str, zone_only: bool = True):
+    """(mask, x, y, epsg) of `radar_water_masks`: the zone mask if `zone_only`, else the window mask."""
+    r = radar_water_masks(lake, cache_dir, pass_id)
+    return (r["zone_mask"] if zone_only else r["window"]), r["x"], r["y"], r["epsg"]

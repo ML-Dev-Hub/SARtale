@@ -128,3 +128,34 @@ def test_build_lakes_merges_checks(tmp_path):
     doc = build_lakes([make_lake("alpha")], tmp_path / "c", tmp_path / "o", "t", rows)
     assert doc["checks"] == rows
     assert build_lakes([], tmp_path / "c", tmp_path / "o", "t")["checks"] == []
+
+
+def test_check_uses_the_radar_zone_with_an_outline(tmp_path, monkeypatch):
+    import json
+    from dataclasses import replace
+    from sartale.lakebuild import radar_water_masks
+
+    base = make_lake("ringed")
+    d = 0.003  # about 300 m
+    ring = [[base.lon + sx * d, base.lat + sy * d] for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))]
+    poly = tmp_path / "outline.geojson"
+    poly.write_text(json.dumps({"type": "Polygon", "coordinates": [ring]}), encoding="utf-8")
+    lake = replace(base, outline=str(poly))
+    cache = tmp_path / "cache"
+    for day in ["2026-06-18", "2026-06-30", "2026-07-12"]:
+        write_pass(cache, lake, day, "156A")
+        write_pass(cache, lake, day, "063D")
+    r = radar_water_masks(lake, cache, "2026-07-12_156A")
+    circle = radar_water_masks(replace(lake, outline=None), cache, "2026-07-12_156A")["zone"]
+    assert r["zone"].sum() < circle.sum()  # the outline zone really is not the circle
+
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a, **k: [
+        {"id": "S2X", "properties": {"datetime": "2026-07-12T05:00:00Z", "eo:cloud_cover": 1.0},
+         "assets": {"green": {}, "swir16": {}, "scl": {}}}])
+    everywhere = np.ones(r["zone"].shape, bool)
+    monkeypatch.setattr(lakecheck, "optical_on_grid", lambda scene, x, y, epsg: {
+        "water": everywhere, "valid": everywhere, "window_cloud_share": 0.0, "invalid_share": 0.0})
+    series = [{"date": "2026-07-12", "track": "156A", "excluded": None}]
+    row = lakecheck.check_lake(lake, cache, series, log=lambda *_: None)
+    assert row["optical_km2"] == pytest.approx(r["zone"].sum() * PX ** 2 / 1e6)
+    assert row["radar_km2"] == pytest.approx(r["zone_mask"].sum() * PX ** 2 / 1e6)
