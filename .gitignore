@@ -8,3 +8,6 @@ app/dist/
 app/public/data/raw/
 *.h5
 *.tif
+video/out/
+video/__pycache__/
+video/media/
