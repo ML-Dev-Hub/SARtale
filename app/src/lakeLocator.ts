@@ -14,6 +14,7 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
   let ro: ResizeObserver | undefined;
   let gone = false;
   let userMoved = false;
+  let fitting = false;
   let pending: string | undefined;
 
   void (async () => {
@@ -35,8 +36,12 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
       m.touchZoomRotate.disableRotation();
       m.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "top-right");
       map = m;
-      m.on("movestart", (e) => {
-        if ((e as { originalEvent?: unknown }).originalEvent) userMoved = true;
+      // Any move or zoom that did not start in our own fit() is the person's, including the +/- buttons.
+      m.on("movestart", () => {
+        if (!fitting) userMoved = true;
+      });
+      m.on("zoomstart", () => {
+        if (!fitting) userMoved = true;
       });
       const fit = (): void => {
         if (!el.clientWidth || !el.clientHeight) return;
@@ -46,7 +51,9 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
         const e = Math.max(...lakes.map((l) => l.bounds?.[2] ?? l.lon));
         const s = Math.min(...lakes.map((l) => l.bounds?.[1] ?? l.lat));
         const n = Math.max(...lakes.map((l) => l.bounds?.[3] ?? l.lat));
+        fitting = true;
         m.fitBounds([[w, s], [e, n]], { padding: 30, animate: false, maxZoom: 9 });
+        fitting = false;
       };
       m.on("load", () => {
         // Where a lake has bounds they draw its frame; the marker always comes from lon/lat.
