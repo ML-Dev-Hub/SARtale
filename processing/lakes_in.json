@@ -20,8 +20,6 @@
    "coord_source": "HMAGLOFDB, lake coordinate, event 2020-08-14", "outline": null, "downstream": null, "downstream_source": null},
   {"id": "shazore", "name": "Shazore moraine-dammed lake (KP)", "lon": 72.175989, "lat": 35.780972, "role": "watch",
    "coord_source": "HMAGLOFDB, lake coordinate, event 2024-08-30", "outline": null, "downstream": null, "downstream_source": null},
-  {"id": "bindo_gol", "name": "Bindo Gol lake (Chitral)", "lon": 71.898, "lat": 36.174, "role": "watch",
-   "coord_source": "HMAGLOFDB, lake coordinate, event 2015-07", "outline": null, "downstream": null, "downstream_source": null},
-  {"id": "booni_gol", "name": "Booni Gol water pocket (Chitral)", "lon": 72.3, "lat": 36.194, "role": "watch",
-   "coord_source": "HMAGLOFDB, lake coordinate, event 2010-07", "outline": null, "downstream": null, "downstream_source": null}
+  {"id": "bindo_gol", "name": "Bindo Gol ephemeral impoundment (Chitral)", "lon": 71.898, "lat": 36.174, "role": "watch",
+   "coord_source": "HMAGLOFDB, lake coordinate, event 2010-07-28", "outline": null, "downstream": null, "downstream_source": null}
 ]
