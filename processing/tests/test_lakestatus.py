@@ -84,3 +84,16 @@ def test_cloud_window_counts_only_valid_points_in_dates():
         pt("2026-08-05", "063D", 1.0),
     ]
     assert cloud_window_looks(series) == 3
+
+
+def test_status_growing_with_three_looks():
+    s = lake_status(flat("156A", [1.0, 1.0, 1.5]))
+    assert s["status"] == "Growing"
+    assert s["noise_km2"] == NOISE_FLOOR_KM2
+
+
+def test_status_observable_but_none_valid():
+    series = [pt("2026-09-01", "156A", None, 0.8, excluded="bright outlier")]
+    s = lake_status(series)
+    assert s["status"] == "Not enough NISAR looks yet"
+    assert s["track"] is None and s["looks"] == 0

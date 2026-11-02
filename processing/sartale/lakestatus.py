@@ -58,6 +58,9 @@ def lake_status(
     exists (excluded or not). "Not seen this pass" fires when, for some track,
     that newest pass is newer than the best track's latest valid date and has
     no valid point in `series` (excluded, unobservable or missing).
+
+    Noise is measured on the best track's EARLIER valid areas only (latest point
+    excluded), so a real change cannot inflate its own threshold.
     """
     if not any(p["observable_share"] >= MIN_OBSERVABLE for p in series):
         return _result(
@@ -107,7 +110,7 @@ def lake_status(
     areas = [p["area_km2"] for p in pts]
     ref = median(areas[:-1])
     change = areas[-1] - ref
-    noise = track_noise_km2(areas)
+    noise = track_noise_km2(areas[:-1])
     if change > CHANGE_FACTOR * noise:
         status = "Growing"
     elif change < -CHANGE_FACTOR * noise:
