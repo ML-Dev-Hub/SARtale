@@ -1,7 +1,8 @@
-"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-build, lakes-check."""
+"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-build, lakes-check, lake-requests-*."""
 import argparse
 import json
 import os
+import re
 import sys
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -10,6 +11,7 @@ from pathlib import Path
 from sartale.lake_catalog import Pass, coverage_report, search_lake_passes, select_lake_passes
 from sartale.lakebuild import attabad_gate, build_lakes
 from sartale.lakecheck import check_lake
+from sartale.lake_requests import OPEN_STATES, RequestStore
 from sartale.lakes import load_lakes
 from sartale.remote import fetch_lake_passes
 
@@ -169,8 +171,96 @@ def cmd_lakes_check(args) -> None:
     write_json_atomic(path, doc)
     print(f"{len(rows)} checks -> {args.checks} and {path}")
 
+DEFAULT_DB = REPO_ROOT / "data" / "lake_requests.sqlite"
 
-def main(argv=None) -> None:
+
+def _store(args) -> RequestStore:
+    db = Path(args.db)
+    db.parent.mkdir(parents=True, exist_ok=True)
+    return RequestStore(db)
+
+
+def _open_request(store: RequestStore, rid: int) -> dict:
+    row = store.get(rid)
+    if row is None:
+        print(f"No request with id {rid}", file=sys.stderr)
+        sys.exit(1)
+    if row["state"] not in OPEN_STATES:
+        print(f"Request {rid} is {row['state']}, not open", file=sys.stderr)
+        sys.exit(1)
+    return row
+
+
+def cmd_lake_requests_serve(args) -> None:
+    from sartale.requests_server import make_server
+
+    store = _store(args)
+    watched = load_lakes(REPO_ROOT / "processing" / "lakes_in.json")
+    server = make_server(store, watched, host=args.host, port=args.port, allowed_origin=args.origin)
+    print(f"Serving lake requests on http://{args.host}:{server.server_address[1]} (Ctrl+C to stop)", flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("stopping")
+    finally:
+        server.server_close()
+
+
+def cmd_lake_requests_list(args) -> None:
+    rows = _store(args).list_open()
+    for r in rows:
+        print(f"{r['id']}: {r['name']} ({r['lat']}, {r['lon']}) [{r['state']}] source: {r['source']}")
+    print(f"{len(rows)} open requests")
+
+
+def lake_slug(name: str, taken: set[str]) -> str:
+    base = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "lake"
+    slug, n = base, 2
+    while slug in taken:
+        slug, n = f"{base}_{n}", n + 1
+    return slug
+
+
+def append_lake_entry(path: Path, entry: dict) -> None:
+    """Insert one entry before the final `]` of lakes_in.json, touching nothing else but one comma."""
+    text = Path(path).read_bytes().decode("utf-8")
+    nl = "\r\n" if "\r\n" in text else "\n"
+    close = text.rindex("]")
+    last = len(text[:close].rstrip())
+    if text[last - 1] != "}":
+        raise ValueError(f"{path}: expected the last entry to end with }}")
+    d = lambda v: json.dumps(v, ensure_ascii=False)  # noqa: E731
+    keys = list(entry)
+    first = ", ".join(f"{d(k)}: {d(entry[k])}" for k in keys[:5])
+    second = ", ".join(f"{d(k)}: {d(entry[k])}" for k in keys[5:])
+    new = text[:last] + "," + nl + "  {" + first + "," + nl + "   " + second + "}" + nl + text[close:]
+    path = Path(path)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_bytes(new.encode("utf-8"))
+    os.replace(tmp, path)
+
+
+def cmd_lake_requests_accept(args) -> None:
+    store = _store(args)
+    row = _open_request(store, args.id)
+    lakes_in = Path(args.lakes_in)
+    taken = {x["id"] for x in _read_json(lakes_in)}
+    entry = {"id": lake_slug(row["name"], taken), "name": row["name"], "lon": row["lon"], "lat": row["lat"],
+             "role": args.role, "coord_source": f"Requested {row['created'][:10]}: {row['source']}",
+             "outline": None, "downstream": None, "downstream_source": None}
+    append_lake_entry(lakes_in, entry)
+    store.set_state(args.id, "accepted")
+    print(f"accepted {args.id} as {entry['id']} -> {lakes_in}")
+
+
+def cmd_lake_requests_reject(args) -> None:
+    store = _store(args)
+    _open_request(store, args.id)
+    store.set_state(args.id, "rejected", args.reason)
+    print(f"rejected {args.id}")
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="run_pipeline")
     sub = parser.add_subparsers(dest="command", required=True)
     k = sub.add_parser("lakes-search", help="search CMR for NISAR passes over each lake and report coverage")
@@ -199,7 +289,32 @@ def main(argv=None) -> None:
     lc.add_argument("--checks", default=str(REPO_ROOT / "processing" / "lake_checks.json"))
     lc.add_argument("--lakes", default="attabad,khurdopin,passu,shisper", help="comma-separated lake ids")
     lc.set_defaults(func=cmd_lakes_check)
-    args = parser.parse_args(argv)
+
+    rs = sub.add_parser("lake-requests-serve", help="serve the lake request API (never downloads NISAR data)")
+    rs.add_argument("--host", default="127.0.0.1")
+    rs.add_argument("--port", type=int, default=8787)
+    rs.add_argument("--db", default=str(DEFAULT_DB))
+    rs.add_argument("--origin", default="http://localhost:5173")
+    rs.set_defaults(func=cmd_lake_requests_serve)
+    rl = sub.add_parser("lake-requests-list", help="list open lake requests with their source")
+    rl.add_argument("--db", default=str(DEFAULT_DB))
+    rl.set_defaults(func=cmd_lake_requests_list)
+    ra = sub.add_parser("lake-requests-accept", help="add an open request to lakes_in.json and mark it accepted")
+    ra.add_argument("id", type=int)
+    ra.add_argument("--role", default="watch")
+    ra.add_argument("--db", default=str(DEFAULT_DB))
+    ra.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    ra.set_defaults(func=cmd_lake_requests_accept)
+    rr = sub.add_parser("lake-requests-reject", help="reject an open lake request")
+    rr.add_argument("id", type=int)
+    rr.add_argument("--reason", required=True)
+    rr.add_argument("--db", default=str(DEFAULT_DB))
+    rr.set_defaults(func=cmd_lake_requests_reject)
+    return parser
+
+
+def main(argv=None) -> None:
+    args = build_parser().parse_args(argv)
     args.func(args)
 
 
