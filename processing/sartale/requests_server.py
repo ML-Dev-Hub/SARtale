@@ -31,6 +31,10 @@ def _search_in_background(server, rid: int, lat: float, lon: float) -> None:
 class Handler(BaseHTTPRequestHandler):
     server_version = "SARtaleRequests"
 
+    def setup(self):
+        self.timeout = self.server.request_timeout  # slow or silent clients must not pin a thread
+        super().setup()
+
     def log_message(self, format, *args):  # keep stderr quiet
         pass
 
@@ -81,6 +85,9 @@ class Handler(BaseHTTPRequestHandler):
             return None
         try:
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        except OSError:  # timed out or reset while reading the body
+            self.close_connection = True
+            return None
         except (ValueError, RecursionError):
             self._error(400, "The body must be valid JSON.")
             return None
@@ -138,11 +145,36 @@ class Handler(BaseHTTPRequestHandler):
     do_PUT = do_DELETE = do_PATCH = _not_allowed
 
 
+class BoundedServer(ThreadingHTTPServer):
+    """Threading server that closes new connections beyond a fixed number."""
+    daemon_threads = True
+
+    def process_request(self, request, client_address):
+        if not self.slots.acquire(blocking=False):
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self.slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.slots.release()
+
+    def handle_error(self, request, client_address):  # no tracebacks from hostile clients
+        pass
+
+
 def make_server(store: RequestStore, watched: list[Lake], host: str = "127.0.0.1", port: int = 8787,
                 allowed_origin: str = "http://localhost:5173", search=coverage,
-                clock=time.time) -> ThreadingHTTPServer:
-    server = ThreadingHTTPServer((host, port), Handler)
-    server.daemon_threads = True
+                clock=time.time, timeout: float = 10, max_connections: int = 64) -> ThreadingHTTPServer:
+    server = BoundedServer((host, port), Handler)
+    server.request_timeout = timeout
+    server.slots = threading.BoundedSemaphore(max_connections)
     server.store = store
     server.watched = watched
     server.allowed_origin = allowed_origin

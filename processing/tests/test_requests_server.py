@@ -1,5 +1,6 @@
 import http.client
 import json
+import socket
 import threading
 import time
 import urllib.error
@@ -27,9 +28,9 @@ def fake_search(lat, lon):
 
 
 class Harness:
-    def __init__(self, tmp_path, search, clock):
+    def __init__(self, tmp_path, search, clock, **kw):
         self.store = RequestStore(tmp_path / "r.sqlite")
-        self.server = make_server(self.store, [ATTABAD], port=0, search=search, clock=clock)
+        self.server = make_server(self.store, [ATTABAD], port=0, search=search, clock=clock, **kw)
         self.port = self.server.server_address[1]
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -53,8 +54,8 @@ class Harness:
 def make(tmp_path):
     made = []
 
-    def build(search=fake_search, clock=time.time):
-        h = Harness(tmp_path, search, clock)
+    def build(search=fake_search, clock=time.time, **kw):
+        h = Harness(tmp_path, search, clock, **kw)
         made.append(h)
         return h
     yield build
@@ -200,3 +201,54 @@ def test_concurrent_posts_cannot_exceed_the_rate_limit(make):
     for t in threads:
         t.join()
     assert results.count(201) == 5 and results.count(429) == 7
+
+
+def closed_within(sock, seconds):
+    sock.settimeout(seconds)
+    try:
+        return sock.recv(1) == b""
+    except socket.timeout:
+        return False
+    except ConnectionError:
+        return True
+
+
+def test_a_silent_connection_is_closed_after_the_timeout(make):
+    h = make(timeout=0.5)
+    s = socket.create_connection(("127.0.0.1", h.port))
+    try:
+        assert closed_within(s, 3)
+    finally:
+        s.close()
+    assert h.call("GET", "/api/health")[0] == 200
+
+
+def test_a_stalled_body_is_closed_after_the_timeout(make):
+    h = make(timeout=0.5)
+    s = socket.create_connection(("127.0.0.1", h.port))
+    try:
+        s.sendall(b"POST /api/lake-requests HTTP/1.1\r\nContent-Length: 4000\r\n\r\n{")
+        s.settimeout(3)
+        data = b""
+        try:
+            while chunk := s.recv(4096):
+                data += chunk
+        except ConnectionError:
+            pass
+        assert b"200" not in data[:20]
+    finally:
+        s.close()
+    assert h.call("GET", "/api/health")[0] == 200
+
+
+def test_connections_beyond_the_cap_are_closed(make):
+    h = make(timeout=5, max_connections=2)
+    held = [socket.create_connection(("127.0.0.1", h.port)) for _ in range(2)]
+    time.sleep(0.3)
+    extra = socket.create_connection(("127.0.0.1", h.port))
+    try:
+        assert closed_within(extra, 2)
+    finally:
+        extra.close()
+        for s in held:
+            s.close()
