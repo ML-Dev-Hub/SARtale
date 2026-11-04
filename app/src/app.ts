@@ -44,15 +44,12 @@ const TEMPLATE = `
     <div class="home-root" data-role="home-root"></div>
 
     <section class="sites-view lakes-view" data-role="lakes-view" aria-label="Lake Watch" hidden>
-      <p class="maturity" data-role="lakes-maturity"></p>
       <div class="sites-scroll" data-role="lakes-root"></div>
     </section>
     <section class="sites-view lakestory-view" data-role="lakestory-view" aria-label="Story" hidden>
-      <p class="maturity" data-role="lakestory-maturity"></p>
       <div class="sites-scroll" data-role="lakestory-root"></div>
     </section>
     <section class="sites-view evidence-view" data-role="evidence-view" aria-label="How we know" hidden>
-      <p class="maturity" data-role="evidence-maturity"></p>
       <div class="evidence-root" data-role="evidence-root"></div>
     </section>
   </main>

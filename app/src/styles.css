@@ -127,15 +127,20 @@ a:hover { color: #b8ecfa; }
 .lw-sentence, .lw-coord { font-size: 0.86rem; color: var(--muted); }
 .lw-chip { justify-self: start; padding: 1px 10px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 0.78rem; font-weight: 700; background: var(--panel-2); white-space: nowrap; }
 .lw-status-growing { border-color: var(--warm); color: var(--warm); }
-.lw-status-shrinking { border-color: #9db8ff; color: #c4d3ff; }
+.lw-status-shrinking { border-color: #5b8cff; color: #c4d3ff; }
 .lw-status-stable { border-color: var(--accent); color: var(--accent); }
 .lw-status-not-observable, .lw-status-not-enough-nisar-looks-yet, .lw-status-not-seen-this-pass { border-style: dashed; color: var(--muted); }
 .lw-locator { height: 200px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); color: var(--muted); font-size: 0.88rem; }
 .lw-town { color: var(--muted); font-size: 0.72rem; pointer-events: none; padding-top: 3px; text-shadow: 0 0 3px var(--ground); }
-.site-marker { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 3px solid var(--ground); background: var(--warm); box-shadow: 0 0 0 2px var(--warm); cursor: pointer; }
-.site-marker:hover { box-shadow: 0 0 0 4px rgba(255, 196, 107, 0.5); }
-.lw-marker[data-control="true"] { background: var(--muted); box-shadow: 0 0 0 2px var(--muted); }
-.lw-marker[data-selected] { background: var(--accent); box-shadow: 0 0 0 3px var(--accent); }
+.site-marker { width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 3px solid var(--ground); background: var(--muted); box-shadow: 0 0 0 2px var(--muted); cursor: pointer; }
+/* Pins carry the status colour the pills use: Stable cyan, Growing amber, Shrinking blue, anything not observed a hollow muted ring. */
+.lw-marker[data-status="stable"] { background: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.lw-marker[data-status="growing"] { background: var(--warm); box-shadow: 0 0 0 2px var(--warm); }
+.lw-marker[data-status="shrinking"] { background: #5b8cff; box-shadow: 0 0 0 2px #5b8cff; }
+.lw-marker[data-status="not-observable"], .lw-marker[data-status="not-enough-nisar-looks-yet"], .lw-marker[data-status="not-seen-this-pass"] { background: transparent; border-color: var(--muted); box-shadow: none; }
+.lw-marker[data-control="true"] { border-style: dashed; }
+/* Selection is a white ring around the pin, never a colour, so it cannot be read as a status. */
+.lw-marker[data-selected] { box-shadow: 0 0 0 2px var(--ground), 0 0 0 5px #fff; }
 .lw-detail { align-content: start; }
 .lw-title { font-size: 1.9rem; font-weight: 700; line-height: 1.1; }
 .lw-sentence-big { font-size: 1.1rem; max-width: 62ch; }

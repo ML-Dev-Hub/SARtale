@@ -1,5 +1,6 @@
 import { cloudHeadline, methodLimits, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
 import { dataUrl, formatDate } from "./format";
+import { statusSlug } from "./lakeLocator";
 
 /** One line on the lake chart: a track's valid passes, or the passes that were left out. */
 export interface LakeChartSeries {
@@ -71,7 +72,7 @@ export function lakeChartData(lake: Lake): LakeChartData {
   return { x: dates.map(utcSeconds), series };
 }
 
-const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+const slug = statusSlug;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);

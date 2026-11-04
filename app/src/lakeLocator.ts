@@ -1,6 +1,9 @@
 import type { Lake } from "./lakes";
 import type { LocatorFactory } from "./lakeWatchView";
 
+/** A status as a CSS-safe word, shared by the locator pins and the status pills (Stable -> stable). */
+export const statusSlug = (status: string): string => status.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
 const BACKGROUND = "#0b1825"; // same base style as maplibreAdapter.ts: a plain background, no outside tiles
 
 /**
@@ -94,6 +97,7 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
         b.className = "site-marker lw-marker";
         b.dataset.role = "lw-marker";
         b.dataset.control = String(l.role === "control");
+        b.dataset.status = statusSlug(l.status.status);
         b.setAttribute("aria-label", l.name);
         b.title = l.name;
         b.addEventListener("click", () => onPick(l.id));
