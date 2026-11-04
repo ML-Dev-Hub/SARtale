@@ -1,18 +1,25 @@
+# data and build output
 /data/
-.superpowers/
+*.h5
+*.tif
+app/public/data/raw/
+app/dist/
+node_modules/
 __pycache__/
 *.pyc
 .pytest_cache/
-node_modules/
-app/dist/
-app/public/data/raw/
-*.h5
-*.tif
-video/out/
-video/__pycache__/
-video/media/
-video/short/out/
-video/story/out/
+
+# internal working files: kept on disk, not published
+.superpowers/
+_archive/
+docs/research_notes/
+docs/reports/
+docs/superpowers/
+docs/assets/
+docs/deep-research-report.md
+docs/SARtale-hackathon-plan.md
+docs/admin-meeting.md
+docs/demo-script.md
 
 # local secrets (ElevenLabs CLI)
 .env.local

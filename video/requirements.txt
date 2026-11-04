@@ -1,6 +1,0 @@
-# Video tooling (conda env `sartale-video`; ffmpeg and manim come from conda)
-elevenlabs
-python-dotenv
-yt-dlp
-websocket-client
-pillow

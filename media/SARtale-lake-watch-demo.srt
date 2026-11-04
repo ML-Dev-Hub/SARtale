@@ -1,0 +1,43 @@
+1
+00:00:00,135 --> 00:00:05,662
+A glacial lake above Hunza bursts and takes the Karakoram Highway bridge with it.
+
+2
+00:00:06,096 --> 00:00:10,392
+Pakistan tracks one hundred and thirty-one potentially dangerous lakes,
+
+3
+00:00:10,712 --> 00:00:12,046
+but on many summer days,
+
+4
+00:00:12,154 --> 00:00:13,315
+cloud hides them.
+
+5
+00:00:13,712 --> 00:00:15,950
+NISAR's radar sees straight through.
+
+6
+00:00:16,442 --> 00:00:18,412
+SARtale finds each lake,
+
+7
+00:00:18,558 --> 00:00:20,681
+measures its water pass after pass,
+
+8
+00:00:20,808 --> 00:00:22,508
+and prints a one-page brief.
+
+9
+00:00:22,865 --> 00:00:26,162
+This summer, sixty valid looks at eleven lakes.
+
+10
+00:00:26,596 --> 00:00:28,931
+SARtale, when clouds close in,
+
+11
+00:00:29,115 --> 00:00:30,700
+the lakes stay in view.
