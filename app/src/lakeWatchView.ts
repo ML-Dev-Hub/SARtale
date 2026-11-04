@@ -1,5 +1,5 @@
 import { cloudHeadline, methodLimits, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
-import { dataUrl, formatDate } from "./timeline";
+import { dataUrl, formatDate } from "./format";
 
 /** One line on the lake chart: a track's valid passes, or the passes that were left out. */
 export interface LakeChartSeries {
@@ -37,7 +37,7 @@ export interface LakeWatchHandle {
 const TEMPLATE = `
 <div class="lw-empty" data-role="lw-empty" hidden>
   <p class="sites-empty">No lake data in this build</p>
-  <p class="sites-why">Lake Watch needs data/lakes.json. The Peshawar views still work.</p>
+  <p class="sites-why">Lake Watch needs data/lakes.json, made by the pipeline in processing/.</p>
 </div>
 <div class="lw-body" data-role="lw-body" hidden>
   <p class="lw-headline"><a href="#cloud-gap" data-role="lw-headline"></a></p>

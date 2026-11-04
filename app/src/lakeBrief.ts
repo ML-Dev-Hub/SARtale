@@ -1,6 +1,6 @@
 import { methodLimits, statusSentence, type Lake, type LakesFile } from "./lakes";
 import { checkLine } from "./lakeWatchView";
-import { formatDate } from "./timeline";
+import { formatDate } from "./format";
 
 const PASS_ROWS = 6;
 

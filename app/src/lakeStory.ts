@@ -1,7 +1,7 @@
 import { lakeStoryBeats, type LakeBeatAction } from "./content";
 import { fillTokens } from "./evidenceView";
 import { featuredLake, lakeTokens, statusSentence, type LakesFile } from "./lakes";
-import { formatDate } from "./timeline";
+import { formatDate } from "./format";
 
 /** A beat with its tokens filled, ready to show. */
 export interface ResolvedBeat {
@@ -16,13 +16,11 @@ export interface ResolvedBeat {
 
 const ACTION_LABELS: Record<Exclude<LakeBeatAction, "lake">, string> = {
   "lake-watch": "Open Lake Watch",
-  dance: "Open The Dance",
-  "peshawar-tour": "Start the guided Peshawar tour",
   evidence: "Read How we know",
 };
 
 /**
- * The six beats with numbers and names filled from lakes.json. Beat 4 shows the featured lake (featuredLake), found
+ * The beats with numbers and names filled from lakes.json. Beat 4 shows the featured lake (featuredLake), found
  * from the data each time. Without lake data, beats that need it say so instead.
  */
 export function resolveLakeBeats(file: LakesFile | null): ResolvedBeat[] {
@@ -78,7 +76,7 @@ export interface LakeStoryHandle {
 
 const TEMPLATE = `
 <div class="ls-wrap">
-  <ol class="ls-steps" data-role="ls-steps" aria-label="The six parts of the story"></ol>
+  <ol class="ls-steps" data-role="ls-steps" aria-label="The parts of the story"></ol>
   <article class="card ls-card" data-role="ls-card" aria-live="polite">
     <p class="ls-kicker" data-role="ls-kicker"></p>
     <h2 class="ls-title" data-role="ls-title" tabindex="-1"></h2>
@@ -95,7 +93,7 @@ const TEMPLATE = `
   <p class="ls-screening">Indicative screening on provisional NISAR data; official warnings come from PMD and NDMA.</p>
 </div>`;
 
-/** The lake story: one card per beat, back and next, numbered steps. Beat 5 hands over to the Peshawar chapter. */
+/** The lake story: one card per beat, back and next, numbered steps. */
 export function createLakeStoryView(root: HTMLElement, opts: LakeStoryOptions): LakeStoryHandle {
   root.innerHTML = TEMPLATE;
   const q = <T extends HTMLElement>(role: string): T => root.querySelector<T>(`[data-role="${role}"]`)!;

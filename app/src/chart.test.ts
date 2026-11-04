@@ -15,19 +15,28 @@ afterEach(() => {
   else env.TZ = original;
 });
 
-describe("chart options", () => {
+const DATA = {
+  x: [Date.UTC(2026, 6, 2) / 1000, Date.UTC(2026, 6, 14) / 1000],
+  series: [
+    { label: "Track 156A", values: [0.12, 0.13], excluded: false },
+    { label: "Left out", values: [null, 0.2], excluded: true },
+  ],
+};
+
+describe("lake chart options", () => {
   test.each(ZONES)("tzDate maps a UTC-midnight timestamp to the same calendar date in %s", async (zone) => {
     env.TZ = zone;
-    const { chartOptions, utcTzDate } = await import("./chart");
+    const { lakeChartOptions, utcTzDate } = await import("./chart");
     const ts = Date.UTC(2026, 6, 2) / 1000;
     const d = utcTzDate(ts);
     expect([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()]).toEqual([2026, 6, 2, 0]);
-    expect(chartOptions(300).tzDate!(ts).getDate()).toBe(2);
+    expect(lakeChartOptions(300, DATA).tzDate!(ts).getDate()).toBe(2);
   });
 
-  test("lines do not span gaps, and both polarizations are labelled in dB", async () => {
-    const { chartOptions } = await import("./chart");
-    const o = chartOptions(300);
-    expect(o.series.slice(1).map((s) => [s.label, s.spanGaps])).toEqual([["HH (dB)", false], ["HV (dB)", false]]);
+  test("a track is a line, and left-out passes are markers with no line", async () => {
+    const { lakeChartOptions } = await import("./chart");
+    const [, track, out] = lakeChartOptions(300, DATA).series;
+    expect([track.label, track.width, track.spanGaps]).toEqual(["Track 156A", 2, true]);
+    expect([out.label, out.width]).toEqual(["Left out", 0]);
   });
 });

@@ -1,41 +1,25 @@
-import { mountApp, type AppHandle, type AppOptions, type HostFactory } from "./app";
-import { maturityBanner } from "./timeline";
-import type { Manifest } from "./types";
+import { MATURITY, mountApp, type AppHandle, type AppOptions } from "./app";
 
-/**
- * Replace the page with an error message. When the manifest is known, its maturity banner stays on the page
- * above the message, so a failure never leaves the data unlabelled.
- */
-export function showStartupError(root: HTMLElement, message: string, manifest?: Manifest): void {
-  root.innerHTML = "";
-  if (manifest) {
-    const banner = maturityBanner(manifest);
-    const label = document.createElement("p");
-    label.className = "maturity";
-    label.dataset.role = "maturity";
-    label.dataset.kind = banner.kind;
-    label.textContent = banner.text;
-    root.append(label);
-  }
+/** Replace the page with an error message, with the data label above it so a failure never leaves data unlabelled. */
+export function showStartupError(root: HTMLElement, message: string): void {
+  const label = document.createElement("p");
+  label.className = "maturity";
+  label.dataset.role = "maturity";
+  label.dataset.kind = "provisional";
+  label.textContent = MATURITY;
   const p = document.createElement("p");
   p.className = "startup-error";
   p.setAttribute("role", "alert");
   p.textContent = message;
-  root.append(p);
+  root.replaceChildren(label, p);
 }
 
-/** Mount the app. If that throws (for example WebGL cannot start), show a message and the banner instead of a blank page. */
-export function mountOrShowError(
-  root: HTMLElement,
-  m: Manifest,
-  createHost: HostFactory,
-  opts: AppOptions,
-): AppHandle | null {
+/** Mount the app. If that throws, show a message and the data label instead of a blank page. */
+export function mountOrShowError(root: HTMLElement, opts: AppOptions): AppHandle | null {
   try {
-    return mountApp(root, m, createHost, opts);
+    return mountApp(root, opts);
   } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    showStartupError(root, `The map could not start (${reason}). The radar map needs WebGL, so try another browser or device.`, m);
+    showStartupError(root, `SARtale could not start (${err instanceof Error ? err.message : String(err)}). Try reloading the page.`);
     return null;
   }
 }

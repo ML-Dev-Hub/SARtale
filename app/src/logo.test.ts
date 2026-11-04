@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test } from "vitest";
 import { mountApp } from "./app";
-import { fixtureManifest } from "./fixtures";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -11,7 +10,7 @@ describe("header logo", () => {
   function logo(): HTMLImageElement {
     const root = document.createElement("div");
     document.body.append(root);
-    mountApp(root, fixtureManifest, () => ({ after: { setImage: async () => {} }, before: { setImage: async () => {} } }));
+    mountApp(root);
     return root.querySelector<HTMLImageElement>("header img.logo")!;
   }
 

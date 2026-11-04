@@ -1,4 +1,4 @@
-import { formatDate } from "./timeline";
+import { formatDate } from "./format";
 
 export type LakeStatusName =
   | "Growing"

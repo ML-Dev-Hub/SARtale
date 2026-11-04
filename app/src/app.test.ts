@@ -1,715 +1,216 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, test, vi } from "vitest";
-import { mountApp, type MapHost } from "./app";
+import { afterEach, describe, expect, test } from "vitest";
+import lakesJson from "../public/data/lakes.json";
+import { mountApp, type AppOptions } from "./app";
 import { findBannedClaims } from "./content";
-import { calibratedManifest, changeManifest, FORECAST_FLAG, fixtureManifest, INTERFERENCE_FLAG, previewManifest } from "./fixtures";
-import type { MapLike } from "./map";
-import type { Site } from "./types";
+import { fixtureLakes } from "./fixtures";
+import { featuredLake, type LakesFile } from "./lakes";
 
-function fakeMap(fail = false): MapLike & { urls: string[]; overlays: (string | null)[] } {
-  const urls: string[] = [];
-  const overlays: (string | null)[] = [];
-  return {
-    urls,
-    overlays,
-    setImage: async (url) => {
-      if (fail) throw new Error("image 404");
-      urls.push(url);
-    },
-    setOverlay: async (url) => {
-      overlays.push(url);
-    },
-  };
-}
-
-function setup(manifest = fixtureManifest, failing = false, opts?: Parameters<typeof mountApp>[3], hostExtra: Partial<MapHost> = {}) {
-  const root = document.createElement("div");
-  document.body.append(root);
-  const host = { after: fakeMap(failing), before: fakeMap() } satisfies MapHost;
-  const app = mountApp(root, manifest, () => ({ ...host, ...hostExtra }), opts);
-  const $ = <T extends HTMLElement>(role: string) => root.querySelector<T>(`[data-role="${role}"]`)!;
-  return { root, host, app, $ };
-}
+const realLakes = lakesJson as unknown as LakesFile;
+const SUPARCO =
+  "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days.";
+const BEAT_IDS = ["cloud-gap", "how-radar-sees", "lake-watch", "one-lake", "limits-next"];
 
 afterEach(() => {
   document.body.innerHTML = "";
 });
 
-describe("app shell", () => {
-  test("provisional data shows the provisional label", async () => {
-    const { app, $ } = setup();
-    await app.settled();
-    expect($("maturity").textContent).toBe("Provisional NISAR data");
-    expect($("maturity").dataset.kind).toBe("provisional");
-  });
+function setup(opts: AppOptions = { lakes: realLakes }) {
+  const root = document.createElement("div");
+  document.body.append(root);
+  const app = mountApp(root, opts);
+  const $ = <T extends HTMLElement = HTMLElement>(role: string): T => root.querySelector<T>(`[data-role="${role}"]`)!;
+  return { app, root, $ };
+}
 
-  test("non-provisional data shows the permanent synthetic banner", async () => {
-    const { app, $ } = setup({ ...fixtureManifest, maturity: "Synthetic demo" });
-    await app.settled();
-    expect($("maturity").textContent).toBe("SYNTHETIC DEMO: NOT NISAR DATA");
-    expect($("maturity").dataset.kind).toBe("synthetic");
-    expect($("maturity").hidden).toBe(false);
-  });
-
-  test("moving the slider shows that date's frame", async () => {
-    const { app, host, $ } = setup();
-    const slider = $<HTMLInputElement>("slider");
-    slider.value = "2";
-    slider.dispatchEvent(new Event("input"));
-    await app.settled();
-    expect(host.after.urls.at(-1)).toBe("data/frames/2026-07-26_HH.webp");
-  });
-
-  test("switching polarization shows the HV frame", async () => {
-    const { app, host, root } = setup();
-    const hv = root.querySelector<HTMLInputElement>('input[value="HV"]')!;
-    hv.checked = true;
-    hv.dispatchEvent(new Event("change", { bubbles: true }));
-    await app.settled();
-    expect(host.after.urls.at(-1)).toBe("data/frames/2026-07-02_HV.webp");
-  });
-
-  test("composite on shows the composite and locks the date controls", async () => {
-    const { app, host, $ } = setup();
-    $("composite-toggle").click();
-    await app.settled();
-    expect(host.after.urls.at(-1)).toBe("data/frames/composite_HH.webp");
-    expect($<HTMLInputElement>("slider").disabled).toBe(true);
-    expect($("hint").hidden).toBe(false);
-  });
-
-  test("before and after loads the chosen earlier frame into the before map", async () => {
-    const { app, host, $ } = setup();
-    $("swipe-toggle").click();
-    await app.settled();
-    expect($("before").hidden).toBe(false);
-    expect(host.before.urls.at(-1)).toBe("data/frames/2026-07-02_HH.webp");
-  });
-
-  test("a missing overlay shows a visible message and the controls stay usable", async () => {
-    const { app, $ } = setup(fixtureManifest, true);
-    await app.settled();
-    expect($("notice").hidden).toBe(false);
-    expect($("notice-text").textContent).toContain("overlay");
-    expect($("stamp-after").textContent).toContain("not loaded");
-    expect($<HTMLInputElement>("slider").disabled).toBe(false);
-    expect($<HTMLButtonElement>("play").disabled).toBe(false);
-    expect($<HTMLButtonElement>("composite-toggle").disabled).toBe(false);
-  });
-
-  test("the message clears once a frame loads", async () => {
-    const root = document.createElement("div");
-    document.body.append(root);
-    let fail = true;
-    const after: MapLike = { setImage: async () => { if (fail) throw new Error("image 404"); } };
-    const app = mountApp(root, fixtureManifest, () => ({ after, before: fakeMap() }));
-    await app.settled();
-    const notice = root.querySelector<HTMLElement>('[data-role="notice"]')!;
-    expect(notice.hidden).toBe(false);
-    fail = false;
-    root.querySelector<HTMLButtonElement>('[data-role="retry"]')!.click();
-    await app.settled();
-    expect(notice.hidden).toBe(true);
-  });
-
-  describe("a date with no HV frame", () => {
-    const noHv = {
-      ...fixtureManifest,
-      dates: fixtureManifest.dates.map((d) =>
-        d.date === "2026-07-14" ? { ...d, frames: { HH: d.frames.HH } as typeof d.frames } : d,
-      ),
-    };
-    const pickHv = (root: HTMLElement) => {
-      const hv = root.querySelector<HTMLInputElement>('input[value="HV"]')!;
-      hv.checked = true;
-      hv.dispatchEvent(new Event("change", { bubbles: true }));
-    };
-
-    test("shows a notice instead of breaking", async () => {
-      const { app, root, $ } = setup(noHv);
-      await app.settled();
-      pickHv(root);
-      const slider = $<HTMLInputElement>("slider");
-      slider.value = "1";
-      slider.dispatchEvent(new Event("input"));
-      await app.settled();
-      expect($("notice").hidden).toBe(false);
-      expect($("notice-text").textContent).toContain("overlay");
-      expect(slider.disabled).toBe(false);
-    });
-
-    test("mounting on a first date with no HV frame does not throw", async () => {
-      const first = { ...fixtureManifest, dates: fixtureManifest.dates.map((d, i) => (i === 0 ? { ...d, frames: { HH: d.frames.HH } as typeof d.frames } : d)) };
-      const { app, root, $ } = setup(first);
-      pickHv(root);
-      await app.settled();
-      expect($("notice").hidden).toBe(false);
-    });
-
-    test("play stops and the button goes back to Play", async () => {
-      const { app, root, $ } = setup(noHv);
-      await app.settled();
-      pickHv(root);
-      await app.settled();
-      $("play").click();
-      expect(["Pause", "Play"]).toContain($("play").textContent);
-      await vi.waitFor(() => expect($("notice").hidden).toBe(false));
-      await app.settled();
-      expect($("play").textContent).toBe("Play");
-      expect($("play").getAttribute("aria-pressed")).toBe("false");
-      await new Promise((r) => setTimeout(r, 1000));
-      expect($("slider").getAttribute("aria-valuetext")).toBe("14 Jul 2026");
-    });
-  });
-});
-
-describe("the Change control", () => {
-  const STEP_CAPTION = "One map for the whole season. Each coloured patch stepped between two passes, and its colour is the date of the first pass after the step. Light tints went brighter, deep shades went darker. This is a statistical flag, not proof of what changed.";
-  const CAPTION = "Highlighted pixels differ unusually from this area's own season. This is a statistical flag, not proof of what changed.";
-  /** Change on, in its second view. */
-  const unusual = async (app: { settled(): Promise<void> }, $: (role: string) => HTMLElement) => {
-    $("change-toggle").click();
-    $("unusual-toggle").click();
-    await app.settled();
+/** A copy of the fixture lakes made of watch lakes with the given looks and latest dates. */
+function lakesWith(rows: [string, number, string, Partial<LakesFile["lakes"][number]>?][]): LakesFile {
+  const base = fixtureLakes.lakes[2];
+  return {
+    ...fixtureLakes,
+    lakes: rows.map(([id, looks, latest, extra]) => ({
+      ...base,
+      id,
+      name: `Lake ${id}`,
+      role: "watch" as const,
+      status: { ...base.status, looks, latest_date: latest },
+      ...extra,
+    })),
   };
-  const go = (slider: HTMLInputElement, i: number) => {
-    slider.value = String(i);
-    slider.dispatchEvent(new Event("input"));
-  };
-
-  test("is hidden for a build with no change layer", async () => {
-    const { app, $ } = setup(calibratedManifest);
-    await app.settled();
-    expect($("change-toggle").hidden).toBe(true);
-    expect($("change-panel").hidden).toBe(true);
-  });
-
-  test("the main view is the step map, with its caption, a legend of date and direction, and the limit in words", async () => {
-    const { app, host, $ } = setup(changeManifest);
-    go($("slider"), 2);
-    await app.settled();
-    expect(host.after.overlays.at(-1)).toBeNull();
-    $("change-toggle").click();
-    await app.settled();
-    expect($("change-toggle").getAttribute("aria-pressed")).toBe("true");
-    expect(host.after.overlays.at(-1)).toBe("data/frames/step_date.webp");
-    expect($("change-caption").textContent).toBe(STEP_CAPTION);
-    expect($("step-legend").hidden).toBe(false);
-    expect($("step-legend").textContent).toContain("26 Jul");
-    expect($("step-legend").textContent).toContain("Brighter after");
-    expect($("step-legend").textContent).toContain("Darker after");
-    expect($("change-detail").textContent).toContain("at least 3 dB");
-    expect($("step-legend").querySelector("li.current .legend-date")?.textContent).toBe("26 Jul");
-    go($("slider"), 1);
-    await app.settled();
-    expect($("step-legend").querySelector("li.current")).toBeNull();
-    expect(host.after.overlays.at(-1)).toBe("data/frames/step_date.webp");
-  });
-
-  test("a build with change scores but no step map offers only the scores", async () => {
-    const { step: _step, ...older } = changeManifest.change!;
-    const { app, host, $ } = setup({ ...changeManifest, change: older });
-    go($("slider"), 2);
-    $("change-toggle").click();
-    await app.settled();
-    expect($("unusual-toggle").hidden).toBe(true);
-    expect(host.after.overlays.at(-1)).toBe("data/frames/change_2026-07-26.webp");
-  });
-
-  test("Unusual dates overlays the current date's score, with its caption and the threshold in words", async () => {
-    const { app, host, $ } = setup(changeManifest);
-    go($("slider"), 2);
-    await unusual(app, $);
-    expect($("unusual-toggle").getAttribute("aria-pressed")).toBe("true");
-    expect($("step-legend").hidden).toBe(true);
-    expect(host.after.overlays.at(-1)).toBe("data/frames/change_2026-07-26.webp");
-    expect(host.after.urls.at(-1)).toBe("data/frames/2026-07-26_HH.webp");
-    expect($("change-panel").hidden).toBe(false);
-    expect($("change-caption").textContent).toBe(CAPTION);
-    expect($("change-legend").textContent).toContain("Yellow is a score of 3.5, red is 7 or more");
-    expect($("change-legend").textContent).toContain("Below 3.5 shows nothing");
-  });
-
-  test("Unusual dates follows the slider and clears when switched off", async () => {
-    const { app, host, $ } = setup(changeManifest);
-    await unusual(app, $);
-    go($("slider"), 1);
-    await app.settled();
-    expect(host.after.overlays.at(-1)).toBe("data/frames/change_2026-07-14.webp");
-    $("change-toggle").click();
-    await app.settled();
-    expect(host.after.overlays.at(-1)).toBeNull();
-    expect($("change-panel").hidden).toBe(true);
-  });
-
-  test("an excluded date says why in both views, and shows no score, and keeps its flag", async () => {
-    const { app, host, $ } = setup(changeManifest);
-    await app.settled();
-    $("change-toggle").click();
-    await app.settled();
-    expect($("change-note").textContent).toContain("Excluded from change analysis");
-    $("unusual-toggle").click();
-    await app.settled();
-    expect(host.after.overlays.at(-1)).toBeNull();
-    expect($("change-note").hidden).toBe(false);
-    expect($("change-note").textContent).toBe("Excluded from change analysis. Likely radio interference in HV on this date.");
-    expect($("flag-after").textContent).toBe(INTERFERENCE_FLAG);
-  });
-
-  test("a flagged date is scored and keeps its flag", async () => {
-    const { app, host, $ } = setup(changeManifest);
-    await unusual(app, $);
-    go($("slider"), 1);
-    await app.settled();
-    expect(host.after.overlays.at(-1)).toBe("data/frames/change_2026-07-14.webp");
-    expect($("flag-after").textContent).toBe(FORECAST_FLAG);
-    expect($("change-note").hidden).toBe(true);
-  });
-
-  test("a date with a note shows it", async () => {
-    const { app, $ } = setup(changeManifest);
-    $("change-toggle").click();
-    go($("slider"), 2);
-    await app.settled();
-    expect($("change-note").textContent).toBe("The cause is unexplained.");
-  });
-
-  test("the composite takes the overlay off and locks the control", async () => {
-    const { app, host, $ } = setup(changeManifest);
-    $("change-toggle").click();
-    await app.settled();
-    $("composite-toggle").click();
-    await app.settled();
-    expect(host.after.overlays.at(-1)).toBeNull();
-    expect($("change-panel").hidden).toBe(true);
-    expect($<HTMLButtonElement>("change-toggle").disabled).toBe(true);
-  });
-
-  test("a change frame that fails to load shows the notice", async () => {
-    const root = document.createElement("div");
-    document.body.append(root);
-    const after: MapLike = { setImage: async () => {}, setOverlay: async (url) => { if (url) throw new Error("image 404"); } };
-    const app = mountApp(root, changeManifest, () => ({ after, before: fakeMap() }));
-    await app.settled();
-    const $ = (role: string) => root.querySelector<HTMLElement>(`[data-role="${role}"]`)!;
-    $("change-toggle").click();
-    await app.settled();
-    expect($("notice").hidden).toBe(false);
-    expect($("notice-text").textContent).toContain("change overlay");
-  });
-
-  test("its text has no banned claims and never claims a detection", async () => {
-    const { app, root, $ } = setup(changeManifest);
-    $("change-toggle").click();
-    await app.settled();
-    for (const _view of ["step", "unusual"]) {
-      const text = root.textContent ?? "";
-      expect(findBannedClaims(text)).toEqual([]);
-      expect(text).not.toMatch(/detect/i);
-      $("unusual-toggle").click();
-      await app.settled();
-    }
-  });
-});
+}
 
 describe("views", () => {
-  const demoSites: Site[] = [
-    {
-      id: "demo-a",
-      name: "Demo site A",
-      lon: 0.3,
-      lat: 0.4,
-      role: "demo",
-      stack: fixtureManifest.stack,
-      crid: fixtureManifest.crid,
-      series: [
-        { date: "2026-07-02", hh_db: -10, hv_db: -18, valid_fraction: 1 },
-        { date: "2026-07-14", hh_db: -11, hv_db: null, valid_fraction: 0 },
-      ],
-    },
-  ];
-
-  test("starts on the opening screen, with the map loading behind it and no view chosen", async () => {
-    const { app, $ } = setup();
-    await app.settled();
+  test("starts on the opening screen with no view chosen, and the logo goes back to it", () => {
+    const { $ } = setup();
     expect($("hero").hidden).toBe(false);
-    expect($("stage").hidden).toBe(false);
-    expect($("stage").hasAttribute("inert")).toBe(true);
-    expect($("dock").hidden).toBe(true);
-    expect($("sites-view").hidden).toBe(true);
-    expect($("view-dance").getAttribute("aria-pressed")).toBe("false");
     expect($("view-name").textContent).toBe("Start");
-  });
-
-  test("Explore the map opens The Dance, and the logo goes back to the start", async () => {
-    const { app, $ } = setup();
-    await app.settled();
-    $("hero-explore").click();
+    for (const v of ["lakes-view", "lakestory-view", "evidence-view"]) expect($(v).hidden).toBe(true);
+    $("view-evidence").click();
+    expect($("evidence-view").hidden).toBe(false);
     expect($("hero").hidden).toBe(true);
-    expect($("stage").hasAttribute("inert")).toBe(false);
-    expect($("dock").hidden).toBe(false);
-    expect($("view-dance").getAttribute("aria-pressed")).toBe("true");
+    expect($("view-evidence").getAttribute("aria-pressed")).toBe("true");
     $("home").click();
     expect($("hero").hidden).toBe(false);
-    expect($("view-dance").getAttribute("aria-pressed")).toBe("false");
+    expect(document.title).toBe("SARtale: Start (provisional data)");
   });
 
-  test("the switch shows Site Stories and hides the map and its controls", async () => {
-    const { app, $ } = setup(fixtureManifest, false, { sites: demoSites });
-    await app.settled();
-    $("view-sites").click();
-    expect($("sites-view").hidden).toBe(false);
-    expect($("stage").hidden).toBe(true);
-    expect($("dock").hidden).toBe(true);
-    expect($("view-sites").getAttribute("aria-pressed")).toBe("true");
-    expect($("view-name").textContent).toBe("Site Stories");
-    $("view-dance").click();
-    expect($("stage").hidden).toBe(false);
-    expect($("sites-view").hidden).toBe(true);
-    expect($("view-name").textContent).toBe("The Dance");
+  test("the nav is Lake Watch, Story, then How we know, and nothing else", () => {
+    const { root } = setup();
+    const order = [...root.querySelectorAll<HTMLElement>(".views button")].map((b) => b.dataset.role);
+    expect(order).toEqual(["view-lakes", "view-story", "view-evidence"]);
   });
 
-  test("the maturity label stays visible in the sites view", async () => {
-    const { app, $ } = setup({ ...fixtureManifest, maturity: "Synthetic demo" });
-    await app.settled();
-    $("view-sites").click();
-    expect($("sites-maturity").textContent).toBe("SYNTHETIC DEMO: NOT NISAR DATA");
-    expect($("sites-maturity").hidden).toBe(false);
+  test("the provisional label is on every view and in the footer, with the warning authorities", () => {
+    const { root, $ } = setup();
+    for (const r of ["hero-maturity", "lakes-maturity", "lakestory-maturity", "evidence-maturity"]) expect($(r).textContent).toBe("Provisional NISAR data");
+    expect(root.querySelector(".foot")!.textContent).toMatch(/Not an official warning service: for warnings, use PMD, NDMA, GBDMA and PDMA/);
   });
 
-  test("without a sites file the view says No site curves yet", async () => {
-    const { app, $ } = setup(fixtureManifest, false, { sites: null });
-    await app.settled();
-    $("view-sites").click();
-    expect($("empty").textContent).toBe("No site curves yet");
-    expect($("empty").hidden).toBe(false);
+  test("without a lakes file Lake Watch says so", () => {
+    const { $ } = setup({ lakes: null });
+    $("view-lakes").click();
+    expect($("lakes-view").hidden).toBe(false);
+    expect($("lakes-view").textContent).toContain("No lake data in this build");
   });
 
-  test("tapping a list item opens its card", async () => {
-    const { app, root, $ } = setup(fixtureManifest, false, { sites: demoSites });
-    await app.settled();
-    $("view-sites").click();
-    root.querySelector<HTMLButtonElement>('[data-site="demo-a"]')!.click();
-    expect($("card").hidden).toBe(false);
-    expect($("card-title").textContent).toBe("Demo site A");
-  });
-
-  test("site markers on the map open the card and switch view", async () => {
-    let tap: ((id: string) => void) | undefined;
-    const placed: Site[][] = [];
-    const { app, $ } = setup(fixtureManifest, false, { sites: demoSites }, {
-      setSiteMarkers: (list, onSelect) => {
-        placed.push(list);
-        tap = onSelect;
-      },
-    });
-    await app.settled();
-    expect(placed).toEqual([demoSites]);
-    tap!("demo-a");
-    expect($("sites-view").hidden).toBe(false);
-    expect($("stage").hidden).toBe(true);
-    expect($("card-title").textContent).toBe("Demo site A");
-  });
-
-  test("the visible text of both views is free of banned claims", async () => {
-    const { app, root, $ } = setup(fixtureManifest, false, { sites: demoSites });
-    await app.settled();
-    expect(findBannedClaims(root.textContent ?? "")).toEqual([]);
-    $("view-sites").click();
-    root.querySelector<HTMLButtonElement>('[data-site="demo-a"]')!.click();
-    expect(findBannedClaims(root.textContent ?? "")).toEqual([]);
-  });
-
-  test("no markers are placed when there are no sites", async () => {
-    let called = false;
-    const { app } = setup(fixtureManifest, false, { sites: null }, { setSiteMarkers: () => (called = true) as unknown as void });
-    await app.settled();
-    expect(called).toBe(false);
-  });
-
-  test("switching away from The Dance stops playback", async () => {
-    const { app, $ } = setup();
-    await app.settled();
-    $("play").click();
-    expect($("play").textContent).toBe("Pause");
-    $("view-sites").click();
-    expect($("play").textContent).toBe("Play");
+  test("no Peshawar chapter is left anywhere on the page, and no banned claims", () => {
+    const { root } = setup();
+    const text = root.textContent!;
+    expect(text).not.toMatch(/Peshawar|Tarbela|The Dance|Site Stories|What NISAR Missed/);
+    expect(findBannedClaims(text.replace(SUPARCO, ""))).toEqual([]);
   });
 });
 
-describe("What NISAR Missed view", () => {
-  const withGap = { ...fixtureManifest, gap: { start: "2026-07-27T22:03:25Z", end: "2026-08-10T00:55:27Z" } };
-
-  test("the nav has a third button and the view starts hidden", async () => {
-    const { app, $ } = setup(withGap);
-    await app.settled();
-    expect($("view-missed").textContent).toBe("What NISAR Missed");
-    expect($("view-missed").getAttribute("aria-pressed")).toBe("false");
-    expect($("missed-view").hidden).toBe(true);
+describe("the lake start screen", () => {
+  test("says who it is for and what it shows, and keeps the screening line", () => {
+    const { $ } = setup();
+    const text = $("hero").textContent!;
+    expect(text).toContain("disaster teams in Gilgit-Baltistan and upper Khyber Pakhtunkhwa");
+    expect(text).toContain("how often NISAR radar looked at each glacial lake while clouds blocked optical satellites, and whether the radar water area moved beyond its own noise");
+    expect(text).toContain("Indicative screening on provisional NISAR data; official warnings come from PMD and NDMA.");
+    expect($("hero-finding").hidden).toBe(false);
   });
 
-  test("the switch shows the view and hides the map, controls and other views", async () => {
-    const { app, $ } = setup(withGap);
-    await app.settled();
-    $("view-missed").click();
-    expect($("missed-view").hidden).toBe(false);
-    expect($("stage").hidden).toBe(true);
-    expect($("dock").hidden).toBe(true);
-    expect($("sites-view").hidden).toBe(true);
-    expect($("view-missed").getAttribute("aria-pressed")).toBe("true");
-    expect($("view-dance").getAttribute("aria-pressed")).toBe("false");
-    expect($("view-name").textContent).toBe("What NISAR Missed");
-    expect(document.title).toContain("What NISAR Missed");
-    $("view-sites").click();
-    expect($("missed-view").hidden).toBe(true);
-    expect($("sites-view").hidden).toBe(false);
-    $("view-missed").click();
-    $("view-dance").click();
-    expect($("missed-view").hidden).toBe(true);
-    expect($("stage").hidden).toBe(false);
+  test("the start button opens the lake story and the other buttons reach Lake Watch and How we know", () => {
+    const { $ } = setup();
+    $("hero-story").click();
+    expect($("lakestory-view").hidden).toBe(false);
+    $("home").click();
+    $("hero-lakes").click();
+    expect($("lakes-view").hidden).toBe(false);
+    $("home").click();
+    $("hero-method").click();
+    expect($("evidence-view").hidden).toBe(false);
   });
 
-  test("the SYNTHETIC DEMO banner stays visible in this view", async () => {
-    const { app, $ } = setup({ ...withGap, maturity: "Synthetic demo" });
-    await app.settled();
-    $("view-missed").click();
-    expect($("missed-maturity").textContent).toBe("SYNTHETIC DEMO: NOT NISAR DATA");
-    expect($("missed-maturity").dataset.kind).toBe("synthetic");
-    expect($("missed-maturity").hidden).toBe(false);
-    expect($("missed-view").hidden).toBe(false);
+  test("shows Attabad's radar picture with a dated caption", () => {
+    const a = realLakes.lakes.find((l) => l.id === "attabad")!;
+    const { $ } = setup();
+    expect($<HTMLImageElement>("hero-img").getAttribute("src")).toBe(`data/${a.images!.latest_hh}`);
+    expect($("hero-caption").textContent).toBe(
+      `Attabad Lake, Hunza: NISAR HH radar on 23 Oct 2026. The lake is the long dark band. Radar-geometry picture, not a map. Provisional data.`,
+    );
   });
 
-  test("the view shows the gap text and no banned claims", async () => {
-    const { app, root, $ } = setup(withGap);
-    await app.settled();
-    $("view-missed").click();
-    expect($("gap-facts").textContent).toContain("NISAR has no data from 27 Jul 2026, 22:03:25 UTC");
-    expect(findBannedClaims(root.textContent ?? "")).toEqual([]);
-  });
-
-  test("switching to this view stops playback", async () => {
-    const { app, $ } = setup(withGap);
-    await app.settled();
-    $("play").click();
-    $("view-missed").click();
-    expect($("play").textContent).toBe("Play");
+  test("without lakes or without Attabad images there is no picture and no caption", () => {
+    const noImages = { ...realLakes, lakes: realLakes.lakes.map((l) => (l.id === "attabad" ? { ...l, images: null } : l)) };
+    for (const lakes of [null, noImages]) {
+      const { $ } = setup({ lakes });
+      expect($<HTMLImageElement>("hero-img").hidden).toBe(true);
+      expect($("hero-caption").hidden).toBe(true);
+      document.body.innerHTML = "";
+    }
   });
 });
 
-describe("real preview manifest", () => {
-  const PREVIEW_TEXT = "REAL NISAR PREVIEW: LOW-RESOLUTION BROWSE IMAGES, NOT CALIBRATED";
-  const go = (slider: HTMLInputElement, i: number) => {
-    slider.value = String(i);
-    slider.dispatchEvent(new Event("input"));
-  };
+describe("the lake story", () => {
+  const beatId = ($: (r: string) => HTMLElement) => $("lakestory-view").querySelector<HTMLElement>("[data-beat]")!.dataset.beat;
 
-  test("the banner is the preview wording on all three views", async () => {
-    const { app, $ } = setup(previewManifest);
-    await app.settled();
-    expect($("maturity").textContent).toBe(PREVIEW_TEXT);
-    expect($("maturity").dataset.kind).toBe("preview");
-    expect($("sites-maturity").textContent).toBe(PREVIEW_TEXT);
-    expect($("missed-maturity").textContent).toBe(PREVIEW_TEXT);
-    expect($("missed-maturity").dataset.kind).toBe("preview");
-    expect(document.title).toContain("real NISAR preview");
+  test("opens on the cloud gap and walks five beats in order", () => {
+    const { $ } = setup();
+    $("view-story").click();
+    expect($("view-name").textContent).toBe("Story");
+    const seen = [beatId($)];
+    for (let n = 0; n < 4; n++) {
+      $("ls-next").click();
+      seen.push(beatId($));
+    }
+    expect(seen).toEqual(BEAT_IDS);
+    expect($("ls-count").textContent).toBe("5 of 5");
+    expect($<HTMLButtonElement>("ls-next").disabled).toBe(true);
   });
 
-  test("a flagged date shows its flag in text next to the date stamp", async () => {
-    const { app, $ } = setup(previewManifest);
-    await app.settled();
-    expect($("flag-after").hidden).toBe(false);
-    expect($("flag-after").textContent).toBe(INTERFERENCE_FLAG);
-    go($("slider"), 1);
-    await app.settled();
-    expect($("flag-after").textContent).toBe(FORECAST_FLAG);
-    expect($("stamp-after").textContent).toBe("14 Jul 2026, HH");
+  test("beat 1 quotes SUPARCO verbatim and cites the page and date", () => {
+    const { $ } = setup();
+    $("view-story").click();
+    expect($("ls-quote").textContent).toBe(SUPARCO);
+    expect($("lakestory-view").textContent).toContain("space4climate.gov.pk, 2 Jul 2026");
   });
 
-  test("an unflagged date shows no flag", async () => {
-    const { app, $ } = setup(previewManifest);
-    go($("slider"), 2);
-    await app.settled();
-    expect($("flag-after").hidden).toBe(true);
-    expect($("flag-after").textContent).toBe("");
+  test("the Lake Watch headline link goes to beat 1", () => {
+    const { root, $ } = setup();
+    $("view-story").click();
+    $("ls-next").click();
+    $("view-lakes").click();
+    root.querySelector<HTMLAnchorElement>('a[href="#cloud-gap"]')!.click();
+    expect($("lakestory-view").hidden).toBe(false);
+    expect(beatId($)).toBe("cloud-gap");
   });
 
-  test("the before map's date carries its own flag", async () => {
-    const { app, $ } = setup(previewManifest);
-    go($("slider"), 2);
-    $("swipe-toggle").click();
-    await app.settled();
-    expect($("flag-before").hidden).toBe(false);
-    expect($("flag-before").textContent).toBe(INTERFERENCE_FLAG);
-    const pick = $<HTMLSelectElement>("before-select");
-    pick.value = "2";
-    pick.dispatchEvent(new Event("change"));
-    await app.settled();
-    expect($("flag-before").hidden).toBe(true);
+  test("featuredLake picks the watch lake with most looks, ties to the newest look, never a control or story lake", () => {
+    const f = lakesWith([
+      ["a", 6, "2026-10-23"],
+      ["b", 8, "2026-10-11"],
+      ["c", 8, "2026-10-23"],
+      ["ctl", 12, "2026-10-23", { role: "control" }],
+      ["sto", 12, "2026-10-23", { role: "story" }],
+    ]);
+    expect(featuredLake(f)?.id).toBe("c");
+    expect(featuredLake({ ...f, lakes: f.lakes.filter((l) => l.role !== "watch") })).toBeNull();
+    expect(featuredLake(null)).toBeNull();
   });
 
-  test("the composite view shows no per-date flag and says which dates it uses", async () => {
-    const { app, $ } = setup(previewManifest);
-    await app.settled();
-    $("composite-toggle").click();
-    await app.settled();
-    expect($("flag-after").hidden).toBe(true);
-    expect($("hint").textContent).toContain("26 Jul 2026");
-    expect($("hint").textContent).toContain("12 Sep 2026");
-    expect($("hint").textContent).toContain("18 Oct 2026");
-    expect($("hint").textContent).not.toMatch(/backscatter/i);
+  test("beat 4 shows the lake chosen from the data, and opens it in Lake Watch", () => {
+    const lakes = lakesWith([["a", 5, "2026-10-23"], ["b", 9, "2026-10-01"]]);
+    const { $ } = setup({ lakes });
+    $("view-story").click();
+    for (let n = 0; n < 3; n++) $("ls-next").click();
+    expect(beatId($)).toBe("one-lake");
+    expect($("ls-title").textContent).toContain("Lake b");
+    $("lakestory-view").querySelector<HTMLButtonElement>('[data-action="lake"]')!.click();
+    expect($("lakes-view").hidden).toBe(false);
+    expect($("lakes-view").querySelector('.lw-row[aria-pressed="true"]')?.getAttribute("data-lake-id")).toBe("b");
   });
 
-  test("the composite hint blames display scaling, not backscatter, for colour differences", async () => {
-    const { app, $ } = setup(previewManifest);
-    await app.settled();
-    $("composite-toggle").click();
-    await app.settled();
-    expect($("hint").textContent).toContain("Colour differences may come from display scaling");
-    expect($("hint").textContent).not.toMatch(/display brightness|backscatter/i);
+  test("the last beat opens How we know", () => {
+    const { $ } = setup();
+    $("view-story").click();
+    for (let n = 0; n < 4; n++) $("ls-next").click();
+    $("lakestory-view").querySelector<HTMLButtonElement>('[data-action="evidence"]')!.click();
+    expect($("evidence-view").hidden).toBe(false);
   });
 
-  test("the lede for the preview says the images are scaled for display, not that bright areas sent more signal back", async () => {
-    const { app, $ } = setup(previewManifest);
-    await app.settled();
-    expect($("lede").textContent).toContain("scaled for display");
-    expect($("lede").textContent).not.toContain("sent more of the signal back");
-  });
-
-  test("the lede for calibrated data keeps the plain description", async () => {
-    const { app, $ } = setup(fixtureManifest);
-    await app.settled();
-    expect($("lede").textContent).toContain("Brighter areas sent more of the signal back");
-  });
-
-  test("calibrated data names its composite dates when the manifest has them", async () => {
-    const { app, $ } = setup({ ...fixtureManifest, composite_dates: ["2026-07-26", "2026-09-12", "2026-10-18"] });
-    await app.settled();
-    $("composite-toggle").click();
-    await app.settled();
-    const t = $("hint").textContent ?? "";
-    expect(t).toContain("red is 26 Jul 2026, green is 12 Sep 2026, blue is 18 Oct 2026");
-    expect(t).toContain("backscatter");
-  });
-
-  test("the maturity banner is on the page before the map is created", () => {
-    const root = document.createElement("div");
-    document.body.append(root);
-    let seen = "";
-    let seenKind = "";
-    mountApp(root, previewManifest, () => {
-      seen = root.querySelector('[data-role="maturity"]')!.textContent ?? "";
-      seenKind = root.querySelector<HTMLElement>('[data-role="missed-maturity"]')!.dataset.kind ?? "";
-      return { after: fakeMap(), before: fakeMap() } satisfies MapHost;
-    });
-    expect(seen).toBe("REAL NISAR PREVIEW: LOW-RESOLUTION BROWSE IMAGES, NOT CALIBRATED");
-    expect(seenKind).toBe("preview");
-  });
-
-  test("the Dance view states the pixel size and that brightness is not a measurement", async () => {
-    const { app, $ } = setup(previewManifest);
-    await app.settled();
-    expect($("limits").hidden).toBe(false);
-    const t = $("limits").textContent ?? "";
-    expect(t).toContain("174 m");
-    expect(t).toContain("scaled for display");
-    expect(t).toContain("cannot be compared as a measurement");
-  });
-
-  test("calibrated data shows its own limits line: Provisional, 30 m analysis, RTC gamma-0, the display pixel and stretch", async () => {
-    const { app, $ } = setup(calibratedManifest);
-    await app.settled();
-    expect($("limits").hidden).toBe(false);
-    const t = $("limits").textContent ?? "";
-    expect(t).toContain("Provisional NISAR data");
-    expect(t).toContain("RTC gamma-0");
-    expect(t).toContain("30 m");
-    expect(t).toContain("about 68 m");
-    expect(t).toContain("HH -12.9 to 2.2 dB");
-    expect(t).toContain("HV -21.0 to -6.0 dB");
-    expect(t).toContain("not proof of what changed on the ground");
-    expect(findBannedClaims(t)).toEqual([]);
-    expect(t).not.toMatch(/scaled for display|preview/i);
-  });
-
-  test("the composite shows the flag of any flagged date it uses, with that date", async () => {
-    const { app, $ } = setup({ ...previewManifest, composite_dates: ["2026-07-14", "2026-09-12", "2026-10-18"] });
-    await app.settled();
-    $("composite-toggle").click();
-    await app.settled();
-    expect($("flag-after").hidden).toBe(false);
-    expect($("flag-after").textContent).toBe(`14 Jul 2026: ${FORECAST_FLAG}`);
-  });
-
-  test("the composite shows no flag when none of its dates is flagged", async () => {
-    const { app, $ } = setup(previewManifest);
-    await app.settled();
-    $("composite-toggle").click();
-    await app.settled();
-    expect($("flag-after").hidden).toBe(true);
-  });
-
-  test("the limits line and the flags do not appear for synthetic data", async () => {
-    const { app, $ } = setup({ ...fixtureManifest, maturity: "Demo" });
-    await app.settled();
-    expect($("limits").hidden).toBe(true);
-    expect($("flag-after").hidden).toBe(true);
-  });
-
-  /** Text a person can see: skips anything inside an element with the hidden attribute. */
-  function visibleText(el: Element): string {
-    if ((el as HTMLElement).hidden) return "";
-    return [...el.childNodes].map((n) => (n.nodeType === 3 ? n.textContent ?? "" : n.nodeType === 1 ? visibleText(n as Element) : "")).join(" ");
-  }
-
-  test("the visible text of every preview view has no banned claims and never says dB", async () => {
-    const { app, root, $ } = setup(previewManifest, false, { sites: null });
-    await app.settled();
-    for (const view of ["view-dance", "view-sites", "view-missed"]) {
-      $(view).click();
-      const text = visibleText(root);
-      expect(text.length).toBeGreaterThan(100);
-      expect(findBannedClaims(text)).toEqual([]);
-      expect(text).not.toMatch(/\bdB\b|decibel/i);
+  test("no raw {token} shows in the Story view without lake data or without a watch lake", () => {
+    const noWatch = { ...fixtureLakes, lakes: fixtureLakes.lakes.map((l) => ({ ...l, role: "control" as const })) };
+    for (const lakes of [null, noWatch]) {
+      const { $ } = setup({ lakes });
+      $("view-story").click();
+      for (let n = 0; n < 5; n++) {
+        expect($("lakestory-view").textContent).not.toMatch(/\{\w+\}/);
+        if (n < 4) $("ls-next").click();
+      }
+      document.body.innerHTML = "";
     }
   });
 
-  test("Site Stories with no sites explains why in one sentence and shows no card", async () => {
-    const { app, root, $ } = setup(previewManifest, false, { sites: null });
-    await app.settled();
-    $("view-sites").click();
-    expect($("empty").textContent).toBe("No site curves yet");
-    expect($("empty-why").textContent).toBe("Curves appear once the calibrated build has run.");
-    expect($("empty-why").hidden).toBe(false);
-    expect($("body").hidden).toBe(true);
-    expect($("card").hidden).toBe(true);
-    expect(root.querySelectorAll("[data-site]").length).toBe(0);
-    expect(root.textContent).not.toMatch(/Placeholder|Demo site/);
-  });
-
-  test("What NISAR Missed lists the manifest dates and carries the flags in text", async () => {
-    const { app, root, $ } = setup(previewManifest);
-    await app.settled();
-    $("view-missed").click();
-    const items = [...root.querySelectorAll('[data-role="passes"] li')].map((li) => li.textContent ?? "");
-    expect(items).toHaveLength(3);
-    expect(items[0]).toContain("2 Jul 2026");
-    expect(items[0]).toContain(INTERFERENCE_FLAG);
-    expect(items[1]).toContain(FORECAST_FLAG);
-    expect(items[2]).toBe("26 Jul 2026");
-  });
-});
-
-describe("Lake Watch in the app", () => {
-  test("test_missing_lakes_file_shows_message", async () => {
-    const { app, $ } = setup(fixtureManifest, false, { lakes: null });
-    await app.settled();
-    $<HTMLButtonElement>("view-lakes").click();
-    expect($("lakes-view").hidden).toBe(false);
-    expect($("lakes-view").textContent).toContain("No lake data in this build");
-    $<HTMLButtonElement>("view-sites").click();
-    expect($("sites-view").hidden).toBe(false);
-    expect($("lakes-view").hidden).toBe(true);
-    $<HTMLButtonElement>("view-dance").click();
-    expect($("sites-view").hidden).toBe(true);
+  test("every beat is free of banned claims and of the words detect and accurate (outside the quote)", () => {
+    const { $ } = setup();
+    $("view-story").click();
+    for (let n = 0; n < 5; n++) {
+      const text = $("lakestory-view").textContent!;
+      expect(findBannedClaims(text)).toEqual([]);
+      expect(text.replace(SUPARCO, "")).not.toMatch(/detect|accurate|\{\w+\}/i);
+      if (n < 4) $("ls-next").click();
+    }
   });
 });
