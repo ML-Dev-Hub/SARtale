@@ -4,12 +4,11 @@ channels:
 dependencies:
   - python=3.12
   - numpy
+  - scipy
   - h5py
   - rasterio
   - gdal
   - pyproj
   - pillow
-  - pytest
   - requests
-  - networkx
-  - osmnx
+  - pytest

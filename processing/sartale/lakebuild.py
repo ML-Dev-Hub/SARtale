@@ -20,7 +20,7 @@ from sartale.lakewater import (
     shadow_prone,
     window_stats,
 )
-from sartale.products import render_frame, shared_stretch
+from sartale.render import render_frame, shared_stretch
 from sartale.radiometry import to_db
 
 POINT_LABEL = "water area in the search window"
