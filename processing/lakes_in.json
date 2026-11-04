@@ -1,6 +1,6 @@
 [
   {"id": "attabad", "name": "Attabad Lake (landslide-dammed control)", "lon": 74.86, "lat": 36.33, "role": "control",
-   "coord_source": "SARtale spike 2 Nov 2026: lake visible in NISAR passes", "outline": null, "downstream": null, "downstream_source": null},
+   "coord_source": "SARtale spike 2 Nov 2026: lake visible in NISAR passes", "outline": "outlines/attabad_osm.geojson", "downstream": null, "downstream_source": null},
   {"id": "shisper", "name": "Shisper / Mochowar ice-dammed lake", "lon": 74.583, "lat": 36.358, "role": "story",
    "coord_source": "Centre of the lake map frame 36°21′–36°22′N, 74°34′–74°36′E, Muhammad et al. 2021, Fig. 2", "outline": null,
    "downstream": "Hassanabad village and the Karakoram Highway bridge", "downstream_source": "Radio Pakistan, 7 May 2022"},

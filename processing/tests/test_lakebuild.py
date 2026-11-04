@@ -140,3 +140,49 @@ def test_build_drops_track_with_no_overlap(tmp_path):
     assert {p["track"] for p in lk["series"]} == {"156A"}
     assert any("063D" in s and "unusable" in s for s in lk["limits"])
     assert "single viewing direction" in lk["limits"]
+
+
+def _outline_around(lake, half_m, shift_m=0.0):
+    """A square outline (GeoJSON Feature) of half-width `half_m` around the lake, shifted east by `shift_m`."""
+    to_ll = Transformer.from_crs(EPSG, 4326, always_xy=True)
+    cx, cy = Transformer.from_crs(4326, EPSG, always_xy=True).transform(lake.lon, lake.lat)
+    cx += shift_m
+    ring = [to_ll.transform(cx + sx * half_m, cy + sy * half_m) for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))]
+    return {"type": "Feature", "properties": {"source": "Test outline, 4 Nov 2026"},
+            "geometry": {"type": "Polygon", "coordinates": [[list(p) for p in ring]]}}
+
+
+def _build_with_outline(tmp_path, feature, rel=False):
+    from dataclasses import replace
+    cache, out = tmp_path / "cache", tmp_path / "out"
+    base = make_lake("alpha")
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24"]:
+        write_pass(cache, base, d, "156A")
+    poly = tmp_path / "alpha.geojson"
+    poly.write_text(json.dumps(feature(base)), encoding="utf-8")
+    doc = build_lakes([replace(base, outline=str(poly))], cache, out, "2026-11-04T00:00:00Z")
+    return lake(doc, "alpha")
+
+
+def test_an_outline_lake_reports_its_source_and_counts_the_outline(tmp_path):
+    lk = _build_with_outline(tmp_path, lambda b: _outline_around(b, 600))
+    assert lk["outline_source"] == "Test outline, 4 Nov 2026"
+    assert lk["area_label"].startswith("water area in the lake outline")
+    assert not any("radar window" in m for m in lk["limits"])
+
+
+def test_an_outline_past_the_window_edge_says_how_much_is_counted(tmp_path):
+    # The window is 80 x 50 m = 4 km wide; a 3 km square shifted 2 km east is about half outside it.
+    lk = _build_with_outline(tmp_path, lambda b: _outline_around(b, 1500, shift_m=2000))
+    note = next(m for m in lk["limits"] if "radar window" in m)
+    pct = int(note.split("%")[0].split()[-1])
+    assert 35 <= pct <= 65
+    assert "only that part is counted" in note
+
+
+def test_a_relative_outline_path_is_read_from_the_processing_folder():
+    from sartale.lakebuild import _load_outline
+    from dataclasses import replace
+    lk = replace(make_lake("attabad"), outline="outlines/attabad_osm.geojson")
+    poly = _load_outline(lk)
+    assert poly is not None and poly["type"] == "Polygon"

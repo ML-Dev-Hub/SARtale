@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import lakesJson from "../public/data/lakes.json";
 import { findBannedClaims } from "./content";
 import { createEvidenceView } from "./evidenceView";
-import { lakeTokens, type LakesFile } from "./lakes";
+import { iouRange, lakeTokens, type LakesFile } from "./lakes";
 
 const realLakes = lakesJson as unknown as LakesFile;
 
@@ -99,9 +99,9 @@ describe("How we know", () => {
     });
   });
 
-  test("says agreement is poor except at Attabad, that neither source is a clean reference, and that this is not a validation", () => {
+  test("says agreement is poor at every lake, with the range from the data, that neither source is a clean reference, and that this is not a validation", () => {
     const { text } = withLakes();
-    expect(text).toContain("similar only at Attabad, and even there the overlap was low (IoU 0.11); elsewhere the areas disagreed widely");
+    expect(text).toContain(`overlapped poorly at every lake checked (${iouRange(realLakes.checks)}), and their areas disagreed widely`);
     expect(text).toMatch(/Shisper/);
     expect(text).toMatch(/ice or shadow/);
     expect(text).toMatch(/neither is a clean reference/);

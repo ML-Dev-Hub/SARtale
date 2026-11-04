@@ -194,16 +194,24 @@ export const NOT_VALIDATED = "Not validated: frozen lakes, lakes under 0.05 km²
 /** 0.0049 -> "0.005", 0.0138 -> "0.014", 0.1137 -> "0.11": two significant figures, at least three decimals below 0.01. */
 const iouText = (v: number): string => (v < 0.01 ? v.toFixed(3) : String(Number(v.toPrecision(2))));
 
+/** "IoU 0.013–0.09" from the `checks` rows, or null when none has an IoU. */
+export function iouRange(checks: LakeCheck[]): string | null {
+  const ious = checks.map((c) => c.iou).filter((v): v is number => v !== null);
+  if (!ious.length) return null;
+  const lo = Math.min(...ious);
+  const hi = Math.max(...ious);
+  return lo === hi ? `IoU ${iouText(lo)}` : `IoU ${iouText(lo)}–${iouText(hi)}`;
+}
+
 /** One plain sentence on the Sentinel-2 cross-check, built from the `checks` rows; null when there are none with an IoU. */
 export function opticalCheckSentence(checks: LakeCheck[]): string | null {
   const rows = checks.filter((c) => c.iou !== null);
   if (!rows.length) return null;
   const ious = rows.map((c) => c.iou as number);
-  const lo = Math.min(...ious);
   const hi = Math.max(...ious);
   const maxDays = Math.max(...rows.map((c) => c.days_apart));
   const when = maxDays === 0 ? "a same-day check" : `checks up to ${maxDays} days apart`;
-  const range = lo === hi ? `IoU ${iouText(lo)}` : `IoU ${iouText(lo)}–${iouText(hi)}`;
+  const range = iouRange(rows)!;
   const how = hi < 0.5 ? `overlapped optical water poorly at every lake checked (${range})` : `overlapped optical water with ${range} across the ${rows.length} lakes checked`;
   return `In ${when} against Sentinel-2, radar water ${how}; treat areas as indicative.`;
 }
@@ -238,5 +246,6 @@ export function lakeTokens(file: LakesFile): Record<string, string> {
     lake_count: String(file.lakes.length),
     crid: file.crid,
     notes: file.notes,
+    iou_range: iouRange(file.checks) ?? "no IoU yet",
   };
 }

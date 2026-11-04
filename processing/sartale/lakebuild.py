@@ -14,6 +14,7 @@ from sartale.lakewater import (
     dark_mask,
     despeckle,
     lake_zone,
+    outline_window_share,
     pass_water,
     screen_outliers,
     screen_passes,
@@ -30,6 +31,7 @@ SHADOW_RGBA = (128, 128, 128, 120)
 NOTES = ("Areas are water within a 1 km search circle (or outline) and underestimate lakes whose shores sit "
          "in radar shadow; images are radar-geometry pictures, not georeferenced overlays.")
 NO_LOOKS_REASON = "No valid NISAR pass yet."
+OUTLINE_ROOT = Path(__file__).resolve().parents[1]  # processing/
 
 
 def _nanmedian0(stack: np.ndarray) -> np.ndarray:
@@ -38,19 +40,30 @@ def _nanmedian0(stack: np.ndarray) -> np.ndarray:
         return np.nanmedian(stack, axis=0)
 
 
-def _load_outline(lake: Lake):
-    """The outline polygon if `lake.outline` is a readable local GeoJSON file, else None."""
+def _outline_feature(lake: Lake) -> dict | None:
+    """The outline as a GeoJSON Feature if `lake.outline` is a readable local GeoJSON file, else None.
+
+    A relative path is read from the processing folder (where lakes_in.json lives), wherever the command runs.
+    """
     if not lake.outline:
         return None
     p = Path(lake.outline)
+    if not p.is_absolute():
+        p = OUTLINE_ROOT / p
     if not p.is_file():
         return None
     doc = json.loads(p.read_text(encoding="utf-8"))
     if doc.get("type") == "FeatureCollection":
         doc = doc["features"][0]
-    if doc.get("type") == "Feature":
-        doc = doc["geometry"]
-    return doc if doc.get("type") == "Polygon" else None
+    if doc.get("type") != "Feature":
+        doc = {"type": "Feature", "properties": {}, "geometry": doc}
+    return doc if doc["geometry"].get("type") == "Polygon" else None
+
+
+def _load_outline(lake: Lake):
+    """The outline polygon if `lake.outline` is a readable local GeoJSON file, else None."""
+    f = _outline_feature(lake)
+    return f["geometry"] if f else None
 
 
 def _read_cache(lake_dir: Path, limits: list[str]) -> list[dict]:
@@ -240,12 +253,14 @@ def _empty(entry: dict, limits: list[str]) -> dict:
 
 def build_lake(lake: Lake, cache_dir: Path, out_dir: Path) -> dict:
     limits: list[str] = []
-    outline = _load_outline(lake)
+    feature = _outline_feature(lake)
+    outline = feature["geometry"] if feature else None
     if lake.outline and outline is None:
         limits.append("outline could not be read; the point circle is used")
     entry = {
         "id": lake.id, "name": lake.name, "lon": lake.lon, "lat": lake.lat, "role": lake.role,
-        "coord_source": lake.coord_source, "outline_source": lake.outline,
+        "coord_source": lake.coord_source,
+        "outline_source": (feature["properties"].get("source") or lake.outline) if feature else None,
         "area_label": OUTLINE_LABEL if outline else POINT_LABEL,
         "downstream": lake.downstream, "downstream_source": lake.downstream_source,
     }
@@ -259,6 +274,11 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path) -> dict:
 
     epsg, px, by_track, excluded, directions, shadow = _analyse(passes, xs, ys, limits)
     zone = lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline)
+    if outline is not None:
+        share = outline_window_share(xs, ys, epsg, outline)
+        if share < 0.99:
+            limits.append(f"the outline runs past the 6 km radar window; {round(share * 100)}% of it is inside "
+                          "and only that part is counted")
     series: list[SeriesPoint] = []
     for p in sorted(passes, key=lambda q: (q["date"], q["key"])):
         w = pass_water(p["hh_db"], p["hv_db"], zone, shadow, px)

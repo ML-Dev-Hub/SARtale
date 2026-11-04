@@ -165,6 +165,22 @@ def lake_zone(shape, x, y, epsg, lake: Lake, outline_polygon=None, half_km: floa
     return dist <= OUTLINE_BUFFER_M
 
 
+def outline_window_share(x, y, epsg, outline_polygon) -> float:
+    """Share of the outline's area (without the buffer) that lies on the window grid, 0 to 1."""
+    x, y = np.asarray(x, float), np.asarray(y, float)
+    dx, dy = float(x[1] - x[0]), float(y[1] - y[0])
+    to_utm = Transformer.from_crs(4326, epsg, always_xy=True)
+    ring = [to_utm.transform(lon, lat) for lon, lat in _ring(outline_polygon)]
+    xs, ys = np.array([p[0] for p in ring]), np.array([p[1] for p in ring])
+    area = 0.5 * abs(float(np.dot(xs, np.roll(ys, 1)) - np.dot(ys, np.roll(xs, 1))))  # shoelace, m²
+    if area == 0:
+        return 0.0
+    transform = Affine(dx, 0, x[0] - dx / 2, 0, dy, y[0] - dy / 2)
+    inside = geometry_mask([{"type": "Polygon", "coordinates": [ring]}], out_shape=(len(y), len(x)),
+                           transform=transform, invert=True)
+    return min(1.0, float(inside.sum()) * abs(dx * dy) / area)
+
+
 def pass_water(hh_db: np.ndarray, hv_db: np.ndarray, zone: np.ndarray, shadow: np.ndarray | None,
                pixel_m: float) -> dict:
     """Water in one pass: dark, inside the zone, not shadow-prone, valid.

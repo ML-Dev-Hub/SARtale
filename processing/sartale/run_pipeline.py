@@ -16,6 +16,10 @@ from sartale.remote import fetch_lake_passes
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+def _read_json(path: Path):
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
 def cmd_lakes_search(args) -> None:
     """Search CMR for the passes over every lake, write passes.json, print one coverage line per lake."""
     lakes = load_lakes(Path(args.lakes_in))

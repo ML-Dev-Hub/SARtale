@@ -81,12 +81,17 @@
         "title": "What this does not tell you, and what comes next",
         "body": [
           "This is indicative screening on provisional NISAR data. Official warnings come from PMD and NDMA.",
-          "A status compares a lake only with its own earlier passes. Areas count water inside a search circle and underestimate lakes whose shores sit in radar shadow. Frozen lakes, lakes under 0.05 km² and wind-roughened water are not validated. In the Sentinel-2 cross-check, radar and optical areas were similar only at Attabad, and even there the overlap was low (IoU 0.11); elsewhere the areas disagreed widely. So it is not a validation of lake extent.",
+          "A status compares a lake only with its own earlier passes. Areas count water inside each lake's outline or search circle, and underestimate lakes whose shores sit in radar shadow. Frozen lakes, lakes under 0.05 km² and wind-roughened water are not validated. In the Sentinel-2 cross-check, radar and optical water overlapped poorly at every lake checked ({iou_range}). So it is not a validation of lake extent.",
           "Next steps to agree with the administration: SUPARCO's lake IDs and locations, so areas can be compared; which lakes district teams most need on the list; ground reports from those teams; and a re-run when NASA reprocesses the files."
         ],
         "actions": [
           "evidence",
           "lake-watch"
+        ],
+        "noData": [
+          "This is indicative screening on provisional NISAR data. Official warnings come from PMD and NDMA.",
+          "A status compares a lake only with its own earlier passes. Areas count water inside each lake's outline or search circle, and underestimate lakes whose shores sit in radar shadow. Frozen lakes, lakes under 0.05 km² and wind-roughened water are not validated.",
+          "Next steps to agree with the administration: SUPARCO's lake IDs and locations, so areas can be compared; which lakes district teams most need on the list; ground reports from those teams; and a re-run when NASA reprocesses the files."
         ]
       }
     ]

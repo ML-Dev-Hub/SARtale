@@ -105,3 +105,16 @@ def test_write_json_atomic_replaces_and_leaves_no_tmp(tmp_path):
     with pytest.raises(ValueError):
         write_json_atomic(p, {"a": float("nan")})
     assert json.loads(p.read_text(encoding="utf-8")) == {"a": 1}
+
+
+def test_lakes_check_writes_the_rows_and_merges_them_into_lakes_json(tmp_path, monkeypatch):
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "lakes.json").write_text(json.dumps({"lakes": [{"id": "attabad", "series": []}], "checks": []}), encoding="utf-8")
+    monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: [type("L", (), {"id": "attabad"})()])
+    monkeypatch.setattr(run_pipeline, "check_lake", lambda lake, cache, series: {"lake": lake.id, "note": "no clear scene"})
+    checks = tmp_path / "checks.json"
+    run_pipeline.main(["lakes-check", "--out", str(out), "--cache", str(tmp_path), "--checks", str(checks), "--lakes", "attabad"])
+    rows = [{"lake": "attabad", "note": "no clear scene"}]
+    assert json.loads(checks.read_text(encoding="utf-8")) == rows
+    assert json.loads((out / "lakes.json").read_text(encoding="utf-8"))["checks"] == rows
