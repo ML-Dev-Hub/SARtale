@@ -111,6 +111,11 @@
 .sp-map { flex: 1 1 460px; min-width: 0; margin: 0; position: relative; align-self: flex-start; border-radius: 14px; overflow: hidden; border: 1px solid var(--sp-line); }
 .sp-map img { width: 100%; filter: brightness(0.7) saturate(0.85); }
 .sp-pin { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--sp-accent); border: 2px solid var(--sp-ground); box-sizing: content-box; }
+.sp-pin-request { background: var(--sp-warm); }
+.sp-lake.sp-request { border: 1px dashed var(--sp-warm); flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; }
+.sp-request .sp-lake-right { text-align: left; }
+.sp-request-line { font-size: 13px; font-weight: 600; color: var(--sp-warm); overflow-wrap: anywhere; }
+.sp-lake-title, .sp-lake-meta { overflow-wrap: anywhere; }
 .sp-map-credit { position: absolute; left: 12px; bottom: 10px; padding: 4px 10px; border-radius: 6px; background: rgba(5,13,22,0.8); font-size: 12px; color: #c6d5de; }
 .sp-lakes { flex: 1 1 460px; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-content: start; }
 .sp-lake { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--sp-panel); border: 1px solid var(--sp-line); }
@@ -131,6 +136,20 @@
 .sp-add-intro h2 { font-size: 36px; margin-bottom: 12px; }
 .sp-add-intro p:not(.sp-eyebrow) { margin: 0 0 20px; color: #c6d5de; }
 .sp-add-steps { margin: 0; padding-left: 20px; color: var(--sp-muted); display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.sp-add-slot form { display: flex; flex-direction: column; gap: 14px; }
+.sp-field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; }
+.sp-field input { min-height: 46px; padding: 0 14px; border-radius: 10px; border: 1px solid #2b4256; background: var(--sp-ground); color: var(--sp-text); font: inherit; font-weight: 400; }
+.sp-field input::placeholder { color: #8ea3b0; }
+.sp-field input:focus-visible, .sp-add-slot .sp-btn:focus-visible { outline: 3px solid var(--sp-warm); outline-offset: 2px; }
+.sp-field input:disabled, .sp-add-slot .sp-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.sp-field-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.sp-add-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.sp-add-hint { font-size: 14px; color: #8ea3b0; }
+.sp-add-closed { margin: 0; padding: 10px 14px; border-radius: 10px; background: rgba(255,196,107,0.12); color: #ffd597; font-size: 15px; }
+.sp-add-error { margin: 0; padding: 10px 14px; border-radius: 10px; background: rgba(255,138,122,0.12); color: #ffb3a8; font-size: 15px; overflow-wrap: anywhere; }
+.sp-add-card { padding: 12px 14px; border-radius: 10px; border: 1px dashed var(--sp-warm); background: rgba(255,196,107,0.08); }
+.sp-add-card-title { font-weight: 600; overflow-wrap: anywhere; }
+.sp-add-card-line { font-size: 14px; color: #ffd597; }
 .sp-add-slot { flex: 1 1 420px; min-width: 0; }
 
 /* Closing band and footer */

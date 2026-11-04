@@ -3,6 +3,7 @@ import "@fontsource-variable/inter-tight/wght.css";
 import "./storyPage.css";
 import copyJson from "./content/storyPage.json";
 import { dataUrl, formatDate } from "./format";
+import { isOpen, mountAddLake, requestLine, type LakeRequest, type RequestsClient } from "./lakeRequests";
 import { iouRange, opticalOverlapPhrase, type Lake, type LakesFile } from "./lakes";
 
 const copy = copyJson;
@@ -24,6 +25,8 @@ export interface StoryPageOptions {
   onOpenLakes(): void;
   onOpenEvidence(): void;
   onFollowStory(): void;
+  /** The lake-request server. Without it the form says requests are not open. */
+  requests?: RequestsClient;
 }
 
 export interface StoryPage {
@@ -31,6 +34,8 @@ export interface StoryPage {
   listEl: HTMLElement;
   mapEl: HTMLElement;
   addLakeEl: HTMLElement;
+  /** Show these open lake requests in the list and on the map, replacing the earlier ones. */
+  setRequests(open: LakeRequest[]): void;
 }
 
 /** The pictured pass's area: the series point on the status track's latest date. */
@@ -264,7 +269,32 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
       ),
     );
   }
-  mapEl.append(text("figcaption", "sp-map-credit", w.mapCredit));
+  const mapCredit = text("figcaption", "sp-map-credit", w.mapCredit);
+  mapEl.append(mapCredit);
+  const requestEls: HTMLElement[] = [];
+  const setRequests = (open: LakeRequest[]): void => {
+    for (const e of requestEls) e.remove();
+    requestEls.length = 0;
+    for (const r of open.filter(isOpen)) {
+      const pos = mapPin(r.lon, r.lat);
+      if (pos) {
+        const pin = el("span", "sp-pin sp-pin-request");
+        pin.style.left = pos.left;
+        pin.style.top = pos.top;
+        pin.title = `${r.name}: ${requestLine(r)}`;
+        mapEl.insertBefore(pin, mapCredit);
+        requestEls.push(pin);
+      }
+      const card = el(
+        "div",
+        "sp-lake sp-request",
+        el("div", "sp-lake-name", text("div", "sp-lake-title", r.name), text("div", "sp-lake-meta", `${r.lat.toFixed(2)} °N, ${r.lon.toFixed(2)} °E`)),
+        el("div", "sp-lake-right", text("div", "sp-request-line", requestLine(r))),
+      );
+      listEl.append(card);
+      requestEls.push(card);
+    }
+  };
   const watch = section("05 The watch", "sp-section");
   watch.append(
     el("div", "sp-head", el("div", undefined, eyebrow(w.label), text("h2", undefined, noData ? w.noDataTitle : f(w.title))), text("p", "sp-muted sp-head-note", noData ? w.noDataLede : f(w.lede))),
@@ -296,6 +326,9 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const ft = copy.footer;
   const footer = el("footer", "sp-footer", text("span", undefined, ft.team), text("span", undefined, ft.event), el("span", "sp-grow"), text("span", undefined, ft.data));
 
+  const closedClient: RequestsClient = { health: async () => false, list: async () => [], submit: () => Promise.reject(new Error("closed")) };
+  const addLake = mountAddLake(addLakeEl, opts.requests ?? closedClient, setRequests);
+
   page.append(cover, risk, gap, view, measure, watch, add, closing, footer);
   root.replaceChildren(page);
 
@@ -303,7 +336,9 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
     listEl,
     mapEl,
     addLakeEl,
+    setRequests,
     destroy() {
+      addLake.destroy();
       for (const fn of cleanups) fn();
       cleanups.length = 0;
       root.replaceChildren();

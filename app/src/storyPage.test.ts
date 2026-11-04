@@ -78,10 +78,9 @@ describe("renderStoryPage", () => {
     expect(root.querySelector("header, nav")).toBeNull();
   });
 
-  it("exposes an empty add-a-lake slot, the lake list and the map", () => {
+  it("exposes the add-a-lake slot with its form, the lake list and the map", () => {
     const { root, page } = render(real);
-    expect(page.addLakeEl.childElementCount).toBe(0);
-    expect(page.addLakeEl.textContent).toBe("");
+    expect(page.addLakeEl.querySelector("form")).not.toBeNull();
     expect(root.querySelector('section[aria-label="06 Add a lake"]')!.contains(page.addLakeEl)).toBe(true);
     expect(page.listEl.children.length).toBe(11);
     expect(page.mapEl.querySelectorAll(".sp-pin").length).toBe(11);

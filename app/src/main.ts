@@ -2,6 +2,7 @@ import "./styles.css";
 import { createUplotLakeChart } from "./chart";
 import { createLakeLocator } from "./lakeLocator";
 import { printBrief } from "./lakeBrief";
+import { createRequestsClient } from "./lakeRequests";
 import { loadLakes } from "./lakes";
 import { mountOrShowError } from "./startup";
 
@@ -13,6 +14,7 @@ void loadLakes("data/lakes.json").then((lakes) =>
     lakes,
     createLakeChart: createUplotLakeChart,
     createLakeLocator,
+    requests: createRequestsClient(),
     onLakeBrief: (lake) => lakes && printBrief(lake, lakes),
   }),
 );

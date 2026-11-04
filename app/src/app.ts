@@ -2,6 +2,7 @@ import { createEvidenceView } from "./evidenceView";
 import type { Lake, LakesFile } from "./lakes";
 import { createLakeStoryView } from "./lakeStory";
 import { createLakeWatchView, type LakeChartFactory, type LocatorFactory } from "./lakeWatchView";
+import type { RequestsClient } from "./lakeRequests";
 import { renderStoryPage } from "./storyPage";
 
 export interface AppOptions {
@@ -13,6 +14,8 @@ export interface AppOptions {
   createLakeLocator?: LocatorFactory;
   /** Called by "Print lake brief". */
   onLakeBrief?: (lake: Lake) => void;
+  /** Client for the lake-request server. Without it the Add a lake form is shown disabled. */
+  requests?: RequestsClient;
 }
 
 type View = "home" | "lakes" | "story" | "evidence";
@@ -106,6 +109,7 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
   const storyPage = renderStoryPage(q("home-root"), lakes, {
     onOpenLakes: () => showView("lakes"),
     onOpenEvidence: () => showView("evidence"),
+    requests: opts.requests,
     onFollowStory: () => {
       lakeStory.go(0);
       showView("story");

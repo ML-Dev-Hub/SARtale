@@ -100,7 +100,21 @@
       "Queued: the lake joins the watch list and the map.",
       "Searched: NISAR passes over the point are found.",
       "Watched: a status appears after three looks on one track."
-    ]
+    ],
+    "form": {
+      "nameLabel": "Lake name",
+      "namePlaceholder": "For example, a moraine lake above Gulmit",
+      "latLabel": "Latitude (°N)",
+      "latPlaceholder": "36.42",
+      "lonLabel": "Longitude (°E)",
+      "lonPlaceholder": "74.88",
+      "sourceLabel": "Where the coordinates come from",
+      "sourcePlaceholder": "Inventory, paper, field survey or map",
+      "submitLabel": "Add to the watch list",
+      "hint": "Gilgit-Baltistan and upper KP: 34.4–37.6 °N, 70.8–76.6 °E",
+      "closed": "Requests are not open on this copy of the site.",
+      "networkError": "The request could not be sent. Try again in a moment."
+    }
   },
   "closing": {
     "title": "See every lake, its passes and its limits",
