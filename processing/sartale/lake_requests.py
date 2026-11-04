@@ -38,7 +38,7 @@ def _number(payload: dict, key: str) -> float:
         raise RequestError(f"{key} must be a number.")
     try:
         number = float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         raise RequestError(f"{key} must be a number.") from None
     if not math.isfinite(number):
         raise RequestError(f"{key} must be a number.")

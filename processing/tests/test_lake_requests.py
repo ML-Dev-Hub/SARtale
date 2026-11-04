@@ -102,3 +102,7 @@ def test_coverage_counts_calibrated_passes_by_track():
 
 def test_coverage_with_no_passes_is_zero_and_none():
     assert coverage(35.0, 75.0, search=lambda lake: []) == {"passes": 0, "tracks": [], "first": None, "last": None}
+
+
+def test_validate_refuses_a_huge_integer_without_overflowing():
+    assert err({**GOOD, "lat": 10**400}).status == 400
