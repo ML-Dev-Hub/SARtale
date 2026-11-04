@@ -203,16 +203,21 @@ export function iouRange(checks: LakeCheck[]): string | null {
   return lo === hi ? `IoU ${iouText(lo)}` : `IoU ${iouText(lo)}–${iouText(hi)}`;
 }
 
-/** One plain sentence on the Sentinel-2 cross-check, built from the `checks` rows; null when there are none with an IoU. */
-export function opticalCheckSentence(checks: LakeCheck[]): string | null {
+/** How radar water overlapped optical water, worded from the IoU values; null when no check has an IoU. */
+export function opticalOverlapPhrase(checks: LakeCheck[]): string | null {
   const rows = checks.filter((c) => c.iou !== null);
   if (!rows.length) return null;
-  const ious = rows.map((c) => c.iou as number);
-  const hi = Math.max(...ious);
-  const maxDays = Math.max(...rows.map((c) => c.days_apart));
-  const when = maxDays === 0 ? "a same-day check" : `checks up to ${maxDays} days apart`;
+  const hi = Math.max(...rows.map((c) => c.iou as number));
   const range = iouRange(rows)!;
-  const how = hi < 0.5 ? `overlapped optical water poorly at every lake checked (${range})` : `overlapped optical water with ${range} across the ${rows.length} lakes checked`;
+  return hi < 0.5 ? `overlapped optical water poorly at every lake checked (${range})` : `overlapped optical water with ${range} across the ${rows.length} lakes checked`;
+}
+
+/** One plain sentence on the Sentinel-2 cross-check, built from the `checks` rows; null when there are none with an IoU. */
+export function opticalCheckSentence(checks: LakeCheck[]): string | null {
+  const how = opticalOverlapPhrase(checks);
+  if (!how) return null;
+  const maxDays = Math.max(...checks.filter((c) => c.iou !== null).map((c) => c.days_apart));
+  const when = maxDays === 0 ? "a same-day check" : `checks up to ${maxDays} days apart`;
   return `In ${when} against Sentinel-2, radar water ${how}; treat areas as indicative.`;
 }
 

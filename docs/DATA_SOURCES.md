@@ -64,8 +64,8 @@ Licences are the `license` field of each installed package's `package.json`. Onl
 | maplibre-gl | 6.16.0 | BSD-3-Clause | The small lake locator map, bundled |
 | uplot | 1.6.32 | MIT | Charts, bundled |
 | @fontsource-variable/bricolage-grotesque | 5.3.0 | OFL-1.1 | Font files, bundled |
-| @fontsource-variable/inter | see app/package.json | OFL-1.1 | Body font for the story page, bundled |
-| @fontsource-variable/inter-tight | see app/package.json | OFL-1.1 | Display font for the story page, bundled |
+| @fontsource-variable/inter | 5.3.0 | OFL-1.1 | Body font for the story page, bundled |
+| @fontsource-variable/inter-tight | 5.3.0 | OFL-1.1 | Display font for the story page, bundled |
 | vite | 8.3.5 | MIT | Build tool (development only) |
 | vitest | 5.0.5 | MIT | Tests (development only) |
 | jsdom | 30.1.3 | MIT | Test DOM (development only) |

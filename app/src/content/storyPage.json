@@ -104,7 +104,7 @@
   },
   "closing": {
     "title": "See every lake, its passes and its limits",
-    "body": "Indicative screening on provisional NISAR data. Radar and optical water agree poorly so far ({iou}), and official warnings come from PMD, NDMA, GBDMA and PDMA.",
+    "body": "Indicative screening on provisional NISAR data. Against Sentinel-2, radar water {overlap}; official warnings come from PMD, NDMA, GBDMA and PDMA.",
     "noIouBody": "Indicative screening on provisional NISAR data. Official warnings come from PMD, NDMA, GBDMA and PDMA.",
     "openLabel": "Open Lake Watch",
     "evidenceLabel": "How we know"

@@ -132,6 +132,26 @@ describe("renderStoryPage", () => {
   });
 });
 
+describe("closing band wording follows the IoU values", () => {
+  const check = (iou: number) => ({ lake: "x", nisar_date: "2026-10-01", nisar_track: "1", s2_date: "2026-10-01", s2_id: "s", days_apart: 0, s2_window_cloud_pct: 0, scope: "w", radar_km2: 1, optical_km2: 1, area_error_pct: 0, iou, zone_valid_share: 1, window_radar_km2: 1, window_optical_km2: 1, window_area_error_pct: 0, window_iou: iou });
+  const closing = (file: LakesFile) => render(file).root.querySelector(".sp-closing-text p")!.textContent ?? "";
+
+  it("says poorly when every IoU is low", () => {
+    expect(closing(real)).toContain("overlapped optical water poorly");
+    expect(closing(real)).toContain("IoU 0.013–0.09");
+  });
+
+  it("does not say poorly when the IoU is high", () => {
+    const text = closing({ ...fixtureLakes, checks: [check(0.8), check(0.7)] });
+    expect(text).not.toContain("poorly");
+    expect(text).toContain("overlapped optical water with IoU 0.7–0.8 across the 2 lakes checked");
+  });
+
+  it("drops the sentence when there are no checks", () => {
+    expect(closing(fixtureLakes)).not.toContain("Sentinel-2");
+  });
+});
+
 describe("mapPin", () => {
   it("places Attabad inside the map and refuses a point outside", () => {
     expect(mapPin(74.86, 36.33)).toEqual({ left: "70.0%", top: "39.7%" });

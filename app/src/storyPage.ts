@@ -3,7 +3,7 @@ import "@fontsource-variable/inter-tight/wght.css";
 import "./storyPage.css";
 import copyJson from "./content/storyPage.json";
 import { dataUrl, formatDate } from "./format";
-import { iouRange, type Lake, type LakesFile } from "./lakes";
+import { iouRange, opticalOverlapPhrase, type Lake, type LakesFile } from "./lakes";
 
 const copy = copyJson;
 const DASH = "—";
@@ -282,12 +282,13 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
 
   // Closing band
   const cl = copy.closing;
+  const overlap = file ? opticalOverlapPhrase(file.checks) : null;
   const closing = section("Open Lake Watch", "sp-closing");
   closing.append(
     el(
       "div",
       "sp-closing-in",
-      el("div", "sp-closing-text", text("h2", undefined, cl.title), text("p", undefined, t.iou === DASH ? cl.noIouBody : f(cl.body))),
+      el("div", "sp-closing-text", text("h2", undefined, cl.title), text("p", undefined, overlap ? fill(cl.body, { overlap }) : cl.noIouBody)),
       el("div", "sp-actions", button(cl.openLabel, "sp-btn-primary", opts.onOpenLakes), button(cl.evidenceLabel, "sp-btn-ghost", opts.onOpenEvidence)),
     ),
   );
