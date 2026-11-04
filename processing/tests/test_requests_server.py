@@ -142,8 +142,39 @@ def test_a_failing_search_marks_search_failed_and_the_server_still_answers(make)
     h = make(search=boom)
     rid = h.call("POST", "/api/lake-requests", body())[1]["id"]
     row = wait_state(h, rid, "search_failed")
-    assert "CMR down" in row["reason"]
+    assert row["reason"] == "NASA's catalogue did not answer; the team will retry."
+    assert "detail" not in row and "CMR down" not in json.dumps(row)
+    assert "detail" not in json.dumps(h.call("GET", "/api/lake-requests")[1])
+    assert h.store.get(rid)["detail"] == "ConnectionError: CMR down"
     assert h.call("GET", "/api/health")[0] == 200
+
+
+def test_an_unexpected_search_error_gets_the_generic_public_reason(make):
+    def odd(lat, lon):
+        raise KeyError("secret internals " + "x" * 500)
+    h = make(search=odd)
+    rid = h.call("POST", "/api/lake-requests", body())[1]["id"]
+    row = wait_state(h, rid, "search_failed")
+    assert row["reason"] == "NASA's catalogue gave an unexpected reply."
+    assert "secret" in h.store.get(rid)["detail"]
+
+
+def test_a_failing_search_prints_one_stderr_line(make, capsys):
+    def boom(lat, lon):
+        raise ConnectionError("CMR down")
+    h = make(search=boom)
+    rid = h.call("POST", "/api/lake-requests", body())[1]["id"]
+    wait_state(h, rid, "search_failed")
+    err = capsys.readouterr().err.strip().splitlines()
+    assert len(err) == 1 and "CMR down" in err[0]
+
+
+def test_an_accepted_request_still_blocks_a_nearby_duplicate(make):
+    h = make()
+    rid = h.call("POST", "/api/lake-requests", body())[1]["id"]
+    h.store.set_state(rid, "accepted")
+    status, data, _ = h.call("POST", "/api/lake-requests", body(0, lat=35.0005))
+    assert status == 409 and "Already requested" in data["error"]
 
 
 def test_body_over_4kb_is_413(make):

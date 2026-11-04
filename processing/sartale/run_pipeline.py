@@ -210,6 +210,8 @@ def cmd_lake_requests_list(args) -> None:
     rows = _store(args).list_open()
     for r in rows:
         print(f"{r['id']}: {r['name']} ({r['lat']}, {r['lon']}) [{r['state']}] source: {r['source']}")
+        if r.get("detail"):
+            print(f"    detail: {r['detail']}")
     print(f"{len(rows)} open requests")
 
 
@@ -244,10 +246,16 @@ def cmd_lake_requests_accept(args) -> None:
     store = _store(args)
     row = _open_request(store, args.id)
     lakes_in = Path(args.lakes_in)
-    taken = {x["id"] for x in _read_json(lakes_in)}
+    existing = _read_json(lakes_in)
+    taken = {x["id"] for x in existing}
     entry = {"id": lake_slug(row["name"], taken), "name": row["name"], "lon": row["lon"], "lat": row["lat"],
              "role": args.role, "coord_source": f"Requested {row['created'][:10]}: {row['source']}",
              "outline": None, "downstream": None, "downstream_source": None}
+    same = next((x for x in existing if x.get("name") == entry["name"] and x.get("coord_source") == entry["coord_source"]), None)
+    if same:  # an earlier run wrote the entry but failed to mark the request: do not add a _2 duplicate
+        store.set_state(args.id, "accepted")
+        print(f"accepted {args.id}: {lakes_in} already has {same['id']}; nothing appended")
+        return
     append_lake_entry(lakes_in, entry)
     store.set_state(args.id, "accepted")
     print(f"accepted {args.id} as {entry['id']} -> {lakes_in}")

@@ -106,3 +106,31 @@ def test_coverage_with_no_passes_is_zero_and_none():
 
 def test_validate_refuses_a_huge_integer_without_overflowing():
     assert err({**GOOD, "lat": 10**400}).status == 400
+
+
+@pytest.mark.parametrize("bad", ["Line\nbreak", "Esc\x1bape", "Flip‮text"])
+def test_validate_refuses_control_and_formatting_characters(bad):
+    for key in ("name", "source"):
+        e = err({**GOOD, key: bad + " more"})
+        assert e.status == 400 and key in str(e)
+
+
+def test_validate_allows_ordinary_spaces_and_accents():
+    assert validate({**GOOD, "name": "Yaz Sam é"}, [], [])["name"] == "Yaz Sam é"
+
+
+def test_an_old_database_gets_the_detail_column(tmp_path):
+    import sqlite3
+    path = tmp_path / "old.sqlite"
+    db = sqlite3.connect(path)
+    db.execute("CREATE TABLE requests (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, lat REAL NOT NULL, "
+               "lon REAL NOT NULL, source TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'queued', passes INTEGER, "
+               "tracks TEXT NOT NULL DEFAULT '[]', first TEXT, last TEXT, reason TEXT, addr TEXT NOT NULL, "
+               "created_ts REAL NOT NULL)")
+    db.commit()
+    db.close()
+    s = RequestStore(path)
+    rid = s.add(clean(), "1.2.3.4", 1.0)["id"]
+    s.set_failed(rid, "x" * 300, "raw")
+    row = s.get(rid)
+    assert len(row["reason"]) == 200 and row["detail"] == "raw"

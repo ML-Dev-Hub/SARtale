@@ -1,5 +1,7 @@
 """A small public HTTP API for lake requests: check, store, and search for NISAR coverage."""
 import json
+import socket
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -14,7 +16,17 @@ HEALTH_PATH = "/api/health"
 
 
 def _public(row: dict) -> dict:
-    return {k: v for k, v in row.items() if k != "source"}
+    return {k: v for k, v in row.items() if k not in ("source", "detail")}
+
+
+REASON_UNREACHABLE = "NASA's catalogue did not answer; the team will retry."
+REASON_UNEXPECTED = "NASA's catalogue gave an unexpected reply."
+
+
+def public_reason(exc: BaseException) -> str:
+    """A short public reason chosen by exception type; the raw text never leaves the server."""
+    unreachable = isinstance(exc, (OSError, TimeoutError, socket.timeout)) or "timeout" in type(exc).__name__.lower()         or "connection" in type(exc).__name__.lower()
+    return (REASON_UNREACHABLE if unreachable else REASON_UNEXPECTED)[:200]
 
 
 def _search_in_background(server, rid: int, lat: float, lon: float) -> None:
@@ -22,8 +34,10 @@ def _search_in_background(server, rid: int, lat: float, lon: float) -> None:
         found = server.search(lat, lon)
         server.store.set_searched(rid, found["passes"], found["tracks"], found["first"], found["last"])
     except Exception as exc:  # the worker must never take the server down
+        detail = f"{type(exc).__name__}: {exc}"
+        print(f"lake request {rid}: search failed: {detail}", file=sys.stderr)
         try:
-            server.store.set_failed(rid, str(exc) or type(exc).__name__)
+            server.store.set_failed(rid, public_reason(exc), detail)
         except Exception:
             pass
 
@@ -122,7 +136,7 @@ class Handler(BaseHTTPRequestHandler):
                 now = srv.clock()
                 if srv.store.recent_count(addr, now - HOUR) >= RATE_PER_HOUR:
                     raise RequestError("Too many requests from this address; try again in an hour.", 429)
-                clean = validate(payload, srv.watched, srv.store.list_open())
+                clean = validate(payload, srv.watched, srv.store.list_claimed())
                 if srv.store.open_count() >= MAX_OPEN:
                     raise RequestError("The request list is full; try again later.", 503)
                 row = srv.store.add(clean, addr, now)
@@ -165,8 +179,9 @@ class BoundedServer(ThreadingHTTPServer):
         finally:
             self.slots.release()
 
-    def handle_error(self, request, client_address):  # no tracebacks from hostile clients
-        pass
+    def handle_error(self, request, client_address):  # one line, no traceback, from hostile clients
+        exc = sys.exc_info()[1]
+        print(f"lake requests: {client_address[0]}: {type(exc).__name__}: {exc}", file=sys.stderr)
 
 
 def make_server(store: RequestStore, watched: list[Lake], host: str = "127.0.0.1", port: int = 8787,

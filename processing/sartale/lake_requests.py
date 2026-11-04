@@ -3,6 +3,7 @@ import json
 import math
 import sqlite3
 import threading
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -48,13 +49,15 @@ def _number(payload: dict, key: str) -> float:
 def _text(payload: dict, key: str, low: int, high: int) -> str:
     value = payload.get(key)
     text = value.strip() if isinstance(value, str) else ""
+    if any(unicodedata.category(ch) in ("Cc", "Cf") for ch in text):
+        raise RequestError(f"{key} must not contain control or invisible formatting characters.")
     if not low <= len(text) <= high:
         raise RequestError(f"{key} must be {low}–{high} characters.")
     return text
 
 
 def validate(payload: dict, watched: list[Lake], open_requests: list[dict]) -> dict:
-    """Clean a request payload. 400 for bad fields, 409 for a point near a watched lake or open request."""
+    """Clean a request payload. 400 for bad fields, 409 for a point near a watched lake or an open or accepted request."""
     lat, lon = _number(payload, "lat"), _number(payload, "lon")
     lat_min, lat_max, lon_min, lon_max = BOUNDS
     if not (lat_min <= lat <= lat_max and lon_min <= lon <= lon_max):
@@ -85,6 +88,9 @@ class RequestStore:
                 "lon REAL NOT NULL, source TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'queued', "
                 "passes INTEGER, tracks TEXT NOT NULL DEFAULT '[]', first TEXT, last TEXT, reason TEXT, "
                 "addr TEXT NOT NULL, created_ts REAL NOT NULL)")
+            columns = {r["name"] for r in self._db.execute("PRAGMA table_info(requests)")}
+            if "detail" not in columns:  # a database made before the private detail column
+                self._db.execute("ALTER TABLE requests ADD COLUMN detail TEXT")
 
     @staticmethod
     def _row(r: sqlite3.Row) -> dict:
@@ -92,6 +98,7 @@ class RequestStore:
             "id": r["id"], "name": r["name"], "lat": r["lat"], "lon": r["lon"], "source": r["source"],
             "state": r["state"], "passes": r["passes"], "tracks": json.loads(r["tracks"]),
             "first": r["first"], "last": r["last"], "reason": r["reason"],
+            "detail": r["detail"],
             "created": datetime.fromtimestamp(r["created_ts"], timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
 
@@ -116,6 +123,16 @@ class RequestStore:
                 OPEN_STATES).fetchall()
         return [self._row(r) for r in rows]
 
+    def list_claimed(self) -> list[dict]:
+        """Open and accepted requests: every point the near-duplicate check must respect."""
+        states = OPEN_STATES + ("accepted",)
+        marks = ",".join("?" * len(states))
+        with self._lock:
+            rows = self._db.execute(
+                f"SELECT * FROM requests WHERE state IN ({marks}) ORDER BY created_ts DESC, id DESC",
+                states).fetchall()
+        return [self._row(r) for r in rows]
+
     def recent_count(self, addr: str, since: float) -> int:
         with self._lock:
             return self._db.execute(
@@ -133,10 +150,12 @@ class RequestStore:
                 "UPDATE requests SET state = 'searched', passes = ?, tracks = ?, first = ?, last = ?, "
                 "reason = NULL WHERE id = ?", (passes, json.dumps(tracks), first, last, rid))
 
-    def set_failed(self, rid: int, reason: str) -> None:
+    def set_failed(self, rid: int, reason: str, detail: str | None = None) -> None:
+        """`reason` is public (capped at 200 characters); `detail` is the raw error, for the team only."""
         with self._lock, self._db:
             self._db.execute(
-                "UPDATE requests SET state = 'search_failed', reason = ? WHERE id = ?", (reason, rid))
+                "UPDATE requests SET state = 'search_failed', reason = ?, detail = ? WHERE id = ?",
+                (reason[:200], detail, rid))
 
     def set_state(self, rid: int, state: str, reason: str | None = None) -> None:
         if state not in STATES:

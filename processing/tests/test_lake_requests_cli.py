@@ -50,6 +50,24 @@ def test_accept_makes_a_unique_id_from_the_name(tmp_path):
     assert [e["id"] for e in json.loads(lakes.read_text(encoding="utf-8"))] == ["yaz_sam", "yaz_sam_2"]
 
 
+def test_accept_rerun_after_a_failed_state_change_does_not_add_a_duplicate(tmp_path, capsys):
+    lakes, db, store, (rid,) = setup(tmp_path, ("Zebra Lake",))
+    run(lakes, db, "lake-requests-accept", str(rid))
+    once = lakes.read_bytes()
+    store.set_state(rid, "queued")  # as if set_state had failed after the file was written
+    run(lakes, db, "lake-requests-accept", str(rid))
+    assert lakes.read_bytes() == once
+    assert store.get(rid)["state"] == "accepted"
+    assert "nothing appended" in capsys.readouterr().out
+
+
+def test_list_prints_the_private_detail(tmp_path, capsys):
+    lakes, db, store, (rid,) = setup(tmp_path)
+    store.set_failed(rid, "short", "ConnectionError: CMR down")
+    run(lakes, db, "lake-requests-list")
+    assert "detail: ConnectionError: CMR down" in capsys.readouterr().out
+
+
 def test_accept_refuses_a_rejected_request(tmp_path, capsys):
     lakes, db, store, (rid,) = setup(tmp_path)
     store.set_state(rid, "rejected", "no")
