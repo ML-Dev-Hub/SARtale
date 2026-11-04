@@ -142,6 +142,23 @@ describe("add a lake form", () => {
     expect(root.querySelector('[role="alert"]')!.textContent).toBe("Too many requests today. Try again tomorrow.");
   });
 
+  it("a failed fetch shows the approved network wording, not the browser text", async () => {
+    const s = fakeServer();
+    const { root } = await setup(s);
+    fill(root, { name: "x", lat: "36.2", lon: "73.9", source: "s" });
+    const inner = s.fetch;
+    s.fetch = ((u: string, i?: RequestInit) => (i?.method === "POST" ? Promise.reject(new TypeError("Failed to fetch")) : inner(u, i))) as typeof fetch;
+    const root2 = document.createElement("div");
+    document.body.appendChild(root2);
+    mountAddLake(root2, createRequestsClient(s.fetch), () => {});
+    await tick();
+    fill(root2, { name: "x", lat: "36.2", lon: "73.9", source: "s" });
+    await submit(root2);
+    const text = root2.querySelector('[role="alert"]')!.textContent;
+    expect(text).toBe(storyCopy.add.form.networkError);
+    expect(text).not.toContain("Failed to fetch");
+  });
+
   it("a name with HTML is shown as text", async () => {
     const s = fakeServer();
     const name = "<img src=x onerror=alert(1)>";

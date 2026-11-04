@@ -45,7 +45,12 @@ export function requestLine(r: LakeRequest): string {
 
 export function createRequestsClient(fetchFn: typeof fetch = (...a) => fetch(...a), base = "api"): RequestsClient {
   async function call(path: string, init?: RequestInit): Promise<unknown> {
-    const res = await fetchFn(`${base}/${path}`, init);
+    let res: Response;
+    try {
+      res = await fetchFn(`${base}/${path}`, init);
+    } catch {
+      throw new Error(form.networkError);
+    }
     let body: unknown = null;
     try {
       body = await res.json();
@@ -53,7 +58,8 @@ export function createRequestsClient(fetchFn: typeof fetch = (...a) => fetch(...
       /* not JSON */
     }
     if (!res.ok) {
-      const msg = body && typeof body === "object" && "error" in body ? String((body as { error: unknown }).error) : `Request failed (${res.status})`;
+      // Only a message the server wrote is shown as written; a gateway page or empty body gets the approved wording.
+      const msg = body && typeof body === "object" && "error" in body ? String((body as { error: unknown }).error) : form.networkError;
       throw new Error(msg);
     }
     return body;
