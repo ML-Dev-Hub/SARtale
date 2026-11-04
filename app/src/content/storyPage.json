@@ -1,0 +1,117 @@
+{
+  "cover": {
+    "eyebrow": "Gilgit-Baltistan · Khyber Pakhtunkhwa",
+    "title": "When clouds close in, the lakes stay in view.",
+    "lede": "Pakistan's glacial lakes fill and burst in summer, when cloud hides them from optical satellites. SARtale reads NASA–ISRO NISAR radar, which sees through cloud, and gives each lake one plain status.",
+    "followLabel": "Follow the story",
+    "openLabel": "Open Lake Watch",
+    "stats": [
+      { "value": "{lakes}", "label": "glacial lakes watched" },
+      { "value": "{cloudLooks}", "label": "radar looks through the cloud gap" },
+      { "value": "{passes}", "label": "NISAR passes read" }
+    ],
+    "image": "story/hunza_valley.jpg",
+    "imageAlt": "Satellite view of the Hunza valley in summer, snow peaks above a green river valley",
+    "credit": "Hunza valley · Copernicus Sentinel-2, 20 Jul 2026"
+  },
+  "risk": {
+    "label": "01 · THE RISK",
+    "title": "One lake, one bridge, one morning",
+    "body": "On 7 May 2022 the ice-dammed lake below Shisper glacier burst. Its flood ran 6.4 km down the Hassanabad gorge and destroyed the Karakoram Highway bridge, Hunza's link to the rest of the country.",
+    "source": "Sources: Radio Pakistan, 7 May 2022. The 6.4 km is the straight line from the register point to OpenStreetMap way 651792498.",
+    "facts": [
+      { "value": "131", "label": "potentially dangerous lakes on SUPARCO's watch", "source": "SUPARCO, GLOF Status Update, 2 July 2026" },
+      { "value": "16 Jun", "label": "the last image SUPARCO's 2 Jul update could use", "source": "SUPARCO, GLOF Status Update, 2 July 2026" }
+    ]
+  },
+  "gap": {
+    "label": "02 · THE GAP",
+    "quote": "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days.",
+    "url": "https://space4climate.gov.pk/glof-status-update/",
+    "cite": "SUPARCO, GLOF Status Update, 2 July 2026",
+    "host": "space4climate.gov.pk"
+  },
+  "view": {
+    "label": "03 · THE VIEW",
+    "title": "Same lake, three days apart",
+    "lede": "Attabad Lake, Hunza. The optical satellite sees cloud. The radar sees the lake.",
+    "optical": {
+      "image": "story/attabad_cloud.jpg",
+      "alt": "Sentinel-2 optical image of Attabad Lake on 3 Jul 2026, mostly covered by cloud",
+      "name": "Optical · Sentinel-2",
+      "note": "3 Jul 2026 · 70% cloud",
+      "credit": "Contains modified Copernicus Sentinel data, 3 Jul 2026"
+    },
+    "radar": {
+      "image": "story/attabad_radar_0630.jpg",
+      "alt": "NISAR radar image of Attabad Lake on 30 Jun 2026, the lake a dark band",
+      "name": "Radar · NISAR L-band",
+      "note": "30 Jun 2026 · lake is the dark band",
+      "credit": "NISAR L-band HH, 30 Jun 2026, track 055A (NASA/ASF, provisional)"
+    },
+    "shadow": {
+      "title": "Mountains cast shadows too",
+      "lede": "Glacial lakes sit in deep, steep valleys. Shadow can hide a lake from both kinds of satellite, and a dark shadow can be mistaken for water.",
+      "cards": [
+        { "label": "OPTICAL SATELLITES", "tone": "warm", "text": "The sun's shadow falls across slopes and valley floors. A shaded lake can be missed, and a shaded slope can look like water." },
+        { "label": "RADAR", "tone": "warm", "text": "Radar looks sideways. Slopes facing away from the satellite fall in radar shadow, and steep slopes facing it fold over (layover). Both can hide a shoreline." },
+        { "label": "WHAT SARTALE DOES", "tone": "accent", "text": "NISAR passes over each lake from two directions. A pixel dark from only one side is shadow, not water, and is left out. If more than half a lake's zone is hidden, it reads Not observable instead of a guess." }
+      ],
+      "sourcesLead": "Radar shadow and layover are among the main limits of SAR lake mapping in the Himalaya (",
+      "sources": [
+        { "text": "arXiv 2512.24117", "url": "https://arxiv.org/abs/2512.24117", "after": "); comparing ascending and descending passes suppresses shadow errors (" },
+        { "text": "a 2025 study in Norway, Cambridge University Press", "url": "https://www.cambridge.org/core/product/DCA97C3F4AF86441028995F9A1656879/core-reader", "after": "); terrain shadow also causes errors in optical lake maps (" },
+        { "text": "Int. J. Remote Sensing, 2018", "url": "https://informahealthcare.com/doi/full/10.1080/01431161.2018.1516314", "after": ")." }
+      ]
+    }
+  },
+  "measure": {
+    "label": "04 · THE MEASURE",
+    "title": "Dark radar pixels become a water area",
+    "imageAlt": "{attabadName} in NISAR radar on {attabadDate}, with the water SARtale reads shown in blue",
+    "waterAlt": "Water pixels read from the radar image, shown in blue",
+    "caption": "{attabadDate}, track {attabadTrack}. Blue: water read from radar, inside the lake outline (OpenStreetMap).",
+    "steps": [
+      "Calm water reflects radar away, so it is dark in both HH and HV.",
+      "Mountain shadow is dark from one viewing direction only, so it is removed.",
+      "What is left is counted inside the lake's zone and compared with its own earlier passes."
+    ],
+    "numbers": [
+      { "value": "{attabadArea}", "label": "water on {attabadDay}" },
+      { "value": "{attabadNoise}", "label": "its own noise, km²" },
+      { "value": "{attabadStatus}", "label": "{attabadLooks} looks, track {attabadTrack}", "accent": true }
+    ]
+  },
+  "watch": {
+    "label": "05 · THE WATCH",
+    "title": "{lakes} lakes, one plain status each",
+    "noDataTitle": "Lakes, one plain status each",
+    "lede": "Latest pass {latest}. Each status compares a lake with its own earlier passes and its own noise.",
+    "noDataLede": "No lake data in this build.",
+    "mapAlt": "Satellite map of northern Pakistan with the watched lakes marked",
+    "mapImage": "story/north_map.jpg",
+    "mapCredit": "Base map: NASA MODIS Terra, 5 Oct 2026"
+  },
+  "add": {
+    "label": "06 · ADD A LAKE",
+    "title": "Know a lake we are not watching?",
+    "body": "Give it a name, its coordinates and where they come from. SARtale searches NASA's catalogue for NISAR passes over it, reads a 6 km window from each, and gives it a status once it has three looks on one track.",
+    "steps": [
+      "Queued: the lake joins the watch list and the map.",
+      "Searched: NISAR passes over the point are found.",
+      "Watched: a status appears after three looks on one track."
+    ]
+  },
+  "closing": {
+    "title": "See every lake, its passes and its limits",
+    "body": "Indicative screening on provisional NISAR data. Radar and optical water agree poorly so far ({iou}), and official warnings come from PMD, NDMA, GBDMA and PDMA.",
+    "noIouBody": "Indicative screening on provisional NISAR data. Official warnings come from PMD, NDMA, GBDMA and PDMA.",
+    "openLabel": "Open Lake Watch",
+    "evidenceLabel": "How we know"
+  },
+  "footer": {
+    "team": "Team SARcastic Scientists · Saeed Ahmad, Shaharyar Sajid",
+    "event": "NASA Space Apps Challenge 2026 · Islamabad",
+    "data": "Data: NISAR GCOV (NASA/ASF) · Sentinel-2 (Copernicus) · NASA MODIS · OpenStreetMap"
+  }
+}

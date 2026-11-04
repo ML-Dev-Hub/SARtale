@@ -44,6 +44,17 @@ Sentinel-2 cross-check result (`lakes.json`, `checks`): radar and optical water 
 | OpenStreetMap way 651792498 | Location of the Karakoram Highway bridge at Hassanabad (36.3006 N, 74.5869 E) | © OpenStreetMap contributors, ODbL 1.0 |
 | Narration, music and two sound effects | Generated with ElevenLabs (paid account) | ElevenLabs terms for paid plans: terms not confirmed for this use |
 
+## Story page images (`app/public/story/`)
+
+| Item | Use | Licence or terms |
+|---|---|---|
+| `hunza_valley.jpg`: Sentinel-2 L2A true colour, Hunza valley, 20 Jul 2026 | Cover picture | Copernicus Sentinel data terms, as above |
+| `attabad_cloud.jpg`: Sentinel-2 L2A true colour, Attabad, 3 Jul 2026, 70% cloud over the 6 km window | Optical side of the cloud-versus-radar pair | Copernicus Sentinel data terms, as above |
+| `attabad_radar_0630.jpg`: NISAR GCOV L-band HH, 30 Jun 2026, track 055A | Radar side of the same pair | NASA data, as above |
+| `north_map.jpg`: NASA MODIS Terra true colour, 5 Oct 2026, 70.8-76.6 E, 34.4-37.6 N | Base map for the lake pins | NASA EOSDIS data, openly available. Exact citation wording: terms not confirmed |
+| Radio Pakistan, 7 May 2022 | The Shisper outburst and the destroyed Karakoram Highway bridge (story 01) | Terms not confirmed. Cited only |
+| OpenStreetMap way 651792498 | The 6.4 km straight line from the Shisper register point to the Hassanabad bridge (story 01) | © OpenStreetMap contributors, ODbL 1.0 |
+
 ## App dependencies (npm)
 
 Licences are the `license` field of each installed package's `package.json`. Only direct dependencies are listed; transitive dependencies have not been audited.
@@ -53,6 +64,8 @@ Licences are the `license` field of each installed package's `package.json`. Onl
 | maplibre-gl | 6.16.0 | BSD-3-Clause | The small lake locator map, bundled |
 | uplot | 1.6.32 | MIT | Charts, bundled |
 | @fontsource-variable/bricolage-grotesque | 5.3.0 | OFL-1.1 | Font files, bundled |
+| @fontsource-variable/inter | see app/package.json | OFL-1.1 | Body font for the story page, bundled |
+| @fontsource-variable/inter-tight | see app/package.json | OFL-1.1 | Display font for the story page, bundled |
 | vite | 8.3.5 | MIT | Build tool (development only) |
 | vitest | 5.0.5 | MIT | Tests (development only) |
 | jsdom | 30.1.3 | MIT | Test DOM (development only) |
