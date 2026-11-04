@@ -2,10 +2,10 @@ import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import type { LakeChartData, LakeChartFactory } from "./lakeWatchView";
 
-const GRID = "#243a45";
-const TICK = "#93a8b0";
+const GRID = "#1b2c3b";
+const TICK = "#a9bdca";
 const HEIGHT = 260;
-const FONT = '"Bricolage Grotesque Variable", "Segoe UI", system-ui, sans-serif';
+const FONT = '"Inter Variable", "Inter", system-ui, sans-serif';
 
 /** Dates are UTC-midnight seconds, so the axis must read them in UTC or viewers west of UTC see the day before. */
 export const utcTzDate = (ts: number): Date => uPlot.tzDate(new Date(ts * 1e3), "Etc/UTC");
@@ -19,7 +19,7 @@ const axis = (label: string): uPlot.Axis => ({
   font: `12px ${FONT}`,
 });
 
-const TRACK_COLORS = ["#3fd0c4", "#f2a93b", "#9db8ff", "#e58bd0", "#b6d96b", "#ff8a7a"];
+const TRACK_COLORS = ["#7dd8f2", "#ffc46b", "#9db8ff", "#e58bd0", "#b6d96b", "#ff8a7a"];
 
 /** The uPlot options for the lake area chart: one line per track, then a markers-only series for excluded passes. */
 export function lakeChartOptions(width: number, data: LakeChartData): uPlot.Options {
@@ -28,7 +28,7 @@ export function lakeChartOptions(width: number, data: LakeChartData): uPlot.Opti
   for (const s of data.series) {
     if (s.excluded) {
       // Hollow markers, no line: the pass is shown but is not part of any track's trend.
-      series.push({ label: s.label, stroke: "#ff8a7a", width: 0, paths: () => null, points: { show: true, size: 10, width: 2, stroke: "#ff8a7a", fill: "#0b151b" } });
+      series.push({ label: s.label, stroke: "#ff8a7a", width: 0, paths: () => null, points: { show: true, size: 10, width: 2, stroke: "#ff8a7a", fill: "#0b1825" } });
     } else {
       const c = TRACK_COLORS[k++ % TRACK_COLORS.length];
       // Nulls here are dates that belong to other tracks, so the line steps over them within this track only.

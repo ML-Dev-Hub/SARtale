@@ -1,7 +1,7 @@
 import type { Lake } from "./lakes";
 import type { LocatorFactory } from "./lakeWatchView";
 
-const BACKGROUND = "#0b151b"; // same base style as maplibreAdapter.ts: a plain background, no outside tiles
+const BACKGROUND = "#0b1825"; // same base style as maplibreAdapter.ts: a plain background, no outside tiles
 
 /**
  * True when a MapLibre movestart/zoomstart event came from the person: drag, scroll, pinch and the +/- buttons all
@@ -77,7 +77,7 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
             return { type: "Feature" as const, properties: {}, geometry: { type: "LineString" as const, coordinates: [[w, s], [e, s], [e, n], [w, n], [w, s]] } };
           });
         m.addSource("frames", { type: "geojson", data: { type: "FeatureCollection", features } });
-        m.addLayer({ id: "frames", type: "line", source: "frames", paint: { "line-color": "#4fd1c5", "line-width": 1 } });
+        m.addLayer({ id: "frames", type: "line", source: "frames", paint: { "line-color": "#7dd8f2", "line-width": 1 } });
       });
       // Town (for reference): orientation only, not data. Plain text markers, because the blank base style has no fonts for map text.
       const towns = [["Gilgit", 74.31, 35.92], ["Karimabad / Hunza", 74.66, 36.32], ["Chitral", 71.79, 35.85], ["Skardu", 75.63, 35.3]] as const;

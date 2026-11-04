@@ -1,4 +1,3 @@
-import "@fontsource-variable/bricolage-grotesque/wdth.css";
 import "./styles.css";
 import { createUplotLakeChart } from "./chart";
 import { createLakeLocator } from "./lakeLocator";

@@ -23,6 +23,12 @@ function setup(opts: AppOptions = { lakes: realLakes }) {
   return { app, root, $ };
 }
 
+/** Opens the beat-by-beat Story view the way a visitor does: from the story page. */
+function openStory($: (r: string) => HTMLElement): void {
+  $("home").click();
+  pageButton($, "Follow the story").click();
+}
+
 /** A copy of the fixture lakes made of watch lakes with the given looks and latest dates. */
 function lakesWith(rows: [string, number, string, Partial<LakesFile["lakes"][number]>?][]): LakesFile {
   const base = fixtureLakes.lakes[2];
@@ -39,30 +45,62 @@ function lakesWith(rows: [string, number, string, Partial<LakesFile["lakes"][num
   };
 }
 
+const TITLE = "When clouds close in, the lakes stay in view.";
+
+/** A button on the story page, found by its label. */
+function pageButton($: (r: string) => HTMLElement, label: string, nth = 0): HTMLButtonElement {
+  return [...$("home-root").querySelectorAll<HTMLButtonElement>("button.sp-btn")].filter((b) => b.textContent === label)[nth];
+}
+
 describe("views", () => {
-  test("starts on the opening screen with no view chosen, and the logo goes back to it", () => {
+  test("starts on the story page with the cover title, and the logo goes back to it", () => {
     const { $ } = setup();
-    expect($("hero").hidden).toBe(false);
-    expect($("view-name").textContent).toBe("Start");
+    expect($("home-root").hidden).toBe(false);
+    expect($("home-root").querySelector("h1")!.textContent).toBe(TITLE);
+    expect($("shell").dataset.view).toBe("home");
+    expect($("view-name").textContent).toBe("The story");
     for (const v of ["lakes-view", "lakestory-view", "evidence-view"]) expect($(v).hidden).toBe(true);
     $("view-evidence").click();
     expect($("evidence-view").hidden).toBe(false);
-    expect($("hero").hidden).toBe(true);
+    expect($("home-root").hidden).toBe(true);
     expect($("view-evidence").getAttribute("aria-pressed")).toBe("true");
     $("home").click();
-    expect($("hero").hidden).toBe(false);
-    expect(document.title).toBe("SARtale: Start (provisional data)");
+    expect($("home-root").hidden).toBe(false);
+    expect(document.title).toBe("SARtale: The story (provisional data)");
   });
 
-  test("the nav is Lake Watch, Story, then How we know, and nothing else", () => {
-    const { root } = setup();
-    const order = [...root.querySelectorAll<HTMLElement>(".views button")].map((b) => b.dataset.role);
-    expect(order).toEqual(["view-lakes", "view-story", "view-evidence"]);
-  });
-
-  test("the provisional label is on every view and in the footer, with the warning authorities", () => {
+  test("there is one header: logo, SARtale Lake Watch, the nav and the provisional pill", () => {
     const { root, $ } = setup();
-    for (const r of ["hero-maturity", "lakes-maturity", "lakestory-maturity", "evidence-maturity"]) expect($(r).textContent).toBe("Provisional NISAR data");
+    expect(root.querySelectorAll("header.top")).toHaveLength(1);
+    expect($("home-root").querySelector("nav, header")).toBeNull(); // the story page renders no header of its own
+    expect(root.querySelector("header.top")!.textContent).toContain("SARtale Lake Watch");
+    expect(root.querySelector("header.top")!.contains($("maturity"))).toBe(true);
+    expect(root.querySelector("header.top img.logo")).not.toBeNull();
+  });
+
+  test("the nav is The story, Lake Watch, then How we know, and nothing else", () => {
+    const { root } = setup();
+    const buttons = [...root.querySelectorAll<HTMLElement>(".views button")];
+    expect(buttons.map((b) => b.textContent)).toEqual(["The story", "Lake Watch", "How we know"]);
+    expect(buttons.map((b) => b.dataset.role)).toEqual(["view-home", "view-lakes", "view-evidence"]);
+  });
+
+  test("the nav's The story button goes to the start view", () => {
+    const { $ } = setup();
+    $("view-lakes").click();
+    expect($("view-home").getAttribute("aria-pressed")).toBe("false");
+    $("view-home").click();
+    expect($("home-root").hidden).toBe(false);
+    expect($("view-home").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  test("the provisional label is in the header on every view and in the footer, with the warning authorities", () => {
+    const { root, $ } = setup();
+    for (const go of [() => $("view-lakes").click(), () => openStory($), () => $("view-evidence").click(), () => $("view-home").click()]) {
+      go();
+      expect($("maturity").textContent).toBe("Provisional NISAR data");
+      expect($("maturity").hidden).toBe(false);
+    }
     expect(root.querySelector(".foot")!.textContent).toMatch(/Not an official warning service: for warnings, use PMD, NDMA, GBDMA and PDMA/);
   });
 
@@ -73,6 +111,16 @@ describe("views", () => {
     expect($("lakes-view").textContent).toContain("No lake data in this build");
   });
 
+  test("a #lakes, #evidence or #story hash opens that view on load", () => {
+    for (const [hash, view] of [["#lakes", "lakes-view"], ["#evidence", "evidence-view"], ["#story", "lakestory-view"], ["#nonsense", "home-root"]]) {
+      window.location.hash = hash;
+      const { $ } = setup();
+      expect($(view).hidden).toBe(false);
+      document.body.innerHTML = "";
+    }
+    window.location.hash = "";
+  });
+
   test("no Peshawar chapter is left anywhere on the page, and no banned claims", () => {
     const { root } = setup();
     const text = root.textContent!;
@@ -81,45 +129,34 @@ describe("views", () => {
   });
 });
 
-describe("the lake start screen", () => {
-  test("says who it is for and what it shows, and keeps the screening line", () => {
-    const { $ } = setup();
-    const text = $("hero").textContent!;
-    expect(text).toContain("disaster teams in Gilgit-Baltistan and upper Khyber Pakhtunkhwa");
-    expect(text).toContain("how often NISAR radar looked at each glacial lake while clouds blocked optical satellites, and whether the radar water area moved beyond its own noise");
-    expect(text).toContain("Indicative screening on provisional NISAR data; official warnings come from PMD and NDMA.");
-    expect($("hero-finding").hidden).toBe(false);
+describe("the story page as the start view", () => {
+  test("keeps the screening line and the old hero markup is gone", () => {
+    const { root, $ } = setup();
+    expect(root.querySelector(".hero")).toBeNull();
+    expect($("home-root").textContent).toContain("official warnings come from PMD, NDMA, GBDMA and PDMA");
   });
 
-  test("the start button opens the lake story and the other buttons reach Lake Watch and How we know", () => {
+  test("Follow the story opens the beat-by-beat Story view, which stays reachable", () => {
     const { $ } = setup();
-    $("hero-story").click();
+    pageButton($, "Follow the story").click();
     expect($("lakestory-view").hidden).toBe(false);
-    $("home").click();
-    $("hero-lakes").click();
+    expect($("home-root").hidden).toBe(true);
+    expect($("view-name").textContent).toBe("Story walkthrough");
+  });
+
+  test("Open Lake Watch and How we know on the story page switch views", () => {
+    const { $ } = setup();
+    pageButton($, "Open Lake Watch").click();
     expect($("lakes-view").hidden).toBe(false);
     $("home").click();
-    $("hero-method").click();
+    pageButton($, "How we know").click();
     expect($("evidence-view").hidden).toBe(false);
   });
 
-  test("shows Attabad's radar picture with a dated caption", () => {
-    const a = realLakes.lakes.find((l) => l.id === "attabad")!;
+  test("the story page's lake list and Add-a-lake slot are in the start view", () => {
     const { $ } = setup();
-    expect($<HTMLImageElement>("hero-img").getAttribute("src")).toBe(`data/${a.images!.latest_hh}`);
-    expect($("hero-caption").textContent).toBe(
-      `Attabad Lake, Hunza: NISAR HH radar on 23 Oct 2026. The lake is the long dark band. Radar-geometry picture, not a map. Provisional data.`,
-    );
-  });
-
-  test("without lakes or without Attabad images there is no picture and no caption", () => {
-    const noImages = { ...realLakes, lakes: realLakes.lakes.map((l) => (l.id === "attabad" ? { ...l, images: null } : l)) };
-    for (const lakes of [null, noImages]) {
-      const { $ } = setup({ lakes });
-      expect($<HTMLImageElement>("hero-img").hidden).toBe(true);
-      expect($("hero-caption").hidden).toBe(true);
-      document.body.innerHTML = "";
-    }
+    expect($("home-root").querySelector(".sp-lakes")).not.toBeNull();
+    expect($("home-root").querySelector(".sp-add-slot")).not.toBeNull();
   });
 });
 
@@ -128,8 +165,8 @@ describe("the lake story", () => {
 
   test("opens on the cloud gap and walks five beats in order", () => {
     const { $ } = setup();
-    $("view-story").click();
-    expect($("view-name").textContent).toBe("Story");
+    openStory($);
+    expect($("view-name").textContent).toBe("Story walkthrough");
     const seen = [beatId($)];
     for (let n = 0; n < 4; n++) {
       $("ls-next").click();
@@ -142,14 +179,14 @@ describe("the lake story", () => {
 
   test("beat 1 quotes SUPARCO verbatim and cites the page and date", () => {
     const { $ } = setup();
-    $("view-story").click();
+    openStory($);
     expect($("ls-quote").textContent).toBe(SUPARCO);
     expect($("lakestory-view").textContent).toContain("space4climate.gov.pk, 2 Jul 2026");
   });
 
   test("the Lake Watch headline link goes to beat 1", () => {
     const { root, $ } = setup();
-    $("view-story").click();
+    openStory($);
     $("ls-next").click();
     $("view-lakes").click();
     root.querySelector<HTMLAnchorElement>('a[href="#cloud-gap"]')!.click();
@@ -173,7 +210,7 @@ describe("the lake story", () => {
   test("beat 4 shows the lake chosen from the data, and opens it in Lake Watch", () => {
     const lakes = lakesWith([["a", 5, "2026-10-23"], ["b", 9, "2026-10-01"]]);
     const { $ } = setup({ lakes });
-    $("view-story").click();
+    openStory($);
     for (let n = 0; n < 3; n++) $("ls-next").click();
     expect(beatId($)).toBe("one-lake");
     expect($("ls-title").textContent).toContain("Lake b");
@@ -184,7 +221,7 @@ describe("the lake story", () => {
 
   test("the last beat opens How we know", () => {
     const { $ } = setup();
-    $("view-story").click();
+    openStory($);
     for (let n = 0; n < 4; n++) $("ls-next").click();
     $("lakestory-view").querySelector<HTMLButtonElement>('[data-action="evidence"]')!.click();
     expect($("evidence-view").hidden).toBe(false);
@@ -194,7 +231,7 @@ describe("the lake story", () => {
     const noWatch = { ...fixtureLakes, lakes: fixtureLakes.lakes.map((l) => ({ ...l, role: "control" as const })) };
     for (const lakes of [null, noWatch]) {
       const { $ } = setup({ lakes });
-      $("view-story").click();
+      openStory($);
       for (let n = 0; n < 5; n++) {
         expect($("lakestory-view").textContent).not.toMatch(/\{\w+\}/);
         if (n < 4) $("ls-next").click();
@@ -205,7 +242,7 @@ describe("the lake story", () => {
 
   test("every beat is free of banned claims and of the words detect and accurate (outside the quote)", () => {
     const { $ } = setup();
-    $("view-story").click();
+    openStory($);
     for (let n = 0; n < 5; n++) {
       const text = $("lakestory-view").textContent!;
       expect(findBannedClaims(text)).toEqual([]);
