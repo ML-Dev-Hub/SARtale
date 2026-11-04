@@ -43,7 +43,11 @@ export function requestLine(r: LakeRequest): string {
   return "Queued";
 }
 
-export function createRequestsClient(fetchFn: typeof fetch = (...a) => fetch(...a), base = "api"): RequestsClient {
+/** The request server's base URL: VITE_REQUESTS_API at build time, else "api" (same origin or the dev proxy). */
+export function createRequestsClient(
+  fetchFn: typeof fetch = (...a) => fetch(...a),
+  base: string = import.meta.env.VITE_REQUESTS_API ?? "api",
+): RequestsClient {
   async function call(path: string, init?: RequestInit): Promise<unknown> {
     let res: Response;
     try {

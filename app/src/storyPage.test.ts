@@ -46,6 +46,23 @@ describe("renderStoryPage without lakes.json", () => {
     expect(text).toContain("—");
   });
 
+  it("takes the look count and observable share from the constants", () => {
+    const body = (file: LakesFile) => {
+      const t = render(file).root.querySelector("section[aria-label='06 Add a lake']")!.textContent ?? "";
+      const shadow = render(file).root.querySelector(".sp-shadow")!.textContent ?? "";
+      return { t, shadow };
+    };
+    const a = body(real);
+    expect(a.t).toContain("once it has three looks on one track");
+    expect(a.t).toContain("after three looks on one track");
+    expect(a.shadow).toContain("less than half of a lake's zone");
+    const other = { ...real, constants: { ...real.constants, min_looks: 12, min_observable: 0.6 } } as LakesFile;
+    const b = body(other);
+    expect(b.t).toContain("once it has 12 looks on one track");
+    expect(b.t).not.toContain("three looks");
+    expect(b.shadow).toContain("less than 60% of a lake's zone");
+  });
+
   it("copes with a file that has no Attabad", () => {
     const { root } = render(fixtureLakes);
     expect(root.textContent).not.toMatch(/[{}]|NaN|undefined/);

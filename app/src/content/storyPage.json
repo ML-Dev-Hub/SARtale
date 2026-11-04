@@ -55,7 +55,7 @@
       "cards": [
         { "label": "OPTICAL SATELLITES", "tone": "warm", "text": "The sun's shadow falls across slopes and valley floors. A shaded lake can be missed, and a shaded slope can look like water." },
         { "label": "RADAR", "tone": "warm", "text": "Radar looks sideways. Slopes facing away from the satellite fall in radar shadow, and steep slopes facing it fold over (layover). Both can hide a shoreline." },
-        { "label": "WHAT SARTALE DOES", "tone": "accent", "text": "NISAR passes over each lake from two directions. A pixel dark from only one side is shadow, not water, and is left out. If more than half a lake's zone is hidden, it reads Not observable instead of a guess." }
+        { "label": "WHAT SARTALE DOES", "tone": "accent", "text": "NISAR passes over each lake from two directions. A pixel dark from only one side is shadow, not water, and is left out. If less than {minObservable} of a lake's zone can be seen, it reads Not observable instead of a guess." }
       ],
       "sourcesLead": "Radar shadow and layover are among the main limits of SAR lake mapping in the Himalaya (",
       "sources": [
@@ -90,16 +90,18 @@
     "noDataLede": "No lake data in this build.",
     "mapAlt": "Satellite map of northern Pakistan with the watched lakes marked",
     "mapImage": "story/north_map.jpg",
-    "mapCredit": "Base map: NASA MODIS Terra, 5 Oct 2026"
+    "mapCredit": "Base map: NASA MODIS Terra, 5 Oct 2026",
+    "keyWatched": "Watched lake",
+    "keyRequested": "Requested lake"
   },
   "add": {
     "label": "06 · ADD A LAKE",
     "title": "Know a lake we are not watching?",
-    "body": "Give it a name, its coordinates and where they come from. SARtale searches NASA's catalogue for NISAR passes over it, reads a 6 km window from each, and gives it a status once it has three looks on one track.",
+    "body": "Give it a name, its coordinates and where they come from. SARtale searches NASA's catalogue for NISAR passes over it, reads a 6 km window from each, and gives it a status once it has {minLooks} looks on one track.",
     "steps": [
       "Queued: the lake joins the watch list and the map.",
       "Searched: NISAR passes over the point are found.",
-      "Watched: a status appears after three looks on one track."
+      "Watched: a status appears after {minLooks} looks on one track."
     ],
     "form": {
       "nameLabel": "Lake name",
@@ -118,7 +120,7 @@
   },
   "closing": {
     "title": "See every lake, its passes and its limits",
-    "body": "Indicative screening on provisional NISAR data. Against Sentinel-2, radar water {overlap}; official warnings come from PMD, NDMA, GBDMA and PDMA.",
+    "body": "Indicative screening on provisional NISAR data. In the Sentinel-2 cross-check, radar {overlap}; official warnings come from PMD, NDMA, GBDMA and PDMA.",
     "noIouBody": "Indicative screening on provisional NISAR data. Official warnings come from PMD, NDMA, GBDMA and PDMA.",
     "openLabel": "Open Lake Watch",
     "evidenceLabel": "How we know"

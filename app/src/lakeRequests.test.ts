@@ -196,3 +196,19 @@ describe("open requests on the story page", () => {
     expect(raw).not.toMatch(/detect/i);
   });
 });
+
+describe("createRequestsClient base", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("uses VITE_REQUESTS_API when set and 'api' otherwise", async () => {
+    const urls: string[] = [];
+    const f = (async (url: string) => {
+      urls.push(url);
+      return json(200, { ok: true, open: 0 });
+    }) as unknown as typeof fetch;
+    await createRequestsClient(f).health();
+    vi.stubEnv("VITE_REQUESTS_API", "https://lakes.example.org/api");
+    await createRequestsClient(f).health();
+    expect(urls).toEqual(["api/health", "https://lakes.example.org/api/health"]);
+  });
+});

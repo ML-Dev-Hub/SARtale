@@ -90,7 +90,7 @@ const TEMPLATE = `
     <p class="ls-count" data-role="ls-count"></p>
     <button type="button" class="btn small-teal" data-role="ls-next">Next</button>
   </div>
-  <p class="ls-screening">Indicative screening on provisional NISAR data; official warnings come from PMD and NDMA.</p>
+  <p class="ls-screening">Indicative screening on provisional NISAR data; official warnings come from PMD, NDMA, GBDMA and PDMA.</p>
 </div>`;
 
 /** The lake story: one card per beat, back and next, numbered steps. */

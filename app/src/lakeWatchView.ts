@@ -42,7 +42,7 @@ const TEMPLATE = `
 </div>
 <div class="lw-body" data-role="lw-body" hidden>
   <p class="lw-headline"><a href="#cloud-gap" data-role="lw-headline"></a></p>
-  <p class="lw-screening" data-role="lw-screening">Indicative screening on provisional NISAR data. Official warnings come from PMD and NDMA.</p>
+  <p class="lw-screening" data-role="lw-screening">Indicative screening on provisional NISAR data. Official warnings come from PMD, NDMA, GBDMA and PDMA.</p>
   <div class="lw-grid">
     <nav class="lw-list-wrap" aria-label="Lakes">
       <div class="lw-locator" data-role="lw-locator" aria-label="Where the lakes are"></div>
@@ -191,7 +191,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     detail.append(
       head,
       el("p", "lw-sentence-big", statusSentence(lake, file!.constants.change_factor)),
-      el("p", "lw-scope", `Measures: ${lake.area_label}. Indicative screening on provisional data. Official warnings come from PMD and NDMA.`),
+      el("p", "lw-scope", `Measures: ${lake.area_label}. Indicative screening on provisional data. Official warnings come from PMD, NDMA, GBDMA and PDMA.`),
       pictures(lake),
     );
 

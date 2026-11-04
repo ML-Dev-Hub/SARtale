@@ -49,7 +49,7 @@ describe("Lake Watch", () => {
     expect(text).toContain("Coordinates: Fixture gazetteer");
     expect(text).toContain("Shadow hides the north shore.");
     expect(text).toContain("HH 25 dB from track median");
-    expect(text).toContain("PMD and NDMA");
+    expect(text).toContain("PMD, NDMA, GBDMA and PDMA");
   });
 
   test("test_not_observable_lake_has_no_area_number", () => {

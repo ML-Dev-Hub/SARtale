@@ -52,7 +52,7 @@ ${lake.excluded.length ? list(lake.excluded.map((x) => `${x.pass}: ${x.reason}`)
 ${list(methodLimits(file))}${lakeLimits}
 <h2>Downstream</h2>
 <p>${downstream}</p>
-<p class="lake-brief-footer">Indicative screening from provisional NISAR data. Not an official warning; official warnings come from PMD and NDMA. Built ${esc(file.built)}.</p>
+<p class="lake-brief-footer">Indicative screening from provisional NISAR data. Not an official warning; official warnings come from PMD, NDMA, GBDMA and PDMA. Built ${esc(file.built)}.</p>
 </section>`;
 }
 

@@ -21,7 +21,7 @@ afterEach(() => {
 describe("lake brief", () => {
   test("test_brief_has_footer_and_built_date", () => {
     const html = briefHtml(lakeOf(), fixtureLakes, NOW);
-    expect(text(html)).toContain("Indicative screening from provisional NISAR data. Not an official warning; official warnings come from PMD and NDMA. Built 2026-11-02T00:00:00Z.");
+    expect(text(html)).toContain("Indicative screening from provisional NISAR data. Not an official warning; official warnings come from PMD, NDMA, GBDMA and PDMA. Built 2026-11-02T00:00:00Z.");
     expect(html).toContain("Fixture stable");
     expect(html).toContain("Coordinates");
   });

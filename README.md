@@ -46,14 +46,18 @@ npm --prefix app run build        # type-check, then build into app/dist/
 
 Visitors can ask for a lake to be added with the "Add a lake" form. A small server receives the request; a static copy of the site has none, and the form there says "Requests are not open on this copy of the site." Nothing else changes.
 
-Run the server and the app side by side. `npm run dev` sends `/api` to the server.
+Run the server and the app side by side. `npm --prefix app run dev` sends `/api` to the server.
 
 ```bash
 cd processing && conda run -n sartale python -m sartale.run_pipeline lake-requests-serve   # 127.0.0.1:8787, data/lake_requests.sqlite
 npm --prefix app run dev
 ```
 
-Options: `--host`, `--port`, `--db`, `--origin` (default `http://localhost:5173`). The database is under `data/`, which is git-ignored.
+Options: `--host`, `--port`, `--db`, `--origin` (default `http://localhost:5173`). The database is under `data/`, which is git-ignored. The server is set up for local or demo use.
+
+To host it apart from the site, run it with `--host 0.0.0.0 --origin <site origin>` (for example `--origin https://lakes.example.org`), and build the app with `VITE_REQUESTS_API=<server url>/api npm --prefix app run build`. The default, `api`, is the same origin or the dev proxy. Behind a reverse proxy the server sees one address, so all visitors share one rate limit of 5 requests per hour.
+
+A failed search shows visitors a short reason only. The raw error is kept in a private `detail` column and printed by `lake-requests-list`.
 
 The server accepts a point between 34.4 and 37.6 °N and 70.8 and 76.6 °E, a name of 2 to 80 characters and a source of 3 to 200. It refuses a point within 1 km of a watched lake or an open request, more than 5 requests per address per hour, more than 200 open requests, bodies over 4 KB, and slow clients. It searches NASA's CMR catalogue for NISAR passes over the point and never downloads NISAR data.
 

@@ -111,7 +111,10 @@
 .sp-map { flex: 1 1 460px; min-width: 0; margin: 0; position: relative; align-self: flex-start; border-radius: 14px; overflow: hidden; border: 1px solid var(--sp-line); }
 .sp-map img { width: 100%; filter: brightness(0.7) saturate(0.85); }
 .sp-pin { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--sp-accent); border: 2px solid var(--sp-ground); box-sizing: content-box; }
-.sp-pin-request { background: var(--sp-warm); }
+.sp-pin-request { background: transparent; border: 2px dashed var(--sp-warm); width: 10px; height: 10px; margin: -7px 0 0 -7px; }
+.sp-map-key { position: absolute; left: 12px; top: 10px; padding: 4px 10px; border-radius: 6px; background: rgba(5,13,22,0.8); font-size: 12px; color: #c6d5de; }
+.sp-key-pin { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--sp-accent); vertical-align: baseline; }
+.sp-key-request { background: transparent; border: 2px dashed var(--sp-warm); width: 6px; height: 6px; }
 .sp-lake.sp-request { border: 1px dashed var(--sp-warm); flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; }
 .sp-request .sp-lake-right { text-align: left; }
 .sp-request-line { font-size: 13px; font-weight: 600; color: var(--sp-warm); overflow-wrap: anywhere; }

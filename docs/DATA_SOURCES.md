@@ -64,7 +64,6 @@ Licences are the `license` field of each installed package's `package.json`. Onl
 |---|---|---|---|
 | maplibre-gl | 6.16.0 | BSD-3-Clause | The small lake locator map, bundled |
 | uplot | 1.6.32 | MIT | Charts, bundled |
-| @fontsource-variable/bricolage-grotesque | 5.3.0 | OFL-1.1 | Font files, bundled |
 | @fontsource-variable/inter | 5.3.0 | OFL-1.1 | Body font for the story page, bundled |
 | @fontsource-variable/inter-tight | 5.3.0 | OFL-1.1 | Display font for the story page, bundled |
 | vite | 8.3.5 | MIT | Build tool (development only) |
@@ -92,7 +91,6 @@ Only the packages named in `environment.yml`; their own dependencies have not be
 ## Other data
 
 - **The team logo** (`app/logo/SARtale.png`, resized copies in `app/public/brand/`) was supplied by the team. Its origin and licence are to be recorded (see `docs/SI_USE.md`).
-- **The Bricolage Grotesque Variable font** is under the SIL Open Font License 1.1.
 
 ## Still to do
 

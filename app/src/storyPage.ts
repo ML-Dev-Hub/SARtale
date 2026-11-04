@@ -87,11 +87,27 @@ export function mapPin(lon: number, lat: number): { left: string; top: string } 
   };
 }
 
+const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+
+/** A whole count in words when small ("three"), digits otherwise. */
+function countWord(n: number | undefined): string {
+  if (n === undefined || !Number.isInteger(n) || n < 0) return DASH;
+  return WORDS[n] ?? String(n);
+}
+
+/** A share as "half" or a percentage. */
+function shareWord(v: number | undefined): string {
+  if (v === undefined || !Number.isFinite(v)) return DASH;
+  return v === 0.5 ? "half" : `${Math.round(v * 100)}%`;
+}
+
 function tokensFor(file: LakesFile | null): Record<string, string> {
   const a = attabad(file);
   const date = a?.images?.date ?? a?.status.latest_date ?? null;
   return {
     ...storyNumbers(file),
+    minLooks: countWord(file?.constants.min_looks),
+    minObservable: shareWord(file?.constants.min_observable),
     attabadName: a ? a.name.split(" (")[0] : DASH,
     attabadStatus: a?.status.status ?? DASH,
     attabadDate: date ? formatDate(date) : DASH,
@@ -213,7 +229,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const shot = (p: typeof v.optical): HTMLElement =>
     el("figure", "sp-shot", img(p.image, p.alt), el("figcaption", undefined, text("span", "sp-shot-name", p.name), text("span", "sp-muted", p.note), text("span", "sp-credit", p.credit)));
   const cards = el("div", "sp-cards");
-  for (const k of v.shadow.cards) cards.append(el("div", `sp-card sp-card-${k.tone}`, text("div", "sp-card-label", k.label), text("p", undefined, k.text)));
+  for (const k of v.shadow.cards) cards.append(el("div", `sp-card sp-card-${k.tone}`, text("div", "sp-card-label", k.label), text("p", undefined, f(k.text))));
   const src = el("p", "sp-fine", v.shadow.sourcesLead);
   for (const s of v.shadow.sources) src.append(link(s.url, s.text), s.after);
   const view = section("03 The view", "sp-section");
@@ -270,7 +286,8 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
     );
   }
   const mapCredit = text("figcaption", "sp-map-credit", w.mapCredit);
-  mapEl.append(mapCredit);
+  const mapKey = el("figcaption", "sp-map-key", el("span", "sp-key-pin"), ` ${w.keyWatched} `, el("span", "sp-key-pin sp-key-request"), ` ${w.keyRequested}`);
+  mapEl.append(mapKey, mapCredit);
   const requestEls: HTMLElement[] = [];
   const setRequests = (open: LakeRequest[]): void => {
     for (const e of requestEls) e.remove();
@@ -304,11 +321,11 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   // 06 Add a lake: the form is mounted into addLakeEl by the caller.
   const ad = copy.add;
   const addSteps = el("ol", "sp-add-steps");
-  for (const s of ad.steps) addSteps.append(text("li", undefined, s));
+  for (const s of ad.steps) addSteps.append(text("li", undefined, f(s)));
   const addLakeEl = el("div", "sp-add-slot");
   const add = section("06 Add a lake", "sp-section");
   add.id = "add-lake";
-  add.append(el("div", "sp-panel sp-add", el("div", "sp-add-intro", eyebrow(ad.label), text("h2", undefined, ad.title), text("p", undefined, ad.body), addSteps), addLakeEl));
+  add.append(el("div", "sp-panel sp-add", el("div", "sp-add-intro", eyebrow(ad.label), text("h2", undefined, ad.title), text("p", undefined, f(ad.body)), addSteps), addLakeEl));
 
   // Closing band
   const cl = copy.closing;
