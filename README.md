@@ -20,6 +20,7 @@ Pakistan's space agency SUPARCO tracks 131 potentially dangerous glacial lakes, 
 - Turns dark radar pixels into water area inside each lake's zone, and removes radar shadow by comparing the two viewing directions.
 - Gives each lake one plain status (Growing, Stable, Shrinking, Not seen this pass, Not observable, Not enough NISAR looks yet), comparing it only with its own earlier passes on the same track, against its own noise.
 - Prints a one-page brief per lake, with dates, looks, noise and limits.
+- Opens on a story page; the map and lake pages follow from it.
 
 From 17 June to 4 August 2026, while SUPARCO's updates reported cloud limiting optical imagery, NISAR made 60 valid looks across the 11 lakes. All 11 read Stable in this build.
 
@@ -40,6 +41,31 @@ npm --prefix app run dev          # http://localhost:5173
 npm --prefix app test -- --run    # unit tests, including the wording check
 npm --prefix app run build        # type-check, then build into app/dist/
 ```
+
+## Lake requests
+
+Visitors can ask for a lake to be added with the "Add a lake" form. A small server receives the request; a static copy of the site has none, and the form there says "Requests are not open on this copy of the site." Nothing else changes.
+
+Run the server and the app side by side. `npm run dev` sends `/api` to the server.
+
+```bash
+cd processing && conda run -n sartale python -m sartale.run_pipeline lake-requests-serve   # 127.0.0.1:8787, data/lake_requests.sqlite
+npm --prefix app run dev
+```
+
+Options: `--host`, `--port`, `--db`, `--origin` (default `http://localhost:5173`). The database is under `data/`, which is git-ignored.
+
+The server accepts a point between 34.4 and 37.6 °N and 70.8 and 76.6 °E, a name of 2 to 80 characters and a source of 3 to 200. It refuses a point within 1 km of a watched lake or an open request, more than 5 requests per address per hour, more than 200 open requests, bodies over 4 KB, and slow clients. It searches NASA's CMR catalogue for NISAR passes over the point and never downloads NISAR data.
+
+The team decides, from `processing/`:
+
+```bash
+conda run -n sartale python -m sartale.run_pipeline lake-requests-list
+conda run -n sartale python -m sartale.run_pipeline lake-requests-accept 3            # --role watch by default; adds one entry to lakes_in.json
+conda run -n sartale python -m sartale.run_pipeline lake-requests-reject 4 --reason "No public source for the coordinate"
+```
+
+After an accept, run `lakes-search`, `lakes-fetch` and `lakes-build` below to give the lake its status.
 
 ## Run the pipeline
 

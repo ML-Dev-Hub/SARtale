@@ -54,6 +54,7 @@ Sentinel-2 cross-check result (`lakes.json`, `checks`): radar and optical water 
 | `north_map.jpg`: NASA MODIS Terra true colour, 5 Oct 2026, 70.8-76.6 E, 34.4-37.6 N | Base map for the lake pins | NASA EOSDIS data, openly available. Exact citation wording: terms not confirmed |
 | Radio Pakistan, 7 May 2022 | The Shisper outburst and the destroyed Karakoram Highway bridge (story 01) | Terms not confirmed. Cited only |
 | OpenStreetMap way 651792498 | The 6.4 km straight line from the Shisper register point to the Hassanabad bridge (story 01) | © OpenStreetMap contributors, ODbL 1.0 |
+| NASA CMR granule search (`cmr.earthdata.nasa.gov/search/granules.umm_json`) | Lists the NISAR passes over a requested lake's point, to say whether radar covers it. Catalogue entries only; no NISAR data is downloaded for a request | Public, no login. Exact citation wording: terms not confirmed |
 
 ## App dependencies (npm)
 
