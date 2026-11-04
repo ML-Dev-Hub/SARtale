@@ -30,7 +30,7 @@ const TEMPLATE = `
     <button type="button" class="logo-btn" data-role="home" aria-label="SARtale: back to the start">
       <span class="logo-panel"><img class="logo" src="brand/logo-256.png" width="56" height="56" alt="SARtale Pakistan logo" /></span>
     </button>
-    <p class="brand">SARtale Lake Watch</p>
+    <p class="brand">SARtale</p>
     <p class="sr-only" data-role="view-name" aria-live="polite">The story</p>
     <nav class="views" aria-label="Views">
       <button type="button" class="view-btn" data-role="view-home" aria-pressed="false">The story</button>
@@ -131,7 +131,7 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     for (const [name, btn] of Object.entries(viewButtons)) btn.setAttribute("aria-pressed", String(name === next || (name === "home" && next === "story")));
     if (scroll) window.scrollTo?.(0, 0);
     q("view-name").textContent = VIEW_NAMES[next];
-    document.title = `SARtale: ${VIEW_NAMES[next]} (provisional data)`;
+    document.title = next === "home" ? "SARtale" : `SARtale · ${VIEW_NAMES[next]}`;
   }
 
   root.addEventListener("click", (e) => {

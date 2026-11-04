@@ -64,16 +64,21 @@ describe("views", () => {
     expect($("evidence-view").hidden).toBe(false);
     expect($("home-root").hidden).toBe(true);
     expect($("view-evidence").getAttribute("aria-pressed")).toBe("true");
+    $("view-lakes").click();
+    expect(document.title).toBe("SARtale · Lake Watch");
+    $("view-evidence").click();
+    expect(document.title).toBe("SARtale · How we know");
     $("home").click();
     expect($("home-root").hidden).toBe(false);
-    expect(document.title).toBe("SARtale: The story (provisional data)");
+    expect(document.title).toBe("SARtale");
   });
 
-  test("there is one header: logo, SARtale Lake Watch, the nav and the provisional pill", () => {
+  test("there is one header: logo, SARtale, the nav and the provisional pill", () => {
     const { root, $ } = setup();
     expect(root.querySelectorAll("header.top")).toHaveLength(1);
     expect($("home-root").querySelector("nav, header")).toBeNull(); // the story page renders no header of its own
-    expect(root.querySelector("header.top")!.textContent).toContain("SARtale Lake Watch");
+    expect(root.querySelector("header.top")!.textContent).toContain("SARtale");
+    expect(root.querySelector("header.top .brand")!.textContent).toBe("SARtale");
     expect(root.querySelector("header.top")!.contains($("maturity"))).toBe(true);
     expect(root.querySelector("header.top img.logo")).not.toBeNull();
   });

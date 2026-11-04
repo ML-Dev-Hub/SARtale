@@ -4,6 +4,20 @@ import type { LocatorFactory } from "./lakeWatchView";
 /** A status as a CSS-safe word, shared by the locator pins and the status pills (Stable -> stable). */
 export const statusSlug = (status: string): string => status.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
+/** One lake pin: coloured by status (data-status), dashed for a control lake, ringed when selected (data-selected). */
+export function markerElement(lake: Lake, selected: boolean): HTMLButtonElement {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "site-marker lw-marker";
+  b.dataset.role = "lw-marker";
+  b.dataset.control = String(lake.role === "control");
+  b.dataset.status = statusSlug(lake.status.status);
+  b.setAttribute("aria-label", lake.name);
+  b.title = lake.name;
+  b.toggleAttribute("data-selected", selected);
+  return b;
+}
+
 const BACKGROUND = "#0b1825"; // same base style as maplibreAdapter.ts: a plain background, no outside tiles
 
 /**
@@ -92,14 +106,7 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
         new maplibregl.Marker({ element: t, anchor: "top" }).setLngLat([lon, lat]).addTo(m);
       }
       for (const l of lakes) {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "site-marker lw-marker";
-        b.dataset.role = "lw-marker";
-        b.dataset.control = String(l.role === "control");
-        b.dataset.status = statusSlug(l.status.status);
-        b.setAttribute("aria-label", l.name);
-        b.title = l.name;
+        const b = markerElement(l, false);
         b.addEventListener("click", () => onPick(l.id));
         buttons.set(l.id, b);
         new maplibregl.Marker({ element: b }).setLngLat([l.lon, l.lat]).addTo(m);
