@@ -7,6 +7,7 @@ import json
 import math
 import os
 import re
+import unicodedata
 from pathlib import Path
 
 import requests
@@ -20,7 +21,8 @@ FIELDS = {"Lake name": "name", "Latitude (°N)": "lat", "Longitude (°E)": "lon"
 STATE_LABELS = {"searched": "searched", "too_few_passes": "too few passes", "invalid": "invalid",
                 "check_failed": "rebuild failed", "rejected": "rejected"}
 CHECKED = ("searched", "too_few_passes")
-CATALOGUE_DOWN = "The NASA catalogue did not answer."
+FORM_CHANGED = "The request form was changed; open a new request from the SARtale site."
+CATALOGUE_DOWN = "NASA's catalogue did not answer; the team will retry."
 _COORD = re.compile(r"^([+-]?\d+(?:\.\d+)?)\s*°?\s*[NnEe]?$")
 
 
@@ -34,8 +36,7 @@ def parse_issue_body(body: str) -> dict[str, str]:
         elif label is not None:
             sections[label].append(line)
     if not all(label in sections for label in FIELDS):
-        raise RequestError("This request was not made with the Add a lake form. "
-                           "Open the form from the SARtale site and fill in every field.")
+        raise RequestError(FORM_CHANGED)
     out = {}
     for label, key in FIELDS.items():
         value = "\n".join(sections[label]).strip()
@@ -69,6 +70,14 @@ def _entry(issue: dict, name, lat, lon, state: str, reason: str | None = None, f
             "lake_id": None, "created": issue["created_at"]}
 
 
+def _clean_reason(text: str | None) -> str | None:
+    """The team's closing comment, without control or invisible formatting characters, at most 200 characters."""
+    if not text:
+        return None
+    kept = "".join(ch for ch in text if unicodedata.category(ch) not in ("Cc", "Cf")).strip()
+    return kept[:200] or None
+
+
 def _found(entry: dict) -> dict:
     return {k: entry[k] for k in ("passes", "tracks", "first", "last")}
 
@@ -80,7 +89,10 @@ def _check(issue: dict, watched: list[Lake], claimed: list[dict], open_count: in
     try:
         fields = parse_issue_body(issue.get("body", ""))
         fields["lat"], fields["lon"] = _coord(fields["lat"]), _coord(fields["lon"])
-        name = (fields["name"] or name)[:80]
+        try:
+            name = _text(fields, "name", 2, 80)  # only text that passes the name rules reaches requests.json
+        except RequestError:
+            pass
         lat, lon = _number(fields["lat"]), _number(fields["lon"])
         clean = validate(fields, watched, claimed)
     except RequestError as e:
@@ -99,9 +111,10 @@ def _check(issue: dict, watched: list[Lake], claimed: list[dict], open_count: in
     return _entry(issue, name, lat, lon, state, None, found)
 
 
-def build_feed(issues: list[dict], watched: list[Lake], previous: dict | None, search=coverage,
+def build_feed(issues: list[dict], watched: list[Lake], previous: dict | None, search=None,
                now: str = "") -> dict:
     """Recompute the whole request list from every `lake-request` issue, oldest issue first, newest listed first."""
+    search = search or coverage  # looked up at call time so tests can replace it
     before = {r["issue"]: r for r in (previous or {}).get("requests", [])}
     entries, claimed, open_count = [], [], 0
     for issue in sorted(issues, key=lambda i: i["number"]):
@@ -116,7 +129,7 @@ def build_feed(issues: list[dict], watched: list[Lake], previous: dict | None, s
             else:
                 entry = _entry(issue, (old or {}).get("name") or f"Request #{number}",
                                (old or {}).get("lat"), (old or {}).get("lon"), "rejected",
-                               None, _found(old) if old else None)
+                               _clean_reason(issue.get("close_reason")), _found(old) if old else None)
         elif "accepted" in labels and (old is None or old["state"] in CHECKED):
             entry = dict(old) if old else _check(issue, watched, claimed, 0, None, search)
             if entry["state"] in CHECKED:
@@ -155,9 +168,7 @@ def issue_actions(feed: dict, number: int, previous_state: str | None) -> dict:
     elif state == "invalid":
         comment = f"This request cannot be used. {entry['reason']}"
     elif state == "check_failed":
-        comment = f"{CATALOGUE_DOWN} The team will retry."
-    elif state == "accepted" and entry.get("lake_id"):
-        comment = f"This lake is now watched: #lakes/{entry['lake_id']}"
+        comment = CATALOGUE_DOWN
     label = STATE_LABELS.get(state)
     return {"comment": comment, "add": [label] if label else [],
             "remove": [v for k, v in STATE_LABELS.items() if k != state],
@@ -174,13 +185,14 @@ def accept_entry(feed: dict, issue: dict, lakes_in: Path, today: str) -> str:
         raise RequestError(f"Issue #{number} has no checked request that can be accepted.", 409)
     lakes_in = Path(lakes_in)
     rows = json.loads(lakes_in.read_text(encoding="utf-8"))
-    marker = f"(issue #{number})"
-    same = next((r for r in rows if marker in r.get("coord_source", "")), None)
+    marker = f"(issue #{number}):"
+    ours = re.compile(rf"^Requested \S+ {re.escape(marker)} ")  # the prefix written below, not source text
+    same = next((r for r in rows if ours.match(r.get("coord_source", ""))), None)
     if same is None:
         source = _text(parse_issue_body(issue.get("body", "")), "source", 3, 200)
         lake = {"id": lake_slug(entry["name"], {r["id"] for r in rows}), "name": entry["name"],
                 "lon": entry["lon"], "lat": entry["lat"], "role": "watch",
-                "coord_source": f"Requested {today} {marker}: {source}",
+                "coord_source": f"Requested {today} {marker} {source}",
                 "outline": None, "downstream": None, "downstream_source": None}
         append_lake_entry(lakes_in, lake)
         same = lake

@@ -11,7 +11,7 @@ from pathlib import Path
 from sartale.lake_catalog import Pass, coverage_report, search_lake_passes, select_lake_passes
 from sartale.lakebuild import attabad_gate, build_lakes
 from sartale.lakecheck import check_lake
-from sartale.lake_requests import OPEN_STATES, RequestStore
+from sartale.lake_requests import OPEN_STATES, RequestError, RequestStore
 from sartale.lakes import load_lakes
 from sartale.remote import fetch_lake_passes
 
@@ -285,8 +285,15 @@ def cmd_lake_issue_accept(args) -> None:
         raise SystemExit(f"issue #{args.issue} is not in {args.issues}")
     feed_path = Path(args.feed)
     feed = _read_json(feed_path)
-    lake_id = lake_issues.accept_entry(feed, issue, Path(args.lakes_in), args.today)
+    try:
+        lake_id = lake_issues.accept_entry(feed, issue, Path(args.lakes_in), args.today)
+    except RequestError as e:
+        print(f"lake-issue-accept: {e}", file=sys.stderr)
+        raise SystemExit(1) from None
     lake_issues.write_feed(feed, feed_path)
+    actions = {"comment": f"Accepted. The lake is now watched: https://saeedahmadicp.github.io/SARtale/#lakes/{lake_id}",
+               "add": [], "remove": ["searched", "too few passes", "rebuild failed"], "close": True}
+    Path(args.actions).write_text(json.dumps(actions, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(lake_id)
 
 
@@ -361,6 +368,7 @@ def build_parser() -> argparse.ArgumentParser:
     lia.add_argument("--issue", type=int, required=True)
     lia.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
     lia.add_argument("--today", required=True, help="YYYY-MM-DD")
+    lia.add_argument("--actions", required=True, help="where to write the comment, labels and close flag")
     lia.set_defaults(func=cmd_lake_issue_accept)
     return parser
 
