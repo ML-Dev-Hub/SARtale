@@ -184,13 +184,16 @@ def test_accept_entry_appends_once(watched, tmp_path):
     assert one(feed, 7)["state"] == "accepted" and one(feed, 7)["lake_id"] == first
 
 
-def test_accept_uses_checked_values_not_edited_body(watched, tmp_path):
+@pytest.mark.parametrize("edit", [{"lat": "36.9"}, {"name": "Renamed"}, {"source": "Another survey"}])
+def test_accept_refuses_values_edited_after_the_check(watched, tmp_path, edit):
     lakes_in = tmp_path / "lakes_in.json"
     lakes_in.write_text(LAKES_IN, encoding="utf-8")
     feed = build_feed([issue(7)], watched, None, search=fake_search, now=NOW)
-    accept_entry(feed, issue(7, lat="36.9", name="Renamed"), lakes_in, "2026-11-05")
-    added = json.loads(lakes_in.read_text(encoding="utf-8"))[1]
-    assert added["lat"] == 36.2 and added["name"] == "Moraine lake above Gulmit"
+    with pytest.raises(RequestError) as e:
+        accept_entry(feed, issue(7, **edit), lakes_in, "2026-11-05")
+    assert str(e.value) == "This request changed after it was approved. A team member must accept it again."
+    assert lakes_in.read_text(encoding="utf-8") == LAKES_IN
+    assert one(feed, 7)["state"] == "searched"
 
 
 def test_accept_refuses_invalid_entry(watched, tmp_path):
@@ -267,9 +270,10 @@ def test_invalid_name_is_not_stored_raw(watched, tmp_path):
 def test_accept_marker_cannot_be_spoofed(watched, tmp_path):
     lakes_in = tmp_path / "lakes_in.json"
     lakes_in.write_text(LAKES_IN, encoding="utf-8")
-    feed = build_feed([issue(3, name="First", lat="36.2"), issue(7, name="Second", lat="36.5")], watched, None,
-                      search=fake_search, now=NOW)
-    accept_entry(feed, issue(3, name="First", lat="36.2", source="see (issue #7): nothing"), lakes_in, "2026-11-05")
+    spoof = "see (issue #7): nothing"  # the source the check recorded, so the approval covers it
+    feed = build_feed([issue(3, name="First", lat="36.2", source=spoof), issue(7, name="Second", lat="36.5")],
+                      watched, None, search=fake_search, now=NOW)
+    accept_entry(feed, issue(3, name="First", lat="36.2", source=spoof), lakes_in, "2026-11-05")
     second = accept_entry(feed, issue(7, name="Second", lat="36.5"), lakes_in, "2026-11-05")
     rows = json.loads(lakes_in.read_text(encoding="utf-8"))
     assert len(rows) == 3 and rows[2]["id"] == second == "second"
@@ -398,3 +402,89 @@ def test_reconcile_never_echoes_text(watched):
     feed = build_feed(issues, watched, None, search=fake_search, now=NOW)
     for act in reconcile_actions(feed, issues, None):
         assert "@someone" not in json.dumps(act) and "<img" not in json.dumps(act)
+
+
+CHANGED = "This request changed after it was approved. A team member must accept it again."
+
+
+def test_checked_entries_record_the_values_hash(watched):
+    feed = build_feed([issue(1), issue(2, lat="10")], watched, None, search=fake_search, now=NOW)
+    h = one(feed, 1)["values_sha256"]
+    assert len(h) == 64 and one(feed, 1)["values_at"] == NOW
+    assert one(feed, 2)["values_sha256"] is None, "an invalid request has no values to approve"
+    same = build_feed([issue(1, lat="36.2 °N")], watched, feed, search=fake_search, now="2026-11-06T00:00:00Z")
+    assert one(same, 1)["values_sha256"] == h and one(same, 1)["values_at"] == NOW, "same values, same hash"
+    edited = build_feed([issue(1, source="Another survey")], watched, feed, search=fake_search,
+                        now="2026-11-06T00:00:00Z")
+    assert one(edited, 1)["values_sha256"] != h and one(edited, 1)["values_at"] == "2026-11-06T00:00:00Z"
+    assert "Glacier survey" not in json.dumps(feed), "the hash, never the source, is in requests.json"
+
+
+def test_accept_refuses_an_approval_older_than_the_checked_values(watched, tmp_path):
+    lakes_in = tmp_path / "lakes_in.json"
+    lakes_in.write_text(LAKES_IN, encoding="utf-8")
+    feed = build_feed([issue(7)], watched, None, search=fake_search, now=NOW)
+    with pytest.raises(RequestError) as e:
+        accept_entry(feed, issue(7), lakes_in, "2026-11-05", approved_at="2026-11-05T08:59:59Z")
+    assert str(e.value) == CHANGED
+    assert accept_entry(feed, issue(7), lakes_in, "2026-11-05", approved_at="2026-11-05T09:00:00Z")
+
+
+def test_accept_refuses_an_entry_without_a_hash(watched, tmp_path):
+    lakes_in = tmp_path / "lakes_in.json"
+    lakes_in.write_text(LAKES_IN, encoding="utf-8")
+    feed = build_feed([issue(7)], watched, None, search=fake_search, now=NOW)
+    del feed["requests"][0]["values_sha256"]  # written before hashes existed
+    with pytest.raises(RequestError):
+        accept_entry(feed, issue(7), lakes_in, "2026-11-05")
+
+
+def test_reconcile_voids_an_approval_after_an_edit(watched):
+    before = build_feed([issue(1, labels=["searched"])], watched, None, search=fake_search, now=NOW)
+    edited = [issue(1, labels=["searched", "accepted"], name="Other name")]
+    feed = build_feed(edited, watched, before, search=fake_search, now="2026-11-06T00:00:00Z")
+    (act,) = reconcile_actions(feed, edited, before)
+    assert act["comment"] == CHANGED and act["remove"] == ["accepted"] and act["dispatch"] is False
+    assert act["add"] == [] and act["close"] is False
+
+
+def test_reconcile_voids_an_approval_when_the_edit_makes_it_invalid(watched):
+    before = build_feed([issue(1, labels=["searched"])], watched, None, search=fake_search, now=NOW)
+    edited = [issue(1, labels=["searched", "accepted"], lat="10")]
+    feed = build_feed(edited, watched, before, search=fake_search, now=NOW)
+    (act,) = reconcile_actions(feed, edited, before)
+    assert act["comment"].startswith(CHANGED) and "This request cannot be used." in act["comment"]
+    assert sorted(act["remove"]) == ["accepted", "searched"] and act["add"] == ["invalid"] and act["close"]
+
+
+def test_reconcile_unchanged_approval_still_dispatches(watched):
+    before = build_feed([issue(1, labels=["searched"])], watched, None, search=fake_search, now=NOW)
+    same = [issue(1, labels=["searched", "accepted"])]
+    feed = build_feed(same, watched, before, search=fake_search, now=NOW)
+    (act,) = reconcile_actions(feed, same, before)
+    assert act["dispatch"] is True and act["comment"] is None and act["remove"] == []
+
+
+def test_reconcile_dispatches_one_issue_per_run(watched):
+    issues = [issue(5, labels=["searched", "accepted"], lat="36.9"), issue(3, labels=["searched", "accepted"]),
+              issue(4, labels=["searched", "accepted"], lat="36.5")]
+    feed = build_feed(issues, watched, None, search=fake_search, now=NOW)
+    acts = reconcile_actions(feed, issues, feed)
+    assert [a["issue"] for a in acts if a["dispatch"]] == [3]
+    assert [a["issue"] for a in acts] == [3], "the others wait for a later run"
+
+
+def test_cli_accept_passes_the_approval_time(tmp_path, monkeypatch):
+    monkeypatch.setattr(lake_issues, "coverage", fake_search)
+    lakes_in = tmp_path / "lakes_in.json"
+    lakes_in.write_text(LAKES_IN, encoding="utf-8")
+    issues, feed_path = tmp_path / "issues.json", tmp_path / "requests.json"
+    issues.write_text(json.dumps([issue(7)]), encoding="utf-8")
+    write_feed(build_feed([issue(7)], [], None, search=fake_search, now=NOW), feed_path)
+    args = ["lake-issue-accept", "--issues", str(issues), "--feed", str(feed_path), "--issue", "7",
+            "--lakes-in", str(lakes_in), "--today", "2026-11-05", "--actions", str(tmp_path / "a.json")]
+    with pytest.raises(SystemExit) as e:
+        run_pipeline.main(args + ["--approved-at", "2026-11-01T00:00:00Z"])
+    assert e.value.code == 1
+    run_pipeline.main(args + ["--approved-at", "2026-11-05T10:00:00Z"])
+    assert one(json.loads(feed_path.read_text(encoding="utf-8")), 7)["state"] == "accepted"

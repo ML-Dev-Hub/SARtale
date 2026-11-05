@@ -76,15 +76,8 @@ jobs:
         run: bash .github/scripts/apply-actions.sh "$RUNNER_TEMP/actions.json"
 
       - name: Report a failed check
+        # no comment and no label: the next run reconciles every issue, and this run's log shows the failure
         if: failure() || cancelled()
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          if gh issue view "$ISSUE" --json labels --jq '.labels[].name' | grep -Fxq "rebuild failed"; then
-            echo "the issue already says the check failed"
-            exit 0
-          fi
-          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          printf 'The check failed; see %s. The team will retry.\n' "$url" > "$RUNNER_TEMP/failed.md"
-          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/failed.md"
-          gh issue edit "$ISSUE" --add-label "rebuild failed"
+          printf 'The check failed for issue #%s; the next lake request event reconciles every issue.\n' "$ISSUE" \
+            >> "$GITHUB_STEP_SUMMARY"

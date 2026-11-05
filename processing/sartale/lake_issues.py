@@ -3,6 +3,7 @@
 Issue text is untrusted. Nothing here runs it, and no comment repeats it: reasons come from fixed messages,
 the names of lakes the team already watches, or an issue number.
 """
+import hashlib
 import json
 import math
 import os
@@ -23,6 +24,7 @@ STATE_LABELS = {"searched": "searched", "too_few_passes": "too few passes", "inv
 CHECKED = ("searched", "too_few_passes")
 FORM_CHANGED = "The request form was changed; open a new request from the SARtale site."
 CATALOGUE_DOWN = "NASA's catalogue did not answer; the team will retry."
+CHANGED_AFTER_APPROVAL = "This request changed after it was approved. A team member must accept it again."
 _COORD = re.compile(r"^([+-]?\d+(?:\.\d+)?)\s*°?\s*[NnEe]?$")
 
 
@@ -62,12 +64,42 @@ def _labels(issue: dict) -> set[str]:
     return {label["name"] for label in issue.get("labels", [])}
 
 
-def _entry(issue: dict, name, lat, lon, state: str, reason: str | None = None, found: dict | None = None) -> dict:
+def _entry(issue: dict, name, lat, lon, state: str, reason: str | None = None, found: dict | None = None,
+           values: tuple[str | None, str | None] = (None, None)) -> dict:
     found = found or {}
     return {"issue": issue["number"], "name": name, "lat": lat, "lon": lon, "state": state,
             "passes": found.get("passes"), "tracks": found.get("tracks", []),
             "first": found.get("first"), "last": found.get("last"), "reason": reason,
-            "lake_id": None, "created": issue["created_at"]}
+            "lake_id": None, "created": issue["created_at"], "values_sha256": values[0], "values_at": values[1]}
+
+
+def values_sha256(name: str, lat: float, lon: float, source: str) -> str:
+    """SHA-256 of the checked values (name, lat, lon, source) after the check's normalisation, joined by newlines.
+
+    The team approves these values; an approval stands only while the issue still hashes the same.
+    """
+    text = "\n".join([name, repr(float(lat)), repr(float(lon)), source])
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def issue_values_sha256(issue: dict) -> str | None:
+    """The hash of an issue's current values, or None when they do not pass the field rules."""
+    try:
+        fields = parse_issue_body(issue.get("body", ""))
+        name, source = _text(fields, "name", 2, 80), _text(fields, "source", 3, 200)
+    except RequestError:
+        return None
+    lat, lon = _number(_coord(fields["lat"])), _number(_coord(fields["lon"]))
+    if lat is None or lon is None:
+        return None
+    return values_sha256(name, lat, lon, source)
+
+
+def _values(digest: str, before: dict | None, now: str) -> tuple[str, str]:
+    """The hash and the time these values were first recorded (kept while the hash stays the same)."""
+    if before and before.get("values_sha256") == digest and before.get("values_at"):
+        return digest, before["values_at"]
+    return digest, now
 
 
 def _clean_reason(text: str | None) -> str | None:
@@ -83,7 +115,7 @@ def _found(entry: dict) -> dict:
 
 
 def _check(issue: dict, watched: list[Lake], claimed: list[dict], open_count: int, before: dict | None,
-           search) -> dict:
+           search, now: str = "") -> dict:
     """Parse, validate, apply the cap, then count passes. A catalogue error gives `check_failed`."""
     name, lat, lon = f"Request #{issue['number']}", None, None
     try:
@@ -100,15 +132,16 @@ def _check(issue: dict, watched: list[Lake], claimed: list[dict], open_count: in
     name, lat, lon = clean["name"], clean["lat"], clean["lon"]
     if open_count >= MAX_OPEN:
         return _entry(issue, name, lat, lon, "invalid", "The request list is full; try again later.")
+    values = _values(values_sha256(name, lat, lon, clean["source"]), before, now)
     if (before and before["state"] in CHECKED and before["lat"] == lat and before["lon"] == lon
             and before["name"] == name):
-        return {**before, "created": issue["created_at"]}
+        return {**before, "created": issue["created_at"], "values_sha256": values[0], "values_at": values[1]}
     try:
         found = search(lat, lon)
     except (OSError, TimeoutError, requests.RequestException):
-        return _entry(issue, name, lat, lon, "check_failed", CATALOGUE_DOWN)
+        return _entry(issue, name, lat, lon, "check_failed", CATALOGUE_DOWN, values=values)
     state = "searched" if found["passes"] >= MIN_LOOKS else "too_few_passes"
-    return _entry(issue, name, lat, lon, state, None, found)
+    return _entry(issue, name, lat, lon, state, None, found, values)
 
 
 def build_feed(issues: list[dict], watched: list[Lake], previous: dict | None, search=None,
@@ -131,7 +164,7 @@ def build_feed(issues: list[dict], watched: list[Lake], previous: dict | None, s
                                (old or {}).get("lat"), (old or {}).get("lon"), "rejected",
                                _clean_reason(issue.get("close_reason")), _found(old) if old else None)
         else:  # an `accepted` label alone changes nothing: only accept_entry, after the permission check, does
-            entry = _check(issue, watched, claimed, open_count, old, search)
+            entry = _check(issue, watched, claimed, open_count, old, search, now)
         entries.append(entry)
         if entry["state"] == "accepted" or (issue["state"] == "open" and entry["state"] in CHECKED + ("check_failed",)):
             if entry["lat"] is not None and entry["lon"] is not None:
@@ -184,37 +217,54 @@ def reconcile_actions(feed: dict, issues: list[dict], previous: dict | None) -> 
     accepted in the feed is marked for a new accept run (`dispatch`) unless a rebuild already failed for it.
     `rebuild failed` stays on a checked request (it marks a failed accept) unless the last check had failed.
     """
-    before = {r["issue"]: r["state"] for r in (previous or {}).get("requests", [])}
-    out = []
+    old = {r["issue"]: r for r in (previous or {}).get("requests", [])}
+    out, dispatched = [], False
     for issue in sorted(issues, key=lambda i: i["number"]):
         number, labels = issue["number"], _labels(issue)
         entry = _find(feed, number)
         if entry is None:
             continue
-        state = entry["state"]
+        state, was = entry["state"], old.get(number) or {}
         want = STATE_LABELS.get(state)  # None for accepted: the team's own label stays
         keep = {want}
-        if state in CHECKED and before.get(number, state) != "check_failed":
+        if state in CHECKED and was.get("state", state) != "check_failed":
             keep.add("rebuild failed")
         add = [want] if want and want not in labels else []
         remove = [v for v in STATE_LABELS.values() if v not in keep and v in labels]
         close = state == "invalid" and issue["state"] == "open"
-        dispatch = (issue["state"] == "open" and state in CHECKED and "accepted" in labels
-                    and "rebuild failed" not in labels)
+        # an approval covers the values the team saw: an edit since the last check voids it
+        void = ("accepted" in labels and state != "accepted" and was.get("values_sha256") is not None
+                and entry.get("values_sha256") != was["values_sha256"])
+        if void:
+            remove.append("accepted")
+        dispatch = (not void and not dispatched and issue["state"] == "open" and state in CHECKED
+                    and "accepted" in labels and "rebuild failed" not in labels)
+        dispatched = dispatched or dispatch  # one per run, so the next does not replace a pending one
+        comment = _comment(entry) if add else None
+        if void:
+            comment = CHANGED_AFTER_APPROVAL + (f"\n\n{comment}" if comment else "")
         if add or remove or close or dispatch:
-            out.append({"issue": number, "comment": _comment(entry) if add else None, "add": add,
+            out.append({"issue": number, "comment": comment, "add": add,
                         "remove": remove, "close": close, "dispatch": dispatch})
     return out
 
 
-def accept_entry(feed: dict, issue: dict, lakes_in: Path, today: str) -> str:
-    """Add the requested lake to lakes_in.json using the values the last check recorded. Safe to repeat."""
+def accept_entry(feed: dict, issue: dict, lakes_in: Path, today: str, approved_at: str | None = None) -> str:
+    """Add the requested lake to lakes_in.json using the values the last check recorded. Safe to repeat.
+
+    Refused when the issue no longer hashes to the checked values, or when the approval (`approved_at`, the time
+    the team added `accepted`) is older than the time those values were recorded.
+    """
     from sartale.run_pipeline import append_lake_entry, lake_slug  # run_pipeline imports this module
 
     number = issue["number"]
     entry = _find(feed, number)
     if entry is None or entry["state"] not in CHECKED + ("accepted",):
         raise RequestError(f"Issue #{number} has no checked request that can be accepted.", 409)
+    if not entry.get("values_sha256") or issue_values_sha256(issue) != entry["values_sha256"]:
+        raise RequestError(CHANGED_AFTER_APPROVAL, 409)
+    if approved_at is not None and approved_at < (entry.get("values_at") or ""):
+        raise RequestError(CHANGED_AFTER_APPROVAL, 409)
     lakes_in = Path(lakes_in)
     rows = json.loads(lakes_in.read_text(encoding="utf-8"))
     marker = f"(issue #{number}):"

@@ -1,20 +1,23 @@
 name: Weekly data refresh
 
+# Two jobs, so that no job holds both a write token and the Earthdata login:
+#   rebuild  (earthdata, read only)          rebuild and test every lake, upload the data as an artifact
+#   publish  (write, no Earthdata, no build) check the artifact, commit if the data changed; reports failures
+
 on:
   schedule:
     - cron: "0 3 * * 1"
   workflow_dispatch:
 
 jobs:
-  refresh:
+  rebuild:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     environment: earthdata
     permissions:
-      contents: write
-      actions: write
-    concurrency:
-      group: sartale-data
+      contents: read
+    concurrency:  # one rebuild at a time, shared with lake-accept.yml (see there)
+      group: sartale-rebuild
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -23,13 +26,52 @@ jobs:
           persist-credentials: false
 
       - name: Rebuild the lake data
-        timeout-minutes: 330  # below the job's 360, so the job is still alive to report a timeout
+        timeout-minutes: 330  # below the job's 360, so the publish job can still report a timeout
         uses: ./.github/actions/rebuild
         env:
           EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
           EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
 
+      - name: Pack the rebuilt data
+        run: python3 .github/scripts/data_artifact.py pack --repo . --out "$RUNNER_TEMP/lake-data"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: lake-data
+          path: ${{ runner.temp }}/lake-data
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    needs: rebuild
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      actions: write
+    concurrency:
+      group: sartale-data
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: needs.rebuild.result == 'success'
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: needs.rebuild.result == 'success'
+        with:
+          name: lake-data
+          path: ${{ runner.temp }}/lake-data
+
+      - name: Check and install the data
+        if: needs.rebuild.result == 'success'
+        run: python3 .github/scripts/data_artifact.py unpack --repo . --from "$RUNNER_TEMP/lake-data"
+
       - name: Commit only if the data changed
+        if: needs.rebuild.result == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -44,8 +86,9 @@ jobs:
 
       - name: Report a failed refresh
         # no issue to comment on: the failed run (and GitHub's mail to the owner) is the report
-        if: failure() || cancelled()
+        if: always() && (needs.rebuild.result != 'success' || failure() || cancelled())
         run: |
           url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           printf 'The weekly refresh failed or timed out; see %s for the step that stopped it.\n' "$url" \
             >> "$GITHUB_STEP_SUMMARY"
+          exit 1

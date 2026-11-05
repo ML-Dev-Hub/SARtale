@@ -1,8 +1,11 @@
 name: Accept a lake request
 
 # Runs when someone adds `accepted` to a lake-request issue, or when the check job starts it again for an
-# accept that GitHub dropped from the queue. Only an approver with write, maintain or admin permission
-# counts: for a label event the sender, for a dispatched run the last account that added `accepted`.
+# accept that GitHub dropped from the queue. Three jobs, so that no job holds both a write token and the
+# Earthdata login:
+#   gate     (read only)                     who approved, and do they have write, maintain or admin?
+#   rebuild  (earthdata, read only)          add the lake, rebuild, test, upload the data as an artifact
+#   publish  (write, no Earthdata, no build) check the artifact, commit, comment; reports every failure
 # Issue text is never put into a script; the issue number goes through env and must be digits.
 
 on:
@@ -15,24 +18,23 @@ on:
         required: true
         type: string
 
+env:
+  ISSUE: ${{ github.event.issue.number || inputs.issue }}
+  GH_REPO: ${{ github.repository }}
+
 jobs:
-  accept:
+  gate:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.label.name == 'accepted' && contains(github.event.issue.labels.*.name, 'lake-request'))
     runs-on: ubuntu-latest
-    timeout-minutes: 360
-    environment: earthdata
+    timeout-minutes: 30
     permissions:
-      contents: write
-      issues: write
-      actions: write
-    concurrency:
-      group: sartale-data
-      cancel-in-progress: false
-    env:  # GH_TOKEN is given only to the steps that call gh or push
-      GH_REPO: ${{ github.repository }}
-      ISSUE: ${{ github.event.issue.number || inputs.issue }}
+      contents: read
+      issues: read
+    outputs:
+      decision: ${{ steps.perm.outputs.decision }}
+      approved_at: ${{ steps.perm.outputs.approved_at }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -46,44 +48,58 @@ jobs:
           SENDER: ${{ github.event.sender.login }}
           EVENT: ${{ github.event_name }}
         run: |
+          decide() { echo "decision=$1" >> "$GITHUB_OUTPUT"; echo "decision: $1"; }
           case "$ISSUE" in
-            ''|*[!0-9]*)
-              echo "the issue number must be digits" >&2
-              echo "allowed=false" >> "$GITHUB_OUTPUT"; echo "skip=true" >> "$GITHUB_OUTPUT"
-              exit 0 ;;
+            ''|*[!0-9]*) echo "the issue number must be digits" >&2; decide skip; exit 0 ;;
           esac
-          if [ "$EVENT" = workflow_dispatch ]; then
-            set +e
-            approver="$(python3 .github/scripts/approver.py --issue "$ISSUE")"
-            code=$?
-            set -e
-            if [ "$code" -eq 3 ]; then  # no longer an open request carrying `accepted`: nothing to do
-              echo "allowed=false" >> "$GITHUB_OUTPUT"; echo "skip=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            elif [ "$code" -ne 0 ]; then
-              exit 1
-            fi
-          else
-            approver="$SENDER"
+          set +e
+          found="$(python3 .github/scripts/approver.py --issue "$ISSUE")"
+          code=$?
+          set -e
+          case "$code" in
+            0) ;;
+            3) decide skip; exit 0 ;;          # no longer an open request carrying `accepted`
+            4) decide refuse-team; exit 0 ;;   # carries `accepted`, but nobody valid added it
+            *) exit 1 ;;
+          esac
+          approver="$(printf '%s\n' "$found" | sed -n 1p)"
+          approved_at="$(printf '%s\n' "$found" | sed -n 2p)"
+          if [ "$EVENT" != workflow_dispatch ]; then
+            approver="$SENDER"  # the account that just added the label
           fi
-          perm="$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$approver/permission" --jq .permission)" || perm=none
-          case "$perm" in
-            admin|maintain|write) echo "allowed=true" >> "$GITHUB_OUTPUT" ;;
-            *) echo "allowed=false" >> "$GITHUB_OUTPUT" ;;
-          esac
+          lookup() { gh api "repos/$GITHUB_REPOSITORY/collaborators/$approver/permission" --jq .permission; }
+          perm="$(lookup)" || { sleep 5; perm="$(lookup)"; } || perm=none
           echo "approver $approver has permission $perm"
+          case "$perm" in
+            admin|maintain|write)
+              echo "approved_at=$approved_at" >> "$GITHUB_OUTPUT"
+              decide allowed ;;
+            *) decide refuse-team ;;
+          esac
 
-      - name: Refuse a label from outside the team
-        if: steps.perm.outputs.allowed != 'true' && steps.perm.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          printf '%s\n' "Only the SARtale team can accept a request." > "$RUNNER_TEMP/refused.md"
-          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/refused.md"
-          gh issue edit "$ISSUE" --remove-label accepted
+  rebuild:
+    needs: gate
+    if: needs.gate.outputs.decision == 'allowed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    environment: earthdata
+    permissions:
+      contents: read
+      issues: read
+    # one rebuild at a time: two would fetch the same windows twice and the second would be refused at
+    # publish anyway (its inputs are older than main); a rebuild dropped from the queue is started again
+    concurrency:
+      group: sartale-rebuild
+      cancel-in-progress: false
+    outputs:
+      decision: ${{ steps.add.outputs.decision }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          persist-credentials: false
 
       - uses: mamba-org/setup-micromamba@add3a49764cedee8ee24e82dfde87f5bc2914462 # v2
-        if: steps.perm.outputs.allowed == 'true'
         with:
           environment-file: environment.yml
           environment-name: sartale
@@ -91,11 +107,9 @@ jobs:
           init-shell: bash
 
       - name: Tell the rebuild action the environment is ready
-        if: steps.perm.outputs.allowed == 'true'
         run: echo "SARTALE_ENV_READY=1" >> "$GITHUB_ENV"
 
       - name: List every lake request
-        if: steps.perm.outputs.allowed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
@@ -104,63 +118,156 @@ jobs:
 
       - name: Add the lake to lakes_in.json
         id: add
-        if: steps.perm.outputs.allowed == 'true'
         shell: bash -el {0}
         working-directory: processing
+        env:
+          APPROVED_AT: ${{ needs.gate.outputs.approved_at }}
         run: |
+          decide() { echo "decision=$1" >> "$GITHUB_OUTPUT"; echo "decision: $1"; }
           if [ "$(python3 ../.github/scripts/feed_state.py ../app/public/data/requests.json "$ISSUE")" = accepted ]; then
             echo "issue #$ISSUE is already accepted; nothing to rebuild"
-            echo "ok=done" >> "$GITHUB_OUTPUT"
+            decide done
             exit 0
           fi
           set +e
           python -m sartale.run_pipeline lake-issue-accept --issues "$RUNNER_TEMP/issues.json" \
             --feed ../app/public/data/requests.json --issue "$ISSUE" --lakes-in lakes_in.json \
-            --today "$(date -u +%F)" --actions "$RUNNER_TEMP/actions.json" 2> "$RUNNER_TEMP/accept.err"
+            --today "$(date -u +%F)" --approved-at "$APPROVED_AT" --actions "$RUNNER_TEMP/actions.json" \
+            2> "$RUNNER_TEMP/accept.err"
           code=$?
           set -e
           cat "$RUNNER_TEMP/accept.err" >&2
           if [ "$code" -eq 0 ]; then
-            echo "ok=true" >> "$GITHUB_OUTPUT"
+            decide rebuild
+          elif [ "$code" -eq 1 ] && grep -qx 'lake-issue-accept: This request changed after it was approved. A team member must accept it again.' "$RUNNER_TEMP/accept.err"; then
+            decide refuse-changed
           elif [ "$code" -eq 1 ] && grep -q '^lake-issue-accept: ' "$RUNNER_TEMP/accept.err"; then
-            echo "ok=false" >> "$GITHUB_OUTPUT"   # the request is not in a state that can be accepted
+            decide refuse-unchecked
           else
             exit 1
           fi
 
-      - name: Refuse a request that cannot be accepted
-        if: steps.perm.outputs.allowed == 'true' && steps.add.outputs.ok == 'false'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          printf '%s\n' "This request has no checked entry that can be accepted, so nothing was rebuilt." \
-            > "$RUNNER_TEMP/refused.md"
-          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/refused.md"
-          gh issue edit "$ISSUE" --remove-label accepted
-
       - name: Rebuild the lake data
-        if: steps.perm.outputs.allowed == 'true' && steps.add.outputs.ok == 'true'
-        timeout-minutes: 330  # below the job's 360, so the job is still alive to report a timeout
+        if: steps.add.outputs.decision == 'rebuild'
+        timeout-minutes: 330  # below the job's 360, so the publish job can still report a timeout
         uses: ./.github/actions/rebuild
         env:
           EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
           EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
 
+      - name: Pack the rebuilt data
+        if: steps.add.outputs.decision == 'rebuild'
+        run: python3 .github/scripts/data_artifact.py pack --repo . --out "$RUNNER_TEMP/lake-data"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.add.outputs.decision == 'rebuild'
+        with:
+          name: lake-data
+          path: ${{ runner.temp }}/lake-data
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    needs: [gate, rebuild]
+    # refusals, a finished rebuild, and every rebuild failure or timeout (reported from here)
+    if: >-
+      always() && (needs.gate.outputs.decision == 'refuse-team' ||
+      (needs.gate.outputs.decision == 'allowed' && needs.rebuild.outputs.decision != 'done'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      issues: write
+      actions: write
+    concurrency:
+      group: sartale-data
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Refuse an approval from outside the team
+        if: needs.gate.outputs.decision == 'refuse-team'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s\n' "Only the SARtale team can accept a request." > "$RUNNER_TEMP/refused.md"
+          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/refused.md"
+          gh issue edit "$ISSUE" --remove-label accepted
+
+      - name: Refuse a request that cannot be accepted
+        if: >-
+          needs.rebuild.outputs.decision == 'refuse-changed' ||
+          needs.rebuild.outputs.decision == 'refuse-unchecked'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DECISION: ${{ needs.rebuild.outputs.decision }}
+        run: |
+          if [ "$DECISION" = refuse-changed ]; then
+            printf '%s\n' "This request changed after it was approved. A team member must accept it again." \
+              > "$RUNNER_TEMP/refused.md"
+          else
+            printf '%s\n' "This request has no checked entry that can be accepted, so nothing was rebuilt." \
+              > "$RUNNER_TEMP/refused.md"
+          fi
+          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/refused.md"
+          gh issue edit "$ISSUE" --remove-label accepted
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: needs.rebuild.result == 'success' && needs.rebuild.outputs.decision == 'rebuild'
+        with:
+          name: lake-data
+          path: ${{ runner.temp }}/lake-data
+
+      - name: Check and install the data
+        id: install
+        if: needs.rebuild.result == 'success' && needs.rebuild.outputs.decision == 'rebuild'
+        run: |
+          set +e
+          python3 .github/scripts/data_artifact.py unpack --repo . --from "$RUNNER_TEMP/lake-data" &&
+            python3 .github/scripts/data_artifact.py accept --repo . --from "$RUNNER_TEMP/lake-data" \
+              --issue "$ISSUE" --actions "$RUNNER_TEMP/actions.json"
+          code=$?
+          set -e
+          if [ "$code" -eq 5 ]; then
+            echo "result=changed" >> "$GITHUB_OUTPUT"   # edited during the rebuild: refuse, publish nothing
+          elif [ "$code" -ne 0 ]; then
+            exit "$code"
+          else
+            echo "result=ok" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Refuse a request that changed during the rebuild
+        if: steps.install.outputs.result == 'changed'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s\n' "This request changed after it was approved. A team member must accept it again." \
+            > "$RUNNER_TEMP/refused.md"
+          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/refused.md"
+          gh issue edit "$ISSUE" --remove-label accepted
+
       - name: Commit the new lake and start the deploy
         id: commit
-        if: steps.perm.outputs.allowed == 'true' && steps.add.outputs.ok == 'true'
+        if: steps.install.outputs.result == 'ok'
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/commit-data.sh "Add requested lake from issue #$ISSUE" processing/lakes_in.json app/public/data
 
       - name: Comment and close the issue
-        if: steps.perm.outputs.allowed == 'true' && steps.add.outputs.ok == 'true'
+        if: steps.install.outputs.result == 'ok'
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/apply-actions.sh "$RUNNER_TEMP/actions.json"
 
       - name: Report a failed rebuild
-        if: (failure() || cancelled()) && steps.perm.outputs.allowed == 'true'
+        if: >-
+          always() && needs.gate.outputs.decision == 'allowed' &&
+          needs.rebuild.outputs.decision != 'refuse-changed' && needs.rebuild.outputs.decision != 'refuse-unchecked' &&
+          steps.install.outputs.result != 'changed' &&
+          (needs.rebuild.result != 'success' || failure() || cancelled())
         env:
           GH_TOKEN: ${{ github.token }}
           PUSHED: ${{ steps.commit.outputs.pushed }}

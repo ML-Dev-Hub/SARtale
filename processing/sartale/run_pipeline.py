@@ -223,7 +223,7 @@ def cmd_lake_issue_accept(args) -> None:
     feed_path = Path(args.feed)
     feed = _read_json(feed_path)
     try:
-        lake_id = lake_issues.accept_entry(feed, issue, Path(args.lakes_in), args.today)
+        lake_id = lake_issues.accept_entry(feed, issue, Path(args.lakes_in), args.today, args.approved_at)
     except RequestError as e:
         print(f"lake-issue-accept: {e}", file=sys.stderr)
         raise SystemExit(1) from None
@@ -277,6 +277,7 @@ def build_parser() -> argparse.ArgumentParser:
     lia.add_argument("--issue", type=int, required=True)
     lia.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
     lia.add_argument("--today", required=True, help="YYYY-MM-DD")
+    lia.add_argument("--approved-at", help="when the team added `accepted` (YYYY-MM-DDTHH:MM:SSZ)")
     lia.add_argument("--actions", required=True, help="where to write the comment, labels and close flag")
     lia.set_defaults(func=cmd_lake_issue_accept)
     return parser

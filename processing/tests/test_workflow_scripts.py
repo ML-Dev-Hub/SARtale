@@ -143,16 +143,16 @@ def test_run_gh_uses_argument_list(monkeypatch):
     assert not seen["kw"].get("shell") and seen["kw"].get("check") is True
 
 
-def labeled(name, login):
-    return {"event": "labeled", "label": {"name": name}, "actor": {"login": login}}
+def labeled(name, login, when="2026-11-05T10:00:00Z"):
+    return {"event": "labeled", "label": {"name": name}, "actor": {"login": login}, "created_at": when}
 
 
-def test_approver_is_last_to_add_accepted():
-    events = [labeled("accepted", "early"), labeled("lake-request", "visitor"),
+def test_approval_is_the_last_to_add_accepted_with_its_time():
+    events = [labeled("accepted", "early", "2026-11-01T00:00:00Z"), labeled("lake-request", "visitor"),
               {"event": "unlabeled", "label": {"name": "accepted"}, "actor": {"login": "bot"}},
-              labeled("accepted", "owner-1"), labeled("searched", "github-actions[bot]")]
+              labeled("accepted", "owner-1", "2026-11-05T11:00:00Z"), labeled("searched", "github-actions[bot]")]
     gh = FakeGh("", single=issue(7, labels=("lake-request", "searched", "accepted")), events=events)
-    assert approver.approver("o/r", 7, runner=gh) == "owner-1"
+    assert approver.approval("o/r", 7, runner=gh) == ("owner-1", "2026-11-05T11:00:00Z")
     paths = [next(a for a in c[1:] if not a.startswith("-")) for c in gh.calls]
     assert paths == ["repos/o/r/issues/7", "repos/o/r/issues/7/events?per_page=100"]
     assert "--paginate" in gh.calls[1]
@@ -163,26 +163,35 @@ def test_approver_is_last_to_add_accepted():
     issue(7, "closed", labels=("lake-request", "accepted")),        # closed since
     issue(7, labels=("accepted",)),                                 # not a request
 ])
-def test_no_approver_when_the_issue_is_no_longer_waiting(single):
+def test_not_waiting_when_the_issue_moved_on(single):
     gh = FakeGh("", single=single, events=[labeled("accepted", "owner")])
+    with pytest.raises(approver.NotWaiting):
+        approver.approval("o/r", 7, runner=gh)
     assert approver.approver("o/r", 7, runner=gh) is None
 
 
-def test_no_approver_without_event_or_with_odd_login():
+@pytest.mark.parametrize("events", [
+    [],                                                             # no labeled event at all
+    [labeled("accepted", "a/../b")],                                # not a login
+    [labeled("accepted", "github-actions[bot]")],                   # a bot
+    [labeled("accepted", "owner", "yesterday")],                    # no usable time
+])
+def test_no_valid_approver(events):
     single = issue(7, labels=("lake-request", "accepted"))
-    assert approver.approver("o/r", 7, runner=FakeGh("", single=single, events=[])) is None
-    odd = [labeled("accepted", "a/../b")]
-    assert approver.approver("o/r", 7, runner=FakeGh("", single=single, events=odd)) is None
+    assert approver.approval("o/r", 7, runner=FakeGh("", single=single, events=events)) is None
 
 
 def test_approver_main_exit_codes(monkeypatch, capsys):
     monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
-    good = FakeGh("", single=issue(7, labels=("lake-request", "accepted")), events=[labeled("accepted", "boss")])
-    approver.main(["--issue", "7"], runner=good)
-    assert capsys.readouterr().out == "boss\n"
+    waiting = issue(7, labels=("lake-request", "accepted"))
+    approver.main(["--issue", "7"], runner=FakeGh("", single=waiting, events=[labeled("accepted", "boss")]))
+    assert capsys.readouterr().out == "boss\n2026-11-05T10:00:00Z\n"
     with pytest.raises(SystemExit) as e:
         approver.main(["--issue", "7"], runner=FakeGh("", single=issue(7), events=[]))
-    assert e.value.code == 3
+    assert e.value.code == 3, "moot: skip quietly"
+    with pytest.raises(SystemExit) as e:
+        approver.main(["--issue", "7"], runner=FakeGh("", single=waiting, events=[]))
+    assert e.value.code == 4, "unverifiable: refuse"
 
 
 feed_state = load_script("feed_state")
@@ -209,6 +218,185 @@ def test_feed_state(tmp_path, capsys):
 def test_json_changed_ignores_one_key(old, new, changed):
     old_text = None if old is None else json.dumps(old)
     assert json_changed.changed(old_text, json.dumps(new), "built") is changed
+
+
+data_artifact = load_script("data_artifact")
+ACCEPTED_FEED = {"updated": "x", "requests": [
+    {"issue": 9, "name": "Other", "state": "searched", "values_sha256": "b" * 64},
+    {"issue": 7, "name": "Lake", "state": "searched", "values_sha256": "a" * 64, "lake_id": None}]}
+
+
+@pytest.mark.parametrize("path,ok", [
+    ("processing/lakes_in.json", True),
+    ("app/public/data/lakes.json", True),
+    ("app/public/data/requests.json", True),
+    ("app/public/data/lakes/attabad/2026-10-01.webp", True),
+    ("app/public/data/lakes/a_b-c.1/x.webp", True),
+    ("app/public/data/lakes", False),
+    ("app/public/data/lakes/", False),
+    ("app/public/data/lakes/../../../.github/workflows/x.yml", False),
+    ("app/public/data/lakes/./x.webp", False),
+    ("app/public/data/lakes/.hidden", False),
+    ("app/public/data/lakes/a\\b.webp", False),
+    ("app/public/data/lakes//x.webp", False),
+    ("app/public/data/other.json", False),
+    ("/app/public/data/lakes.json", False),
+    ("processing/sartale/run_pipeline.py", False),
+    (".github/scripts/commit-data.sh", False),
+])
+def test_artifact_path_filter(path, ok):
+    assert data_artifact.allowed(path) is ok
+
+
+def make_repo(tmp_path, name="repo"):
+    repo = tmp_path / name
+    for rel, text in {"processing/lakes_in.json": "[]\n", "app/public/data/lakes.json": '{"built": "a"}\n',
+                      "app/public/data/requests.json": json.dumps(ACCEPTED_FEED) + "\n",
+                      "app/public/data/lakes/attabad/old.webp": "old", "app/public/data/lakes/attabad/keep.webp": "k",
+                      "README.md": "hi\n"}.items():
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (repo / rel).write_text(text, encoding="utf-8")
+    git("init", "-q", "-b", "main", str(repo), cwd=tmp_path)
+    git("config", "user.name", "t", cwd=repo)
+    git("config", "user.email", "t@example.com", cwd=repo)
+    git("config", "core.autocrlf", "false", cwd=repo)
+    git("add", ".", cwd=repo)
+    git("commit", "-q", "-m", "start", cwd=repo)
+    return repo
+
+
+def rebuilt(tmp_path):
+    """A rebuild in its own clone: new lake, new pictures, one picture pruned, issue 7 accepted."""
+    repo = make_repo(tmp_path)
+    work = tmp_path / "rebuild"
+    git("clone", "-q", str(repo), str(work), cwd=tmp_path)
+    (work / "processing/lakes_in.json").write_text('[{"id": "lake"}]\n', encoding="utf-8")
+    (work / "app/public/data/lakes.json").write_text('{"built": "b", "lakes": ["lake"]}\n', encoding="utf-8")
+    (work / "app/public/data/lakes/attabad/old.webp").unlink()
+    (work / "app/public/data/lakes/lake").mkdir()
+    (work / "app/public/data/lakes/lake/new.webp").write_bytes(b"\x00new")
+    feed = json.loads(json.dumps(ACCEPTED_FEED))
+    feed["requests"][1].update(state="accepted", lake_id="lake")
+    (work / "app/public/data/requests.json").write_text(json.dumps(feed), encoding="utf-8")
+    out = tmp_path / "artifact"
+    manifest = data_artifact.pack(work, out)
+    return repo, out, manifest
+
+
+def test_pack_lists_every_allowed_output_and_the_base(tmp_path):
+    repo, out, manifest = rebuilt(tmp_path)
+    assert sorted(manifest["files"]) == ["app/public/data/lakes.json", "app/public/data/lakes/attabad/keep.webp",
+                                         "app/public/data/lakes/lake/new.webp", "app/public/data/requests.json",
+                                         "processing/lakes_in.json"]
+    assert set(manifest["base"]) == {"processing/lakes_in.json", "app/public/data/lakes.json",
+                                     "app/public/data/lakes"}
+    assert all(len(v) == 40 for v in manifest["base"].values())
+    assert not (out / "README.md").exists()
+
+
+def test_unpack_installs_data_but_never_requests_json(tmp_path):
+    repo, out, _ = rebuilt(tmp_path)
+    before = (repo / "app/public/data/requests.json").read_text(encoding="utf-8")
+    data_artifact.unpack(repo, out)
+    assert (repo / "processing/lakes_in.json").read_text(encoding="utf-8") == '[{"id": "lake"}]\n'
+    assert (repo / "app/public/data/lakes/lake/new.webp").read_bytes() == b"\x00new"
+    assert not (repo / "app/public/data/lakes/attabad/old.webp").exists(), "pruned pictures go"
+    assert (repo / "app/public/data/lakes/attabad/keep.webp").exists()
+    assert (repo / "app/public/data/requests.json").read_text(encoding="utf-8") == before
+
+
+def test_accept_marks_only_the_issue_and_writes_the_comment(tmp_path):
+    repo, out, _ = rebuilt(tmp_path)
+    data_artifact.unpack(repo, out)
+    (act,) = data_artifact.accept(repo, out, 7)
+    assert act == {"issue": 7, "comment": "Accepted. The lake is now watched: "
+                                          "https://saeedahmadicp.github.io/SARtale/#lakes/lake",
+                   "add": [], "remove": ["searched", "too few passes", "rebuild failed"], "close": True,
+                   "dispatch": False}
+    feed = json.loads((repo / "app/public/data/requests.json").read_text(encoding="utf-8"))
+    assert [(r["issue"], r["state"], r.get("lake_id")) for r in feed["requests"]] == [
+        (9, "searched", None), (7, "accepted", "lake")]
+
+
+def test_accept_refuses_when_the_request_changed_meanwhile(tmp_path):
+    repo, out, _ = rebuilt(tmp_path)
+    feed = json.loads((repo / "app/public/data/requests.json").read_text(encoding="utf-8"))
+    feed["requests"][1]["values_sha256"] = "c" * 64  # a check recorded edited values during the rebuild
+    (repo / "app/public/data/requests.json").write_text(json.dumps(feed), encoding="utf-8")
+    with pytest.raises(data_artifact.Refused) as e:
+        data_artifact.accept(repo, out, 7)
+    assert e.value.code == 5
+
+
+def test_accept_refuses_a_bad_lake_id(tmp_path):
+    repo, out, _ = rebuilt(tmp_path)
+    feed = json.loads((out / "app/public/data/requests.json").read_text(encoding="utf-8"))
+    feed["requests"][1]["lake_id"] = "../x"
+    (out / "app/public/data/requests.json").write_text(json.dumps(feed), encoding="utf-8")
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    manifest["files"]["app/public/data/requests.json"] = data_artifact.sha256(out / "app/public/data/requests.json")
+    (out / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(data_artifact.Refused):
+        data_artifact.accept(repo, out, 7)
+
+
+def test_unpack_refuses_data_built_on_an_older_main(tmp_path):
+    repo, out, _ = rebuilt(tmp_path)
+    (repo / "processing/lakes_in.json").write_text('[{"id": "someone_else"}]\n', encoding="utf-8")
+    git("commit", "-q", "-am", "another accept", cwd=repo)
+    with pytest.raises(data_artifact.Refused) as e:
+        data_artifact.unpack(repo, out)
+    assert e.value.code == 6
+    assert "someone_else" in (repo / "processing/lakes_in.json").read_text(encoding="utf-8")
+
+
+def _rewrite_manifest(out, change):
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    change(manifest)
+    (out / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+@pytest.mark.parametrize("tamper", ["extra_file", "outside_path", "bad_checksum", "missing_lakes_in"])
+def test_unpack_refuses_a_tampered_artifact(tmp_path, tamper):
+    repo, out, _ = rebuilt(tmp_path)
+    if tamper == "extra_file":
+        (out / ".github").mkdir()
+        (out / ".github/evil.yml").write_text("x", encoding="utf-8")
+    elif tamper == "outside_path":
+        (out / ".github").mkdir()
+        (out / ".github/evil.yml").write_text("x", encoding="utf-8")
+        _rewrite_manifest(out, lambda m: m["files"].update({".github/evil.yml": data_artifact.sha256(
+            out / ".github/evil.yml")}))
+    elif tamper == "bad_checksum":
+        (out / "app/public/data/lakes.json").write_text("{}", encoding="utf-8")
+    else:
+        (out / "processing/lakes_in.json").unlink()
+        _rewrite_manifest(out, lambda m: m["files"].pop("processing/lakes_in.json"))
+    snapshot = git("status", "--porcelain", cwd=repo)
+    with pytest.raises(data_artifact.Refused) as e:
+        data_artifact.unpack(repo, out)
+    assert e.value.code == 2
+    assert git("status", "--porcelain", cwd=repo) == snapshot, "nothing was written"
+    assert not (repo / ".github").exists()
+
+
+def test_unpack_refuses_symlinks(tmp_path):
+    repo, out, _ = rebuilt(tmp_path)
+    link = out / "app/public/data/lakes/lake/link.webp"
+    try:
+        link.symlink_to(out / "manifest.json")
+    except OSError:
+        pytest.skip("this system cannot make symlinks")
+    with pytest.raises(data_artifact.Refused):
+        data_artifact.unpack(repo, out)
+
+
+def test_artifact_main_exit_codes(tmp_path):
+    repo, out, _ = rebuilt(tmp_path)
+    (out / "app/public/data/lakes.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        data_artifact.main(["unpack", "--repo", str(repo), "--from", str(out)])
+    assert e.value.code == 2
 
 
 # ---- shell scripts, run with a fake `gh` on PATH ---------------------------------------------
