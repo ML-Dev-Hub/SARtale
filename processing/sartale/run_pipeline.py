@@ -261,6 +261,35 @@ def cmd_lake_requests_accept(args) -> None:
     print(f"accepted {args.id} as {entry['id']} -> {lakes_in}")
 
 
+def cmd_lake_issues(args) -> None:
+    """Recompute requests.json from every lake-request issue and write the actions for the event's issue."""
+    from sartale import lake_issues
+
+    issues = _read_json(Path(args.issues))
+    feed_path = Path(args.feed)
+    previous = _read_json(feed_path) if feed_path.exists() else None
+    old = next((r["state"] for r in (previous or {}).get("requests", []) if r["issue"] == args.event_issue), None)
+    feed = lake_issues.build_feed(issues, load_lakes(Path(args.lakes_in)), previous,
+                                  now=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    lake_issues.write_feed(feed, feed_path)
+    actions = lake_issues.issue_actions(feed, args.event_issue, old)
+    Path(args.actions).write_text(json.dumps(actions, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(f"{len(feed['requests'])} requests; issue #{args.event_issue}: {actions['add'] or 'no change'}")
+
+
+def cmd_lake_issue_accept(args) -> None:
+    from sartale import lake_issues
+
+    issue = next((i for i in _read_json(Path(args.issues)) if i["number"] == args.issue), None)
+    if issue is None:
+        raise SystemExit(f"issue #{args.issue} is not in {args.issues}")
+    feed_path = Path(args.feed)
+    feed = _read_json(feed_path)
+    lake_id = lake_issues.accept_entry(feed, issue, Path(args.lakes_in), args.today)
+    lake_issues.write_feed(feed, feed_path)
+    print(lake_id)
+
+
 def cmd_lake_requests_reject(args) -> None:
     store = _store(args)
     _open_request(store, args.id)
@@ -318,6 +347,21 @@ def build_parser() -> argparse.ArgumentParser:
     rr.add_argument("--reason", required=True)
     rr.add_argument("--db", default=str(DEFAULT_DB))
     rr.set_defaults(func=cmd_lake_requests_reject)
+
+    li = sub.add_parser("lake-issues", help="turn lake-request issues into requests.json and the event issue's actions")
+    li.add_argument("--issues", required=True, help="JSON list of every issue labelled lake-request")
+    li.add_argument("--feed", default=str(REPO_ROOT / "app" / "public" / "data" / "requests.json"))
+    li.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    li.add_argument("--event-issue", type=int, required=True)
+    li.add_argument("--actions", required=True, help="where to write the comment, labels and close flag")
+    li.set_defaults(func=cmd_lake_issues)
+    lia = sub.add_parser("lake-issue-accept", help="add an approved request to lakes_in.json and print the lake id")
+    lia.add_argument("--issues", required=True)
+    lia.add_argument("--feed", default=str(REPO_ROOT / "app" / "public" / "data" / "requests.json"))
+    lia.add_argument("--issue", type=int, required=True)
+    lia.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    lia.add_argument("--today", required=True, help="YYYY-MM-DD")
+    lia.set_defaults(func=cmd_lake_issue_accept)
     return parser
 
 
