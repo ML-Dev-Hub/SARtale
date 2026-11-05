@@ -18,7 +18,26 @@ export function markerElement(lake: Lake, selected: boolean): HTMLButtonElement 
   return b;
 }
 
-const BACKGROUND = "#0b1825"; // same base style as maplibreAdapter.ts: a plain background, no outside tiles
+const BACKGROUND = "#0b1825";
+/** NASA MODIS true colour (story/north_map.jpg, equirectangular), drawn under the pins. No outside tiles. */
+export const BASE_IMAGE = "story/north_map.jpg";
+export const BASE_BOUNDS = { west: 70.8, east: 76.6, south: 34.4, north: 37.6 } as const;
+
+/** The locator style: a plain background with the MODIS picture on top, dimmed so the pins read. */
+export function locatorStyle(): object {
+  const { west, east, south, north } = BASE_BOUNDS;
+  return {
+    version: 8,
+    sources: {
+      base: { type: "image", url: new URL(BASE_IMAGE, document.baseURI).href, // absolute: MapLibre loads it off the page
+       coordinates: [[west, north], [east, north], [east, south], [west, south]] },
+    },
+    layers: [
+      { id: "background", type: "background", paint: { "background-color": BACKGROUND } },
+      { id: "base", type: "raster", source: "base", paint: { "raster-opacity": 0.85, "raster-brightness-max": 0.8, "raster-saturation": -0.2 } },
+    ],
+  };
+}
 
 /**
  * True when a MapLibre movestart/zoomstart event came from the person: drag, scroll, pinch and the +/- buttons all
@@ -54,7 +73,7 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
       maplibregl.setWorkerUrl(worker.default);
       const m = new maplibregl.Map({
         container: el,
-        style: { version: 8, sources: {}, layers: [{ id: "background", type: "background", paint: { "background-color": BACKGROUND } }] },
+        style: locatorStyle() as never,
         attributionControl: false,
         dragRotate: false,
         maxPitch: 0,
@@ -96,7 +115,7 @@ export const createLakeLocator: LocatorFactory = (el, lakes, onPick) => {
         m.addSource("frames", { type: "geojson", data: { type: "FeatureCollection", features } });
         m.addLayer({ id: "frames", type: "line", source: "frames", paint: { "line-color": "#7dd8f2", "line-width": 1 } });
       });
-      // Town (for reference): orientation only, not data. Plain text markers, because the blank base style has no fonts for map text.
+      // Town (for reference): orientation only, not data. Plain text markers, because the base style has no fonts for map text.
       const towns = [["Gilgit", 74.31, 35.92], ["Karimabad / Hunza", 74.66, 36.32], ["Chitral", 71.79, 35.85], ["Skardu", 75.63, 35.3]] as const;
       for (const [name, lon, lat] of towns) {
         const t = document.createElement("span");

@@ -74,6 +74,16 @@ export function lakeChartData(lake: Lake): LakeChartData {
 
 const slug = statusSlug;
 
+/** The lake to open on: the one with the most water in its latest valid pass (clearest picture), else the first in list order. */
+export function openingLake(lakes: Lake[]): Lake {
+  const latest = (l: Lake): number => {
+    const valid = l.series.filter((p) => p.excluded === null && p.area_km2 !== null).sort((a, b) => (a.date < b.date ? -1 : 1));
+    return valid.length ? valid[valid.length - 1].area_km2! : -1;
+  };
+  const sorted = sortLakes(lakes);
+  return sorted.reduce((best, l) => (latest(l) > latest(best) ? l : best), sorted[0]);
+}
+
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -110,12 +120,14 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     b.dataset.lakeId = lake.id;
     b.dataset.control = String(lake.role === "control");
     b.setAttribute("aria-pressed", "false");
-    b.append(
+    const text = el("span", "lw-row-text");
+    text.append(
       el("span", `lw-chip lw-status-${slug(lake.status.status)}`, lake.status.status),
       el("span", "lw-name", lake.name),
       el("span", "lw-sentence", statusSentence(lake, file!.constants.change_factor)),
       el("span", "lw-coord", `Coordinates: ${lake.coord_source}`),
     );
+    b.append(thumb(lake), text);
     b.addEventListener("click", () => select(lake.id));
     b.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -129,7 +141,22 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   }
 
   const detail = q("lw-detail");
-  detail.append(el("p", "lw-prompt", "Pick a lake from the list to see its radar pictures, area curve and limits."));
+
+  /** A small radar picture for a list row: latest HH with the water pixels on top. Decorative; the row text names the lake. */
+  function thumb(lake: Lake): HTMLElement {
+    const t = el("span", "lw-thumb");
+    t.setAttribute("aria-hidden", "true");
+    for (const [path, cls] of [[lake.images?.latest_hh, "lw-thumb-hh"], [lake.images?.water, "lw-thumb-water"]] as const) {
+      if (!path) continue;
+      const i = el("img", cls);
+      i.src = dataUrl(path);
+      i.alt = "";
+      i.loading = "lazy";
+      t.append(i);
+    }
+    if (!t.childElementCount) t.dataset.empty = "true";
+    return t;
+  }
 
   function pictures(lake: Lake): HTMLElement {
     const wrap = el("div", "lw-pictures");
@@ -237,6 +264,8 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   }
 
   if (opts.createLocator) locator = opts.createLocator(q("lw-locator"), lakes, (id) => select(id));
+  // Open on a lake from the start, so the panel shows radar pictures and a chart instead of an empty prompt.
+  select(openingLake(lakes).id);
 
   return {
     select,

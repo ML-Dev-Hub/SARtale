@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { fixtureLakes } from "./fixtures";
-import { isUserMove, markerElement, statusSlug } from "./lakeLocator";
+import { BASE_BOUNDS, isUserMove, locatorStyle, markerElement, statusSlug } from "./lakeLocator";
 
 describe("isUserMove", () => {
   it("counts drag, scroll, pinch and +/- button moves (they carry the DOM event)", () => {
@@ -46,5 +46,16 @@ describe("markerElement", () => {
     const w = markerElement(lake("Stable"), false);
     expect(w.dataset.control).toBe("false");
     expect(w.hasAttribute("data-selected")).toBe(false);
+  });
+});
+
+describe("locatorStyle", () => {
+  it("draws the MODIS picture over the lakes' bounding box, under the pins", () => {
+    const style = locatorStyle() as { sources: { base: { type: string; url: string; coordinates: number[][] } }; layers: { id: string }[] };
+    expect(style.sources.base.type).toBe("image");
+    expect(style.sources.base.url).toMatch(/story\/north_map\.jpg$/);
+    const { west, east, south, north } = BASE_BOUNDS;
+    expect(style.sources.base.coordinates).toEqual([[west, north], [east, north], [east, south], [west, south]]);
+    expect(style.layers.map((l) => l.id)).toEqual(["background", "base"]);
   });
 });

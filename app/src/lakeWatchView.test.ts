@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { findBannedClaims } from "./content";
 import { fixtureLakes } from "./fixtures";
 import { sortLakes, type Lake, type LakesFile } from "./lakes";
-import { createLakeWatchView, lakeChartData, type LakeChartData } from "./lakeWatchView";
+import { createLakeWatchView, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
 
 function setup(file: LakesFile | null = fixtureLakes, extra: Partial<Parameters<typeof createLakeWatchView>[1]> = {}) {
   const root = document.createElement("div");
@@ -29,6 +29,27 @@ afterEach(() => {
 const rowIds = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>("[data-lake-id]")].map((e) => e.dataset.lakeId);
 
 describe("Lake Watch", () => {
+  test("test_opens_on_the_first_lake_with_pictures", () => {
+    const { root, picks } = setup();
+    const first = openingLake(fixtureLakes.lakes);
+    const area = (l: Lake) => Math.max(-1, ...l.series.filter((p) => p.excluded === null && p.area_km2 !== null).slice(-1).map((p) => p.area_km2!));
+    for (const l of fixtureLakes.lakes) expect(area(first)).toBeGreaterThanOrEqual(area(l));
+    expect(root.querySelector('.lw-row[aria-pressed="true"]')?.getAttribute("data-lake-id")).toBe(first.id);
+    expect(root.querySelector(".lw-title")?.textContent).toBe(first.name);
+    expect(picks).toContain(first.id);
+  });
+
+  test("test_list_rows_carry_a_radar_thumbnail", () => {
+    const { root } = setup();
+    for (const lake of fixtureLakes.lakes) {
+      const t = root.querySelector(`[data-lake-id="${lake.id}"] .lw-thumb`)!;
+      expect(t.getAttribute("aria-hidden")).toBe("true");
+      const srcs = [...t.querySelectorAll("img")].map((i) => i.getAttribute("src"));
+      expect(srcs).toEqual([lake.images?.latest_hh, lake.images?.water].filter(Boolean).map((x) => `data/${x}`));
+      expect(t.hasAttribute("data-empty")).toBe(srcs.length === 0);
+    }
+  });
+
   test("test_lake_list_order_matches_sortLakes", () => {
     const { root } = setup();
     expect(rowIds(root)).toEqual(sortLakes(fixtureLakes.lakes).map((l) => l.id));

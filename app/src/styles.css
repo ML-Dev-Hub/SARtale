@@ -119,7 +119,7 @@ a:hover { color: #b8ecfa; }
 .lw-grid { display: grid; grid-template-columns: minmax(280px, 400px) minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 8px; }
 .lw-list-wrap { display: grid; gap: 12px; min-width: 0; }
 .lw-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.lw-row { display: grid; gap: 3px; width: 100%; min-height: 44px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); text-align: left; cursor: pointer; }
+.lw-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: start; column-gap: 12px; width: 100%; min-height: 44px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); text-align: left; cursor: pointer; }
 .lw-row[data-control="true"] { border-style: dashed; }
 .lw-row:hover { border-color: var(--line-strong); }
 .lw-row[aria-pressed="true"] { border-color: var(--accent); background: var(--panel-3); }
@@ -130,7 +130,7 @@ a:hover { color: #b8ecfa; }
 .lw-status-shrinking { border-color: #5b8cff; color: #c4d3ff; }
 .lw-status-stable { border-color: var(--accent); color: var(--accent); }
 .lw-status-not-observable, .lw-status-not-enough-nisar-looks-yet, .lw-status-not-seen-this-pass { border-style: dashed; color: var(--muted); }
-.lw-locator { height: 200px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); color: var(--muted); font-size: 0.88rem; }
+.lw-locator { height: 260px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); color: var(--muted); font-size: 0.88rem; }
 .lw-town { color: var(--muted); font-size: 0.72rem; pointer-events: none; padding-top: 3px; text-shadow: 0 0 3px var(--ground); }
 .site-marker { width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 3px solid var(--ground); background: var(--muted); box-shadow: 0 0 0 2px var(--muted); cursor: pointer; }
 /* Pins carry the status colour the pills use: Stable cyan, Growing amber, Shrinking blue, anything not observed a hollow muted ring. */
@@ -291,3 +291,10 @@ body > #app > .maturity { margin: 24px 40px 0; display: inline-block; }
   .lake-brief h2, .lake-brief-passes tr { break-after: avoid; break-inside: avoid; }
   .lake-brief-footer { margin-top: 14pt; padding-top: 5pt; border-top: 0.5pt solid #000; font-size: 9pt; }
 }
+
+/* Lake list rows: a radar thumbnail beside the text */
+.lw-row-text { display: grid; gap: 3px; min-width: 0; justify-items: start; }
+.lw-thumb { position: relative; width: 64px; height: 64px; border-radius: 8px; overflow: hidden; background: var(--ground); border: 1px solid var(--line); }
+.lw-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.lw-thumb-water { opacity: 0.75; }
+.lw-thumb[data-empty="true"]::after { content: "No picture"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 0.62rem; }
