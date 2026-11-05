@@ -121,7 +121,7 @@ def build_feed(issues: list[dict], watched: list[Lake], previous: dict | None, s
         number, old, labels = issue["number"], before.get(issue["number"]), _labels(issue)
         if old and old["state"] == "accepted":
             entry = dict(old)  # edits after approval are ignored
-        elif issue["state"] == "closed" and "accepted" not in labels:
+        elif issue["state"] == "closed":  # not accepted by the accept job, whatever its labels say
             if "invalid" in labels:
                 entry = _entry(issue, (old or {}).get("name") or f"Request #{number}",
                                (old or {}).get("lat"), (old or {}).get("lon"), "invalid",
@@ -130,11 +130,7 @@ def build_feed(issues: list[dict], watched: list[Lake], previous: dict | None, s
                 entry = _entry(issue, (old or {}).get("name") or f"Request #{number}",
                                (old or {}).get("lat"), (old or {}).get("lon"), "rejected",
                                _clean_reason(issue.get("close_reason")), _found(old) if old else None)
-        elif "accepted" in labels and (old is None or old["state"] in CHECKED):
-            entry = dict(old) if old else _check(issue, watched, claimed, 0, None, search)
-            if entry["state"] in CHECKED:
-                entry["state"] = "accepted"  # the values stay those of the last check
-        else:
+        else:  # an `accepted` label alone changes nothing: only accept_entry, after the permission check, does
             entry = _check(issue, watched, claimed, open_count, old, search)
         entries.append(entry)
         if entry["state"] == "accepted" or (issue["state"] == "open" and entry["state"] in CHECKED + ("check_failed",)):
@@ -156,7 +152,14 @@ def issue_actions(feed: dict, number: int, previous_state: str | None) -> dict:
     if entry is None or entry["state"] == previous_state:
         return {"comment": None, "add": [], "remove": [], "close": False}
     state = entry["state"]
-    comment = None
+    label = STATE_LABELS.get(state)
+    return {"comment": _comment(entry), "add": [label] if label else [],
+            "remove": [v for k, v in STATE_LABELS.items() if k != state],
+            "close": state == "invalid"}
+
+
+def _comment(entry: dict) -> str | None:
+    state, comment = entry["state"], None
     if state == "searched":
         tracks = len(entry["tracks"])
         comment = (f"Checked against NASA's catalogue: {entry['passes']} NISAR passes over this point on "
@@ -169,10 +172,39 @@ def issue_actions(feed: dict, number: int, previous_state: str | None) -> dict:
         comment = f"This request cannot be used. {entry['reason']}"
     elif state == "check_failed":
         comment = CATALOGUE_DOWN
-    label = STATE_LABELS.get(state)
-    return {"comment": comment, "add": [label] if label else [],
-            "remove": [v for k, v in STATE_LABELS.items() if k != state],
-            "close": state == "invalid"}
+    return comment
+
+
+def reconcile_actions(feed: dict, issues: list[dict], previous: dict | None) -> list[dict]:
+    """Actions for every issue whose labels disagree with its entry in the feed.
+
+    The state label is the "already told" marker: the comment goes out only together with a missing state label,
+    so a lost comment is sent again on the next run and a delivered one never twice. Stale state labels are
+    removed, an open invalid request is closed, and an open checked request that carries `accepted` but is not
+    accepted in the feed is marked for a new accept run (`dispatch`) unless a rebuild already failed for it.
+    `rebuild failed` stays on a checked request (it marks a failed accept) unless the last check had failed.
+    """
+    before = {r["issue"]: r["state"] for r in (previous or {}).get("requests", [])}
+    out = []
+    for issue in sorted(issues, key=lambda i: i["number"]):
+        number, labels = issue["number"], _labels(issue)
+        entry = _find(feed, number)
+        if entry is None:
+            continue
+        state = entry["state"]
+        want = STATE_LABELS.get(state)  # None for accepted: the team's own label stays
+        keep = {want}
+        if state in CHECKED and before.get(number, state) != "check_failed":
+            keep.add("rebuild failed")
+        add = [want] if want and want not in labels else []
+        remove = [v for v in STATE_LABELS.values() if v not in keep and v in labels]
+        close = state == "invalid" and issue["state"] == "open"
+        dispatch = (issue["state"] == "open" and state in CHECKED and "accepted" in labels
+                    and "rebuild failed" not in labels)
+        if add or remove or close or dispatch:
+            out.append({"issue": number, "comment": _comment(entry) if add else None, "add": add,
+                        "remove": remove, "close": close, "dispatch": dispatch})
+    return out
 
 
 def accept_entry(feed: dict, issue: dict, lakes_in: Path, today: str) -> str:

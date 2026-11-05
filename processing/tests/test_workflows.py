@@ -1,5 +1,6 @@
 """Guards on the GitHub workflows and the lake request issue form."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -134,8 +135,11 @@ GITHUB = ROOT / ".github"
 SCRIPTS = GITHUB / "scripts"
 REBUILD = GITHUB / "actions" / "rebuild" / "action.yml"
 LAKE_REQUEST = GITHUB / "workflows" / "lake-request.yml"
+LAKE_ACCEPT = GITHUB / "workflows" / "lake-accept.yml"
 REFRESH = GITHUB / "workflows" / "refresh.yml"
+DATA_WORKFLOWS = (LAKE_REQUEST, LAKE_ACCEPT, REFRESH)
 LABELS = ("lake-request", "searched", "too few passes", "accepted", "rebuild failed", "invalid", "rejected")
+PINNED = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
 
 
 def on_of(doc):
@@ -151,50 +155,130 @@ def checks_permission(step):
     return "collaborators/" in run and "/permission" in run
 
 
+def accept_job():
+    return load(LAKE_ACCEPT)["jobs"]["accept"]
+
+
 def test_accept_checks_permission_before_rebuild():
-    job = load(LAKE_REQUEST)["jobs"]["accept"]
+    job = accept_job()
     steps = job["steps"]
     perm_at = next(i for i, s in enumerate(steps) if checks_permission(s))
     rebuild_at = [i for i, s in enumerate(steps) if runs_rebuild(s)]
     assert rebuild_at, "accept never runs the rebuild action"
     assert all(perm_at < i for i in rebuild_at)
-    assert "github.event.sender.login" in str((steps[perm_at].get("env") or {}).get("SENDER"))
+    env = steps[perm_at].get("env") or {}
+    assert "github.event.sender.login" in str(env.get("SENDER"))
     assert "github.event.sender" not in steps[perm_at]["run"]
+    assert "approver.py" in steps[perm_at]["run"], "a dispatched run checks who added the label"
     for s in steps[perm_at + 1 :]:  # nothing after the check runs without its answer
         assert "steps.perm.outputs.allowed" in str(s.get("if", "")), f"step {s.get('name')!r}"
-    for s in steps[:perm_at]:
-        assert not runs_rebuild(s) and "secrets." not in yaml.safe_dump(s)
+    for s in steps[:perm_at]:  # only the checkout comes first
+        assert str(s.get("uses", "")).startswith("actions/checkout@"), s
+        assert "secrets." not in yaml.safe_dump(s)
     assert job["environment"] == "earthdata"
     assert job["timeout-minutes"] == 360
 
 
-def test_lake_request_jobs_and_triggers():
+def test_accept_workflow_triggers():
+    doc = load(LAKE_ACCEPT)
+    on = on_of(doc)
+    assert on["issues"]["types"] == ["labeled"]
+    assert on["workflow_dispatch"]["inputs"]["issue"]["required"] is True
+    job = accept_job()
+    assert "accepted" in job["if"] and "lake-request" in job["if"] and "workflow_dispatch" in job["if"]
+    assert job["permissions"] == {"contents": "write", "issues": "write", "actions": "write"}
+    assert job["concurrency"] == {"group": "sartale-data", "cancel-in-progress": False}
+    assert "inputs.issue" in str(job["env"]["ISSUE"]) and "github.event.issue.number" in str(job["env"]["ISSUE"])
+    perm = next(s for s in job["steps"] if checks_permission(s))
+    assert "*[!0-9]*" in perm["run"], "the dispatched issue number must be digits"
+    text = LAKE_ACCEPT.read_text(encoding="utf-8")
+    assert "Only the SARtale team can accept a request." in text
+    assert 'commit-data.sh "Add requested lake from issue #' in text
+    assert "Published, but the site deploy did not start; run the Deploy workflow." in text
+
+
+def test_check_job_only():
     doc = load(LAKE_REQUEST)
     assert sorted(on_of(doc)["issues"]["types"]) == sorted(["opened", "edited", "reopened", "labeled", "closed"])
-    check, accept = doc["jobs"]["check"], doc["jobs"]["accept"]
-    assert "lake-request" in check["if"] and "accepted" in check["if"]
-    assert "lake-request" in accept["if"] and "accepted" in accept["if"] and "labeled" in accept["if"]
+    assert list(doc["jobs"]) == ["check"]
+    check = doc["jobs"]["check"]
+    assert "'lake-request'" in check["if"] and "'accepted'" in check["if"]
+    assert check["if"].count("github.event.label.name") == 2, "skips the `accepted` and `lake-request` labels"
     assert "environment" not in check
     assert "secrets." not in yaml.safe_dump(check)
     assert check["timeout-minutes"] == 30
-    for job in (check, accept):
-        assert job["permissions"] == {"contents": "write", "issues": "write", "actions": "write"}
-        assert job["concurrency"] == {"group": "sartale-data", "cancel-in-progress": False}
+    assert check["permissions"] == {"contents": "write", "issues": "write", "actions": "write"}
+    assert check["concurrency"] == {"group": "sartale-data", "cancel-in-progress": False}
     text = LAKE_REQUEST.read_text(encoding="utf-8")
-    assert "Only the SARtale team can accept a request." in text
-    assert "The rebuild failed; see" in text and "Nothing was published." in text
     assert 'commit-data.sh "Update lake requests" app/public/data/requests.json' in text
-    assert 'commit-data.sh "Add requested lake from issue #' in text
+    assert "--event-issue" not in text
+    assert 'apply-actions.sh "$RUNNER_TEMP/actions.json"' in text
+
+
+def failure_steps(steps):
+    return [s for s in steps if "failure()" in str(s.get("if", ""))]
+
+
+def test_failure_steps_also_run_when_cancelled():
+    for path in DATA_WORKFLOWS:
+        for job_name, job in jobs_of(load(path)):
+            failed = failure_steps(job["steps"])
+            assert failed, f"{path.name}:{job_name} has no failure step"
+            for s in failed:
+                assert "cancelled()" in s["if"], f"{path.name}:{job_name}"
+            for s in job["steps"]:
+                if runs_rebuild(s):
+                    assert s["timeout-minutes"] < job["timeout-minutes"], "the job must outlive the rebuild"
 
 
 def test_accept_failure_comments_and_labels():
-    steps = load(LAKE_REQUEST)["jobs"]["accept"]["steps"]
-    failed = [s for s in steps if "failure()" in str(s.get("if", ""))]
-    assert failed, "accept has no failure step"
+    failed = failure_steps(accept_job()["steps"])
     body = "\n".join(s.get("run", "") for s in failed)
     assert "--body-file" in body
     assert '"rebuild failed"' in body
+    assert "The rebuild failed; see" in body and "Nothing was published." in body
+    assert "DEPLOY_FAILED" in body
     assert "gh issue close" not in body
+
+
+def test_check_failure_comments_once():
+    (failed,) = failure_steps(load(LAKE_REQUEST)["jobs"]["check"]["steps"])
+    assert "The check failed; see" in failed["run"]
+    assert "gh issue view" in failed["run"] and "rebuild failed" in failed["run"]
+
+
+def test_data_checkouts_keep_no_credentials():
+    for path in DATA_WORKFLOWS:
+        for job_name, job in jobs_of(load(path)):
+            for s in job["steps"]:
+                if str(s.get("uses", "")).startswith("actions/checkout@"):
+                    assert s["with"]["persist-credentials"] is False, f"{path.name}:{job_name}"
+                if "GH_TOKEN" in (s.get("env") or {}):
+                    assert not runs_rebuild(s)
+            assert "GH_TOKEN" not in (job.get("env") or {}), f"{path.name}:{job_name}"
+
+
+def test_commit_data_pushes_with_its_own_credential():
+    text = (SCRIPTS / "commit-data.sh").read_text(encoding="utf-8")
+    assert "GIT_CONFIG_KEY_0=http.https://github.com/.extraheader" in text
+    assert "x-access-token" in text
+    assert "deploy_failed=true" in text
+
+
+def test_earthdata_jobs_pin_actions():
+    def check(uses, where):
+        if uses and not uses.startswith("./"):
+            assert PINNED.match(uses), f"{where} uses {uses} without a commit SHA"
+
+    for path in WORKFLOWS:
+        for job_name, job in jobs_of(load(path)):
+            env = job.get("environment")
+            if (env.get("name") if isinstance(env, dict) else env) != "earthdata":
+                continue
+            for s in job["steps"]:
+                check(s.get("uses"), f"{path.name}:{job_name}")
+    for s in load(REBUILD)["runs"]["steps"]:
+        check(s.get("uses"), "rebuild action")
 
 
 def test_netrc_removed_always():
@@ -221,13 +305,15 @@ def test_rebuild_action_order():
 
     assert at("lakes-search") < at("lakes-fetch") < at("lakes-build") < at("pytest tests -q")
     assert at("pytest tests -q") < at("npm test -- --run")
+    assert "npm ci --ignore-scripts" in runs[at("npm test -- --run")]
     assert runs[at("lakes-fetch")].count("run_pipeline lakes-fetch") == 2, "lakes-fetch is retried once"
     assert any(u.startswith("mamba-org/setup-micromamba@") for u in uses)
     restore = next(s for s in steps if str(s.get("uses", "")).startswith("actions/cache/restore@"))
     assert restore["with"]["path"] == "data/lakes"
     assert restore["with"]["key"] == "lakes-${{ hashFiles('processing/lakes_in.json') }}-${{ github.run_id }}"
     assert restore["with"]["restore-keys"].strip() == "lakes-"
-    assert any(u.startswith("actions/cache/save@") for u in uses)
+    save = next(s for s in steps if str(s.get("uses", "")).startswith("actions/cache/save@"))
+    assert save["if"] == "success()", "a failed fetch does not overwrite the cache"
     for s in steps:
         if "run" in s:
             assert "shell" in s, "composite run steps need a shell"
@@ -277,7 +363,7 @@ def test_refresh_scheduled_weekly():
 
 
 def test_data_jobs_start_deploy_through_commit_script():
-    for path in (LAKE_REQUEST, REFRESH):
+    for path in DATA_WORKFLOWS:
         for job_name, job in jobs_of(load(path)):
             perms = job.get("permissions") or {}
             if perms.get("contents") == "write":

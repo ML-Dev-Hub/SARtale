@@ -2,6 +2,8 @@ name: Lake requests
 
 # Issue text (title, body, comments) is untrusted. It is never put into a script through an expression:
 # the Python helpers read it through `gh` into files, and comments are posted with --body-file.
+# Every run reconciles all lake-request issues, so an event GitHub drops is caught by the next one.
+# The `accepted` label is handled by lake-accept.yml.
 
 on:
   issues:
@@ -9,10 +11,11 @@ on:
 
 jobs:
   check:
-    # every event on a request except the `accepted` label, which the accept job handles
+    # skip `accepted` (lake-accept.yml) and `lake-request` (the form sets it at creation; `opened` covers it)
     if: >-
       contains(github.event.issue.labels.*.name, 'lake-request') &&
-      (github.event.action != 'labeled' || github.event.label.name != 'accepted')
+      (github.event.action != 'labeled' ||
+       (github.event.label.name != 'accepted' && github.event.label.name != 'lake-request'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -22,20 +25,21 @@ jobs:
     concurrency:
       group: sartale-data
       cancel-in-progress: false
-    env:  # GH_TOKEN is given only to the steps that call gh
+    env:  # GH_TOKEN is given only to the steps that call gh or push
       GH_REPO: ${{ github.repository }}
       ISSUE: ${{ github.event.issue.number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: main
+          persist-credentials: false
 
       - name: Make sure the labels exist
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/ensure-labels.sh
 
-      - uses: mamba-org/setup-micromamba@v2
+      - uses: mamba-org/setup-micromamba@add3a49764cedee8ee24e82dfde87f5bc2914462 # v2
         with:
           environment-file: environment.yml
           environment-name: sartale
@@ -43,7 +47,6 @@ jobs:
           init-shell: bash
 
       - name: List every lake request
-        # `accepted` counts only once the accept job (after its permission check) recorded it
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
@@ -56,7 +59,7 @@ jobs:
         run: >-
           python -m sartale.run_pipeline lake-issues --issues "$RUNNER_TEMP/issues.json"
           --feed ../app/public/data/requests.json --lakes-in lakes_in.json
-          --event-issue "$ISSUE" --actions "$RUNNER_TEMP/actions.json"
+          --actions "$RUNNER_TEMP/actions.json"
 
       - name: Save requests.json if more than its time stamp changed
         env:
@@ -67,150 +70,21 @@ jobs:
           fi
           bash .github/scripts/commit-data.sh "Update lake requests" app/public/data/requests.json
 
-      - name: Comment and label the issue
+      - name: Comment, label and close the issues that need it
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/apply-actions.sh "$ISSUE" "$RUNNER_TEMP/actions.json"
+        run: bash .github/scripts/apply-actions.sh "$RUNNER_TEMP/actions.json"
 
       - name: Report a failed check
-        if: failure()
+        if: failure() || cancelled()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if gh issue view "$ISSUE" --json labels --jq '.labels[].name' | grep -Fxq "rebuild failed"; then
+            echo "the issue already says the check failed"
+            exit 0
+          fi
           url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           printf 'The check failed; see %s. The team will retry.\n' "$url" > "$RUNNER_TEMP/failed.md"
           gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/failed.md"
           gh issue edit "$ISSUE" --add-label "rebuild failed"
-
-  accept:
-    if: >-
-      github.event.action == 'labeled' && github.event.label.name == 'accepted' &&
-      contains(github.event.issue.labels.*.name, 'lake-request')
-    runs-on: ubuntu-latest
-    timeout-minutes: 360
-    environment: earthdata
-    permissions:
-      contents: write
-      issues: write
-      actions: write
-    concurrency:
-      group: sartale-data
-      cancel-in-progress: false
-    env:  # GH_TOKEN is given only to the steps that call gh
-      GH_REPO: ${{ github.repository }}
-      ISSUE: ${{ github.event.issue.number }}
-    steps:
-      - name: Check who added the label
-        id: perm
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SENDER: ${{ github.event.sender.login }}
-        run: |
-          perm="$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$SENDER/permission" --jq .permission)" || perm=none
-          case "$perm" in
-            admin|maintain|write) echo "allowed=true" >> "$GITHUB_OUTPUT" ;;
-            *) echo "allowed=false" >> "$GITHUB_OUTPUT" ;;
-          esac
-          echo "sender permission: $perm"
-
-      - name: Refuse a label from outside the team
-        if: steps.perm.outputs.allowed != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          printf '%s\n' "Only the SARtale team can accept a request." > "$RUNNER_TEMP/refused.md"
-          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/refused.md"
-          gh issue edit "$ISSUE" --remove-label accepted
-
-      - uses: actions/checkout@v4
-        if: steps.perm.outputs.allowed == 'true'
-        with:
-          ref: main
-
-      - uses: mamba-org/setup-micromamba@v2
-        if: steps.perm.outputs.allowed == 'true'
-        with:
-          environment-file: environment.yml
-          environment-name: sartale
-          cache-environment: true
-          init-shell: bash
-
-      - name: Tell the rebuild action the environment is ready
-        if: steps.perm.outputs.allowed == 'true'
-        run: echo "SARTALE_ENV_READY=1" >> "$GITHUB_ENV"
-
-      - name: List every lake request
-        if: steps.perm.outputs.allowed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 .github/scripts/fetch_issues.py --out "$RUNNER_TEMP/issues.json"
-
-      - name: Add the lake to lakes_in.json
-        id: add
-        if: steps.perm.outputs.allowed == 'true'
-        shell: bash -el {0}
-        working-directory: processing
-        run: |
-          set +e
-          python -m sartale.run_pipeline lake-issue-accept --issues "$RUNNER_TEMP/issues.json" \
-            --feed ../app/public/data/requests.json --issue "$ISSUE" --lakes-in lakes_in.json \
-            --today "$(date -u +%F)" --actions "$RUNNER_TEMP/actions.json" 2> "$RUNNER_TEMP/accept.err"
-          code=$?
-          set -e
-          cat "$RUNNER_TEMP/accept.err" >&2
-          if [ "$code" -eq 0 ]; then
-            echo "ok=true" >> "$GITHUB_OUTPUT"
-          elif [ "$code" -eq 1 ] && grep -q '^lake-issue-accept: ' "$RUNNER_TEMP/accept.err"; then
-            echo "ok=false" >> "$GITHUB_OUTPUT"   # the request is not in a state that can be accepted
-          else
-            exit 1
-          fi
-
-      - name: Refuse a request that cannot be accepted
-        if: steps.perm.outputs.allowed == 'true' && steps.add.outputs.ok == 'false'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          printf '%s\n' "This request has no checked entry that can be accepted, so nothing was rebuilt." \
-            > "$RUNNER_TEMP/refused.md"
-          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/refused.md"
-          gh issue edit "$ISSUE" --remove-label accepted
-
-      - name: Rebuild the lake data
-        if: steps.perm.outputs.allowed == 'true' && steps.add.outputs.ok == 'true'
-        uses: ./.github/actions/rebuild
-        env:
-          EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
-          EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
-
-      - name: Commit the new lake and start the deploy
-        id: commit
-        if: steps.perm.outputs.allowed == 'true' && steps.add.outputs.ok == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/commit-data.sh "Add requested lake from issue #$ISSUE" processing/lakes_in.json app/public/data
-
-      - name: Comment and close the issue
-        if: steps.perm.outputs.allowed == 'true' && steps.add.outputs.ok == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/apply-actions.sh "$ISSUE" "$RUNNER_TEMP/actions.json"
-
-      - name: Report a failed rebuild
-        if: failure() && steps.perm.outputs.allowed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PUSHED: ${{ steps.commit.outputs.pushed }}
-        run: |
-          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          if [ "$PUSHED" = true ]; then
-            printf 'The lake was published, but the issue could not be updated; see %s.\n' "$url" > "$RUNNER_TEMP/failed.md"
-          else
-            printf 'The rebuild failed; see %s. Nothing was published.\n' "$url" > "$RUNNER_TEMP/failed.md"
-          fi
-          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/failed.md"
-          gh issue edit "$ISSUE" --add-label "rebuild failed"
-          if [ "$PUSHED" != true ]; then
-            # without the label a later check would not mark the request accepted; re-adding it retries
-            gh issue edit "$ISSUE" --remove-label accepted
-          fi

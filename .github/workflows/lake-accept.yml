@@ -1,0 +1,186 @@
+name: Accept a lake request
+
+# Runs when someone adds `accepted` to a lake-request issue, or when the check job starts it again for an
+# accept that GitHub dropped from the queue. Only an approver with write, maintain or admin permission
+# counts: for a label event the sender, for a dispatched run the last account that added `accepted`.
+# Issue text is never put into a script; the issue number goes through env and must be digits.
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Number of the lake-request issue that carries `accepted`
+        required: true
+        type: string
+
+jobs:
+  accept:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.label.name == 'accepted' && contains(github.event.issue.labels.*.name, 'lake-request'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    environment: earthdata
+    permissions:
+      contents: write
+      issues: write
+      actions: write
+    concurrency:
+      group: sartale-data
+      cancel-in-progress: false
+    env:  # GH_TOKEN is given only to the steps that call gh or push
+      GH_REPO: ${{ github.repository }}
+      ISSUE: ${{ github.event.issue.number || inputs.issue }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Check who approved
+        id: perm
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SENDER: ${{ github.event.sender.login }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          case "$ISSUE" in
+            ''|*[!0-9]*)
+              echo "the issue number must be digits" >&2
+              echo "allowed=false" >> "$GITHUB_OUTPUT"; echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0 ;;
+          esac
+          if [ "$EVENT" = workflow_dispatch ]; then
+            set +e
+            approver="$(python3 .github/scripts/approver.py --issue "$ISSUE")"
+            code=$?
+            set -e
+            if [ "$code" -eq 3 ]; then  # no longer an open request carrying `accepted`: nothing to do
+              echo "allowed=false" >> "$GITHUB_OUTPUT"; echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            elif [ "$code" -ne 0 ]; then
+              exit 1
+            fi
+          else
+            approver="$SENDER"
+          fi
+          perm="$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$approver/permission" --jq .permission)" || perm=none
+          case "$perm" in
+            admin|maintain|write) echo "allowed=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "allowed=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+          echo "approver $approver has permission $perm"
+
+      - name: Refuse a label from outside the team
+        if: steps.perm.outputs.allowed != 'true' && steps.perm.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s\n' "Only the SARtale team can accept a request." > "$RUNNER_TEMP/refused.md"
+          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/refused.md"
+          gh issue edit "$ISSUE" --remove-label accepted
+
+      - uses: mamba-org/setup-micromamba@add3a49764cedee8ee24e82dfde87f5bc2914462 # v2
+        if: steps.perm.outputs.allowed == 'true'
+        with:
+          environment-file: environment.yml
+          environment-name: sartale
+          cache-environment: true
+          init-shell: bash
+
+      - name: Tell the rebuild action the environment is ready
+        if: steps.perm.outputs.allowed == 'true'
+        run: echo "SARTALE_ENV_READY=1" >> "$GITHUB_ENV"
+
+      - name: List every lake request
+        if: steps.perm.outputs.allowed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 .github/scripts/fetch_issues.py --out "$RUNNER_TEMP/issues.json"
+          --confirmed-from app/public/data/requests.json
+
+      - name: Add the lake to lakes_in.json
+        id: add
+        if: steps.perm.outputs.allowed == 'true'
+        shell: bash -el {0}
+        working-directory: processing
+        run: |
+          if [ "$(python3 ../.github/scripts/feed_state.py ../app/public/data/requests.json "$ISSUE")" = accepted ]; then
+            echo "issue #$ISSUE is already accepted; nothing to rebuild"
+            echo "ok=done" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          set +e
+          python -m sartale.run_pipeline lake-issue-accept --issues "$RUNNER_TEMP/issues.json" \
+            --feed ../app/public/data/requests.json --issue "$ISSUE" --lakes-in lakes_in.json \
+            --today "$(date -u +%F)" --actions "$RUNNER_TEMP/actions.json" 2> "$RUNNER_TEMP/accept.err"
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/accept.err" >&2
+          if [ "$code" -eq 0 ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          elif [ "$code" -eq 1 ] && grep -q '^lake-issue-accept: ' "$RUNNER_TEMP/accept.err"; then
+            echo "ok=false" >> "$GITHUB_OUTPUT"   # the request is not in a state that can be accepted
+          else
+            exit 1
+          fi
+
+      - name: Refuse a request that cannot be accepted
+        if: steps.perm.outputs.allowed == 'true' && steps.add.outputs.ok == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s\n' "This request has no checked entry that can be accepted, so nothing was rebuilt." \
+            > "$RUNNER_TEMP/refused.md"
+          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/refused.md"
+          gh issue edit "$ISSUE" --remove-label accepted
+
+      - name: Rebuild the lake data
+        if: steps.perm.outputs.allowed == 'true' && steps.add.outputs.ok == 'true'
+        timeout-minutes: 330  # below the job's 360, so the job is still alive to report a timeout
+        uses: ./.github/actions/rebuild
+        env:
+          EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
+          EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
+
+      - name: Commit the new lake and start the deploy
+        id: commit
+        if: steps.perm.outputs.allowed == 'true' && steps.add.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/commit-data.sh "Add requested lake from issue #$ISSUE" processing/lakes_in.json app/public/data
+
+      - name: Comment and close the issue
+        if: steps.perm.outputs.allowed == 'true' && steps.add.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/apply-actions.sh "$RUNNER_TEMP/actions.json"
+
+      - name: Report a failed rebuild
+        if: (failure() || cancelled()) && steps.perm.outputs.allowed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUSHED: ${{ steps.commit.outputs.pushed }}
+          DEPLOY_FAILED: ${{ steps.commit.outputs.deploy_failed }}
+        run: |
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ "$PUSHED" = true ] && [ "$DEPLOY_FAILED" = true ]; then
+            # the lake is on main: still tell the visitor and close, then say the site is not updated yet
+            bash .github/scripts/apply-actions.sh "$RUNNER_TEMP/actions.json" || true
+            printf '%s\n' "Published, but the site deploy did not start; run the Deploy workflow." \
+              > "$RUNNER_TEMP/failed.md"
+          elif [ "$PUSHED" = true ]; then
+            printf 'The lake was published, but the issue could not be updated; see %s.\n' "$url" \
+              > "$RUNNER_TEMP/failed.md"
+          else
+            printf 'The rebuild failed; see %s. Nothing was published.\n' "$url" > "$RUNNER_TEMP/failed.md"
+          fi
+          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/failed.md"
+          if [ "$PUSHED" != true ]; then
+            gh issue edit "$ISSUE" --add-label "rebuild failed"
+            # the team re-adds `accepted` to retry; until then no check run starts the accept again
+            gh issue edit "$ISSUE" --remove-label accepted
+          fi

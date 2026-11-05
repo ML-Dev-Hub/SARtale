@@ -2,11 +2,9 @@
 
 Calls `gh` with argument lists only, never through a shell. Issue text is data here and never leaves the file.
 
-For a closed issue without `accepted` or `invalid`, `close_reason` is the body of the team's last comment
-(author association OWNER, MEMBER or COLLABORATOR), else None.
-
-With --confirmed-from <requests.json>, the `accepted` label is dropped from every issue whose entry there is not
-already `accepted`: only the accept job, after its permission check, may turn a request into an accepted one.
+For a closed issue that is not `invalid` and not accepted, `close_reason` is the body of the team's last comment
+(author association OWNER, MEMBER or COLLABORATOR, and not a bot), else None. An issue counts as accepted when
+requests.json (--confirmed-from) says so; without that file, when it carries the `accepted` label.
 """
 
 import argparse
@@ -41,21 +39,21 @@ def _names(issue: dict) -> set[str]:
 
 def _close_reason(repo: str, number: int, runner) -> str | None:
     comments = parse_pages(runner(["api", "--paginate", f"repos/{repo}/issues/{int(number)}/comments?per_page=100"]))
-    team = [c for c in comments if c.get("author_association") in TEAM]
+    team = [c for c in comments
+            if c.get("author_association") in TEAM and (c.get("user") or {}).get("type") != "Bot"]
     return team[-1].get("body") if team else None
 
 
 def fetch(repo: str, runner=run_gh, confirmed_from: dict | None = None) -> list[dict]:
     pages = runner(["api", "--paginate", f"repos/{repo}/issues?labels=lake-request&state=all&per_page=100"])
     issues = [i for i in parse_pages(pages) if "pull_request" not in i]
-    if confirmed_from is not None:
-        confirmed = {r["issue"] for r in confirmed_from.get("requests", []) if r.get("state") == "accepted"}
-        for i in issues:
-            if i["number"] not in confirmed:
-                i["labels"] = [lb for lb in i.get("labels", []) if lb.get("name") != "accepted"]
+    if confirmed_from is None:
+        accepted = {i["number"] for i in issues if "accepted" in _names(i)}
+    else:
+        accepted = {r["issue"] for r in confirmed_from.get("requests", []) if r.get("state") == "accepted"}
     for i in issues:
         i["close_reason"] = None
-        if i.get("state") == "closed" and not _names(i) & {"accepted", "invalid"}:
+        if i.get("state") == "closed" and "invalid" not in _names(i) and i["number"] not in accepted:
             i["close_reason"] = _close_reason(repo, i["number"], runner)
     return issues
 
@@ -63,7 +61,7 @@ def fetch(repo: str, runner=run_gh, confirmed_from: dict | None = None) -> list[
 def main(argv=None, runner=run_gh) -> None:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--out", required=True)
-    p.add_argument("--confirmed-from", help="requests.json; drop `accepted` labels it does not confirm")
+    p.add_argument("--confirmed-from", help="requests.json: which requests are accepted")
     args = p.parse_args(argv)
     repo = os.environ["GITHUB_REPOSITORY"]
     feed = None

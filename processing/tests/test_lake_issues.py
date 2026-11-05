@@ -4,7 +4,8 @@ from pathlib import Path
 import pytest
 
 from sartale import lake_issues, run_pipeline
-from sartale.lake_issues import accept_entry, build_feed, issue_actions, parse_issue_body, write_feed
+from sartale.lake_issues import (accept_entry, build_feed, issue_actions, parse_issue_body, reconcile_actions,
+                                 write_feed)
 from sartale.lake_requests import RequestError
 from sartale.lakes import load_lakes
 
@@ -114,7 +115,7 @@ def test_labels_drive_state(watched):
               issue(3, "closed", labels=["searched"], lat="36.8"),
               issue(4, "open", labels=["invalid"], lat="37.1")]  # reopened
     feed = build_feed(issues, watched, None, search=fake_search, now=NOW)
-    assert one(feed, 1)["state"] == "accepted"
+    assert one(feed, 1)["state"] == "searched", "only the accept job makes a request accepted, never the label"
     assert one(feed, 2)["state"] == "invalid"
     assert one(feed, 3)["state"] == "rejected"
     assert one(feed, 4)["state"] == "searched"
@@ -145,7 +146,7 @@ def test_reuses_previous_search(watched):
 
 def test_edits_after_accept_ignored(watched):
     first = build_feed([issue(1, labels=["accepted"])], watched, None, search=fake_search, now=NOW)
-    first["requests"][0]["lake_id"] = "moraine_lake"
+    first["requests"][0].update(state="accepted", lake_id="moraine_lake")  # as accept_entry leaves it
     edited = issue(1, "closed", labels=["accepted"], name="Changed", lat="36.9")
     again = build_feed([edited], watched, first, search=fake_search, now=NOW)
     assert one(again, 1) == first["requests"][0]
@@ -225,15 +226,23 @@ def test_cli_lake_issues_end_to_end(tmp_path, monkeypatch):
     feed = json.loads(feed_path.read_text(encoding="utf-8"))
     assert [r["issue"] for r in feed["requests"]] == [5, 3]
     assert one(feed, 3)["state"] == "searched" and one(feed, 5)["state"] == "invalid"
-    act = json.loads(actions.read_text(encoding="utf-8"))
-    assert act["add"] == ["searched"] and act["comment"] and act["close"] is False
-    run_pipeline.main(args)
-    assert json.loads(actions.read_text(encoding="utf-8"))["comment"] is None
+    acts = {a["issue"]: a for a in json.loads(actions.read_text(encoding="utf-8"))}
+    assert acts[3]["add"] == ["searched"] and acts[3]["comment"] and acts[3]["close"] is False
+    assert acts[5]["add"] == ["invalid"] and acts[5]["close"] is True
+    run_pipeline.main(args)  # the labels were never applied, so the same actions come again
+    assert {a["issue"] for a in json.loads(actions.read_text(encoding="utf-8"))} == {3, 5}
+    labelled = json.loads(issues.read_text(encoding="utf-8"))
+    labelled[0]["labels"].append({"name": "searched"})
+    labelled[1].update(state="closed", labels=labelled[1]["labels"] + [{"name": "invalid"}])
+    issues.write_text(json.dumps(labelled), encoding="utf-8")
+    run_pipeline.main(["lake-issues", "--issues", str(issues), "--feed", str(feed_path),
+                       "--lakes-in", str(lakes_in), "--actions", str(actions)])  # --event-issue is optional
+    assert json.loads(actions.read_text(encoding="utf-8")) == []
     run_pipeline.main(["lake-issue-accept", "--issues", str(issues), "--feed", str(feed_path), "--issue", "3",
                        "--lakes-in", str(lakes_in), "--today", "2026-11-05", "--actions", str(actions)])
     assert one(json.loads(feed_path.read_text(encoding="utf-8")), 3)["lake_id"] == "moraine_lake_above_gulmit"
-    act = json.loads(actions.read_text(encoding="utf-8"))
-    assert act == {"comment": "Accepted. The lake is now watched: "
+    (act,) = json.loads(actions.read_text(encoding="utf-8"))
+    assert act == {"issue": 3, "comment": "Accepted. The lake is now watched: "
                               "https://saeedahmadicp.github.io/SARtale/#lakes/moraine_lake_above_gulmit",
                    "add": [], "remove": ["searched", "too few passes", "rebuild failed"], "close": True}
 
@@ -307,3 +316,85 @@ def test_lake_slug_makes_a_unique_id_from_the_name():
     assert run_pipeline.lake_slug("Yaz Sam", {"yaz_sam", "yaz_sam_2"}) == "yaz_sam_3"
     assert run_pipeline.lake_slug("Zebra Lake é", set()) == "zebra_lake"
     assert run_pipeline.lake_slug("!!!", set()) == "lake"
+
+
+def test_closed_with_unconfirmed_accepted_label_is_rejected(watched):
+    feed = build_feed([issue(1, "closed", labels=["accepted"])], watched, None, search=fake_search, now=NOW)
+    assert one(feed, 1)["state"] == "rejected"
+
+
+def test_reconcile_adds_missing_state_label_with_comment_once(watched):
+    issues = [issue(1), issue(2, lat="10")]
+    feed = build_feed(issues, watched, None, search=fake_search, now=NOW)
+    acts = {a["issue"]: a for a in reconcile_actions(feed, issues, None)}
+    assert acts[1]["add"] == ["searched"] and acts[1]["comment"].startswith("Checked against NASA")
+    assert acts[2]["add"] == ["invalid"] and acts[2]["close"] is True and acts[2]["comment"]
+    told = [issue(1, labels=["searched"]), issue(2, "closed", labels=["invalid"], lat="10")]
+    assert reconcile_actions(feed, told, feed) == []
+
+
+def test_reconcile_removes_stale_labels_without_comment(watched):
+    issues = [issue(1, labels=["searched", "too few passes", "invalid"])]
+    feed = build_feed(issues, watched, None, search=fake_search, now=NOW)
+    (act,) = reconcile_actions(feed, issues, feed)
+    assert act["add"] == [] and act["comment"] is None and act["close"] is False
+    assert sorted(act["remove"]) == ["invalid", "too few passes"]
+
+
+def test_reconcile_closes_open_invalid(watched):
+    issues = [issue(2, labels=["invalid"], lat="10")]  # reopened by the visitor, still invalid
+    feed = build_feed(issues, watched, None, search=fake_search, now=NOW)
+    (act,) = reconcile_actions(feed, issues, feed)
+    assert act["close"] is True and act["comment"] is None and act["add"] == []
+
+
+def test_reconcile_keeps_rebuild_failed_on_checked_request(watched):
+    issues = [issue(1, labels=["searched", "rebuild failed"])]  # a failed accept
+    feed = build_feed(issues, watched, None, search=fake_search, now=NOW)
+    assert reconcile_actions(feed, issues, feed) == []
+    down = dict(feed, requests=[dict(feed["requests"][0], state="check_failed")])
+    (act,) = reconcile_actions(feed, issues, down)  # the catalogue answered this time
+    assert act["remove"] == ["rebuild failed"]
+
+
+def test_reconcile_catalogue_down_comments_once(watched):
+    def down(lat, lon):
+        raise OSError("no route")
+    feed = build_feed([issue(1)], watched, None, search=down, now=NOW)
+    (act,) = reconcile_actions(feed, [issue(1)], None)
+    assert act["add"] == ["rebuild failed"]
+    assert act["comment"] == "NASA's catalogue did not answer; the team will retry."
+    assert reconcile_actions(feed, [issue(1, labels=["rebuild failed"])], feed) == []
+
+
+def test_reconcile_accepted_only_tidies_labels(watched):
+    issues = [issue(1, "closed", labels=["accepted", "searched"])]
+    feed = build_feed([issue(1)], watched, None, search=fake_search, now=NOW)
+    feed["requests"][0].update(state="accepted", lake_id="x")
+    feed = build_feed(issues, watched, feed, search=fake_search, now=NOW)
+    (act,) = reconcile_actions(feed, issues, feed)
+    assert act == {"issue": 1, "comment": None, "add": [], "remove": ["searched"], "close": False,
+                   "dispatch": False}
+    assert reconcile_actions(feed, [issue(1, labels=["accepted"])], feed) == []
+
+
+def test_reconcile_redispatches_unconfirmed_accept(watched):
+    issues = [issue(1, labels=["searched", "accepted"]),
+              issue(2, labels=["searched", "accepted", "rebuild failed"], lat="36.5"),
+              issue(3, "closed", labels=["rejected", "accepted"], lat="36.8")]
+    feed = build_feed(issues, watched, None, search=fake_search, now=NOW)
+    acts = {a["issue"]: a for a in reconcile_actions(feed, issues, feed)}
+    assert acts[1]["dispatch"] is True and acts[1]["comment"] is None
+    assert 2 not in acts, "after a failed rebuild the team re-adds the label"
+    assert 3 not in acts
+    feed["requests"] = [dict(r, state="accepted") if r["issue"] == 1 else r for r in feed["requests"]]
+    acts = {a["issue"]: a for a in reconcile_actions(feed, issues, feed)}
+    assert acts[1]["dispatch"] is False and acts[1]["remove"] == ["searched"]
+
+
+def test_reconcile_never_echoes_text(watched):
+    evil = "<img src=x> @someone"
+    issues = [issue(1, name=evil), issue(2, name=evil, lat="10")]
+    feed = build_feed(issues, watched, None, search=fake_search, now=NOW)
+    for act in reconcile_actions(feed, issues, None):
+        assert "@someone" not in json.dumps(act) and "<img" not in json.dumps(act)

@@ -17,11 +17,13 @@ jobs:
       group: sartale-data
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: main
+          persist-credentials: false
 
       - name: Rebuild the lake data
+        timeout-minutes: 330  # below the job's 360, so the job is still alive to report a timeout
         uses: ./.github/actions/rebuild
         env:
           EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
@@ -39,3 +41,11 @@ jobs:
             exit 0
           fi
           bash .github/scripts/commit-data.sh "Weekly data refresh" app/public/data
+
+      - name: Report a failed refresh
+        # no issue to comment on: the failed run (and GitHub's mail to the owner) is the report
+        if: failure() || cancelled()
+        run: |
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          printf 'The weekly refresh failed or timed out; see %s for the step that stopped it.\n' "$url" \
+            >> "$GITHUB_STEP_SUMMARY"

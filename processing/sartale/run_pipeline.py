@@ -200,19 +200,18 @@ def append_lake_entry(path: Path, entry: dict) -> None:
 
 
 def cmd_lake_issues(args) -> None:
-    """Recompute requests.json from every lake-request issue and write the actions for the event's issue."""
+    """Recompute requests.json from every lake-request issue; write actions for every issue that needs one."""
     from sartale import lake_issues
 
     issues = _read_json(Path(args.issues))
     feed_path = Path(args.feed)
     previous = _read_json(feed_path) if feed_path.exists() else None
-    old = next((r["state"] for r in (previous or {}).get("requests", []) if r["issue"] == args.event_issue), None)
     feed = lake_issues.build_feed(issues, load_lakes(Path(args.lakes_in)), previous,
                                   now=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
     lake_issues.write_feed(feed, feed_path)
-    actions = lake_issues.issue_actions(feed, args.event_issue, old)
+    actions = lake_issues.reconcile_actions(feed, issues, previous)
     Path(args.actions).write_text(json.dumps(actions, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print(f"{len(feed['requests'])} requests; issue #{args.event_issue}: {actions['add'] or 'no change'}")
+    print(f"{len(feed['requests'])} requests; actions for issues {[a['issue'] for a in actions] or 'none'}")
 
 
 def cmd_lake_issue_accept(args) -> None:
@@ -229,8 +228,8 @@ def cmd_lake_issue_accept(args) -> None:
         print(f"lake-issue-accept: {e}", file=sys.stderr)
         raise SystemExit(1) from None
     lake_issues.write_feed(feed, feed_path)
-    actions = {"comment": f"Accepted. The lake is now watched: https://saeedahmadicp.github.io/SARtale/#lakes/{lake_id}",
-               "add": [], "remove": ["searched", "too few passes", "rebuild failed"], "close": True}
+    actions = [{"issue": args.issue, "comment": f"Accepted. The lake is now watched: https://saeedahmadicp.github.io/SARtale/#lakes/{lake_id}",
+               "add": [], "remove": ["searched", "too few passes", "rebuild failed"], "close": True}]
     Path(args.actions).write_text(json.dumps(actions, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(lake_id)
 
@@ -269,8 +268,8 @@ def build_parser() -> argparse.ArgumentParser:
     li.add_argument("--issues", required=True, help="JSON list of every issue labelled lake-request")
     li.add_argument("--feed", default=str(REPO_ROOT / "app" / "public" / "data" / "requests.json"))
     li.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
-    li.add_argument("--event-issue", type=int, required=True)
-    li.add_argument("--actions", required=True, help="where to write the comment, labels and close flag")
+    li.add_argument("--event-issue", type=int, help="ignored; every issue is reconciled")
+    li.add_argument("--actions", required=True, help="where to write the list of per-issue actions")
     li.set_defaults(func=cmd_lake_issues)
     lia = sub.add_parser("lake-issue-accept", help="add an approved request to lakes_in.json and print the lake id")
     lia.add_argument("--issues", required=True)
