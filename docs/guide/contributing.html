@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contributing · SARtale guide</title>
+<meta name="description" content="SARtale guide: watching glacial lakes in northern Pakistan through cloud with NISAR radar.">
+<link rel="icon" href="assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Inter+Tight:wght@600;650;700&amp;display=swap">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+<a class="skip" href="#content">Skip to the content</a>
+<header class="bar">
+  <a class="brand" href="index.html"><img src="assets/logo.png" alt=""> SARtale <small>Guide</small></a>
+  <nav class="bar-links" aria-label="Project links">
+    <a href="getting-started.html">Get started</a>
+    <a href="requests-api.html">API</a>
+    <a href="https://github.com/saeedahmadicp/SARtale">GitHub</a>
+  </nav>
+</header>
+<div class="frame">
+  <aside class="rail" aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html" aria-current="page">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></aside>
+  <main id="content">
+    <details class="menu"><summary>Guide contents</summary><nav aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html" aria-current="page">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></nav></details>
+    <article class="doc">
+<h1>Contributing</h1>
+<p class="lede">Small, tested changes with a clear reason are the easiest to review. Every number on the site must trace back to the data or a cited source.</p>
+
+<h2 id="before-you-open-a-pull-request">Before you open a pull request<a class="anchor" href="#before-you-open-a-pull-request" aria-label="Link to this section">#</a></h2>
+<pre><code>npm --prefix app test -- --run
+npm --prefix app run build
+cd processing && conda run -n sartale pytest tests -q</code></pre>
+<p>All three must pass. Add a test for each change in behaviour, next to the code it covers: <code>app/src/*.test.ts</code> or <code>processing/tests/test_*.py</code>.</p>
+
+<h2 id="ground-rules">Ground rules<a class="anchor" href="#ground-rules" aria-label="Link to this section">#</a></h2>
+<ul>
+  <li><b>Numbers come from the data.</b> Use a token from <code>lakes.json</code> in page text rather than typing a figure. If a number is not in the data, cite its source next to it.</li>
+  <li><b>Screening, not warning.</b> Do not describe a status as a hazard, a prediction or a warning. The wording check in <code>content.ts</code> enforces the main phrases.</li>
+  <li><b>Constants live in one place.</b> Method constants belong in <code>processing/sartale/config.py</code>; the build copies them into <code>lakes.json</code> for the app.</li>
+  <li><b>Same track only.</b> Never compare areas across tracks or viewing directions in the status.</li>
+  <li><b>No secrets in the repository.</b> Earthdata logins stay in <code>~/.netrc</code>; other keys in a git-ignored <code>.env.local</code>.</li>
+  <li><b>Data stay out of git.</b> Downloaded windows and the request database live in <code>data/</code>, which is ignored.</li>
+</ul>
+
+<h2 id="changing-the-method">Changing the method<a class="anchor" href="#changing-the-method" aria-label="Link to this section">#</a></h2>
+<p>A change to the dark rule, the shadow rule, the zone or the status test changes every number on the site and in both videos. Run the whole pipeline, check that the Attabad gate still passes, compare the new <code>lakes.json</code> with the old one, and say in the pull request which lakes changed status and why.</p>
+
+<h2 id="where-to-look">Where to look<a class="anchor" href="#where-to-look" aria-label="Link to this section">#</a></h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>To change</th><th>Edit</th></tr></thead>
+  <tbody>
+    <tr><td>Page text</td><td><code>app/src/content/*.json</code></td></tr>
+    <tr><td>The look of the app</td><td><code>app/src/styles.css</code>, <code>app/src/storyPage.css</code></td></tr>
+    <tr><td>The lakes watched</td><td><code>processing/lakes_in.json</code>, then the pipeline</td></tr>
+    <tr><td>Method constants</td><td><code>processing/sartale/config.py</code>, then <code>lakes-build</code></td></tr>
+    <tr><td>This guide</td><td><code>docs/guide/pages/*.html</code>, then <code>python docs/guide/build.py</code></td></tr>
+    <tr><td>Data sources and licences</td><td><code>docs/DATA_SOURCES.md</code></td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="ai-tools">AI tools<a class="anchor" href="#ai-tools" aria-label="Link to this section">#</a></h2>
+<p>AI tools helped write the code, the copy and the videos; none runs in the pipeline or the app. What each tool did is recorded in <a href="https://github.com/saeedahmadicp/SARtale/blob/main/docs/SI_USE.md">SI_USE.md</a>. Update it when you use one for a contribution.</p>
+
+<h2 id="licence">Licence<a class="anchor" href="#licence" aria-label="Link to this section">#</a></h2>
+<p>Code is under the Apache License 2.0. By contributing, you agree that your contribution is licensed the same way.</p>
+
+    </article>
+    <nav class="pager" aria-label="Next and previous page"><a href="deploy.html"><small>Previous</small>Deploying</a><a href="faq.html" style="text-align:right"><small>Next</small>Questions and limits</a></nav>
+    <footer class="foot">SARtale, by team SARcastic Scientists for NASA Space Apps Challenge 2026. Code under the Apache License 2.0. Indicative screening on provisional NISAR data, not a warning service.</footer>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Web app · SARtale guide</title>
+<meta name="description" content="SARtale guide: watching glacial lakes in northern Pakistan through cloud with NISAR radar.">
+<link rel="icon" href="assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Inter+Tight:wght@600;650;700&amp;display=swap">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+<a class="skip" href="#content">Skip to the content</a>
+<header class="bar">
+  <a class="brand" href="index.html"><img src="assets/logo.png" alt=""> SARtale <small>Guide</small></a>
+  <nav class="bar-links" aria-label="Project links">
+    <a href="getting-started.html">Get started</a>
+    <a href="requests-api.html">API</a>
+    <a href="https://github.com/saeedahmadicp/SARtale">GitHub</a>
+  </nav>
+</header>
+<div class="frame">
+  <aside class="rail" aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html" aria-current="page">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></aside>
+  <main id="content">
+    <details class="menu"><summary>Guide contents</summary><nav aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html" aria-current="page">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></nav></details>
+    <article class="doc">
+<h1>Web app</h1>
+<p class="lede">A static single-page site in TypeScript, built with Vite. It reads <code>data/lakes.json</code> at start-up and draws everything from it; nothing is computed on a server.</p>
+
+<h2 id="commands">Commands<a class="anchor" href="#commands" aria-label="Link to this section">#</a></h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>npm --prefix app run dev</code></td><td>Dev server on <code>http://localhost:5173</code>, forwarding <code>/api</code> to <code>127.0.0.1:8787</code></td></tr>
+    <tr><td><code>npm --prefix app test -- --run</code></td><td>Vitest, once. Drop <code>--run</code> to watch</td></tr>
+    <tr><td><code>npm --prefix app run build</code></td><td><code>tsc --noEmit</code>, then a production build in <code>app/dist/</code></td></tr>
+    <tr><td><code>npm --prefix app run preview</code></td><td>Serves <code>app/dist/</code> locally to check a build</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="how-it-is-put-together">How it is put together<a class="anchor" href="#how-it-is-put-together" aria-label="Link to this section">#</a></h2>
+<p><code>main.ts</code> loads <code>lakes.json</code>, then <code>mountApp</code> in <code>app.ts</code> builds the shell (header, the four views, footer) and wires the views to each other. Each view is a plain function that takes a root element and returns a small handle, so tests can mount it in jsdom without a browser.</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>File</th><th>Job</th></tr></thead>
+  <tbody>
+    <tr><td><code>app.ts</code></td><td>Shell, header buttons and routing</td></tr>
+    <tr><td><code>storyPage.ts</code>, <code>storyPage.css</code></td><td>The start page and its "Add a lake" section</td></tr>
+    <tr><td><code>lakeStory.ts</code></td><td>The guided story, beat by beat (<code>#story</code>)</td></tr>
+    <tr><td><code>lakeWatchView.ts</code></td><td>Lake Watch: list, detail panel, pictures, chart and readings table</td></tr>
+    <tr><td><code>lakeLocator.ts</code></td><td>The small MapLibre map of lakes over the MODIS picture, loaded after first paint</td></tr>
+    <tr><td><code>chart.ts</code></td><td>The uPlot area chart, one series per track</td></tr>
+    <tr><td><code>lakeBrief.ts</code></td><td>The printable one-page brief</td></tr>
+    <tr><td><code>evidenceView.ts</code></td><td>How we know</td></tr>
+    <tr><td><code>lakeRequests.ts</code></td><td>The request API client and the "Add a lake" form</td></tr>
+    <tr><td><code>lakes.ts</code></td><td>Types for <code>lakes.json</code>, loading, sorting and status sentences</td></tr>
+    <tr><td><code>content.ts</code>, <code>content/*.json</code></td><td>All page text, and the banned-wording list</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="routing">Routing<a class="anchor" href="#routing" aria-label="Link to this section">#</a></h2>
+<p>The view lives in the URL hash, so every view can be linked and Back works.</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>Hash</th><th>Opens</th></tr></thead>
+  <tbody>
+    <tr><td>none</td><td>The story page</td></tr>
+    <tr><td><code>#lakes</code></td><td>Lake Watch, on the lake with the clearest picture</td></tr>
+    <tr><td><code>#lakes/&lt;id&gt;</code></td><td>Lake Watch on that lake, for example <code>#lakes/attabad</code></td></tr>
+    <tr><td><code>#story</code></td><td>The guided story</td></tr>
+    <tr><td><code>#evidence</code></td><td>How we know</td></tr>
+  </tbody>
+</table></div>
+<p>Any other hash, such as the skip link's <code>#main</code>, is treated as an in-page anchor and leaves the view alone.</p>
+
+<h2 id="text-and-wording">Text and wording<a class="anchor" href="#text-and-wording" aria-label="Link to this section">#</a></h2>
+<p>Page text is in <code>app/src/content/</code>, not in the code. Numbers in it are tokens such as <code>{lakes}</code> or <code>{minLooks}</code>, filled from <code>lakes.json</code> at run time, so the text cannot drift from the data. Write a number into the copy only when it is not in the data, and then cite it.</p>
+<p>SARtale is screening, not warning, so <code>content.ts</code> keeps a list of phrases the app must never use, among them "early warning", "flood detected", "predict", "safe" and "risk score". A test fails if any page text uses one. If you need a new phrase, check it against that list and against <a href="method.html#known-limits">the method's limits</a>.</p>
+
+<h2 id="testing">Testing<a class="anchor" href="#testing" aria-label="Link to this section">#</a></h2>
+<p>Tests sit next to the code as <code>*.test.ts</code> and run in jsdom. MapLibre and uPlot are replaced by small fakes through the factory options (<code>createLocator</code>, <code>createChart</code>), so tests check what the app shows, not how the libraries draw. <code>publicData.test.ts</code> checks that every picture <code>lakes.json</code> names is in <code>app/public/data/</code>.</p>
+
+<h2 id="configuration">Configuration<a class="anchor" href="#configuration" aria-label="Link to this section">#</a></h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Setting</th><th>Default</th><th>Use</th></tr></thead>
+  <tbody>
+    <tr><td><code>VITE_REQUESTS_API</code></td><td><code>api</code></td><td>Base URL of the request API at build time. The default means the same origin, or the dev proxy.</td></tr>
+  </tbody>
+</table></div>
+
+    </article>
+    <nav class="pager" aria-label="Next and previous page"><a href="data.html"><small>Previous</small>Data files</a><a href="requests-api.html" style="text-align:right"><small>Next</small>Lake request API</a></nav>
+    <footer class="foot">SARtale, by team SARcastic Scientists for NASA Space Apps Challenge 2026. Code under the Apache License 2.0. Indicative screening on provisional NISAR data, not a warning service.</footer>
+  </main>
+</div>
+</body>
+</html>

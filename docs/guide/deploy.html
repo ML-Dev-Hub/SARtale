@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deploying · SARtale guide</title>
+<meta name="description" content="SARtale guide: watching glacial lakes in northern Pakistan through cloud with NISAR radar.">
+<link rel="icon" href="assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Inter+Tight:wght@600;650;700&amp;display=swap">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+<a class="skip" href="#content">Skip to the content</a>
+<header class="bar">
+  <a class="brand" href="index.html"><img src="assets/logo.png" alt=""> SARtale <small>Guide</small></a>
+  <nav class="bar-links" aria-label="Project links">
+    <a href="getting-started.html">Get started</a>
+    <a href="requests-api.html">API</a>
+    <a href="https://github.com/saeedahmadicp/SARtale">GitHub</a>
+  </nav>
+</header>
+<div class="frame">
+  <aside class="rail" aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html" aria-current="page">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></aside>
+  <main id="content">
+    <details class="menu"><summary>Guide contents</summary><nav aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html" aria-current="page">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></nav></details>
+    <article class="doc">
+<h1>Deploying</h1>
+<p class="lede">The website is static files, so any static host can serve it. The request server is optional: without it, the site works and the form says requests are not open.</p>
+
+<h2 id="the-website-alone">The website alone<a class="anchor" href="#the-website-alone" aria-label="Link to this section">#</a></h2>
+<pre><code>npm --prefix app ci
+npm --prefix app run build      <span class="c"># writes app/dist/</span></code></pre>
+<p>Upload the contents of <code>app/dist/</code> to any static host (GitHub Pages, Netlify, an S3 bucket, nginx). The build uses relative paths, so it also works from a sub-folder such as <code>https://example.org/sartale/</code>. Check it locally first with <code>npm --prefix app run preview</code>.</p>
+
+<h2 id="with-the-request-server">With the request server<a class="anchor" href="#with-the-request-server" aria-label="Link to this section">#</a></h2>
+<p>Run the server on a machine you control, behind a reverse proxy that adds HTTPS:</p>
+<pre><code>cd processing
+conda run -n sartale python -m sartale.run_pipeline lake-requests-serve \
+  --host 127.0.0.1 --port 8787 --origin https://lakes.example.org</code></pre>
+<p>Then either:</p>
+<ul>
+  <li><b>Same origin:</b> have the proxy send <code>/api/</code> on the site's own domain to <code>127.0.0.1:8787</code>. Build the app as above.</li>
+  <li><b>Separate origin:</b> serve the API on its own domain and build the app with <code>VITE_REQUESTS_API=https://api.example.org/api npm --prefix app run build</code>.</li>
+</ul>
+<p>In both cases <code>--origin</code> must be the exact origin the site is served from, scheme and port included. Browser requests from any other origin are refused.</p>
+
+<div class="note caution"><p><strong>Rate limits behind a proxy.</strong> The server limits requests per client address. Behind a reverse proxy it sees the proxy's address, so all visitors share one limit of 5 requests per hour. Set a per-client limit in the proxy as well if the site is public.</p></div>
+
+<h2 id="back-up-and-review">Back up and review<a class="anchor" href="#back-up-and-review" aria-label="Link to this section">#</a></h2>
+<ul>
+  <li>The whole request state is one SQLite file (<code>--db</code>). Back it up with the server stopped, or with <code>sqlite3 data/lake_requests.sqlite ".backup backup.sqlite"</code>.</li>
+  <li>Review requests regularly with <code>lake-requests-list</code>; at 200 open requests the server stops taking new ones.</li>
+  <li>The server is built for a demo or a small pilot. For wider use, put it behind a proxy with time limits for slow clients, and keep it off the open internet without one.</li>
+</ul>
+
+<h2 id="updating-the-data">Updating the data<a class="anchor" href="#updating-the-data" aria-label="Link to this section">#</a></h2>
+<p>After running the pipeline, commit <code>app/public/data/lakes.json</code> and the changed pictures, then rebuild and upload the site. The app reads the data at start-up, so nothing else needs to change.</p>
+
+    </article>
+    <nav class="pager" aria-label="Next and previous page"><a href="requests-api.html"><small>Previous</small>Lake request API</a><a href="contributing.html" style="text-align:right"><small>Next</small>Contributing</a></nav>
+    <footer class="foot">SARtale, by team SARcastic Scientists for NASA Space Apps Challenge 2026. Code under the Apache License 2.0. Indicative screening on provisional NISAR data, not a warning service.</footer>
+  </main>
+</div>
+</body>
+</html>

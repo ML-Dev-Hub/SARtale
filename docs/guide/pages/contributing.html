@@ -1,0 +1,40 @@
+<h1>Contributing</h1>
+<p class="lede">Small, tested changes with a clear reason are the easiest to review. Every number on the site must trace back to the data or a cited source.</p>
+
+<h2>Before you open a pull request</h2>
+<pre><code>npm --prefix app test -- --run
+npm --prefix app run build
+cd processing && conda run -n sartale pytest tests -q</code></pre>
+<p>All three must pass. Add a test for each change in behaviour, next to the code it covers: <code>app/src/*.test.ts</code> or <code>processing/tests/test_*.py</code>.</p>
+
+<h2>Ground rules</h2>
+<ul>
+  <li><b>Numbers come from the data.</b> Use a token from <code>lakes.json</code> in page text rather than typing a figure. If a number is not in the data, cite its source next to it.</li>
+  <li><b>Screening, not warning.</b> Do not describe a status as a hazard, a prediction or a warning. The wording check in <code>content.ts</code> enforces the main phrases.</li>
+  <li><b>Constants live in one place.</b> Method constants belong in <code>processing/sartale/config.py</code>; the build copies them into <code>lakes.json</code> for the app.</li>
+  <li><b>Same track only.</b> Never compare areas across tracks or viewing directions in the status.</li>
+  <li><b>No secrets in the repository.</b> Earthdata logins stay in <code>~/.netrc</code>; other keys in a git-ignored <code>.env.local</code>.</li>
+  <li><b>Data stay out of git.</b> Downloaded windows and the request database live in <code>data/</code>, which is ignored.</li>
+</ul>
+
+<h2>Changing the method</h2>
+<p>A change to the dark rule, the shadow rule, the zone or the status test changes every number on the site and in both videos. Run the whole pipeline, check that the Attabad gate still passes, compare the new <code>lakes.json</code> with the old one, and say in the pull request which lakes changed status and why.</p>
+
+<h2>Where to look</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>To change</th><th>Edit</th></tr></thead>
+  <tbody>
+    <tr><td>Page text</td><td><code>app/src/content/*.json</code></td></tr>
+    <tr><td>The look of the app</td><td><code>app/src/styles.css</code>, <code>app/src/storyPage.css</code></td></tr>
+    <tr><td>The lakes watched</td><td><code>processing/lakes_in.json</code>, then the pipeline</td></tr>
+    <tr><td>Method constants</td><td><code>processing/sartale/config.py</code>, then <code>lakes-build</code></td></tr>
+    <tr><td>This guide</td><td><code>docs/guide/pages/*.html</code>, then <code>python docs/guide/build.py</code></td></tr>
+    <tr><td>Data sources and licences</td><td><code>docs/DATA_SOURCES.md</code></td></tr>
+  </tbody>
+</table></div>
+
+<h2>AI tools</h2>
+<p>AI tools helped write the code, the copy and the videos; none runs in the pipeline or the app. What each tool did is recorded in <a href="https://github.com/saeedahmadicp/SARtale/blob/main/docs/SI_USE.md">SI_USE.md</a>. Update it when you use one for a contribution.</p>
+
+<h2>Licence</h2>
+<p>Code is under the Apache License 2.0. By contributing, you agree that your contribution is licensed the same way.</p>

@@ -1,0 +1,61 @@
+<h1>Using the website</h1>
+<p class="lede">The site has three views, all reached from the header: the story page, Lake Watch and How we know. Every page carries the label "Provisional NISAR data".</p>
+
+<figure>
+  <img src="assets/story.jpg" alt="The SARtale story page: headline 'When clouds close in, the lakes stay in view', two buttons and three figures: 11 lakes watched, 60 radar looks through the cloud gap, 232 NISAR passes read" width="1440" height="900">
+  <figcaption>The story page opens the site. Its figures come from the data, not from the page text.</figcaption>
+</figure>
+
+<h2>The story page</h2>
+<p>The story page explains, in six parts, why cloud hides glacial lakes and how radar keeps them in view. It is built from <code>lakes.json</code>, so its numbers always match the data in the build.</p>
+<ol>
+  <li><b>The risk:</b> the 2022 Shisper outburst and SUPARCO's 131 potentially dangerous lakes.</li>
+  <li><b>The gap:</b> the summer cloud, with SUPARCO's 2 July statement linked to its source.</li>
+  <li><b>The view:</b> radar against optical, and how shadows from mountains can hide a lake from either.</li>
+  <li><b>The measure:</b> Attabad's water read from radar, with its noise and status.</li>
+  <li><b>The watch:</b> every watched lake on a NASA MODIS map, coloured by status.</li>
+  <li><b>Add a lake:</b> the form for putting a new lake forward, covered below.</li>
+</ol>
+<p>Choose <b>Follow the story</b> to step through the guided lake story, or <b>Open Lake Watch</b> to go straight to the lakes.</p>
+
+<h2>Lake Watch</h2>
+<figure>
+  <img src="assets/lake-watch.jpg" alt="Lake Watch: a satellite map of the lakes, a list of lakes with radar thumbnails and status chips, and the selected lake's status sentence and radar picture" width="1440" height="900">
+  <figcaption>Lake Watch opens on the lake with the clearest water picture. Pick any lake on the map or in the list.</figcaption>
+</figure>
+<p>Lake Watch shows every lake on a small map over a NASA MODIS picture, with a list beside it. Each row has a radar thumbnail, the status and one sentence saying what was measured. Selecting a lake opens its panel:</p>
+<ul>
+  <li><b>Status sentence:</b> the change since earlier passes on the same track, the lake's own noise, the number of looks and the latest date.</li>
+  <li><b>Radar pictures:</b> the latest HH picture, with the water read from radar on top in blue. The slider sets how strongly the water shows. The pictures are in radar geometry, so north is not up.</li>
+  <li><b>Area by track:</b> one line per NISAR track. Hollow markers are passes left out of the trend, and the reason for each is listed below the chart.</li>
+  <li><b>Limits:</b> the method's standing limits, then any limits for that lake.</li>
+  <li><b>Print lake brief:</b> a one-page summary for a meeting or a field team, with dates, looks, noise and limits.</li>
+</ul>
+<p>Pages can be linked directly: <code>#lakes</code> opens Lake Watch, <code>#story</code> the guided story and <code>#evidence</code> How we know.</p>
+
+<h2>What each status means</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td>Growing</td><td>The latest water area is more than twice the lake's own noise above the median of its earlier passes on the same track.</td></tr>
+    <tr><td>Stable</td><td>The change is within twice the noise. Most lakes read this way most of the time.</td></tr>
+    <tr><td>Shrinking</td><td>The latest area is more than twice the noise below that median.</td></tr>
+    <tr><td>Not seen this pass</td><td>The newest NISAR pass over the lake was left out or gave no valid reading.</td></tr>
+    <tr><td>Not observable</td><td>Less than half of the lake's zone can be seen on any pass, usually because of radar shadow.</td></tr>
+    <tr><td>Not enough NISAR looks yet</td><td>Fewer than 3 valid passes on one track, so there is no trend to compare against.</td></tr>
+  </tbody>
+</table></div>
+<p>A status describes water area only. It is not a measure of volume, depth or hazard.</p>
+
+<h2>How we know</h2>
+<p>This view sets out the evidence: the method, the check against Sentinel-2 optical images on clear days, the passes left out and why, and where every coordinate comes from. Read it before quoting a number from the site.</p>
+
+<h2>Add a lake</h2>
+<p>At the end of the story page, under <b>Know a lake we are not watching?</b>, anyone can put forward a lake:</p>
+<ol>
+  <li>Enter the lake's name, its latitude and longitude, and where the coordinates come from (an inventory, a paper, a field survey or a map).</li>
+  <li>Choose <b>Add to the watch list</b>. The point must be in Gilgit-Baltistan or upper KP: 34.4–37.6 °N, 70.8–76.6 °E.</li>
+  <li>The request appears on the map as a requested lake. Within moments the step text shows how many NISAR passes cover the point.</li>
+  <li>The team reviews it. An accepted lake joins the register and gets a status after 3 looks on one track.</li>
+</ol>
+<p>A point within 1 km of a watched or already requested lake is turned down with the name of that lake. On a copy of the site without the request server, the form says "Requests are not open on this copy of the site."</p>

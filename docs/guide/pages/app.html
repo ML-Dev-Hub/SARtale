@@ -1,0 +1,61 @@
+<h1>Web app</h1>
+<p class="lede">A static single-page site in TypeScript, built with Vite. It reads <code>data/lakes.json</code> at start-up and draws everything from it; nothing is computed on a server.</p>
+
+<h2>Commands</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>npm --prefix app run dev</code></td><td>Dev server on <code>http://localhost:5173</code>, forwarding <code>/api</code> to <code>127.0.0.1:8787</code></td></tr>
+    <tr><td><code>npm --prefix app test -- --run</code></td><td>Vitest, once. Drop <code>--run</code> to watch</td></tr>
+    <tr><td><code>npm --prefix app run build</code></td><td><code>tsc --noEmit</code>, then a production build in <code>app/dist/</code></td></tr>
+    <tr><td><code>npm --prefix app run preview</code></td><td>Serves <code>app/dist/</code> locally to check a build</td></tr>
+  </tbody>
+</table></div>
+
+<h2>How it is put together</h2>
+<p><code>main.ts</code> loads <code>lakes.json</code>, then <code>mountApp</code> in <code>app.ts</code> builds the shell (header, the four views, footer) and wires the views to each other. Each view is a plain function that takes a root element and returns a small handle, so tests can mount it in jsdom without a browser.</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>File</th><th>Job</th></tr></thead>
+  <tbody>
+    <tr><td><code>app.ts</code></td><td>Shell, header buttons and routing</td></tr>
+    <tr><td><code>storyPage.ts</code>, <code>storyPage.css</code></td><td>The start page and its "Add a lake" section</td></tr>
+    <tr><td><code>lakeStory.ts</code></td><td>The guided story, beat by beat (<code>#story</code>)</td></tr>
+    <tr><td><code>lakeWatchView.ts</code></td><td>Lake Watch: list, detail panel, pictures, chart and readings table</td></tr>
+    <tr><td><code>lakeLocator.ts</code></td><td>The small MapLibre map of lakes over the MODIS picture, loaded after first paint</td></tr>
+    <tr><td><code>chart.ts</code></td><td>The uPlot area chart, one series per track</td></tr>
+    <tr><td><code>lakeBrief.ts</code></td><td>The printable one-page brief</td></tr>
+    <tr><td><code>evidenceView.ts</code></td><td>How we know</td></tr>
+    <tr><td><code>lakeRequests.ts</code></td><td>The request API client and the "Add a lake" form</td></tr>
+    <tr><td><code>lakes.ts</code></td><td>Types for <code>lakes.json</code>, loading, sorting and status sentences</td></tr>
+    <tr><td><code>content.ts</code>, <code>content/*.json</code></td><td>All page text, and the banned-wording list</td></tr>
+  </tbody>
+</table></div>
+
+<h2>Routing</h2>
+<p>The view lives in the URL hash, so every view can be linked and Back works.</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>Hash</th><th>Opens</th></tr></thead>
+  <tbody>
+    <tr><td>none</td><td>The story page</td></tr>
+    <tr><td><code>#lakes</code></td><td>Lake Watch, on the lake with the clearest picture</td></tr>
+    <tr><td><code>#lakes/&lt;id&gt;</code></td><td>Lake Watch on that lake, for example <code>#lakes/attabad</code></td></tr>
+    <tr><td><code>#story</code></td><td>The guided story</td></tr>
+    <tr><td><code>#evidence</code></td><td>How we know</td></tr>
+  </tbody>
+</table></div>
+<p>Any other hash, such as the skip link's <code>#main</code>, is treated as an in-page anchor and leaves the view alone.</p>
+
+<h2>Text and wording</h2>
+<p>Page text is in <code>app/src/content/</code>, not in the code. Numbers in it are tokens such as <code>{lakes}</code> or <code>{minLooks}</code>, filled from <code>lakes.json</code> at run time, so the text cannot drift from the data. Write a number into the copy only when it is not in the data, and then cite it.</p>
+<p>SARtale is screening, not warning, so <code>content.ts</code> keeps a list of phrases the app must never use, among them "early warning", "flood detected", "predict", "safe" and "risk score". A test fails if any page text uses one. If you need a new phrase, check it against that list and against <a href="method.html#known-limits">the method's limits</a>.</p>
+
+<h2>Testing</h2>
+<p>Tests sit next to the code as <code>*.test.ts</code> and run in jsdom. MapLibre and uPlot are replaced by small fakes through the factory options (<code>createLocator</code>, <code>createChart</code>), so tests check what the app shows, not how the libraries draw. <code>publicData.test.ts</code> checks that every picture <code>lakes.json</code> names is in <code>app/public/data/</code>.</p>
+
+<h2>Configuration</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Setting</th><th>Default</th><th>Use</th></tr></thead>
+  <tbody>
+    <tr><td><code>VITE_REQUESTS_API</code></td><td><code>api</code></td><td>Base URL of the request API at build time. The default means the same origin, or the dev proxy.</td></tr>
+  </tbody>
+</table></div>

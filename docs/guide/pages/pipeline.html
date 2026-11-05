@@ -1,0 +1,58 @@
+<h1>Pipeline</h1>
+<p class="lede">The pipeline in <code>processing/</code> rebuilds the lake data from NASA's archive. The team runs it; the website only reads what it writes.</p>
+
+<div class="note"><p><strong>Before you start:</strong> create the <code>sartale</code> conda environment (<a href="getting-started.html#what-you-need">Getting started</a>) and save a NASA Earthdata login in <code>~/.netrc</code>. Never commit the <code>.netrc</code> file or paste its contents anywhere.</p></div>
+
+<h2>Run it</h2>
+<p>All commands run from <code>processing/</code>, through one entry point, <code>python -m sartale.run_pipeline</code>:</p>
+<pre><code>cd processing
+conda run -n sartale python -m sartale.run_pipeline lakes-search   <span class="c"># 1. find NISAR passes over each lake</span>
+conda run -n sartale python -m sartale.run_pipeline lakes-fetch    <span class="c"># 2. cache a 6 km window per pass (restartable)</span>
+conda run -n sartale python -m sartale.run_pipeline lakes-build    <span class="c"># 3. write lakes.json and the lake pictures</span>
+conda run -n sartale python -m sartale.run_pipeline lakes-check    <span class="c"># 4. compare radar water with Sentinel-2 water</span></code></pre>
+
+<h2>The commands</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Command</th><th>What it does</th><th>Reads</th><th>Writes</th></tr></thead>
+  <tbody>
+    <tr><td><code>lakes-search</code></td><td>Searches NASA CMR for NISAR GCOV granules over each lake and prints a coverage report</td><td><code>lakes_in.json</code></td><td><code>data/lakes/passes.json</code></td></tr>
+    <tr><td><code>lakes-fetch</code></td><td>Reads a 6 km window from each pass with HTTP range requests and caches it. Safe to stop and run again; it skips cached windows and exits 1 if any pass failed</td><td><code>passes.json</code></td><td><code>data/lakes/&lt;lake&gt;/&lt;date&gt;_&lt;track&gt;_&lt;CRID&gt;.npz</code></td></tr>
+    <tr><td><code>lakes-build</code></td><td>Runs the method on every cached window, then the Attabad gate (below)</td><td>the cache, <code>lake_checks.json</code></td><td><code>app/public/data/lakes.json</code>, <code>app/public/data/lakes/&lt;lake&gt;/*.webp</code></td></tr>
+    <tr><td><code>lakes-check</code></td><td>Compares radar water with Sentinel-2 water for <code>--lakes</code> (default <code>attabad,khurdopin,passu,shisper</code>)</td><td>the cache, <code>lakes.json</code></td><td><code>processing/lake_checks.json</code>; the next <code>lakes-build</code> copies it into <code>lakes.json</code></td></tr>
+  </tbody>
+</table></div>
+<p>Each command takes <code>--help</code>. The paths above are the defaults, and each one can be overridden with a flag: <code>--lakes-in</code>, <code>--passes</code>, <code>--cache</code>, <code>--out</code> or <code>--checks</code>.</p>
+
+<h2>The Attabad gate</h2>
+<p><code>lakes-build</code> refuses to call a build good unless the method can tell a real lake from no lake. Attabad is a large, permanent lake; at the Shisper point no lake is expected in this season. On each shared track, Attabad's water area must be at least twice Shisper's (median ratio ≥ 2), Attabad must have a status, and it must have at least 3 looks in the cloud window. If the gate fails, <code>lakes.json</code> is still written for inspection, but the command exits 1. Pass <code>--allow-gate-fail</code> only while debugging, and never ship that build.</p>
+
+<h2>Add a lake by hand</h2>
+<ol>
+  <li>Add an entry to <code>processing/lakes_in.json</code> (fields in <a href="data.html#lakes-in-json">Data files</a>). Every coordinate needs a published source in <code>coord_source</code>.</li>
+  <li>If the lake has an outline, save it as GeoJSON in <code>processing/outlines/</code> and set <code>outline</code> to its path relative to <code>processing/</code>.</li>
+  <li>Run <code>lakes-search</code>, <code>lakes-fetch</code> and <code>lakes-build</code>, then <code>pytest tests -q</code> and <code>npm --prefix app test -- --run</code>.</li>
+</ol>
+<p>A lake put forward on the website goes through the same steps after <code>lake-requests-accept</code> adds its entry. See <a href="requests-api.html#review-requests">Review requests</a>.</p>
+
+<h2>Where the code lives</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Module</th><th>Job</th></tr></thead>
+  <tbody>
+    <tr><td><code>run_pipeline.py</code></td><td>The command line: every command above and the lake request commands</td></tr>
+    <tr><td><code>config.py</code></td><td>Every method constant, the CRID, the cloud window and the manual exclusions</td></tr>
+    <tr><td><code>lakes.py</code>, <code>lake_catalog.py</code>, <code>catalog.py</code></td><td>The lake register, the CMR search, picking passes, parsing granule names</td></tr>
+    <tr><td><code>remote.py</code>, <code>gcov.py</code></td><td>HTTP range reads of remote HDF5 files, and reading a GCOV window with its mask</td></tr>
+    <tr><td><code>radiometry.py</code>, <code>lakewater.py</code></td><td>Speckle box, decibels, the dark rule, the shadow rule, pass screening and the lake zone</td></tr>
+    <tr><td><code>lakestatus.py</code></td><td>Noise and the status of each lake</td></tr>
+    <tr><td><code>lakebuild.py</code>, <code>render.py</code></td><td>Puts it together: <code>lakes.json</code>, the pictures and the Attabad gate</td></tr>
+    <tr><td><code>lakecheck.py</code></td><td>The Sentinel-2 comparison</td></tr>
+    <tr><td><code>lake_requests.py</code>, <code>requests_server.py</code></td><td>The lake request store and its HTTP server</td></tr>
+  </tbody>
+</table></div>
+
+<h2>Troubleshooting</h2>
+<ul>
+  <li><b>401 or a login page from ASF:</b> the Earthdata login in <code>~/.netrc</code> is missing or wrong, or the ASF application has not been authorised in your Earthdata profile.</li>
+  <li><b><code>lakes-fetch</code> exits 1:</b> some passes failed, usually because of the network. Run it again; cached windows are kept.</li>
+  <li><b>The gate fails after a change to the method:</b> read the per-track ratios it prints. A drop usually means the dark rule or the shadow rule now removes real water.</li>
+</ul>

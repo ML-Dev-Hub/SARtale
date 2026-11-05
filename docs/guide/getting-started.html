@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting started · SARtale guide</title>
+<meta name="description" content="SARtale guide: watching glacial lakes in northern Pakistan through cloud with NISAR radar.">
+<link rel="icon" href="assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Inter+Tight:wght@600;650;700&amp;display=swap">
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+<a class="skip" href="#content">Skip to the content</a>
+<header class="bar">
+  <a class="brand" href="index.html"><img src="assets/logo.png" alt=""> SARtale <small>Guide</small></a>
+  <nav class="bar-links" aria-label="Project links">
+    <a href="getting-started.html">Get started</a>
+    <a href="requests-api.html">API</a>
+    <a href="https://github.com/saeedahmadicp/SARtale">GitHub</a>
+  </nav>
+</header>
+<div class="frame">
+  <aside class="rail" aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html" aria-current="page">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></aside>
+  <main id="content">
+    <details class="menu"><summary>Guide contents</summary><nav aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html" aria-current="page">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></nav></details>
+    <article class="doc">
+<h1>Getting started</h1>
+<p class="lede">The website runs on the data already in the repository, so you need no NASA account to try it. Rebuilding the data from NISAR is a separate step, covered in <a href="pipeline.html">Pipeline</a>.</p>
+
+<h2 id="what-you-need">What you need<a class="anchor" href="#what-you-need" aria-label="Link to this section">#</a></h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>For</th><th>Install</th></tr></thead>
+  <tbody>
+    <tr><td>The website</td><td>Node.js 20.19 or later (22 LTS recommended), with npm</td></tr>
+    <tr><td>The pipeline and the request server</td><td>Miniconda or Anaconda, for the <code>sartale</code> environment in <code>environment.yml</code> (Python 3.12, NumPy, SciPy, h5py, rasterio, GDAL, pyproj, Pillow, requests, pytest)</td></tr>
+    <tr><td>Rebuilding data from NISAR</td><td>A free <a href="https://urs.earthdata.nasa.gov/">NASA Earthdata login</a>, saved in <code>~/.netrc</code></td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="run-the-website">Run the website<a class="anchor" href="#run-the-website" aria-label="Link to this section">#</a></h2>
+<pre><code>git clone https://github.com/saeedahmadicp/SARtale.git
+cd SARtale
+npm --prefix app install
+npm --prefix app run dev        <span class="c"># opens on http://localhost:5173</span></code></pre>
+<p>The site opens on the story page. Use the header to switch to <b>Lake Watch</b> and <b>How we know</b>.</p>
+
+<h2 id="run-the-tests">Run the tests<a class="anchor" href="#run-the-tests" aria-label="Link to this section">#</a></h2>
+<pre><code>npm --prefix app test -- --run   <span class="c"># app tests, including the wording check</span>
+npm --prefix app run build       <span class="c"># type-check, then build into app/dist/</span></code></pre>
+<p>For the Python side, create the environment once, then run pytest from <code>processing/</code>:</p>
+<pre><code>conda env create -f environment.yml
+cd processing
+conda run -n sartale pytest tests -q</code></pre>
+<p>Both suites run offline. The Python tests use small synthetic NISAR files built in <code>tests/gcov_fixture.py</code>, not real downloads.</p>
+
+<h2 id="try-the-add-a-lake-form">Try the "Add a lake" form<a class="anchor" href="#try-the-add-a-lake-form" aria-label="Link to this section">#</a></h2>
+<p>The form needs the small request server. Start it next to the dev server, in a second terminal:</p>
+<pre><code>cd processing
+conda run -n sartale python -m sartale.run_pipeline lake-requests-serve
+<span class="c"># listening on 127.0.0.1:8787, saving to data/lake_requests.sqlite</span></code></pre>
+<p>The dev server forwards <code>/api</code> to it. Without the server, the form says "Requests are not open on this copy of the site." and the rest of the site works as normal. See <a href="requests-api.html">Lake request API</a>.</p>
+
+<div class="note"><p><strong>Port already in use?</strong> If <code>8787</code> or <code>5173</code> is taken, another copy is probably running. Stop it, or pass <code>--port</code> to the server and <code>-- --port 5174</code> to <code>npm run dev</code>. The dev proxy always points at <code>127.0.0.1:8787</code>, so move the server only if you also change <code>app/vite.config.ts</code>.</p></div>
+
+    </article>
+    <nav class="pager" aria-label="Next and previous page"><a href="index.html"><small>Previous</small>Overview</a><a href="user-guide.html" style="text-align:right"><small>Next</small>Using the website</a></nav>
+    <footer class="foot">SARtale, by team SARcastic Scientists for NASA Space Apps Challenge 2026. Code under the Apache License 2.0. Indicative screening on provisional NISAR data, not a warning service.</footer>
+  </main>
+</div>
+</body>
+</html>
