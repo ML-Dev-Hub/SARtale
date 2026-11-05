@@ -24,7 +24,7 @@ The team logo (`app/logo/SARtale.png`, with smaller copies in `app/public/brand/
 
 ## Human responsibility
 
-Saeed Ahmad and Shaharyar Sajid are responsible for the submission. Every claim about real NISAR data must be checked by a team member against the data before it is presented. The lake copy and the video script were drafted by AI tools from the data and need that check.
+Saeed Ahmad, Shaharyar Sajid and Usama Hussain are responsible for the submission. Every claim about real NISAR data must be checked by a team member against the data before it is presented. The lake copy and the video script were drafted by AI tools from the data and need that check.
 
 ## To complete before submission
 

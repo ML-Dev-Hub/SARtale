@@ -6,7 +6,7 @@
 
 Glacial lakes in Gilgit-Baltistan and upper Khyber Pakhtunkhwa, watched through cloud with NASA–ISRO NISAR radar.
 
-NASA Space Apps Challenge 2026, "Dancing with the SARs". Team **SARcastic Scientists** (Saeed Ahmad, Shaharyar Sajid), Islamabad Local Event.
+NASA Space Apps Challenge 2026, "Dancing with the SARs". Team **SARcastic Scientists** (Saeed Ahmad, Shaharyar Sajid, Usama Hussain), Islamabad Local Event.
 
 **Demo video:** [media/SARtale-lake-watch-demo.mp4](media/SARtale-lake-watch-demo.mp4) (35 s, subtitles in `media/SARtale-lake-watch-demo.srt`)
 
