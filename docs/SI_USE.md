@@ -14,7 +14,7 @@ Updated 4 Nov 2026. The Space Apps FAQ says a submission "must include a descrip
 |---|---|---|
 | Claude Code (Anthropic) | Planning, writing the app and pipeline code, tests, code review and documentation; running the pipeline on the real NISAR passes; drafting the copy, with every number taken from the data | Whole repository, including this file |
 | OpenAI Codex | Research on past Space Apps winners and glacial lakes, plan and code review, and a draft of the demo script | Internal research notes (not published), review comments |
-| ElevenLabs (eleven_v4 voice "Nathaniel", music_v2_5, sound effects) | Narration, music and two sound effects of the demo video | `media/SARtale-lake-watch-demo.mp4` only. Not part of the app or the data |
+| ElevenLabs (eleven_v4 voice "Nathaniel", music_v2_5, sound effects) | Narration, music and sound effects of the two videos | `media/SARtale-lake-watch-demo.mp4` and `media/SARtale-how-it-works.mp4` only. Not part of the app or the data |
 
 No AI model runs in the pipeline or the app. Lake Watch is plain statistics: a darkness rule on radar backscatter, a two-view shadow rule, and a change test against each lake's own noise.
 

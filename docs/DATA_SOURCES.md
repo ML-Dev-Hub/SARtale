@@ -44,6 +44,17 @@ Sentinel-2 cross-check result (`lakes.json`, `checks`): radar and optical water 
 | OpenStreetMap way 651792498 | Location of the Karakoram Highway bridge at Hassanabad (36.3006 N, 74.5869 E) | © OpenStreetMap contributors, ODbL 1.0 |
 | Narration, music and two sound effects | Generated with ElevenLabs (paid account) | ElevenLabs terms for paid plans: terms not confirmed for this use |
 
+## How-it-works video (`media/SARtale-how-it-works.mp4`)
+
+| Item | Use | Licence or terms |
+|---|---|---|
+| NISAR GCOV, Attabad window, every pass 25 Jun to 23 Oct 2026 | The radar image, dark-pixel, shadow and water maps, and the pass chart. Made by the pipeline from the data in this repository | NASA data, as above |
+| NASA MODIS Terra true colour (`app/public/story/north_map.jpg`) | Background map | As below |
+| UNDP GLOF-II (more than 3,000 glacial lakes in Gilgit-Baltistan and Khyber Pakhtunkhwa) | One spoken and shown figure | Cited only |
+| SUPARCO, Radio Pakistan | As above: the quote and the 2022 Shisper outburst | Cited only |
+| Sentinel-2 scene count over Attabad, 17 Jun to 4 Aug 2026 (13 scenes, 5 mostly cloud) | One spoken figure | Copernicus Sentinel data terms, as above |
+| Narration and music | Generated with ElevenLabs (paid account) | ElevenLabs terms for paid plans: terms not confirmed for this use |
+
 ## Story page images (`app/public/story/`)
 
 | Item | Use | Licence or terms |
