@@ -67,7 +67,7 @@ export async function loadRequests(url = "data/requests.json", fetchFn: typeof f
     if (!res.ok) return [];
     const json: unknown = await res.json();
     const list = json && typeof json === "object" ? (json as { requests?: unknown }).requests : null;
-    return Array.isArray(list) && list.every(isRequest) ? list : [];
+    return Array.isArray(list) ? list.filter(isRequest) : [];
   } catch {
     return [];
   }
@@ -79,15 +79,21 @@ function km(lat1: number, lon1: number, lat2: number, lon2: number): number {
   return 2 * 6371.0088 * Math.asin(Math.sqrt(a));
 }
 
+/** Decimal numbers only, as Python float() reads them here: no hex, binary or empty text. */
+const DECIMAL = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
+const MAX_OPEN = 200;
+const OPEN_STATES: RequestState[] = ["searched", "too_few_passes", "check_failed"];
+
 function numberField(key: string, value: string): number | string {
-  const n = value.trim() === "" ? NaN : Number(value);
+  const t = value.trim();
+  const n = DECIMAL.test(t) ? Number(t) : NaN;
   return Number.isFinite(n) ? n : `${key} must be a number.`;
 }
 
 function textError(key: string, value: string, low: number, high: number): string | null {
   const t = value.trim();
   if (/[\p{Cc}\p{Cf}]/u.test(t)) return `${key} must not contain control or invisible formatting characters.`;
-  return t.length >= low && t.length <= high ? null : `${key} must be ${low}–${high} characters.`;
+  return [...t].length >= low && [...t].length <= high ? null : `${key} must be ${low}–${high} characters.`;
 }
 
 /** The first problem with a request, in the same order and words as the Python validate; null when it is fine. */
@@ -102,7 +108,9 @@ export function checkRequest(f: RequestFields, watched: Lake[], requests: LakeRe
   const bad = textError("name", f.name, 2, 80) ?? textError("source", f.source, 3, 200);
   if (bad) return bad;
   for (const l of watched) if (km(lat, lon, l.lat, l.lon) <= NEAR_KM) return `Already watched: ${l.name}.`;
-  for (const r of requests) if (LIVE.includes(r.state) && km(lat, lon, r.lat, r.lon) <= NEAR_KM) return `Already requested: issue #${r.issue}.`;
+  const near = requests.filter((r) => LIVE.includes(r.state) && km(lat, lon, r.lat, r.lon) <= NEAR_KM).map((r) => r.issue);
+  if (near.length) return `Already requested: issue #${Math.min(...near)}.`;
+  if (requests.filter((r) => OPEN_STATES.includes(r.state)).length >= MAX_OPEN) return "The request list is full; try again later.";
   return null;
 }
 
@@ -173,7 +181,14 @@ export function mountAddLake(root: HTMLElement, deps: AddLakeDeps): { destroy():
   link.href = ALL_REQUESTS_URL;
   link.target = "_blank";
   link.rel = "noopener";
-  card.append(text("div", "sp-add-card-line", form.finishOnGithub), link);
+  const line = document.createElement("div");
+  line.className = "sp-add-card-line";
+  const strong = text("strong", undefined, form.finishStrong);
+  line.append(form.finishBefore, strong, form.finishAfter);
+  const again = text("a", "sp-add-link", form.openAgain);
+  again.target = "_blank";
+  again.rel = "noopener";
+  card.append(line, again, " ", link);
   const button = text("button", "sp-btn sp-btn-primary", form.submitLabel);
   button.type = "submit";
   const f = document.createElement("form");
@@ -198,7 +213,9 @@ export function mountAddLake(root: HTMLElement, deps: AddLakeDeps): { destroy():
       card.before(error);
       return;
     }
-    open(issueUrl(values));
+    const url = issueUrl(values);
+    open(url);
+    again.href = url;
     card.hidden = false;
   };
   f.addEventListener("submit", onSubmit);

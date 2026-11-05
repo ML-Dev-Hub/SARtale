@@ -34,6 +34,10 @@ describe("loadRequests", () => {
     expect(await loadRequests("x", reply({ requests: [] }, false))).toEqual([]);
     expect(await loadRequests("x", (async () => { throw new TypeError("down"); }) as unknown as typeof fetch)).toEqual([]);
   });
+  it("drops a malformed row and keeps the valid ones", async () => {
+    const good = [row({ issue: 1 }), row({ issue: 3 })];
+    expect(await loadRequests("x", reply({ requests: [good[0], { issue: "2" }, null, good[1]] }))).toEqual(good);
+  });
   it("returns the requests", async () => {
     expect(await loadRequests("x", reply({ updated: null, requests: [row()] }))).toEqual([row()]);
   });
@@ -49,6 +53,27 @@ describe("checkRequest", () => {
     expect(checkRequest({ ...form, name: "ab​cd" }, watched, [])).toBe("name must not contain control or invisible formatting characters.");
     const w = watched[0];
     expect(checkRequest({ ...form, lat: String(w.lat), lon: String(w.lon) }, watched, [])).toBe(`Already watched: ${w.name}.`);
+  });
+  it("accepts only decimal numbers", () => {
+    for (const bad of ["0x24", "0b1", "", "  ", "36.2°", "1e", "--1"]) expect(checkRequest({ ...form, lat: bad }, watched, []), bad).toBe("lat must be a number.");
+    expect(checkRequest({ ...form, lat: " +3.642e1 " }, watched, [])).toBeNull();
+    expect(checkRequest({ ...form, lon: ".7488e2" }, watched, [])).toBeNull();
+  });
+  it("counts code points like Python", () => {
+    expect(checkRequest({ ...form, name: "😀".repeat(80) }, watched, [])).toBeNull();
+    expect(checkRequest({ ...form, name: "😀".repeat(81) }, watched, [])).toBe("name must be 2–80 characters.");
+    expect(checkRequest({ ...form, source: "😀".repeat(201) }, watched, [])).toBe("source must be 3–200 characters.");
+  });
+  it("names the earliest issue when several are near", () => {
+    const rows = [row({ issue: 30 }), row({ issue: 4 }), row({ issue: 11 })];
+    expect(checkRequest(form, watched, rows)).toBe("Already requested: issue #4.");
+  });
+  it("refuses when 200 requests are open", () => {
+    const far = (i: number) => row({ issue: i, lat: 35, lon: 71, state: i % 3 === 0 ? "check_failed" : "searched" });
+    const open = Array.from({ length: 200 }, (_, i) => far(i + 1));
+    expect(checkRequest(form, watched, open)).toBe("The request list is full; try again later.");
+    expect(checkRequest(form, watched, open.slice(1))).toBeNull();
+    expect(checkRequest(form, watched, [...open.slice(1), row({ issue: 999, lat: 35, lon: 71, state: "accepted" })])).toBeNull();
   });
   it("blocks near a live request and ignores invalid or rejected ones", () => {
     for (const state of ["searched", "too_few_passes", "check_failed", "accepted"] as const)
@@ -90,9 +115,14 @@ describe("add a lake form", () => {
     expect(open).toHaveBeenCalledWith(issueUrl(form));
     const card = root.querySelector(".sp-add-card")!;
     expect(card.textContent).toContain("Almost done: press Submit new issue on GitHub. The team reviews every request.");
-    const a = card.querySelector("a")!;
-    expect(a.textContent).toBe("See all requests");
-    expect(a.getAttribute("href")).toBe("https://github.com/saeedahmadicp/SARtale/issues?q=label%3Alake-request");
+    expect(card.querySelector("strong")!.textContent).toBe("Submit new issue");
+    const [again, all] = [...card.querySelectorAll("a")];
+    expect(again.textContent).toBe("Open the request again");
+    expect(again.getAttribute("href")).toBe(issueUrl(form));
+    expect(again.getAttribute("target")).toBe("_blank");
+    expect(again.getAttribute("rel")).toBe("noopener");
+    expect(all.textContent).toBe("See all requests");
+    expect(all.getAttribute("href")).toBe("https://github.com/saeedahmadicp/SARtale/issues?q=label%3Alake-request");
   });
 
   it("an error is shown and nothing opens", () => {
@@ -108,12 +138,16 @@ describe("requests on the story page", () => {
   const options = { onOpenLakes() {}, onOpenEvidence() {}, onFollowStory() {} };
 
   it("a name with HTML renders as text", () => {
-    const name = "<img src=x onerror=alert(1)>";
+    const name = "<img src=x onerror=alert(1)> @someone";
+    const { root } = mount();
+    fill(root, { ...form, name });
+    submit(root);
+    expect(root.querySelector("img")).toBeNull();
     const page = document.createElement("div");
     document.body.appendChild(page);
     const sp = renderStoryPage(page, fixtureLakes, { ...options, requests: [row({ name })] });
     expect(sp.listEl.querySelector(".sp-request")!.textContent).toContain(name);
-    expect(page.querySelector("img[src='x']")).toBeNull();
+    expect(sp.listEl.querySelector("img")).toBeNull();
   });
 
   it("live requests appear as cards without a lake status; invalid and rejected do not", () => {

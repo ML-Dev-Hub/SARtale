@@ -34,8 +34,8 @@ export interface StoryPage {
   listEl: HTMLElement;
   mapEl: HTMLElement;
   addLakeEl: HTMLElement;
-  /** Show these open lake requests in the list and on the map, replacing the earlier ones. */
-  setRequests(open: LakeRequest[]): void;
+  /** Show these lake requests in the list and on the map, replacing the earlier ones. */
+  setRequests(requests: LakeRequest[]): void;
 }
 
 /** The pictured pass's area: the series point on the status track's latest date. */
@@ -289,10 +289,10 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const mapKey = el("figcaption", "sp-map-key", el("span", "sp-key-pin"), ` ${w.keyWatched} `, el("span", "sp-key-pin sp-key-request"), ` ${w.keyRequested}`);
   mapEl.append(mapKey, mapCredit);
   const requestEls: HTMLElement[] = [];
-  const setRequests = (open: LakeRequest[]): void => {
+  const setRequests = (list: LakeRequest[]): void => {
     for (const e of requestEls) e.remove();
     requestEls.length = 0;
-    for (const r of open.filter(isShown)) {
+    for (const r of list.filter(isShown)) {
       const pos = mapPin(r.lon, r.lat);
       if (pos) {
         const pin = el("span", "sp-pin sp-pin-request");
