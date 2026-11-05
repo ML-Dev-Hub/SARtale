@@ -1,43 +1,47 @@
 1
-00:00:00,135 --> 00:00:05,662
+00:00:00,113 --> 00:00:05,558
 A glacial lake above Hunza bursts and takes the Karakoram Highway bridge with it.
 
 2
-00:00:06,096 --> 00:00:10,392
-Pakistan tracks one hundred and thirty-one potentially dangerous lakes,
+00:00:06,019 --> 00:00:10,294
+Pakistan tracks one hundred and thirty-one potentially dangerous lakes.
 
 3
-00:00:10,712 --> 00:00:12,046
-but on many summer days,
+00:00:10,642 --> 00:00:11,974
+But on many summer days,
 
 4
-00:00:12,154 --> 00:00:13,315
+00:00:12,094 --> 00:00:13,181
 cloud hides them.
 
 5
-00:00:13,712 --> 00:00:15,950
+00:00:13,566 --> 00:00:15,747
 NISAR's radar sees straight through.
 
 6
-00:00:16,442 --> 00:00:18,412
-SARtale finds each lake,
+00:00:16,245 --> 00:00:18,445
+SARtale watches eleven lakes.
 
 7
-00:00:18,558 --> 00:00:20,681
-measures its water pass after pass,
+00:00:18,717 --> 00:00:21,238
+It turns dark radar pixels into water,
 
 8
-00:00:20,808 --> 00:00:22,508
-and prints a one-page brief.
+00:00:21,566 --> 00:00:24,200
+tracks each lake pass after pass,
 
 9
-00:00:22,865 --> 00:00:26,162
-This summer, sixty valid looks at eleven lakes.
+00:00:24,377 --> 00:00:27,275
+and flags only changes bigger than its own noise.
 
 10
-00:00:26,596 --> 00:00:28,931
-SARtale, when clouds close in,
+00:00:27,642 --> 00:00:31,917
+Anyone can put forward a new lake and see how often NISAR passes over it.
 
 11
-00:00:29,115 --> 00:00:30,700
+00:00:32,340 --> 00:00:34,823
+SARtale: when clouds close in,
+
+12
+00:00:34,981 --> 00:00:36,483
 the lakes stay in view.
