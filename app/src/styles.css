@@ -298,3 +298,12 @@ body > #app > .maturity { margin: 24px 40px 0; display: inline-block; }
 .lw-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .lw-thumb-water { opacity: 0.75; }
 .lw-thumb[data-empty="true"]::after { content: "No picture"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 0.62rem; }
+
+/* Lake Watch: every pass as a table */
+.lw-readings { margin-top: 12px; }
+.lw-readings summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--accent); }
+.lw-table-wrap { overflow-x: auto; }
+.lw-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.lw-table caption { text-align: left; color: var(--muted); padding: 4px 0 8px; }
+.lw-table th, .lw-table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.lw-table th { color: var(--muted); font-weight: 600; }

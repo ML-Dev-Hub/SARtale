@@ -68,6 +68,29 @@ export interface LakeCheck {
   window_iou: number | null;
 }
 
+/** A check row the pipeline wrote without measurements, e.g. {"lake": "x", "note": "no clear Sentinel-2 scene within 3 days"}. */
+export interface LakeCheckNote {
+  lake: string;
+  note: string;
+}
+
+/** True for a check row that carries the dates and numbers the app shows. */
+export function isMeasuredCheck(c: unknown): c is LakeCheck {
+  const r = c as Partial<LakeCheck> | null;
+  return !!r && typeof r.lake === "string" && typeof r.nisar_date === "string" && typeof r.s2_date === "string"
+    && typeof r.radar_km2 === "number" && typeof r.optical_km2 === "number" && typeof r.days_apart === "number";
+}
+
+/** Keeps only measured rows in `checks` and moves the rest to `check_notes`, so one unmeasured row cannot break a view. */
+export function splitChecks(f: LakesFile): LakesFile {
+  const rows = f.checks as unknown[];
+  const notes = rows
+    .filter((c) => !isMeasuredCheck(c))
+    .map((c) => c as Partial<LakeCheckNote>)
+    .filter((c): c is LakeCheckNote => typeof c?.lake === "string" && typeof c.note === "string");
+  return { ...f, checks: rows.filter(isMeasuredCheck), check_notes: notes };
+}
+
 export interface LakesFile {
   version: number;
   built: string;
@@ -86,6 +109,8 @@ export interface LakesFile {
   };
   lakes: Lake[];
   checks: LakeCheck[];
+  /** Check rows without measurements; filled by splitChecks. */
+  check_notes?: LakeCheckNote[];
 }
 
 export const STATUS_ORDER: LakeStatusName[] = [
@@ -108,7 +133,7 @@ export async function loadLakes(url: string): Promise<LakesFile | null> {
     const res = await fetch(url);
     if (!res.ok) return null;
     const json: unknown = await res.json();
-    return isLakesFile(json) ? json : null;
+    return isLakesFile(json) ? splitChecks(json) : null;
   } catch {
     return null;
   }

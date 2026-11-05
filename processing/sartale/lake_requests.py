@@ -144,18 +144,23 @@ class RequestStore:
             return self._db.execute(
                 f"SELECT COUNT(*) FROM requests WHERE state IN ({marks})", OPEN_STATES).fetchone()[0]
 
-    def set_searched(self, rid: int, passes: int, tracks: list[str], first: str | None, last: str | None) -> None:
+    def set_searched(self, rid: int, passes: int, tracks: list[str], first: str | None, last: str | None) -> bool:
+        """Record a finished search. Only a request still `queued` changes, so a search that ends after the team
+        accepted or rejected it cannot reopen that decision. Returns whether the row changed."""
         with self._lock, self._db:
-            self._db.execute(
+            cur = self._db.execute(
                 "UPDATE requests SET state = 'searched', passes = ?, tracks = ?, first = ?, last = ?, "
-                "reason = NULL WHERE id = ?", (passes, json.dumps(tracks), first, last, rid))
+                "reason = NULL WHERE id = ? AND state = 'queued'", (passes, json.dumps(tracks), first, last, rid))
+            return cur.rowcount == 1
 
-    def set_failed(self, rid: int, reason: str, detail: str | None = None) -> None:
-        """`reason` is public (capped at 200 characters); `detail` is the raw error, for the team only."""
+    def set_failed(self, rid: int, reason: str, detail: str | None = None) -> bool:
+        """`reason` is public (capped at 200 characters); `detail` is the raw error, for the team only.
+        Like set_searched, only a request still `queued` changes."""
         with self._lock, self._db:
-            self._db.execute(
-                "UPDATE requests SET state = 'search_failed', reason = ?, detail = ? WHERE id = ?",
+            cur = self._db.execute(
+                "UPDATE requests SET state = 'search_failed', reason = ?, detail = ? WHERE id = ? AND state = 'queued'",
                 (reason[:200], detail, rid))
+            return cur.rowcount == 1
 
     def set_state(self, rid: int, state: str, reason: str | None = None) -> None:
         if state not in STATES:

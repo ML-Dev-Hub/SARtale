@@ -28,6 +28,8 @@ export interface LakeWatchOptions {
   createChart?: LakeChartFactory;
   createLocator?: LocatorFactory;
   onBrief?: (lake: Lake) => void;
+  /** Called when the person picks a lake (list row or map pin), not when the view opens on one. */
+  onSelect?: (id: string) => void;
 }
 
 export interface LakeWatchHandle {
@@ -54,8 +56,11 @@ const TEMPLATE = `
 
 const utcSeconds = (iso: string): number => Date.parse(`${iso}T00:00:00Z`) / 1000;
 
-/** Chart columns for a lake: one series per track, never joined across tracks, plus one marker-only series for excluded passes. */
-export function lakeChartData(lake: Lake): LakeChartData {
+/**
+ * Chart columns for a lake: one series per track, never joined across tracks, plus one marker-only series for excluded
+ * passes. A pass that saw less than `minObservable` of the lake zone is left off, as the status leaves it out.
+ */
+export function lakeChartData(lake: Lake, minObservable = 0): LakeChartData {
   const dates = [...new Set(lake.series.map((p) => p.date))].sort();
   const index = new Map(dates.map((d, i) => [d, i]));
   const tracks = [...new Set(lake.series.map((p) => p.track))].sort();
@@ -63,7 +68,9 @@ export function lakeChartData(lake: Lake): LakeChartData {
   const series: LakeChartSeries[] = [];
   for (const track of tracks) {
     const values = blank();
-    for (const p of lake.series) if (p.track === track && p.excluded === null && p.area_km2 !== null) values[index.get(p.date)!] = p.area_km2;
+    for (const p of lake.series) {
+      if (p.track === track && p.excluded === null && p.area_km2 !== null && (p.observable_share ?? 0) >= minObservable) values[index.get(p.date)!] = p.area_km2;
+    }
     if (values.some((v) => v !== null)) series.push({ label: track, values, excluded: false });
   }
   const out = blank();
@@ -128,11 +135,11 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
       el("span", "lw-coord", `Coordinates: ${lake.coord_source}`),
     );
     b.append(thumb(lake), text);
-    b.addEventListener("click", () => select(lake.id));
+    b.addEventListener("click", () => choose(lake.id));
     b.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
-        select(lake.id);
+        choose(lake.id);
       }
     });
     rows.set(lake.id, b);
@@ -173,10 +180,10 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
       i.alt = alt;
       return i;
     };
-    if (hh) stack.append(mk(hh, `Latest HH radar picture of ${lake.name}, in radar geometry`, "lw-img lw-img-hh"));
+    if (hh) stack.append(mk(hh, `Latest HH radar picture of ${lake.name}, north up`, "lw-img lw-img-hh"));
     let waterImg: HTMLImageElement | undefined;
     if (water) {
-      waterImg = mk(water, `Water pixels for ${lake.name}, in radar geometry`, "lw-img lw-img-water");
+      waterImg = mk(water, `Water pixels for ${lake.name}, north up`, "lw-img lw-img-water");
       stack.append(waterImg);
     }
     wrap.append(stack);
@@ -196,8 +203,44 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     }
     if (!hh) wrap.append(el("p", "lw-none", "No radar picture yet for the latest HH image"));
     if (!water) wrap.append(el("p", "lw-none", "No radar picture yet for the water pixels"));
-    wrap.append(el("p", "lw-note", "Radar-geometry pictures, not a map: north is not up."));
+    wrap.append(el("p", "lw-note", "NISAR GCOV crop on the UTM grid, north up, about 6 km across. A picture, not an interactive map."));
     return wrap;
+  }
+
+  /** Every pass as a table, folded: the chart's values for keyboard and screen-reader use, plus the passes it leaves out. */
+  function readingsTable(lake: Lake, minObs: number): HTMLElement {
+    const box = el("details", "lw-readings");
+    box.dataset.role = "lw-readings";
+    box.append(el("summary", undefined, `Every pass as a table (${lake.series.length})`));
+    const wrap = el("div", "lw-table-wrap");
+    const t = el("table", "lw-table");
+    t.append(el("caption", undefined, `NISAR passes over ${lake.name}: water area by date and track`));
+    const thead = el("thead");
+    const head = el("tr");
+    for (const h of ["Date", "Track", "Area (km²)", "Zone seen", "Used"]) {
+      const th = el("th", undefined, h);
+      th.scope = "col";
+      head.append(th);
+    }
+    thead.append(head);
+    const tbody = el("tbody");
+    const order = [...lake.series].sort((a, b) => (a.date !== b.date ? (a.date < b.date ? -1 : 1) : a.track < b.track ? -1 : 1));
+    for (const p of order) {
+      const used = p.excluded !== null ? `Left out: ${p.excluded}` : p.area_km2 === null ? "No reading" : (p.observable_share ?? 0) < minObs ? "Too little of the zone seen" : "Yes";
+      const tr = el("tr");
+      tr.append(
+        el("td", undefined, formatDate(p.date)),
+        el("td", undefined, p.track),
+        el("td", undefined, p.area_km2 === null ? "–" : p.area_km2.toFixed(3)),
+        el("td", undefined, p.observable_share === null ? "–" : `${Math.round(p.observable_share * 100)}%`),
+        el("td", undefined, used),
+      );
+      tbody.append(tr);
+    }
+    t.append(thead, tbody);
+    wrap.append(t);
+    box.append(wrap);
+    return box;
   }
 
   function section(title: string, items: string[]): HTMLElement {
@@ -224,7 +267,8 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
 
     // With too few looks or no observable zone the earlier points are not a trend: show the reason, not a chart.
     const noTrend = lake.status.status === "Not observable" || lake.status.status === "Not enough NISAR looks yet";
-    const data = lakeChartData(lake);
+    const minObs = file!.constants.min_observable;
+    const data = lakeChartData(lake, minObs);
     const chartSec = el("section", "lw-section");
     chartSec.append(el("h3", undefined, "Area by track"));
     if (noTrend) {
@@ -233,12 +277,14 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
       chartSec.append(el("p", "lw-none", "No area curve yet"));
     } else if (opts.createChart) {
       const host = el("div", "lw-chart");
-      chartSec.append(host, el("p", "lw-note", "One line per track. Hollow markers are passes left out of the trend."));
+      chartSec.append(host, el("p", "lw-note", `One line per track. Passes left out, and passes that saw less than ${Math.round(minObs * 100)}% of the lake zone, are not drawn; the table lists every pass.`));
       chart = opts.createChart(host, data);
     }
+    if (lake.series.length) chartSec.append(readingsTable(lake, minObs));
     detail.append(chartSec);
 
     for (const check of (file?.checks ?? []).filter((c) => c.lake === lake.id)) detail.append(el("p", "lw-check", checkLine(check)));
+    for (const n of (file?.check_notes ?? []).filter((c) => c.lake === lake.id)) detail.append(el("p", "lw-check", `Sentinel-2 check: ${n.note}.`));
     // Standing limits of the method, shown for every lake; the lake's own limits follow when it has any.
     const method = section("Method limits", methodLimits(file!));
     method.dataset.role = "lw-method-limits";
@@ -255,20 +301,31 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     detail.append(brief);
   }
 
-  function select(id: string): void {
+  function select(id: string): boolean {
     const lake = lakes.find((l) => l.id === id);
-    if (!lake) return;
+    if (!lake) return false;
     for (const [rid, b] of rows) b.setAttribute("aria-pressed", String(rid === id));
     render(lake);
     locator?.highlight(id);
+    return true;
   }
 
-  if (opts.createLocator) locator = opts.createLocator(q("lw-locator"), lakes, (id) => select(id));
+  /** The person picked a lake: show it, tell the shell, and on a one-column layout bring the panel into view. */
+  function choose(id: string): void {
+    if (!select(id)) return;
+    opts.onSelect?.(id);
+    if (window.matchMedia?.("(max-width: 900px)").matches) {
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      detail.scrollIntoView?.({ block: "start", behavior: still ? "auto" : "smooth" });
+    }
+  }
+
+  if (opts.createLocator) locator = opts.createLocator(q("lw-locator"), lakes, (id) => choose(id));
   // Open on a lake from the start, so the panel shows radar pictures and a chart instead of an empty prompt.
   select(openingLake(lakes).id);
 
   return {
-    select,
+    select: (id) => void select(id),
     destroy: () => {
       chart?.destroy();
       locator?.destroy();

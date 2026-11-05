@@ -99,3 +99,15 @@ describe("methodLimits", () => {
     expect(opticalCheckSentence([mk(null)])).toBeNull();
   });
 });
+
+describe("splitChecks", () => {
+  test("test_unmeasured_check_rows_move_to_check_notes", async () => {
+    const { splitChecks } = await import("./lakes");
+    const { fixtureLakes } = await import("./fixtures");
+    const measured = { lake: "passu", nisar_date: "2026-08-17", nisar_track: "055A", s2_date: "2026-08-17", s2_id: "S2", days_apart: 0, s2_window_cloud_pct: 0, scope: "zone", radar_km2: 0.05, optical_km2: 0.2, area_error_pct: null, iou: 0.03, zone_valid_share: 1, window_radar_km2: 0.1, window_optical_km2: 0.3, window_area_error_pct: null, window_iou: 0.02 };
+    const raw = { ...fixtureLakes, checks: [measured, { lake: "attabad", note: "no clear Sentinel-2 scene within 3 days" }, { lake: "x" }] } as unknown as typeof fixtureLakes;
+    const out = splitChecks(raw);
+    expect(out.checks).toEqual([measured]);
+    expect(out.check_notes).toEqual([{ lake: "attabad", note: "no clear Sentinel-2 scene within 3 days" }]);
+  });
+});

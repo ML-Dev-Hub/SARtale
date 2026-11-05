@@ -127,6 +127,43 @@ describe("Lake Watch", () => {
     expect(d.series.find((s) => s.excluded)!.values.filter((v) => v !== null)).toEqual([9.0]);
   });
 
+  test("test_chart_leaves_off_passes_that_saw_too_little_of_the_zone", () => {
+    const pt = (date: string, area: number, share: number) => ({ date, track: "156A", area_km2: area, observable_share: share, excluded: null });
+    const lake: Lake = { ...fixtureLakes.lakes[2], series: [pt("2026-07-01", 1.0, 0.9), pt("2026-07-13", 0.04, 0.06), pt("2026-07-25", 1.1, 0.5)] };
+    expect(lakeChartData(lake, 0.5).series[0].values).toEqual([1.0, null, 1.1]);
+    expect(lakeChartData(lake).series[0].values).toEqual([1.0, 0.04, 1.1]);
+  });
+
+  test("test_every_pass_is_listed_in_the_readings_table_with_why_it_was_not_used", () => {
+    const pt = (date: string, area: number | null, share: number, excluded: string | null) => ({ date, track: "156A", area_km2: area, observable_share: share, excluded });
+    const lake: Lake = {
+      ...fixtureLakes.lakes[2],
+      series: [pt("2026-07-25", 1.1, 0.9, null), pt("2026-07-01", 1.0, 0.1, null), pt("2026-07-13", null, 1, "window too bright")],
+    };
+    const { root, view } = setup({ ...fixtureLakes, lakes: [lake] });
+    view.select(lake.id);
+    const rows = [...root.querySelectorAll('[data-role="lw-readings"] tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent));
+    expect(rows.map((r) => r[0])).toEqual(["1 Jul 2026", "13 Jul 2026", "25 Jul 2026"]);
+    expect(rows.map((r) => r[4])).toEqual(["Too little of the zone seen", "Left out: window too bright", "Yes"]);
+    expect(rows[1][2]).toBe("–");
+  });
+
+  test("test_a_check_note_shows_as_a_line_and_does_not_break_the_panel", () => {
+    const lake = fixtureLakes.lakes[2];
+    const { root, view } = setup({ ...fixtureLakes, checks: [], check_notes: [{ lake: lake.id, note: "no clear Sentinel-2 scene within 3 days" }] });
+    view.select(lake.id);
+    expect([...root.querySelectorAll(".lw-check")].map((e) => e.textContent)).toEqual(["Sentinel-2 check: no clear Sentinel-2 scene within 3 days."]);
+  });
+
+  test("test_picking_a_lake_reports_it_but_opening_on_one_does_not", () => {
+    const picked: string[] = [];
+    const { root } = setup(fixtureLakes, { onSelect: (id) => void picked.push(id) });
+    expect(picked).toEqual([]);
+    const id = fixtureLakes.lakes[1].id;
+    root.querySelector<HTMLButtonElement>(`[data-lake-id="${id}"]`)!.click();
+    expect(picked).toEqual([id]);
+  });
+
   test("too few looks hides the chart and any area number even with series points", () => {
     const pt = (date: string) => ({ date, track: "156A", area_km2: 1.234, observable_share: 1, excluded: null });
     const lake: Lake = { ...fixtureLakes.lakes.find((l) => l.id === "few")!, series: [pt("2026-07-01"), pt("2026-07-13")] };

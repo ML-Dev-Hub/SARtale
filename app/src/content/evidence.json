@@ -84,7 +84,7 @@
       "title": "Limits",
       "list": [
         "Areas are water inside a search zone, so a lake larger than its zone is only partly counted.",
-        "Radar pictures are in radar geometry, not georeferenced map overlays.",
+        "Radar pictures are NISAR GCOV crops on the UTM grid, north up; they are pictures, not interactive map overlays.",
         "A status compares a lake only with its own earlier passes on one track; it is not an absolute size.",
         "Provisional NISAR data, subject to reprocessing."
       ]

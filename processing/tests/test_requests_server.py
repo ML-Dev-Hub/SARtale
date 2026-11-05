@@ -283,3 +283,19 @@ def test_connections_beyond_the_cap_are_closed(make):
         extra.close()
         for s in held:
             s.close()
+
+
+def test_post_from_another_site_is_refused(make):
+    h = make()
+    status, resp, _ = h.call("POST", "/api/lake-requests", body(), headers={"Origin": "http://evil.example"})
+    assert status == 403 and "error" in resp
+    assert h.store.open_count() == 0
+    status, _, _ = h.call("POST", "/api/lake-requests", body(), headers={"Origin": ORIGIN})
+    assert status == 201
+
+
+def test_post_must_be_json(make):
+    h = make()
+    status, resp, _ = h.call("POST", "/api/lake-requests", body(), headers={"Content-Type": "text/plain"})
+    assert status == 415 and "error" in resp
+    assert h.store.open_count() == 0

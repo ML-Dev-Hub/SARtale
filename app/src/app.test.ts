@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test } from "vitest";
 import lakesJson from "../public/data/lakes.json";
-import { mountApp, type AppOptions } from "./app";
+import { mountApp, routeFromHash, type AppOptions } from "./app";
 import { findBannedClaims } from "./content";
 import { fixtureLakes } from "./fixtures";
 import { featuredLake, type LakesFile } from "./lakes";
@@ -254,5 +254,37 @@ describe("the lake story", () => {
       expect(text.replace(SUPARCO, "")).not.toMatch(/detect|accurate|\{\w+\}/i);
       if (n < 4) $("ls-next").click();
     }
+  });
+});
+
+describe("routing", () => {
+  test("test_routeFromHash_names_views_and_lakes_and_ignores_anchors", () => {
+    expect(routeFromHash("")).toEqual({ view: "home" });
+    expect(routeFromHash("#")).toEqual({ view: "home" });
+    expect(routeFromHash("#evidence")).toEqual({ view: "evidence" });
+    expect(routeFromHash("#lakes/attabad")).toEqual({ view: "lakes", lake: "attabad" });
+    expect(routeFromHash("#main")).toBeNull();
+    expect(routeFromHash("#lakes/<b>")).toBeNull();
+  });
+
+  test("test_switching_views_updates_the_address_and_back_returns", () => {
+    window.history.replaceState(null, "", "/");
+    const { $ } = setup();
+    $("view-evidence").click();
+    expect(window.location.hash).toBe("#evidence");
+    $("view-lakes").click();
+    expect(window.location.hash).toBe("#lakes");
+    window.history.replaceState(null, "", "#evidence");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect($("view-evidence").getAttribute("aria-pressed")).toBe("true");
+    window.history.replaceState(null, "", "/");
+  });
+
+  test("test_a_lake_hash_opens_that_lake", () => {
+    const id = lakesJson.lakes[1].id;
+    window.history.replaceState(null, "", `#lakes/${id}`);
+    const { root } = setup();
+    expect(root.querySelector('.lw-row[aria-pressed="true"]')?.getAttribute("data-lake-id")).toBe(id);
+    window.history.replaceState(null, "", "/");
   });
 });

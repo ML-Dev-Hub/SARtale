@@ -64,10 +64,12 @@ def test_store_round_trip_and_states(tmp_path):
     got = s.get(row["id"])
     assert (got["state"], got["passes"], got["tracks"], got["first"], got["last"]) == (
         "searched", 7, ["055A", "156A"], "2026-06-20", "2026-07-01")
-    s.set_failed(row["id"], "CMR down")
-    assert s.get(row["id"])["state"] == "search_failed" and s.get(row["id"])["reason"] == "CMR down"
+    assert s.set_failed(row["id"], "CMR down") is False  # already searched: a late failure changes nothing
+    assert s.get(row["id"])["state"] == "searched"
     assert s.open_count() == 1
     second = s.add(clean("B lake", 36.0), "1.2.3.4", 1001.0)
+    assert s.set_failed(second["id"], "CMR down") is True
+    assert s.get(second["id"])["state"] == "search_failed" and s.get(second["id"])["reason"] == "CMR down"
     assert [r["id"] for r in s.list_open()] == [second["id"], row["id"]]
     s.set_state(row["id"], "accepted")
     assert [r["id"] for r in s.list_open()] == [second["id"]] and s.open_count() == 1
@@ -134,3 +136,16 @@ def test_an_old_database_gets_the_detail_column(tmp_path):
     s.set_failed(rid, "x" * 300, "raw")
     row = s.get(rid)
     assert len(row["reason"]) == 200 and row["detail"] == "raw"
+
+
+def test_a_late_search_cannot_reopen_a_decision(tmp_path):
+    s = RequestStore(tmp_path / "r.sqlite")
+    rejected = s.add(clean("R lake", 36.0), "1.2.3.4", 1000.0)
+    accepted = s.add(clean("A lake", 35.5), "1.2.3.4", 1000.0)
+    s.set_state(rejected["id"], "rejected", "No public source")
+    s.set_state(accepted["id"], "accepted")
+    assert s.set_searched(rejected["id"], 3, ["055A"], "2026-06-20", "2026-07-01") is False
+    assert s.set_failed(accepted["id"], "late", "TimeoutError") is False
+    assert (s.get(rejected["id"])["state"], s.get(rejected["id"])["reason"]) == ("rejected", "No public source")
+    assert s.get(accepted["id"])["state"] == "accepted"
+    assert s.open_count() == 0

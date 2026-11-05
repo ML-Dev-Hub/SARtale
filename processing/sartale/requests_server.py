@@ -126,9 +126,16 @@ class Handler(BaseHTTPRequestHandler):
             return self._error(405, "Method not allowed.")
         if path != LIST_PATH:
             return self._error(404, "Not found.")
+        origin = self.headers.get("Origin")
+        if origin is not None and origin != self.server.allowed_origin:
+            self.close_connection = True
+            return self._error(403, "Requests are only accepted from the SARtale site.")
         payload = self._read_object()
         if payload is None:
             return
+        ctype = (self.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+        if ctype != "application/json":  # a cross-site form or text/plain POST is never stored
+            return self._error(415, "The body must be sent as application/json.")
         srv = self.server
         addr = self.client_address[0]
         try:
