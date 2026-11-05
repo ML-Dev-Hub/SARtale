@@ -1,11 +1,12 @@
 import copyJson from "./content/storyPage.json";
+import type { Lake } from "./lakes";
 
 const form = copyJson.add.form;
 
-export type RequestState = "queued" | "searched" | "search_failed" | "accepted" | "rejected";
+export type RequestState = "searched" | "too_few_passes" | "check_failed" | "invalid" | "accepted" | "rejected";
 
 export type LakeRequest = {
-  id: number;
+  issue: number;
   name: string;
   lat: number;
   lon: number;
@@ -15,80 +16,114 @@ export type LakeRequest = {
   first: string | null;
   last: string | null;
   reason: string | null;
+  lake_id: string | null;
   created: string;
 };
 
-export interface RequestsClient {
-  health(): Promise<boolean>;
-  list(): Promise<LakeRequest[]>;
-  submit(body: { name: string; lat: string; lon: string; source: string }): Promise<LakeRequest>;
+export type RequestFields = { name: string; lat: string; lon: string; source: string };
+
+export const REPO = "saeedahmadicp/SARtale";
+const BOUNDS = { latMin: 34.4, latMax: 37.6, lonMin: 70.8, lonMax: 76.6 };
+const NEAR_KM = 1;
+const STATES: RequestState[] = ["searched", "too_few_passes", "check_failed", "invalid", "accepted", "rejected"];
+/** States that hold a place on the map: a new request near one of these is a duplicate, and the story page shows them. */
+const LIVE: RequestState[] = ["searched", "too_few_passes", "check_failed", "accepted"];
+
+/** True for requests shown as requested lakes (not invalid or rejected). */
+export function isShown(r: LakeRequest): boolean {
+  return LIVE.includes(r.state);
 }
 
-const OPEN: RequestState[] = ["queued", "searched", "search_failed"];
-
-export function isOpen(r: LakeRequest): boolean {
-  return OPEN.includes(r.state);
+/** The new-issue URL with the form's fields pre-filled (GitHub fills issue-form fields from query parameters). */
+export function issueUrl(f: RequestFields): string {
+  const q = (k: string, v: string): string => `${k}=${encodeURIComponent(v)}`;
+  return `https://github.com/${REPO}/issues/new?${[
+    q("template", "add-lake.yml"),
+    q("title", `Add a lake: ${f.name}`),
+    q("name", f.name),
+    q("lat", f.lat),
+    q("lon", f.lon),
+    q("source", f.source),
+  ].join("&")}`;
 }
+
+function isRequest(x: unknown): x is LakeRequest {
+  if (!x || typeof x !== "object") return false;
+  const r = x as Record<string, unknown>;
+  return (
+    typeof r.issue === "number" &&
+    typeof r.name === "string" &&
+    typeof r.lat === "number" &&
+    typeof r.lon === "number" &&
+    STATES.includes(r.state as RequestState) &&
+    Array.isArray(r.tracks)
+  );
+}
+
+/** Reads requests.json; any failure or unexpected shape is an empty list. */
+export async function loadRequests(url = "data/requests.json", fetchFn: typeof fetch = (...a) => fetch(...a)): Promise<LakeRequest[]> {
+  try {
+    const res = await fetchFn(url);
+    if (!res.ok) return [];
+    const json: unknown = await res.json();
+    const list = json && typeof json === "object" ? (json as { requests?: unknown }).requests : null;
+    return Array.isArray(list) && list.every(isRequest) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function km(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const rad = Math.PI / 180;
+  const a = Math.sin(((lat2 - lat1) * rad) / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(((lon2 - lon1) * rad) / 2) ** 2;
+  return 2 * 6371.0088 * Math.asin(Math.sqrt(a));
+}
+
+function numberField(key: string, value: string): number | string {
+  const n = value.trim() === "" ? NaN : Number(value);
+  return Number.isFinite(n) ? n : `${key} must be a number.`;
+}
+
+function textError(key: string, value: string, low: number, high: number): string | null {
+  const t = value.trim();
+  if (/[\p{Cc}\p{Cf}]/u.test(t)) return `${key} must not contain control or invisible formatting characters.`;
+  return t.length >= low && t.length <= high ? null : `${key} must be ${low}–${high} characters.`;
+}
+
+/** The first problem with a request, in the same order and words as the Python validate; null when it is fine. */
+export function checkRequest(f: RequestFields, watched: Lake[], requests: LakeRequest[]): string | null {
+  const lat = numberField("lat", f.lat);
+  if (typeof lat === "string") return lat;
+  const lon = numberField("lon", f.lon);
+  if (typeof lon === "string") return lon;
+  const b = BOUNDS;
+  if (lat < b.latMin || lat > b.latMax || lon < b.lonMin || lon > b.lonMax)
+    return `The point must be in Gilgit-Baltistan or upper KP: ${b.latMin}–${b.latMax} °N, ${b.lonMin}–${b.lonMax} °E.`;
+  const bad = textError("name", f.name, 2, 80) ?? textError("source", f.source, 3, 200);
+  if (bad) return bad;
+  for (const l of watched) if (km(lat, lon, l.lat, l.lon) <= NEAR_KM) return `Already watched: ${l.name}.`;
+  for (const r of requests) if (LIVE.includes(r.state) && km(lat, lon, r.lat, r.lon) <= NEAR_KM) return `Already requested: issue #${r.issue}.`;
+  return null;
+}
+
+const passes = (n: number): string => `${n} NISAR ${n === 1 ? "pass" : "passes"}`;
 
 /** The status line of a request card. Requests never carry a lake status. */
 export function requestLine(r: LakeRequest): string {
-  if (r.state === "searched") {
-    const n = r.passes ?? 0;
-    const tracks = r.tracks.length ? ` on tracks ${r.tracks.join(", ")}` : "";
-    return `Searched: ${n} NISAR ${n === 1 ? "pass" : "passes"}${tracks}`;
+  switch (r.state) {
+    case "searched":
+      return `Searched: ${passes(r.passes ?? 0)}${r.tracks.length ? ` on tracks ${r.tracks.join(", ")}` : ""}`;
+    case "too_few_passes":
+      return `Searched: ${passes(r.passes ?? 0)}, fewer than 3`;
+    case "check_failed":
+      return r.reason ? `Search failed: ${r.reason}` : "Search failed";
+    case "accepted":
+      return "Accepted";
+    case "rejected":
+      return r.reason ? `Not added: ${r.reason}` : "Not added";
+    case "invalid":
+      return r.reason ? `Not valid: ${r.reason}` : "Not valid";
   }
-  if (r.state === "search_failed") return r.reason ? `Search failed: ${r.reason}` : "Search failed";
-  if (r.state === "accepted") return "Accepted";
-  if (r.state === "rejected") return r.reason ? `Not added: ${r.reason}` : "Not added";
-  return "Queued";
-}
-
-/** The request server's base URL: VITE_REQUESTS_API at build time, else "api" (same origin or the dev proxy). */
-export function createRequestsClient(
-  fetchFn: typeof fetch = (...a) => fetch(...a),
-  base: string = import.meta.env.VITE_REQUESTS_API ?? "api",
-): RequestsClient {
-  async function call(path: string, init?: RequestInit): Promise<unknown> {
-    let res: Response;
-    try {
-      res = await fetchFn(`${base}/${path}`, init);
-    } catch {
-      throw new Error(form.networkError);
-    }
-    let body: unknown = null;
-    try {
-      body = await res.json();
-    } catch {
-      /* not JSON */
-    }
-    if (!res.ok) {
-      // Only a message the server wrote is shown as written; a gateway page or empty body gets the approved wording.
-      const msg = body && typeof body === "object" && "error" in body ? String((body as { error: unknown }).error) : form.networkError;
-      throw new Error(msg);
-    }
-    return body;
-  }
-  return {
-    async health() {
-      try {
-        const b = (await call("health")) as { ok?: unknown } | null;
-        return b?.ok === true;
-      } catch {
-        return false;
-      }
-    },
-    async list() {
-      const b = (await call("lake-requests")) as { requests?: LakeRequest[] } | null;
-      return b?.requests ?? [];
-    },
-    async submit(body) {
-      return (await call("lake-requests", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      })) as LakeRequest;
-    },
-  };
 }
 
 function text<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string | undefined, t: string): HTMLElementTagNameMap[K] {
@@ -98,30 +133,25 @@ function text<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string | undef
   return e;
 }
 
-/**
- * The form in section 06. Disabled with a plain line when the server is not there. After a submit it shows the
- * request and polls the list so the card moves from Queued to Searched. Server strings are only ever textContent.
- */
-export function mountAddLake(
-  root: HTMLElement,
-  client: RequestsClient,
-  onChange: (open: LakeRequest[]) => void,
-  opts: { pollMs?: number; pollFor?: number } = {},
-): { destroy(): void } {
-  const pollMs = opts.pollMs ?? 5000;
-  const pollFor = opts.pollFor ?? 60000;
-  let alive = true;
-  let timer: ReturnType<typeof setInterval> | null = null;
-  let stopAt = 0;
-  let mine: number | null = null;
+export interface AddLakeDeps {
+  watched: Lake[];
+  requests: LakeRequest[];
+  open?: (url: string) => void;
+}
 
-  const inputs: Record<"name" | "lat" | "lon" | "source", HTMLInputElement> = {
+const ALL_REQUESTS_URL = `https://github.com/${REPO}/issues?q=label%3Alake-request`;
+
+/** The form in section 06. A valid submit opens a pre-filled GitHub issue; the visitor presses Submit there. */
+export function mountAddLake(root: HTMLElement, deps: AddLakeDeps): { destroy(): void } {
+  const open = deps.open ?? ((url: string) => void window.open(url, "_blank", "noopener"));
+
+  const inputs: Record<keyof RequestFields, HTMLInputElement> = {
     name: document.createElement("input"),
     lat: document.createElement("input"),
     lon: document.createElement("input"),
     source: document.createElement("input"),
   };
-  const field = (label: string, key: keyof typeof inputs, placeholder: string, decimal = false): HTMLLabelElement => {
+  const field = (label: string, key: keyof RequestFields, placeholder: string, decimal = false): HTMLLabelElement => {
     const input = inputs[key];
     input.type = "text";
     input.name = key;
@@ -133,14 +163,17 @@ export function mountAddLake(
     l.append(label, input);
     return l;
   };
-  const closed = text("p", "sp-add-closed", form.closed);
-  closed.hidden = true;
   const error = text("p", "sp-add-error", "");
   error.setAttribute("role", "alert");
   const card = document.createElement("div");
   card.className = "sp-add-card";
   card.setAttribute("role", "status");
   card.hidden = true;
+  const link = text("a", "sp-add-link", form.seeAll);
+  link.href = ALL_REQUESTS_URL;
+  link.target = "_blank";
+  link.rel = "noopener";
+  card.append(text("div", "sp-add-card-line", form.finishOnGithub), link);
   const button = text("button", "sp-btn sp-btn-primary", form.submitLabel);
   button.type = "submit";
   const f = document.createElement("form");
@@ -148,94 +181,31 @@ export function mountAddLake(
   const coords = document.createElement("div");
   coords.className = "sp-field-pair";
   coords.append(field(form.latLabel, "lat", form.latPlaceholder, true), field(form.lonLabel, "lon", form.lonPlaceholder, true));
-  f.append(
-    field(form.nameLabel, "name", form.namePlaceholder),
-    coords,
-    field(form.sourceLabel, "source", form.sourcePlaceholder),
-    closed,
-    card,
-    Object.assign(document.createElement("div"), { className: "sp-add-actions" }),
-  );
-  f.lastElementChild!.append(button, text("span", "sp-add-hint", form.hint));
-
-  const setEnabled = (on: boolean): void => {
-    for (const i of Object.values(inputs)) i.disabled = !on;
-    button.disabled = !on;
-    closed.hidden = on;
-  };
-  setEnabled(false);
+  const actions = document.createElement("div");
+  actions.className = "sp-add-actions";
+  actions.append(button, text("span", "sp-add-hint", form.hint));
+  f.append(field(form.nameLabel, "name", form.namePlaceholder), coords, field(form.sourceLabel, "source", form.sourcePlaceholder), card, actions);
   root.replaceChildren(f);
 
-  const showCard = (r: LakeRequest): void => {
-    card.replaceChildren(text("div", "sp-add-card-title", r.name), text("div", "sp-add-card-line", requestLine(r)));
-    card.hidden = false;
-  };
-
-  const stopPolling = (): void => {
-    if (timer !== null) clearInterval(timer);
-    timer = null;
-  };
-
-  async function refresh(): Promise<void> {
-    try {
-      const rows = await client.list();
-      if (!alive) return;
-      onChange(rows.filter(isOpen));
-      const m = rows.find((r) => r.id === mine);
-      if (m) {
-        showCard(m);
-        if (!isOpen(m)) stopPolling();
-      }
-    } catch {
-      /* keep the last list; the next poll may succeed */
-    }
-  }
-
-  const startPolling = (): void => {
-    stopPolling();
-    stopAt = Date.now() + pollFor;
-    timer = setInterval(() => {
-      if (Date.now() >= stopAt) return stopPolling();
-      void refresh();
-    }, pollMs);
-  };
-
-  const onSubmit = async (e: Event): Promise<void> => {
+  const onSubmit = (e: Event): void => {
     e.preventDefault();
     error.remove();
-    button.disabled = true;
-    try {
-      const r = await client.submit({ name: inputs.name.value, lat: inputs.lat.value, lon: inputs.lon.value, source: inputs.source.value });
-      if (!alive) return;
-      mine = r.id;
-      showCard(r);
-      for (const i of Object.values(inputs)) i.value = "";
-      void refresh();
-      startPolling();
-    } catch (err) {
-      if (!alive) return;
-      error.textContent = err instanceof Error && err.message ? err.message : form.networkError;
+    card.hidden = true;
+    const values: RequestFields = { name: inputs.name.value.trim(), lat: inputs.lat.value.trim(), lon: inputs.lon.value.trim(), source: inputs.source.value.trim() };
+    const problem = checkRequest(values, deps.watched, deps.requests);
+    if (problem) {
+      error.textContent = problem;
       card.before(error);
-    } finally {
-      if (alive) button.disabled = false;
+      return;
     }
+    open(issueUrl(values));
+    card.hidden = false;
   };
-  const handler = (e: Event): void => void onSubmit(e);
-  f.addEventListener("submit", handler);
-
-  void (async () => {
-    const ok = await client.health();
-    if (!alive) return;
-    if (!ok) return;
-    setEnabled(true);
-    await refresh();
-  })();
+  f.addEventListener("submit", onSubmit);
 
   return {
     destroy() {
-      alive = false;
-      stopPolling();
-      f.removeEventListener("submit", handler);
+      f.removeEventListener("submit", onSubmit);
       root.replaceChildren();
     },
   };

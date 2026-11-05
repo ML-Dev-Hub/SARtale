@@ -8,12 +8,12 @@ const lakes = lakesJson as unknown as LakesFile;
 const dataFiles = Object.keys(import.meta.glob("../public/data/**/*", { query: "?url" })).map((p) => p.replace("../public/data/", ""));
 
 describe("the data the app ships (app/public/data)", () => {
-  test("is lakes.json and the lake images it names, nothing else", () => {
+  test("is lakes.json, requests.json and the lake images lakes.json names, nothing else", () => {
     // Derived from lakes.json, so a rebuild with more lakes keeps passing.
     const images = lakes.lakes
       .flatMap((l) => (l.images ? [l.images.latest_hh, l.images.water] : []))
       .filter((p): p is string => typeof p === "string");
-    expect(dataFiles.sort()).toEqual(["lakes.json", ...images].sort());
+    expect(dataFiles.sort()).toEqual(["lakes.json", "requests.json", ...images].sort());
   });
 
   test("is NISAR's provisional release, with the cloud window and the method constants", () => {
