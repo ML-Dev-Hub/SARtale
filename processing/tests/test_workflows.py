@@ -126,3 +126,160 @@ def test_deploy_copies_guide_and_tests_first():
         ), f"{excluded} is not removed after the copy"
     assert doc["jobs"]["deploy"]["environment"]["name"] == "github-pages"
     assert any(s.get("uses", "").startswith("actions/deploy-pages@") for s in doc["jobs"]["deploy"]["steps"])
+
+
+# ---- lake request, accept and refresh workflows -------------------------------------------------
+
+GITHUB = ROOT / ".github"
+SCRIPTS = GITHUB / "scripts"
+REBUILD = GITHUB / "actions" / "rebuild" / "action.yml"
+LAKE_REQUEST = GITHUB / "workflows" / "lake-request.yml"
+REFRESH = GITHUB / "workflows" / "refresh.yml"
+LABELS = ("lake-request", "searched", "too few passes", "accepted", "rebuild failed", "invalid", "rejected")
+
+
+def on_of(doc):
+    return doc.get(True, doc.get("on"))  # PyYAML reads the key `on` as True
+
+
+def runs_rebuild(step):
+    return str(step.get("uses", "")).rstrip("/") == "./.github/actions/rebuild"
+
+
+def checks_permission(step):
+    run = step.get("run") or ""
+    return "collaborators/" in run and "/permission" in run
+
+
+def test_accept_checks_permission_before_rebuild():
+    job = load(LAKE_REQUEST)["jobs"]["accept"]
+    steps = job["steps"]
+    perm_at = next(i for i, s in enumerate(steps) if checks_permission(s))
+    rebuild_at = [i for i, s in enumerate(steps) if runs_rebuild(s)]
+    assert rebuild_at, "accept never runs the rebuild action"
+    assert all(perm_at < i for i in rebuild_at)
+    assert "github.event.sender.login" in str((steps[perm_at].get("env") or {}).get("SENDER"))
+    assert "github.event.sender" not in steps[perm_at]["run"]
+    for s in steps[perm_at + 1 :]:  # nothing after the check runs without its answer
+        assert "steps.perm.outputs.allowed" in str(s.get("if", "")), f"step {s.get('name')!r}"
+    for s in steps[:perm_at]:
+        assert not runs_rebuild(s) and "secrets." not in yaml.safe_dump(s)
+    assert job["environment"] == "earthdata"
+    assert job["timeout-minutes"] == 360
+
+
+def test_lake_request_jobs_and_triggers():
+    doc = load(LAKE_REQUEST)
+    assert sorted(on_of(doc)["issues"]["types"]) == sorted(["opened", "edited", "reopened", "labeled", "closed"])
+    check, accept = doc["jobs"]["check"], doc["jobs"]["accept"]
+    assert "lake-request" in check["if"] and "accepted" in check["if"]
+    assert "lake-request" in accept["if"] and "accepted" in accept["if"] and "labeled" in accept["if"]
+    assert "environment" not in check
+    assert "secrets." not in yaml.safe_dump(check)
+    assert check["timeout-minutes"] == 30
+    for job in (check, accept):
+        assert job["permissions"] == {"contents": "write", "issues": "write", "actions": "write"}
+        assert job["concurrency"] == {"group": "sartale-data", "cancel-in-progress": False}
+    text = LAKE_REQUEST.read_text(encoding="utf-8")
+    assert "Only the SARtale team can accept a request." in text
+    assert "The rebuild failed; see" in text and "Nothing was published." in text
+    assert 'commit-data.sh "Update lake requests" app/public/data/requests.json' in text
+    assert 'commit-data.sh "Add requested lake from issue #' in text
+
+
+def test_accept_failure_comments_and_labels():
+    steps = load(LAKE_REQUEST)["jobs"]["accept"]["steps"]
+    failed = [s for s in steps if "failure()" in str(s.get("if", ""))]
+    assert failed, "accept has no failure step"
+    body = "\n".join(s.get("run", "") for s in failed)
+    assert "--body-file" in body
+    assert '"rebuild failed"' in body
+    assert "gh issue close" not in body
+
+
+def test_netrc_removed_always():
+    steps = load(REBUILD)["runs"]["steps"]
+    assert any(
+        str(s.get("if", "")).strip() == "always()" and "rm -f ~/.netrc" in (s.get("run") or "")
+        for s in steps
+    )
+    writes = next(i for i, s in enumerate(steps) if ".netrc" in (s.get("run") or "") and "printf" in s["run"])
+    assert "set +x" in steps[writes]["run"] and "chmod 600" in steps[writes]["run"]
+    assert "${{" not in steps[writes]["run"], "the login goes through env, not expressions"
+
+
+def test_rebuild_action_order():
+    doc = load(REBUILD)
+    assert doc["runs"]["using"] == "composite"
+    assert not doc.get("inputs")
+    steps = doc["runs"]["steps"]
+    runs = [s.get("run") or "" for s in steps]
+    uses = [s.get("uses") or "" for s in steps]
+
+    def at(word):
+        return next(i for i, r in enumerate(runs) if word in r)
+
+    assert at("lakes-search") < at("lakes-fetch") < at("lakes-build") < at("pytest tests -q")
+    assert at("pytest tests -q") < at("npm test -- --run")
+    assert runs[at("lakes-fetch")].count("run_pipeline lakes-fetch") == 2, "lakes-fetch is retried once"
+    assert any(u.startswith("mamba-org/setup-micromamba@") for u in uses)
+    restore = next(s for s in steps if str(s.get("uses", "")).startswith("actions/cache/restore@"))
+    assert restore["with"]["path"] == "data/lakes"
+    assert restore["with"]["key"] == "lakes-${{ hashFiles('processing/lakes_in.json') }}-${{ github.run_id }}"
+    assert restore["with"]["restore-keys"].strip() == "lakes-"
+    assert any(u.startswith("actions/cache/save@") for u in uses)
+    for s in steps:
+        if "run" in s:
+            assert "shell" in s, "composite run steps need a shell"
+            for bad in FORBIDDEN_IN_RUN + ("secrets.",):
+                assert bad not in s["run"]
+
+
+def test_no_allow_gate_fail():
+    for path in GITHUB.rglob("*"):
+        if path.is_file() and "__pycache__" not in path.parts:
+            assert "allow-gate-fail" not in path.read_text(encoding="utf-8"), path
+
+
+def test_scripts_use_body_file():
+    text = (SCRIPTS / "apply-actions.sh").read_text(encoding="utf-8")
+    assert "--body-file" in text
+    assert "--body " not in text and " -b " not in text
+
+
+def test_commit_data_script():
+    text = (SCRIPTS / "commit-data.sh").read_text(encoding="utf-8")
+    assert "github-actions[bot]" in text
+    assert "git pull --rebase origin main" in text
+    assert "gh workflow run deploy.yml --ref main" in text
+    assert "Co-Authored-By" not in text
+
+
+def test_ensure_labels_creates_all_seven():
+    text = (SCRIPTS / "ensure-labels.sh").read_text(encoding="utf-8")
+    assert "--force" in text
+    for name in LABELS:
+        assert f'"{name}"' in text, name
+
+
+def test_refresh_scheduled_weekly():
+    doc = load(REFRESH)
+    on = on_of(doc)
+    assert on["schedule"] == [{"cron": "0 3 * * 1"}]
+    assert "workflow_dispatch" in on
+    (job,) = doc["jobs"].values()
+    assert job["environment"] == "earthdata"
+    assert job["timeout-minutes"] == 360
+    assert any(runs_rebuild(s) for s in job["steps"])
+    text = REFRESH.read_text(encoding="utf-8")
+    assert 'commit-data.sh "Weekly data refresh" app/public/data' in text
+    assert "json_changed.py app/public/data/lakes.json built" in text
+
+
+def test_data_jobs_start_deploy_through_commit_script():
+    for path in (LAKE_REQUEST, REFRESH):
+        for job_name, job in jobs_of(load(path)):
+            perms = job.get("permissions") or {}
+            if perms.get("contents") == "write":
+                assert perms.get("actions") == "write", f"{path.name}:{job_name} cannot start deploy.yml"
+                assert any("commit-data.sh" in (s.get("run") or "") for s in job["steps"])

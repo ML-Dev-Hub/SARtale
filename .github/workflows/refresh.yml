@@ -1,0 +1,41 @@
+name: Weekly data refresh
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    environment: earthdata
+    permissions:
+      contents: write
+      actions: write
+    concurrency:
+      group: sartale-data
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Rebuild the lake data
+        uses: ./.github/actions/rebuild
+        env:
+          EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
+          EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
+
+      - name: Commit only if the data changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          lakes="$(python3 .github/scripts/json_changed.py app/public/data/lakes.json built)"
+          pictures="$(git status --porcelain -- app/public/data/lakes)"
+          if [ "$lakes" = same ] && [ -z "$pictures" ]; then
+            echo "Nothing changed but the build time; nothing to publish."
+            git checkout -- app/public/data/lakes.json
+            exit 0
+          fi
+          bash .github/scripts/commit-data.sh "Weekly data refresh" app/public/data
