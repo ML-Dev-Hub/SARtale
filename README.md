@@ -10,6 +10,8 @@ NASA Space Apps Challenge 2026, "Dancing with the SARs". Team **SARcastic Scient
 
 **Demo video:** [media/SARtale-lake-watch-demo.mp4](media/SARtale-lake-watch-demo.mp4) (38 s, subtitles in `media/SARtale-lake-watch-demo.srt`)
 
+**How it works:** [media/SARtale-how-it-works.mp4](media/SARtale-how-it-works.mp4) (3 min 41 s technical walkthrough, subtitles in `media/SARtale-how-it-works.srt`)
+
 ## The problem
 
 Pakistan's space agency SUPARCO tracks 131 potentially dangerous glacial lakes, mostly with optical satellites. In summer, when lakes fill and burst, cloud often hides them. Its 2 July 2026 update says: "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days." Radar sees through cloud.
@@ -93,7 +95,7 @@ Lakes and the source of each coordinate are in `processing/lakes_in.json`; outli
 |---|---|
 | `app/` | The web app (TypeScript, Vite, MapLibre, uPlot). Copy text is in `app/src/content/` |
 | `processing/` | The Python pipeline and its tests |
-| `media/` | The demo video |
+| `media/` | The demo video and the how-it-works walkthrough |
 | `docs/` | [Data sources and licences](docs/DATA_SOURCES.md), [AI tool use](docs/SI_USE.md) |
 
 ## Licence
