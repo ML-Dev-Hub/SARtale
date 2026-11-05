@@ -279,3 +279,31 @@ def test_cli_accept_error_exits_one_without_traceback(tmp_path, capsys):
     err = capsys.readouterr().err
     assert "Issue #7" in err and "Traceback" not in err
     assert not (tmp_path / "a.json").exists()
+
+
+OLD = ('[\r\n'
+       '  {"id": "yaz_sam", "name": "Old", "lon": 74.0, "lat": 36.0, "role": "watch",\r\n'
+       '   "coord_source": "x é", "outline": null, "downstream": null, "downstream_source": null}\r\n'
+       ']\r\n')
+
+
+def test_append_lake_entry_appends_one_entry_and_keeps_the_rest_of_the_file_byte_identical(tmp_path):
+    lakes = tmp_path / "lakes_in.json"
+    lakes.write_bytes(OLD.encode("utf-8"))
+    entry = {"id": "zebra_lake", "name": "Zebra Lake é", "lon": 74.5, "lat": 36.5, "role": "watch",
+             "coord_source": "Requested 2026-11-04: Glacier survey", "outline": None,
+             "downstream": None, "downstream_source": None}
+    run_pipeline.append_lake_entry(lakes, entry)
+    new = lakes.read_bytes().decode("utf-8")
+    assert new.startswith(OLD.replace("null}\r\n]\r\n", "null},\r\n"))
+    assert new.endswith("}\r\n]\r\n")
+    assert json.loads(new)[-1] == entry
+    assert json.loads(new)[:-1] == json.loads(OLD)
+    assert "é" in new
+
+
+def test_lake_slug_makes_a_unique_id_from_the_name():
+    assert run_pipeline.lake_slug("Yaz Sam", {"yaz_sam"}) == "yaz_sam_2"
+    assert run_pipeline.lake_slug("Yaz Sam", {"yaz_sam", "yaz_sam_2"}) == "yaz_sam_3"
+    assert run_pipeline.lake_slug("Zebra Lake é", set()) == "zebra_lake"
+    assert run_pipeline.lake_slug("!!!", set()) == "lake"

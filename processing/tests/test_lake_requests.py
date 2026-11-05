@@ -1,7 +1,7 @@
 import pytest
 
 from sartale.lake_catalog import Pass
-from sartale.lake_requests import RATE_PER_HOUR, RequestError, RequestStore, coverage, validate
+from sartale.lake_requests import RequestError, coverage, validate
 from sartale.lakes import Lake
 
 ATTABAD = Lake(id="attabad", name="Attabad Lake", lon=74.8, lat=36.3, coord_source="s", outline=None,
@@ -51,45 +51,6 @@ def test_validate_refuses_a_point_near_an_open_request():
     assert e.status == 409 and str(e) == "Already requested: Earlier."
 
 
-def clean(name="A lake", lat=35.0, lon=75.0):
-    return {"name": name, "lat": lat, "lon": lon, "source": "a source"}
-
-
-def test_store_round_trip_and_states(tmp_path):
-    s = RequestStore(tmp_path / "r.sqlite")
-    row = s.add(clean(), "1.2.3.4", 1000.0)
-    assert row["state"] == "queued" and row["tracks"] == [] and row["passes"] is None
-    assert s.get(row["id"])["name"] == "A lake" and s.get(99) is None
-    s.set_searched(row["id"], 7, ["055A", "156A"], "2026-06-20", "2026-07-01")
-    got = s.get(row["id"])
-    assert (got["state"], got["passes"], got["tracks"], got["first"], got["last"]) == (
-        "searched", 7, ["055A", "156A"], "2026-06-20", "2026-07-01")
-    assert s.set_failed(row["id"], "CMR down") is False  # already searched: a late failure changes nothing
-    assert s.get(row["id"])["state"] == "searched"
-    assert s.open_count() == 1
-    second = s.add(clean("B lake", 36.0), "1.2.3.4", 1001.0)
-    assert s.set_failed(second["id"], "CMR down") is True
-    assert s.get(second["id"])["state"] == "search_failed" and s.get(second["id"])["reason"] == "CMR down"
-    assert [r["id"] for r in s.list_open()] == [second["id"], row["id"]]
-    s.set_state(row["id"], "accepted")
-    assert [r["id"] for r in s.list_open()] == [second["id"]] and s.open_count() == 1
-    s.set_state(second["id"], "rejected", "not a lake")
-    assert s.list_open() == [] and s.get(second["id"])["reason"] == "not a lake"
-    with pytest.raises(ValueError):
-        s.set_state(row["id"], "bogus")
-
-
-def test_recent_count_counts_only_that_address_after_since(tmp_path):
-    s = RequestStore(tmp_path / "r.sqlite")
-    s.add(clean("one"), "a", 100.0)
-    s.add(clean("two", 35.1), "a", 5000.0)
-    s.add(clean("three", 35.2), "b", 5000.0)
-    assert s.recent_count("a", 1000.0) == 1
-    assert s.recent_count("a", 0.0) == 2
-    assert s.recent_count("b", 0.0) == 1
-    assert RATE_PER_HOUR == 5
-
-
 def mk(track, d, date):
     return Pass(granule=f"g{track}{date}", url="u", date=date, start=date + "T01:00:00", track=track,
                 direction=d, frame="020", mode="4005", crid="P05023")
@@ -120,40 +81,3 @@ def test_validate_refuses_control_and_formatting_characters(bad):
 def test_validate_allows_ordinary_spaces_and_accents():
     assert validate({**GOOD, "name": "Yaz Sam é"}, [], [])["name"] == "Yaz Sam é"
 
-
-def test_an_old_database_gets_the_detail_column(tmp_path):
-    import sqlite3
-    path = tmp_path / "old.sqlite"
-    db = sqlite3.connect(path)
-    db.execute("CREATE TABLE requests (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, lat REAL NOT NULL, "
-               "lon REAL NOT NULL, source TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'queued', passes INTEGER, "
-               "tracks TEXT NOT NULL DEFAULT '[]', first TEXT, last TEXT, reason TEXT, addr TEXT NOT NULL, "
-               "created_ts REAL NOT NULL)")
-    db.commit()
-    db.close()
-    s = RequestStore(path)
-    rid = s.add(clean(), "1.2.3.4", 1.0)["id"]
-    s.set_failed(rid, "x" * 300, "raw")
-    row = s.get(rid)
-    assert len(row["reason"]) == 200 and row["detail"] == "raw"
-
-
-def test_a_late_search_cannot_reopen_a_decision(tmp_path):
-    s = RequestStore(tmp_path / "r.sqlite")
-    rejected = s.add(clean("R lake", 36.0), "1.2.3.4", 1000.0)
-    accepted = s.add(clean("A lake", 35.5), "1.2.3.4", 1000.0)
-    s.set_state(rejected["id"], "rejected", "No public source")
-    s.set_state(accepted["id"], "accepted")
-    assert s.set_searched(rejected["id"], 3, ["055A"], "2026-06-20", "2026-07-01") is False
-    assert s.set_failed(accepted["id"], "late", "TimeoutError") is False
-    assert (s.get(rejected["id"])["state"], s.get(rejected["id"])["reason"]) == ("rejected", "No public source")
-    assert s.get(accepted["id"])["state"] == "accepted"
-    assert s.open_count() == 0
-
-
-def test_a_failed_search_can_be_retried(tmp_path):
-    s = RequestStore(tmp_path / "r.sqlite")
-    row = s.add(clean("C lake", 35.0), "1.2.3.4", 1000.0)
-    assert s.set_failed(row["id"], "CMR down", "TimeoutError") is True
-    assert s.set_searched(row["id"], 2, ["055A"], "2026-06-20", "2026-06-30") is True
-    assert (s.get(row["id"])["state"], s.get(row["id"])["detail"]) == ("searched", None)
