@@ -275,7 +275,7 @@ describe("routing", () => {
     $("view-lakes").click();
     expect(window.location.hash).toBe("#lakes");
     window.history.replaceState(null, "", "#evidence");
-    window.dispatchEvent(new PopStateEvent("popstate"));
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
     expect($("view-evidence").getAttribute("aria-pressed")).toBe("true");
     window.history.replaceState(null, "", "/");
   });

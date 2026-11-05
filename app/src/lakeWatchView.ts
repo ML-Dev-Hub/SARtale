@@ -1,4 +1,4 @@
-import { cloudHeadline, methodLimits, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
+import { cloudHeadline, isTrendPass, methodLimits, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
 import { dataUrl, formatDate } from "./format";
 import { statusSlug } from "./lakeLocator";
 
@@ -69,7 +69,7 @@ export function lakeChartData(lake: Lake, minObservable = 0): LakeChartData {
   for (const track of tracks) {
     const values = blank();
     for (const p of lake.series) {
-      if (p.track === track && p.excluded === null && p.area_km2 !== null && (p.observable_share ?? 0) >= minObservable) values[index.get(p.date)!] = p.area_km2;
+      if (p.track === track && isTrendPass(p, minObservable)) values[index.get(p.date)!] = p.area_km2;
     }
     if (values.some((v) => v !== null)) series.push({ label: track, values, excluded: false });
   }
@@ -81,10 +81,10 @@ export function lakeChartData(lake: Lake, minObservable = 0): LakeChartData {
 
 const slug = statusSlug;
 
-/** The lake to open on: the one with the most water in its latest valid pass (clearest picture), else the first in list order. */
-export function openingLake(lakes: Lake[]): Lake {
+/** The lake to open on: the one with the most water in its latest trend pass (clearest picture), else the first in list order. */
+export function openingLake(lakes: Lake[], minObservable = 0): Lake {
   const latest = (l: Lake): number => {
-    const valid = l.series.filter((p) => p.excluded === null && p.area_km2 !== null).sort((a, b) => (a.date < b.date ? -1 : 1));
+    const valid = l.series.filter((p) => isTrendPass(p, minObservable)).sort((a, b) => a.date.localeCompare(b.date));
     return valid.length ? valid[valid.length - 1].area_km2! : -1;
   };
   const sorted = sortLakes(lakes);
@@ -224,9 +224,12 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     }
     thead.append(head);
     const tbody = el("tbody");
-    const order = [...lake.series].sort((a, b) => (a.date !== b.date ? (a.date < b.date ? -1 : 1) : a.track < b.track ? -1 : 1));
+    const order = [...lake.series].sort((a, b) => a.date.localeCompare(b.date) || a.track.localeCompare(b.track));
     for (const p of order) {
-      const used = p.excluded !== null ? `Left out: ${p.excluded}` : p.area_km2 === null ? "No reading" : (p.observable_share ?? 0) < minObs ? "Too little of the zone seen" : "Yes";
+      const used = p.excluded !== null ? `Left out: ${p.excluded}`
+        : p.area_km2 === null ? "No reading"
+        : p.observable_share === null ? "Zone share unknown"
+        : isTrendPass(p, minObs) ? "Yes" : "Too little of the zone seen";
       const tr = el("tr");
       tr.append(
         el("td", undefined, formatDate(p.date)),
@@ -277,7 +280,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
       chartSec.append(el("p", "lw-none", "No area curve yet"));
     } else if (opts.createChart) {
       const host = el("div", "lw-chart");
-      chartSec.append(host, el("p", "lw-note", `One line per track. Passes left out, and passes that saw less than ${Math.round(minObs * 100)}% of the lake zone, are not drawn; the table lists every pass.`));
+      chartSec.append(host, el("p", "lw-note", `One line per track. Hollow markers are passes left out of the trend; passes that saw less than ${Math.round(minObs * 100)}% of the lake zone are not drawn. The table lists every pass.`));
       chart = opts.createChart(host, data);
     }
     if (lake.series.length) chartSec.append(readingsTable(lake, minObs));
@@ -322,7 +325,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
 
   if (opts.createLocator) locator = opts.createLocator(q("lw-locator"), lakes, (id) => choose(id));
   // Open on a lake from the start, so the panel shows radar pictures and a chart instead of an empty prompt.
-  select(openingLake(lakes).id);
+  select(openingLake(lakes, file!.constants.min_observable).id);
 
   return {
     select: (id) => void select(id),

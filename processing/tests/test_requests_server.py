@@ -299,3 +299,9 @@ def test_post_must_be_json(make):
     status, resp, _ = h.call("POST", "/api/lake-requests", body(), headers={"Content-Type": "text/plain"})
     assert status == 415 and "error" in resp
     assert h.store.open_count() == 0
+
+
+def test_configured_origin_with_a_trailing_slash_still_matches(make):
+    h = make(allowed_origin=ORIGIN + "/")
+    status, _, headers = h.call("POST", "/api/lake-requests", body(), headers={"Origin": ORIGIN})
+    assert status == 201 and headers["Access-Control-Allow-Origin"] == ORIGIN

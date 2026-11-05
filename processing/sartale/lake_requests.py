@@ -145,20 +145,23 @@ class RequestStore:
                 f"SELECT COUNT(*) FROM requests WHERE state IN ({marks})", OPEN_STATES).fetchone()[0]
 
     def set_searched(self, rid: int, passes: int, tracks: list[str], first: str | None, last: str | None) -> bool:
-        """Record a finished search. Only a request still `queued` changes, so a search that ends after the team
-        accepted or rejected it cannot reopen that decision. Returns whether the row changed."""
+        """Record a finished search. Only a request still open for searching (`queued`, or `search_failed` on a retry)
+        changes, so a search that ends after the team accepted or rejected it cannot reopen that decision.
+        Returns whether the row changed."""
         with self._lock, self._db:
             cur = self._db.execute(
                 "UPDATE requests SET state = 'searched', passes = ?, tracks = ?, first = ?, last = ?, "
-                "reason = NULL WHERE id = ? AND state = 'queued'", (passes, json.dumps(tracks), first, last, rid))
+                "reason = NULL, detail = NULL WHERE id = ? AND state IN ('queued', 'search_failed')",
+                (passes, json.dumps(tracks), first, last, rid))
             return cur.rowcount == 1
 
     def set_failed(self, rid: int, reason: str, detail: str | None = None) -> bool:
         """`reason` is public (capped at 200 characters); `detail` is the raw error, for the team only.
-        Like set_searched, only a request still `queued` changes."""
+        Like set_searched, only a request still open for searching changes."""
         with self._lock, self._db:
             cur = self._db.execute(
-                "UPDATE requests SET state = 'search_failed', reason = ?, detail = ? WHERE id = ? AND state = 'queued'",
+                "UPDATE requests SET state = 'search_failed', reason = ?, detail = ? "
+                "WHERE id = ? AND state IN ('queued', 'search_failed')",
                 (reason[:200], detail, rid))
             return cur.rowcount == 1
 

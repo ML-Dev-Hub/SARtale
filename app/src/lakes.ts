@@ -74,6 +74,14 @@ export interface LakeCheckNote {
   note: string;
 }
 
+/**
+ * True for a pass the trend may use: not left out, has an area, and saw at least `minObservable` of the lake zone.
+ * The pipeline's status uses the same rule (lakestatus.is_valid).
+ */
+export function isTrendPass(p: Lake["series"][number], minObservable: number): boolean {
+  return p.excluded === null && p.area_km2 !== null && p.observable_share !== null && p.observable_share >= minObservable;
+}
+
 /** True for a check row that carries the dates and numbers the app shows. */
 export function isMeasuredCheck(c: unknown): c is LakeCheck {
   const r = c as Partial<LakeCheck> | null;

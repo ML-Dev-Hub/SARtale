@@ -1,4 +1,4 @@
-import { methodLimits, statusSentence, type Lake, type LakesFile } from "./lakes";
+import { isTrendPass, methodLimits, statusSentence, type Lake, type LakesFile } from "./lakes";
 import { checkLine } from "./lakeWatchView";
 import { formatDate } from "./format";
 
@@ -23,7 +23,7 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): strin
   const track = lake.status.track;
   // Only the status track's passes: the status sentence compares these and nothing else.
   const valid = lake.series
-    .filter((p) => p.track === track && p.excluded === null && p.area_km2 !== null && p.observable_share !== null && p.observable_share >= minShare)
+    .filter((p) => p.track === track && isTrendPass(p, minShare))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     .slice(0, PASS_ROWS);
   const passesHead = track ? `Latest valid passes on track ${esc(track)} (the status compares only these)` : "Latest valid passes";
@@ -33,7 +33,8 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): strin
         .join("")}</tbody></table>`
     : `<p>${esc(lake.status.reason)}</p>`;
   const lakeLimits = lake.limits.length ? `<h3>Limits for this lake</h3>${list(lake.limits)}` : "";
-  const checks = file.checks.filter((c) => c.lake === lake.id).map((c) => `<p>${esc(checkLine(c))}</p>`).join("");
+  const checks = file.checks.filter((c) => c.lake === lake.id).map((c) => `<p>${esc(checkLine(c))}</p>`).join("")
+    + (file.check_notes ?? []).filter((c) => c.lake === lake.id).map((c) => `<p>${esc(`Sentinel-2 check: ${c.note}.`)}</p>`).join("");
   const downstream = lake.downstream
     ? `Downstream: ${esc(lake.downstream)}${lake.downstream_source ? ` (${esc(lake.downstream_source)})` : ""}`
     : "Downstream exposure: not in this build";

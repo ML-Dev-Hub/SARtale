@@ -115,7 +115,10 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     onAction: (action, lakeId) => {
       if (action === "evidence") return showView("evidence");
       showView("lakes");
-      if (action === "lake" && lakeId) lakeView.select(lakeId);
+      if (action === "lake" && lakeId) {
+        lakeView.select(lakeId);
+        setHash(`#lakes/${lakeId}`, true);
+      }
     },
   });
 
@@ -151,7 +154,11 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
   }
 
   function showView(next: View, scroll = true, push = true): void {
-    if (push && routeFromHash(window.location.hash)?.view !== next) setHash(VIEW_HASH[next]);
+    if (push) {
+      const here = routeFromHash(window.location.hash);
+      // An in-page anchor (#main, a story section) is replaced, so Back never lands on a hash that names no view.
+      if (here?.view !== next) setHash(VIEW_HASH[next], here === null);
+    }
     q("shell").dataset.view = next;
     for (const [name, el] of Object.entries(sections)) el.hidden = name !== next;
     // The walkthrough is part of the story, so the nav keeps "The story" lit there.
@@ -172,14 +179,14 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
   q("home").addEventListener("click", () => showView("home"));
   for (const [name, btn] of Object.entries(viewButtons)) btn.addEventListener("click", () => showView(name as View));
 
-  // Back, Forward and a typed or linked hash all go through the same route.
+  // Back, Forward and a typed or linked hash all change the hash (our pushState entries always differ in it), so
+  // hashchange alone covers them; popstate as well would run every move twice.
   const followHash = (): void => {
     const r = routeFromHash(window.location.hash);
     if (!r) return;
     showView(r.view, false, false);
     if (r.lake) lakeView.select(r.lake);
   };
-  window.addEventListener("popstate", followHash);
   window.addEventListener("hashchange", followHash);
   const first = routeFromHash(window.location.hash) ?? { view: "home" as View };
   showView(first.view, false, false);
@@ -188,7 +195,6 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
   return {
     destroy: () => {
       narrow?.removeEventListener?.("change", syncFolds);
-      window.removeEventListener("popstate", followHash);
       window.removeEventListener("hashchange", followHash);
       storyPage.destroy();
       lakeStory.destroy();

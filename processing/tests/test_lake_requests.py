@@ -149,3 +149,11 @@ def test_a_late_search_cannot_reopen_a_decision(tmp_path):
     assert (s.get(rejected["id"])["state"], s.get(rejected["id"])["reason"]) == ("rejected", "No public source")
     assert s.get(accepted["id"])["state"] == "accepted"
     assert s.open_count() == 0
+
+
+def test_a_failed_search_can_be_retried(tmp_path):
+    s = RequestStore(tmp_path / "r.sqlite")
+    row = s.add(clean("C lake", 35.0), "1.2.3.4", 1000.0)
+    assert s.set_failed(row["id"], "CMR down", "TimeoutError") is True
+    assert s.set_searched(row["id"], 2, ["055A"], "2026-06-20", "2026-06-30") is True
+    assert (s.get(row["id"])["state"], s.get(row["id"])["detail"]) == ("searched", None)

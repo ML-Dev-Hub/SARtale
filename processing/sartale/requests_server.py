@@ -15,6 +15,11 @@ LIST_PATH = "/api/lake-requests"
 HEALTH_PATH = "/api/health"
 
 
+def norm_origin(origin: str) -> str:
+    """An origin as browsers send it: no trailing slash; scheme and host are case-insensitive."""
+    return origin.strip().rstrip("/").lower()
+
+
 def _public(row: dict) -> dict:
     return {k: v for k, v in row.items() if k not in ("source", "detail")}
 
@@ -60,7 +65,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
         origin = self.headers.get("Origin")
-        if origin and origin == self.server.allowed_origin:
+        if origin and norm_origin(origin) == self.server.allowed_origin:
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Vary", "Origin")
             if self.command == "OPTIONS":
@@ -127,7 +132,7 @@ class Handler(BaseHTTPRequestHandler):
         if path != LIST_PATH:
             return self._error(404, "Not found.")
         origin = self.headers.get("Origin")
-        if origin is not None and origin != self.server.allowed_origin:
+        if origin is not None and norm_origin(origin) != self.server.allowed_origin:
             self.close_connection = True
             return self._error(403, "Requests are only accepted from the SARtale site.")
         payload = self._read_object()
@@ -199,7 +204,7 @@ def make_server(store: RequestStore, watched: list[Lake], host: str = "127.0.0.1
     server.slots = threading.BoundedSemaphore(max_connections)
     server.store = store
     server.watched = watched
-    server.allowed_origin = allowed_origin
+    server.allowed_origin = norm_origin(allowed_origin)
     server.search = search
     server.clock = clock
     server.write_lock = threading.Lock()

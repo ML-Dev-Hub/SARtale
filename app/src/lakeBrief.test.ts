@@ -153,3 +153,11 @@ describe("lake brief", () => {
     expect(document.querySelector(".lake-brief")!.textContent).toContain("Second");
   });
 });
+
+describe("brief check notes", () => {
+  test("test_a_check_note_is_printed_in_the_brief", () => {
+    const lake = fixtureLakes.lakes[2];
+    const html = briefHtml(lake, { ...fixtureLakes, checks: [], check_notes: [{ lake: lake.id, note: "no clear <scene>" }] }, new Date(2026, 10, 5));
+    expect(html).toContain("Sentinel-2 check: no clear &lt;scene&gt;.");
+  });
+});
