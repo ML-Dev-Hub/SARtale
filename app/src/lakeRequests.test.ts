@@ -55,9 +55,9 @@ describe("checkRequest", () => {
     expect(checkRequest({ ...form, lat: String(w.lat), lon: String(w.lon) }, watched, [])).toBe(`Already watched: ${w.name}.`);
   });
   it("accepts only decimal numbers", () => {
-    for (const bad of ["0x24", "0b1", "", "  ", "36.2°", "1e", "--1"]) expect(checkRequest({ ...form, lat: bad }, watched, []), bad).toBe("lat must be a number.");
-    expect(checkRequest({ ...form, lat: " +3.642e1 " }, watched, [])).toBeNull();
-    expect(checkRequest({ ...form, lon: ".7488e2" }, watched, [])).toBeNull();
+    for (const bad of ["0x24", "0b1", "", "  ", "36,2", "1e1", "+3.642e1", "36.", ".5", "--1", "36.2°S"]) expect(checkRequest({ ...form, lat: bad }, watched, []), bad).toBe("lat must be a number.");
+    for (const good of ["36.42", "+36.42", " 36.42 ", "36.42°", "36.42°N", "36.42 ° n"]) expect(checkRequest({ ...form, lat: good }, watched, []), good).toBeNull();
+    for (const good of ["74.88", "74.88°E", "74.88 °e"]) expect(checkRequest({ ...form, lon: good }, watched, []), good).toBeNull();
   });
   it("counts code points like Python", () => {
     expect(checkRequest({ ...form, name: "😀".repeat(80) }, watched, [])).toBeNull();

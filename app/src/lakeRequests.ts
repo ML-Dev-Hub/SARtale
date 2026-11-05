@@ -79,14 +79,14 @@ function km(lat1: number, lon1: number, lat2: number, lon2: number): number {
   return 2 * 6371.0088 * Math.asin(Math.sqrt(a));
 }
 
-/** Decimal numbers only, as Python float() reads them here: no hex, binary or empty text. */
-const DECIMAL = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
+/** The coordinate forms the issue reader accepts (lake_issues.py _COORD): "36.2", "36.2°", "36.2°N", "74.0 °E". */
+const COORD = /^([+-]?\d+(?:\.\d+)?)\s*°?\s*[NnEe]?$/;
 const MAX_OPEN = 200;
 const OPEN_STATES: RequestState[] = ["searched", "too_few_passes", "check_failed"];
 
 function numberField(key: string, value: string): number | string {
-  const t = value.trim();
-  const n = DECIMAL.test(t) ? Number(t) : NaN;
+  const m = COORD.exec(value.trim());
+  const n = m ? Number(m[1]) : NaN;
   return Number.isFinite(n) ? n : `${key} must be a number.`;
 }
 
