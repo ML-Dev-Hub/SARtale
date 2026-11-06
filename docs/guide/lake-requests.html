@@ -65,7 +65,7 @@
 </table></div>
 
 <h2 id="who-can-accept">Who can accept<a class="anchor" href="#who-can-accept" aria-label="Link to this section">#</a></h2>
-<p>Only someone with write, maintain or admin access to the repository. The check looks at the account that added the label, not at the issue author. If anyone else adds <code>accepted</code>, no rebuild runs.</p>
+<p>Only someone with write, maintain or admin access to the repository. The check looks at the account that added the label, not at the issue author. If anyone else adds <code>accepted</code>, no rebuild runs: the workflow removes the label and comments "Only the SARtale team can accept a request." If GitHub does not answer the permission check (it is tried twice), the workflow also removes the label, and comments "SARtale could not check who added the label; a team member can add it again."</p>
 <p>The rebuild runs in separate jobs so that no job holds both the Earthdata login and a write token:</p>
 <ul>
   <li><b>Rebuild</b> has the Earthdata login (the <code>earthdata</code> environment) and read-only access. It adds the lake, searches, fetches, builds and runs the tests, then hands the data over as an artifact.</li>

@@ -89,12 +89,14 @@ jobs:
             decide refuse-team; exit 0
           fi
           lookup() { gh api "repos/$GITHUB_REPOSITORY/collaborators/$approver/permission" --jq .permission; }
-          perm="$(lookup)" || { sleep 5; perm="$(lookup)"; } || perm=none
+          # a lookup that fails twice is no answer about the person: say the check could not be made
+          perm="$(lookup)" || { sleep 5; perm="$(lookup)"; } || perm=unknown
           echo "approver $approver has permission $perm"
           case "$perm" in
             admin|maintain|write)
               echo "approved_at=$approved_at" >> "$GITHUB_OUTPUT"
               decide allowed ;;
+            unknown) decide refuse-lookup ;;
             *) decide refuse-team ;;
           esac
 
@@ -204,7 +206,8 @@ jobs:
     # refusals, a finished rebuild, and every rebuild failure or timeout (reported from here). A rebuild that
     # decided 'done' or 'skip' still held the rebuild queue, so publish runs for it too, but only to drain.
     if: >-
-      always() && (needs.gate.outputs.decision == 'refuse-team' || needs.gate.outputs.decision == 'allowed')
+      always() && (needs.gate.outputs.decision == 'refuse-team' || needs.gate.outputs.decision == 'refuse-lookup' ||
+      needs.gate.outputs.decision == 'allowed')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -220,12 +223,18 @@ jobs:
           ref: main
           persist-credentials: false
 
-      - name: Refuse an approval from outside the team
-        if: needs.gate.outputs.decision == 'refuse-team'
+      - name: Refuse an approval from outside the team, or one whose sender could not be checked
+        if: needs.gate.outputs.decision == 'refuse-team' || needs.gate.outputs.decision == 'refuse-lookup'
         env:
           GH_TOKEN: ${{ github.token }}
+          DECISION: ${{ needs.gate.outputs.decision }}
         run: |
-          printf '%s\n' "Only the SARtale team can accept a request." > "$RUNNER_TEMP/refused.md"
+          if [ "$DECISION" = refuse-lookup ]; then
+            printf '%s\n' "SARtale could not check who added the label; a team member can add it again." \
+              > "$RUNNER_TEMP/refused.md"
+          else
+            printf '%s\n' "Only the SARtale team can accept a request." > "$RUNNER_TEMP/refused.md"
+          fi
           gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/refused.md"
           gh issue edit "$ISSUE" --remove-label accepted
 

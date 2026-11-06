@@ -189,6 +189,24 @@ def test_accept_checks_permission_before_rebuild():
     assert CHANGED in add["run"]
 
 
+def test_a_failed_permission_lookup_is_not_called_a_refusal_of_the_sender():
+    gate, publish = accept_jobs()["gate"], accept_jobs()["publish"]
+    perm = next(s for s in gate["steps"] if checks_permission(s))
+    assert "|| perm=unknown" in perm["run"] and "perm=none" not in perm["run"]
+    assert "unknown) decide refuse-lookup ;;" in perm["run"]
+    assert perm["run"].index("unknown) decide refuse-lookup") < perm["run"].index("*) decide refuse-team")
+    refuse = next(s for s in publish["steps"] if "refused.md" in (s.get("run") or "")
+                  and "refuse-team" in str(s.get("if")))
+    assert "refuse-lookup" in refuse["if"] and "needs.gate.outputs.decision" in str(refuse["env"]["DECISION"])
+    run = refuse["run"]
+    lookup = run.index('if [ "$DECISION" = refuse-lookup ]; then')
+    other = run.index("else", lookup)
+    assert "SARtale could not check who added the label; a team member can add it again." in run[lookup:other]
+    assert "Only the SARtale team" not in run[lookup:other]
+    assert "Only the SARtale team can accept a request." in run[other:]
+    assert "--remove-label accepted" in run, "both remove the label, so adding it again starts a new check"
+
+
 def test_accept_workflow_triggers():
     doc = load(LAKE_ACCEPT)
     on = on_of(doc)
@@ -517,6 +535,7 @@ def test_publish_runs_for_every_allowed_rebuild():
     # a rebuild that decided 'done' or 'skip' still held the queue: publish runs, but only the drain does work
     publish = accept_jobs()["publish"]
     assert publish["if"] == ("always() && (needs.gate.outputs.decision == 'refuse-team' || "
+                             "needs.gate.outputs.decision == 'refuse-lookup' || "
                              "needs.gate.outputs.decision == 'allowed')")
     for s in publish["steps"]:
         if "commit-data.sh" in (s.get("run") or "") or "data_artifact.py" in (s.get("run") or ""):
