@@ -20,14 +20,8 @@ No AI model runs in the pipeline or the app. Lake Watch is plain statistics: a d
 
 ## Team logo
 
-The team logo (`app/logo/SARtale.png`, with smaller copies in `app/public/brand/`) was supplied by the team. Its origin is unknown to this record. **The team must state here whether an AI tool made it, and which one if so, before submission.** The smaller copies were produced by resizing only (`app/scripts/make_brand_assets.py`), with no redrawing.
+The team logo (`app/logo/SARtale.png`, with smaller copies in `app/public/brand/`) was created using ChatGPT Imaging model. The smaller copies were produced by resizing only (`app/scripts/make_brand_assets.py`), with no redrawing.
 
 ## Human responsibility
 
 Saeed Ahmad, Shaharyar Sajid and Usama Hussain are responsible for the submission. Every claim about real NISAR data must be checked by a team member against the data before it is presented. The lake copy and the video script were drafted by AI tools from the data and need that check.
-
-## To complete before submission
-
-- State whether an AI tool made the logo.
-- Add any other AI tool used from now on (for example for slides or translation).
-- Record the Local Lead's answer on the early start.
