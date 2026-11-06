@@ -212,7 +212,7 @@ describe("Lake Watch", () => {
 describe("Lake Watch after an accept", () => {
   test("mounts the shipped data with a 12th lake that has no pass yet, and opens that lake", async () => {
     const real = (await import("../public/data/lakes.json")).default as unknown as LakesFile;
-    const frozen = (await import("./fixtures/lakes.json")).default as unknown as LakesFile;
+    const frozen = (await import("./frozen/lakes.json")).default as unknown as LakesFile;
     for (const base of [frozen, real]) {
       const file = withRequestedLake(base);
       const { root } = setup(file);

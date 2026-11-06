@@ -4,7 +4,7 @@ import lakesJson from "../public/data/lakes.json";
 import { findBannedClaims } from "./content";
 import storyCopy from "./content/storyPage.json";
 import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
-import frozenJson from "./fixtures/lakes.json";
+import frozenJson from "./frozen/lakes.json";
 import type { LakesFile } from "./lakes";
 import { mapPin, renderStoryPage, storyNumbers } from "./storyPage";
 
