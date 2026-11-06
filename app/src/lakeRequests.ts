@@ -1,3 +1,4 @@
+import { findBannedClaims } from "./content";
 import copyJson from "./content/storyPage.json";
 import type { Lake } from "./lakes";
 
@@ -96,6 +97,12 @@ function textError(key: string, value: string, low: number, high: number): strin
   return [...t].length >= low && [...t].length <= high ? null : `${key} must be ${low}–${high} characters.`;
 }
 
+/** The refusal for a name that uses wording SARtale never uses (lake_requests.banned_name_message); null when fine. */
+export function bannedNameError(name: string): string | null {
+  const found = findBannedClaims(name.trim());
+  return found.length ? `The name uses a phrase SARtale does not use ("${found[0]}"); please use the lake's usual name.` : null;
+}
+
 /** The first problem with a request, in the same order and words as the Python validate; null when it is fine. */
 export function checkRequest(f: RequestFields, watched: Lake[], requests: LakeRequest[]): string | null {
   const lat = numberField("lat", f.lat);
@@ -105,7 +112,7 @@ export function checkRequest(f: RequestFields, watched: Lake[], requests: LakeRe
   const b = BOUNDS;
   if (lat < b.latMin || lat > b.latMax || lon < b.lonMin || lon > b.lonMax)
     return `The point must be in Gilgit-Baltistan or upper KP: ${b.latMin}–${b.latMax} °N, ${b.lonMin}–${b.lonMax} °E.`;
-  const bad = textError("name", f.name, 2, 80) ?? textError("source", f.source, 3, 200);
+  const bad = textError("name", f.name, 2, 80) ?? bannedNameError(f.name) ?? textError("source", f.source, 3, 200);
   if (bad) return bad;
   for (const l of watched) if (km(lat, lon, l.lat, l.lon) <= NEAR_KM) return `Already watched: ${l.name}.`;
   const near = requests.filter((r) => LIVE.includes(r.state) && km(lat, lon, r.lat, r.lon) <= NEAR_KM).map((r) => r.issue);

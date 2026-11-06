@@ -75,6 +75,16 @@ describe("checkRequest", () => {
     expect(checkRequest(form, watched, open.slice(1))).toBeNull();
     expect(checkRequest(form, watched, [...open.slice(1), row({ issue: 999, lat: 35, lon: 71, state: "accepted" })])).toBeNull();
   });
+  it("refuses a name with wording SARtale never uses, in the Python words", () => {
+    const words = (phrase: string) => `The name uses a phrase SARtale does not use ("${phrase}"); please use the lake's usual name.`;
+    expect(checkRequest({ ...form, name: "Safe lake" }, watched, [])).toBe(words("safe"));
+    expect(checkRequest({ ...form, name: "Lake of EARLY  warning" }, watched, [])).toBe(words("early warning"));
+    expect(checkRequest({ ...form, name: "Damaged moraine" }, watched, [])).toBe(words("damaged"));
+    expect(checkRequest({ ...form, name: "Safeguard lake" }, watched, [])).toBeNull();
+    // after the length rule and before the source rule, as in validate
+    expect(checkRequest({ ...form, name: "Safe lake", source: "ab" }, watched, [])).toBe(words("safe"));
+    expect(checkRequest({ ...form, name: "s" }, watched, [])).toBe("name must be 2–80 characters.");
+  });
   it("blocks near a live request and ignores invalid or rejected ones", () => {
     for (const state of ["searched", "too_few_passes", "check_failed", "accepted"] as const)
       expect(checkRequest(form, watched, [row({ state, issue: 12 })])).toBe("Already requested: issue #12.");

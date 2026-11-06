@@ -543,3 +543,12 @@ def test_accept_refuses_an_entry_from_before_hashes_with_the_migration_message(w
     with pytest.raises(RequestError) as e:
         accept_entry(feed, issue(7), lakes_in, "2026-11-05")
     assert str(e.value) == MIGRATED
+
+
+def test_a_name_with_a_banned_phrase_is_invalid_and_never_reaches_requests_json(watched):
+    feed = build_feed([issue(1, name="Safe lake")], watched, None, search=fake_search, now=NOW)
+    entry = one(feed, 1)
+    assert entry["state"] == "invalid"
+    assert entry["reason"] == ('The name uses a phrase SARtale does not use ("safe"); '
+                               "please use the lake's usual name.")
+    assert entry["name"] == "Request #1" and "Safe lake" not in json.dumps(feed)

@@ -15,7 +15,7 @@ import requests
 
 from sartale.accept_queue import CHECKED, next_accept
 from sartale.config import MIN_LOOKS
-from sartale.lake_requests import MAX_OPEN, RequestError, _text, coverage, validate
+from sartale.lake_requests import MAX_OPEN, RequestError, _text, banned_name_message, coverage, validate
 from sartale.lakes import Lake
 
 FIELDS = {"Lake name": "name", "Latitude (°N)": "lat", "Longitude (°E)": "lon",
@@ -124,7 +124,9 @@ def _check(issue: dict, watched: list[Lake], claimed: list[dict], open_count: in
         fields = parse_issue_body(issue.get("body", ""))
         fields["lat"], fields["lon"] = _coord(fields["lat"]), _coord(fields["lon"])
         try:
-            name = _text(fields, "name", 2, 80)  # only text that passes the name rules reaches requests.json
+            text = _text(fields, "name", 2, 80)  # only text that passes the name rules reaches requests.json
+            if banned_name_message(text) is None:
+                name = text
         except RequestError:
             pass
         lat, lon = _number(fields["lat"]), _number(fields["lon"])

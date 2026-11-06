@@ -1,7 +1,10 @@
+import re
+from pathlib import Path
+
 import pytest
 
 from sartale.lake_catalog import Pass
-from sartale.lake_requests import RequestError, coverage, validate
+from sartale.lake_requests import BANNED_CLAIMS, RequestError, coverage, find_banned_claims, validate
 from sartale.lakes import Lake
 
 ATTABAD = Lake(id="attabad", name="Attabad Lake", lon=74.8, lat=36.3, coord_source="s", outline=None,
@@ -81,3 +84,27 @@ def test_validate_refuses_control_and_formatting_characters(bad):
 def test_validate_allows_ordinary_spaces_and_accents():
     assert validate({**GOOD, "name": "Yaz Sam é"}, [], [])["name"] == "Yaz Sam é"
 
+
+
+BANNED_NAME = 'The name uses a phrase SARtale does not use ("{}"); please use the lake\'s usual name.'
+
+
+@pytest.mark.parametrize("name, phrase", [("Safe lake", "safe"), ("Lake of EARLY  warning", "early warning"),
+                                          ("Damaged moraine", "damaged"), ("predict pond", "predict")])
+def test_validate_refuses_a_name_with_a_banned_phrase(name, phrase):
+    e = err({**GOOD, "name": name})
+    assert e.status == 400 and str(e) == BANNED_NAME.format(phrase)
+
+
+def test_banned_phrases_match_whole_words_only():
+    assert validate({**GOOD, "name": "Safeguard lake"}, [], [])["name"] == "Safeguard lake"
+    assert find_banned_claims("unsafe, predictable") == []
+    assert find_banned_claims("SAFE and damage") == ["damage", "safe"]  # in list order, once each
+
+
+def test_banned_list_matches_the_app():
+    """BANNED_CLAIMS is a copy of the list in app/src/content.ts; the two must stay the same."""
+    source = (Path(__file__).resolve().parents[2] / "app" / "src" / "content.ts").read_text(encoding="utf-8")
+    block = re.search(r"export const BANNED_CLAIMS = \[(.*?)\] as const;", source, re.S)
+    assert block, "content.ts no longer defines BANNED_CLAIMS as a literal list"
+    assert tuple(re.findall(r'"([^"]*)"', block.group(1))) == BANNED_CLAIMS
