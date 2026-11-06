@@ -35,6 +35,12 @@ export function isShown(r: LakeRequest): boolean {
   return LIVE.includes(r.state);
 }
 
+/** The requests to draw: shown ones, less an accepted one whose lake is already in lakes.json (drawn as that lake). */
+export function shownRequests(requests: LakeRequest[], watched: Lake[]): LakeRequest[] {
+  const ids = new Set(watched.map((l) => l.id));
+  return requests.filter((r) => isShown(r) && !(r.state === "accepted" && r.lake_id !== null && ids.has(r.lake_id)));
+}
+
 /** The new-issue URL with the form's fields pre-filled (GitHub fills issue-form fields from query parameters). */
 export function issueUrl(f: RequestFields): string {
   const q = (k: string, v: string): string => `${k}=${encodeURIComponent(v)}`;

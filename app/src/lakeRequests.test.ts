@@ -2,8 +2,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { findBannedClaims } from "./content";
 import storyCopy from "./content/storyPage.json";
-import { fixtureLakes } from "./fixtures";
-import { checkRequest, issueUrl, loadRequests, mountAddLake, requestLine, type LakeRequest } from "./lakeRequests";
+import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
+import { checkRequest, issueUrl, loadRequests, mountAddLake, requestLine, shownRequests, type LakeRequest } from "./lakeRequests";
 import { renderStoryPage } from "./storyPage";
 
 const row = (o: Partial<LakeRequest> = {}): LakeRequest => ({
@@ -171,6 +171,24 @@ describe("requests on the story page", () => {
     expect(cards[0].querySelector("b")).toBeNull();
     expect(cards[0].querySelector(".sp-lake-status")).toBeNull();
     expect(sp.mapEl.querySelectorAll(".sp-pin-request")).toHaveLength(1);
+  });
+
+  it("an accepted request whose lake is already in lakes.json is drawn once, as the lake", () => {
+    const page = document.createElement("div");
+    document.body.appendChild(page);
+    const file = withRequestedLake(fixtureLakes);
+    const requests = [
+      row({ issue: 7, name: requestedLake.name, lat: requestedLake.lat, lon: requestedLake.lon, state: "accepted", lake_id: requestedLake.id }),
+      row({ issue: 9, name: "Waiting for the rebuild", lat: 35, lon: 72, state: "accepted", lake_id: "not_built_yet" }),
+    ];
+    const sp = renderStoryPage(page, file, { ...options, requests });
+    const cards = [...sp.listEl.querySelectorAll(".sp-request")].map((c) => c.textContent ?? "");
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toContain("Waiting for the rebuild");
+    expect(sp.mapEl.querySelectorAll(".sp-pin-request")).toHaveLength(1);
+    expect(sp.mapEl.querySelectorAll(".sp-pin:not(.sp-pin-request)")).toHaveLength(file.lakes.length);
+    expect(shownRequests(requests, file.lakes).map((r) => r.issue)).toEqual([9]);
+    expect(shownRequests(requests, fixtureLakes.lakes).map((r) => r.issue)).toEqual([7, 9]);
   });
 
   it("the add-a-lake copy passes the claims check", () => {

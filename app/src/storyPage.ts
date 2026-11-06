@@ -3,7 +3,7 @@ import "@fontsource-variable/inter-tight/wght.css";
 import "./storyPage.css";
 import copyJson from "./content/storyPage.json";
 import { dataUrl, formatDate } from "./format";
-import { isShown, mountAddLake, requestLine, type LakeRequest } from "./lakeRequests";
+import { mountAddLake, requestLine, shownRequests, type LakeRequest } from "./lakeRequests";
 import { iouRange, opticalOverlapPhrase, type Lake, type LakesFile } from "./lakes";
 
 const copy = copyJson;
@@ -292,7 +292,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const setRequests = (list: LakeRequest[]): void => {
     for (const e of requestEls) e.remove();
     requestEls.length = 0;
-    for (const r of list.filter(isShown)) {
+    for (const r of shownRequests(list, file?.lakes ?? [])) {
       const pos = mapPin(r.lon, r.lat);
       if (pos) {
         const pin = el("span", "sp-pin sp-pin-request");
