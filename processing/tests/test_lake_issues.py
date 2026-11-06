@@ -564,3 +564,18 @@ def test_coordinates_only_in_plain_ascii_decimals(watched, bad):
     entry = one(feed, 1)
     assert entry["state"] == "invalid" and entry["reason"] == "lat must be a number." and entry["lat"] is None
     assert issue_values_sha256(issue(1, lat=bad)) is None
+
+
+@pytest.mark.parametrize("passes, words", [(0, "0 NISAR passes"), (1, "1 NISAR pass over"), (2, "2 NISAR passes")])
+def test_the_comment_counts_passes_in_good_english(watched, passes, words):
+    found = lambda lat, lon: {"passes": passes, "tracks": ["055A"], "first": "2026-10-01", "last": "2026-10-01"}  # noqa: E731
+    feed = build_feed([issue(1)], watched, None, search=found, now=NOW)
+    comment = issue_actions(feed, 1, None)["comment"]
+    assert words in comment and ("1 NISAR passes" not in comment)
+
+
+def test_a_searched_comment_with_many_passes():
+    from sartale.lake_issues import _comment
+    entry = {"state": "searched", "passes": 14, "tracks": ["055A", "156A"], "first": "2026-06-18", "last": "2026-10-23"}
+    assert _comment(entry) == ("Checked against NASA's catalogue: 14 NISAR passes over this point on 2 tracks, "
+                               "2026-06-18 to 2026-10-23. The team decides whether this lake is watched.")

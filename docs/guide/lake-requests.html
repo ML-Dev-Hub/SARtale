@@ -71,7 +71,7 @@
   <li><b>Rebuild</b> has the Earthdata login (the <code>earthdata</code> environment) and read-only access. It adds the lake, searches, fetches, builds and runs the tests, then hands the data over as an artifact.</li>
   <li><b>Publish</b> has a write token and no Earthdata login. It checks the artifact, commits the data, redeploys, comments and closes the issue.</li>
 </ul>
-<p>Only one rebuild runs at a time, shared with the <a href="deploy.html#weekly-refresh">weekly refresh</a>. A second accept waits and is started when the first is done. If the data on <code>main</code> change during a rebuild, it restarts itself, up to 3 times.</p>
+<p>Only one rebuild runs at a time, shared with the <a href="deploy.html#weekly-refresh">weekly refresh</a>. A second accept waits and is started when the first is done. If the data on <code>main</code> change during a rebuild, it starts itself again, at most 3 runs in all.</p>
 
 <h3 id="if-the-request-changes-after-approval">If the request changes after approval<a class="anchor" href="#if-the-request-changes-after-approval" aria-label="Link to this section">#</a></h3>
 <p>An approval covers the name, coordinates and source the team saw. If the visitor edits the issue afterwards, the approval is withdrawn: the workflow removes <code>accepted</code> and comments "This request changed after it was approved. A team member must accept it again."</p>
@@ -85,7 +85,7 @@
   <thead><tr><th>When</th><th>Comment</th></tr></thead>
   <tbody>
     <tr><td>3 or more passes</td><td>"Checked against NASA's catalogue: 14 NISAR passes over this point on 2 tracks, 2026-06-18 to 2026-10-23. The team decides whether this lake is watched."</td></tr>
-    <tr><td>Fewer than 3 passes</td><td>"Checked against NASA's catalogue: 1 NISAR passes over this point, fewer than the 3 needed for a trend. The team still decides whether this lake is watched."</td></tr>
+    <tr><td>Fewer than 3 passes</td><td>"Checked against NASA's catalogue: 1 NISAR pass over this point, fewer than the 3 needed for a trend. The team still decides whether this lake is watched."</td></tr>
     <tr><td>Rule broken</td><td>"This request cannot be used." and the reason</td></tr>
     <tr><td>Catalogue down</td><td>"NASA's catalogue did not answer; the team will retry." The next run checks again</td></tr>
     <tr><td>Accepted</td><td>"Accepted. The lake is now watched:" and a link to the lake on the site</td></tr>

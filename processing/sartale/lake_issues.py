@@ -196,15 +196,20 @@ def issue_actions(feed: dict, number: int, previous_state: str | None) -> dict:
             "close": state == "invalid"}
 
 
+def _passes(n) -> str:
+    """"1 NISAR pass", "2 NISAR passes" (the app's requestLine words it the same way)."""
+    return f"{n} NISAR {'pass' if n == 1 else 'passes'}"
+
+
 def _comment(entry: dict) -> str | None:
     state, comment = entry["state"], None
     if state == "searched":
         tracks = len(entry["tracks"])
-        comment = (f"Checked against NASA's catalogue: {entry['passes']} NISAR passes over this point on "
+        comment = (f"Checked against NASA's catalogue: {_passes(entry['passes'])} over this point on "
                    f"{tracks} {'track' if tracks == 1 else 'tracks'}, {entry['first']} to {entry['last']}. "
                    "The team decides whether this lake is watched.")
     elif state == "too_few_passes":
-        comment = (f"Checked against NASA's catalogue: {entry['passes']} NISAR passes over this point, fewer than "
+        comment = (f"Checked against NASA's catalogue: {_passes(entry['passes'])} over this point, fewer than "
                    f"the {MIN_LOOKS} needed for a trend. The team still decides whether this lake is watched.")
     elif state == "invalid":
         comment = f"This request cannot be used. {entry['reason']}"
