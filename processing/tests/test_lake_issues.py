@@ -246,7 +246,7 @@ def test_cli_lake_issues_end_to_end(tmp_path, monkeypatch):
     assert one(json.loads(feed_path.read_text(encoding="utf-8")), 3)["lake_id"] == "moraine_lake_above_gulmit"
     (act,) = json.loads(actions.read_text(encoding="utf-8"))
     assert act == {"issue": 3, "comment": "Accepted. The lake is now watched: "
-                              "https://saeedahmadicp.github.io/SARtale/#lakes/moraine_lake_above_gulmit",
+                              "https://saeedahmad.me/SARtale/#lakes/moraine_lake_above_gulmit",
                    "add": [], "remove": ["searched", "too few passes", "rebuild failed"], "close": True}
 
 
