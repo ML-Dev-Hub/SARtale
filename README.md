@@ -15,13 +15,14 @@
 </p>
 
 <p align="center">
-  <a href="media/SARtale-lake-watch-demo.mp4"><b>Demo video</b></a> (38 s) ·
-  <a href="media/SARtale-how-it-works.mp4"><b>How it works</b></a> (3 min 41 s) ·
+  <a href="https://saeedahmad.me/SARtale/#videos"><b>Watch the videos</b></a>: demo (38 s) and how it works (3 min 41 s) ·
   <a href="https://saeedahmad.me/SARtale/"><b>Live site</b></a> ·
   <a href="https://saeedahmad.me/SARtale/guide/"><b>Guide</b></a>
 </p>
 
 ![The SARtale story page](media/screens/story.jpg)
+
+Both videos play on the [site](https://saeedahmad.me/SARtale/#videos) and in the [guide](https://saeedahmad.me/SARtale/guide/#videos), with captions. The files are [`media/SARtale-lake-watch-demo.mp4`](media/SARtale-lake-watch-demo.mp4) and [`media/SARtale-how-it-works.mp4`](media/SARtale-how-it-works.mp4).
 
 ## Why
 

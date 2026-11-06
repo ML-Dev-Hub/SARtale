@@ -94,7 +94,7 @@ describe("renderStoryPage", () => {
   it("has the parts in order, with the shadow panel inside 03", () => {
     const { root } = render(real);
     const labels = [...root.querySelectorAll("section[aria-label]")].map((s) => s.getAttribute("aria-label"));
-    expect(labels).toEqual(["Cover", "01 The risk", "02 The gap", "03 The view", "04 The measure", "05 The watch", "06 Add a lake", "Open Lake Watch"]);
+    expect(labels).toEqual(["Cover", "01 The risk", "02 The gap", "03 The view", "04 The measure", "05 The watch", "06 Add a lake", "07 The videos", "Open Lake Watch"]);
     const view = root.querySelector('section[aria-label="03 The view"]')!;
     expect(view.querySelector(".sp-shadow")?.textContent).toContain("Mountains cast shadows too");
     expect([...view.querySelectorAll(".sp-shadow a")].map((a) => a.getAttribute("href"))).toEqual([
@@ -139,6 +139,29 @@ describe("renderStoryPage", () => {
       expect(findBannedClaims(text)).toEqual([]);
     }
     expect(withRequestedLake(frozen).lakes).toHaveLength(12);
+  });
+
+  it("plays both videos with captions on, a poster and a download link", () => {
+    const { root } = render(real);
+    const section = root.querySelector("section#videos")!;
+    const videos = [...section.querySelectorAll("video")];
+    expect(videos.map((v) => v.querySelector("source")?.getAttribute("src"))).toEqual([
+      "media/SARtale-lake-watch-demo.mp4",
+      "media/SARtale-how-it-works.mp4",
+    ]);
+    for (const v of videos) {
+      const src = v.querySelector("source")!.getAttribute("src")!;
+      expect(v.controls).toBe(true);
+      expect(v.getAttribute("preload")).toBe("metadata");
+      expect(v.getAttribute("poster")).toBe(src.replace("media/", "media/posters/").replace(".mp4", ".jpg"));
+      expect(v.getAttribute("aria-label")).toBeTruthy();
+      const track = v.querySelector("track")!;
+      expect([track.kind, track.srclang, track.default]).toEqual(["captions", "en", true]);
+      expect(track.getAttribute("src")).toBe(src.replace(".mp4", ".vtt"));
+      expect(v.querySelector("a")?.getAttribute("href")).toBe(src);
+      expect(v.closest("figure")?.querySelector("figcaption h3")?.textContent).toBeTruthy();
+    }
+    expect(root.querySelector('.sp-cover a[href="#videos"]')?.textContent).toBe("Watch the videos");
   });
 
   it("every image has alt text and a visible source line", () => {

@@ -4,6 +4,7 @@
     "title": "When clouds close in, the lakes stay in view.",
     "lede": "Pakistan's glacial lakes fill and burst in summer, when cloud hides them from optical satellites. SARtale reads NASA–ISRO NISAR radar, which sees through cloud, and gives each lake one plain status.",
     "followLabel": "Follow the story",
+    "videosLabel": "Watch the videos",
     "openLabel": "Open Lake Watch",
     "stats": [
       { "value": "{lakes}", "label": "glacial lakes watched" },
@@ -120,6 +121,29 @@
       "openAgain": "Open the request again",
       "seeAll": "See all requests"
     }
+  },
+  "videos": {
+    "label": "07 · THE VIDEOS",
+    "title": "Watch SARtale",
+    "lede": "Captions are on by default; turn them off in the player.",
+    "items": [
+      {
+        "title": "The demo",
+        "length": "38 s",
+        "text": "The Shisper outburst, the cloud gap, and the app: a lake's status, its chart and a lake request.",
+        "src": "media/SARtale-lake-watch-demo.mp4",
+        "captions": "media/SARtale-lake-watch-demo.vtt",
+        "poster": "media/posters/SARtale-lake-watch-demo.jpg"
+      },
+      {
+        "title": "How it works",
+        "length": "3 min 41 s",
+        "text": "How radar sees through cloud, why slopes cast radar shadow, how dark pixels become water, and how a change is tested against a lake's own noise.",
+        "src": "media/SARtale-how-it-works.mp4",
+        "captions": "media/SARtale-how-it-works.vtt",
+        "poster": "media/posters/SARtale-how-it-works.jpg"
+      }
+    ]
   },
   "closing": {
     "title": "See every lake, its passes and its limits",
