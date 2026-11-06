@@ -29,11 +29,11 @@ Pakistan has more than 3,000 glacial lakes (UNDP GLOF-II), and SUPARCO tracks 13
 
 > "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days."
 
-Radar sees through cloud, day or night. From 17 June to 4 August 2026, while cloud limited the optical checks, NISAR made **60 valid looks across the 11 lakes** SARtale watches.
+Radar sees through cloud, day or night. From 17 June to 4 August 2026, while cloud limited the optical checks, NISAR made **60 valid looks across the 11 lakes** SARtale first watched (build of 23 Oct 2026).
 
 ## What it does
 
-- **Gives each of 11 lakes one plain status:** Growing, Stable, Shrinking, Not seen this pass, Not observable, or Not enough NISAR looks yet. All 11 read Stable in this build.
+- **Gives each watched lake one plain status:** Growing, Stable, Shrinking, Not seen this pass, Not observable, or Not enough NISAR looks yet. The site shows the current status of each.
 - **Shows the evidence:** the latest radar picture with the water read from it, a chart and a table of every pass, and each pass left out, with the reason.
 - **Prints a one-page brief** per lake: dates, looks, noise and limits.
 - **Takes requests for new lakes through GitHub issues.** A visitor fills in the website's form, which opens a pre-filled "Add a lake" issue (a GitHub sign-in is needed). A workflow checks the point, counts the NISAR passes over it and comments; a team member adds the `accepted` label to start the rebuild, or closes the issue to reject it. See [Lake requests](docs/guide/lake-requests.html). The repository is private for now, so only collaborators can open request issues until it is made public.
@@ -85,11 +85,13 @@ The developer and user guide is a small website in [`docs/guide/`](docs/guide/).
 
 ## Deploying
 
-The site is at <https://saeedahmadicp.github.io/SARtale/>, published by `.github/workflows/deploy.yml` on every push to `main`. A weekly workflow refreshes the data, and the lake-request workflows handle issues. The owner sets up three things once, in the repository Settings (steps in the [Deploying](docs/guide/deploy.html) page):
+The site is at <https://saeedahmadicp.github.io/SARtale/>, published by `.github/workflows/deploy.yml` on every push to `main`. A weekly workflow refreshes the data, and the lake-request workflows handle issues. The owner sets up three things once, in this order, before any lake request is opened (steps in the [Deploying](docs/guide/deploy.html) page):
 
-1. Pages → Source: **GitHub Actions**.
-2. Environments → new environment `earthdata`, deployment branches limited to `main`, with the secrets `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD`; then delete the repository-level copies.
-3. Actions → General → Workflow permissions: **Read and write permissions**.
+1. Settings → Pages → Source: **GitHub Actions**.
+2. Settings → Environments → new environment `earthdata`, deployment branches limited to `main`, with the secrets `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD`; then delete the repository-level copies.
+3. Actions → Lake requests → Run workflow once, to create the labels. The issue form drops labels that do not exist yet, so a request opened before this is never seen.
+
+The default workflow permissions can stay at **Read repository contents**: every workflow declares the permissions it needs.
 
 On a public repository GitHub pauses scheduled workflows after 60 days without activity.
 
