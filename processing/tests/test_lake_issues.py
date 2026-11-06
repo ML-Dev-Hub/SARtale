@@ -488,3 +488,35 @@ def test_cli_accept_passes_the_approval_time(tmp_path, monkeypatch):
     assert e.value.code == 1
     run_pipeline.main(args + ["--approved-at", "2026-11-05T10:00:00Z"])
     assert one(json.loads(feed_path.read_text(encoding="utf-8")), 7)["state"] == "accepted"
+
+
+MIGRATED = "This request was approved before the new check existed. A team member must accept it again."
+
+
+def test_reconcile_never_voids_a_closed_issue(watched):
+    before = build_feed([issue(1, labels=["searched"])], watched, None, search=fake_search, now=NOW)
+    closed = [issue(1, "closed", labels=["rejected", "accepted"], name="Other name")]
+    feed = build_feed(closed, watched, before, search=fake_search, now=NOW)
+    for act in reconcile_actions(feed, closed, before):
+        assert "accepted" not in act["remove"] and CHANGED not in (act["comment"] or "")
+
+
+def test_reconcile_voids_an_approval_given_before_hashes_existed(watched):
+    old = build_feed([issue(1, labels=["searched"])], watched, None, search=fake_search, now=NOW)
+    for r in old["requests"]:
+        r.pop("values_sha256"), r.pop("values_at")  # requests.json as the previous version wrote it
+    labelled = [issue(1, labels=["searched", "accepted"])]
+    feed = build_feed(labelled, watched, old, search=fake_search, now=NOW)
+    (act,) = reconcile_actions(feed, labelled, old)
+    assert act["comment"] == MIGRATED and act["remove"] == ["accepted"] and act["dispatch"] is False
+    assert reconcile_actions(feed, [issue(1, labels=["searched"])], feed) == [], "once is enough"
+
+
+def test_accept_refuses_an_entry_from_before_hashes_with_the_migration_message(watched, tmp_path):
+    lakes_in = tmp_path / "lakes_in.json"
+    lakes_in.write_text(LAKES_IN, encoding="utf-8")
+    feed = build_feed([issue(7)], watched, None, search=fake_search, now=NOW)
+    del feed["requests"][0]["values_sha256"]
+    with pytest.raises(RequestError) as e:
+        accept_entry(feed, issue(7), lakes_in, "2026-11-05")
+    assert str(e.value) == MIGRATED

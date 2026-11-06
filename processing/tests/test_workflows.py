@@ -416,3 +416,85 @@ def test_data_jobs_start_deploy_through_commit_script():
             if perms.get("contents") == "write":
                 assert perms.get("actions") == "write", f"{path.name}:{job_name} cannot start deploy.yml"
                 assert any("commit-data.sh" in (s.get("run") or "") for s in job["steps"])
+
+
+def test_run_scripts_survive_yaml_parsing():
+    commit = next(s for s in accept_jobs()["publish"]["steps"] if "commit-data.sh" in (s.get("run") or ""))
+    assert ('"Add requested lake from issue #$ISSUE" processing/lakes_in.json app/public/data'
+            in commit["run"]), "the parsed command, not just the file text"
+
+
+THREE_TIMES = ("The data changed three times while this lake was being added. "
+               "A team member can add the accepted label again.")
+UNSTARTED = "needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true'"
+
+
+@pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
+def test_write_jobs_have_no_environment_and_no_secrets(path):
+    doc = load(path)
+    for job_name, job in jobs_of(doc):
+        if job_name == "deploy" and path.name == "deploy.yml":
+            continue  # Pages deploy: pages/id-token write in the github-pages environment, no secrets
+        if writes(job, doc):
+            assert "environment" not in job, f"{path.name}:{job_name}"
+            dumped = yaml.safe_dump(job).replace("secrets.GITHUB_TOKEN", "")
+            assert "secrets." not in dumped, f"{path.name}:{job_name} sees a secret"
+
+
+def test_rebuild_jobs_mark_their_start():
+    for path in (LAKE_ACCEPT, REFRESH):
+        job = load(path)["jobs"]["rebuild"]
+        first = job["steps"][0]
+        assert first["id"] == "started" and first["run"].strip() == 'echo "started=true" >> "$GITHUB_OUTPUT"'
+        assert "if" not in first
+        assert job["outputs"]["started"] == "${{ steps.started.outputs.started }}"
+
+
+def test_accept_starts_again_when_stale_or_never_started():
+    doc = load(LAKE_ACCEPT)
+    attempt = on_of(doc)["workflow_dispatch"]["inputs"]["attempt"]
+    assert attempt["default"] == "1" and attempt["required"] is False
+    assert "inputs.attempt" in str(doc["env"]["ATTEMPT"])
+    steps = doc["jobs"]["publish"]["steps"]
+    install = next(s for s in steps if "data_artifact.py unpack" in (s.get("run") or ""))
+    assert '6) echo "result=stale"' in install["run"]
+    again = next(s for s in steps if "gh workflow run lake-accept.yml" in (s.get("run") or ""))
+    assert again["if"].startswith("always()")
+    assert "steps.install.outputs.result == 'stale'" in again["if"] and UNSTARTED in again["if"]
+    assert '-f "issue=$ISSUE" -f "attempt=$((attempt + 1))"' in again["run"]
+    assert "*[!0-9]*" in again["run"], "the attempt number must be digits"
+    assert THREE_TIMES in again["run"] and '"rebuild failed"' in again["run"]
+    (failed,) = failure_steps(steps)
+    assert "steps.install.outputs.result != 'stale'" in failed["if"]
+    assert f"!({UNSTARTED})" in failed["if"]
+
+
+def test_refresh_waits_for_next_week_when_stale_or_never_started():
+    steps = load(REFRESH)["jobs"]["publish"]["steps"]
+    install = next(s for s in steps if "data_artifact.py unpack" in (s.get("run") or ""))
+    assert '6) echo "result=stale"' in install["run"] and "GITHUB_STEP_SUMMARY" in install["run"]
+    commit = next(s for s in steps if "commit-data.sh" in (s.get("run") or ""))
+    assert "steps.install.outputs.result == 'ok'" in commit["if"]
+    (failed,) = failure_steps(steps)
+    assert "steps.install.outputs.result != 'stale'" in failed["if"] and f"!({UNSTARTED})" in failed["if"]
+    unstarted = [s for s in steps if UNSTARTED in str(s.get("if", "")) and s is not failed]
+    assert unstarted and "exit 1" not in unstarted[0]["run"]
+
+
+def test_label_events_do_not_ask_the_events_api():
+    perm = next(s for s in accept_jobs()["gate"]["steps"] if checks_permission(s))
+    run = perm["run"]
+    branch = run.index('if [ "$EVENT" = workflow_dispatch ]; then')
+    other = run.index("else", branch)
+    assert branch < run.index("approver.py") < other, "approver.py only for a dispatched run"
+    assert run.count("approver.py") == 1
+    assert 'approver="$SENDER"' in run[other:] and "date -u +%Y-%m-%dT%H:%M:%SZ" in run[other:]
+    assert "^[A-Za-z0-9][A-Za-z0-9-]*$" in run, "the sender login is checked too"
+
+
+def test_rebuild_skips_an_issue_no_longer_waiting():
+    add = next(s for s in accept_jobs()["rebuild"]["steps"] if "lake-issue-accept" in (s.get("run") or ""))
+    assert "waiting.py" in add["run"] and "decide skip" in add["run"]
+    assert "'skip'" in accept_jobs()["publish"]["if"]
+    migrated = "This request was approved before the new check existed. A team member must accept it again."
+    assert migrated in LAKE_ACCEPT.read_text(encoding="utf-8")

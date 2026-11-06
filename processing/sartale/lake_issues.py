@@ -25,6 +25,8 @@ CHECKED = ("searched", "too_few_passes")
 FORM_CHANGED = "The request form was changed; open a new request from the SARtale site."
 CATALOGUE_DOWN = "NASA's catalogue did not answer; the team will retry."
 CHANGED_AFTER_APPROVAL = "This request changed after it was approved. A team member must accept it again."
+APPROVED_BEFORE_HASHES = ("This request was approved before the new check existed. "
+                          "A team member must accept it again.")
 _COORD = re.compile(r"^([+-]?\d+(?:\.\d+)?)\s*°?\s*[NnEe]?$")
 
 
@@ -232,9 +234,12 @@ def reconcile_actions(feed: dict, issues: list[dict], previous: dict | None) -> 
         add = [want] if want and want not in labels else []
         remove = [v for v in STATE_LABELS.values() if v not in keep and v in labels]
         close = state == "invalid" and issue["state"] == "open"
-        # an approval covers the values the team saw: an edit since the last check voids it
-        void = ("accepted" in labels and state != "accepted" and was.get("values_sha256") is not None
-                and entry.get("values_sha256") != was["values_sha256"])
+        # an approval covers the values the team saw: an edit since the last check voids it, and so does an
+        # approval given while requests.json had no hashes yet (nothing to compare with)
+        pending = "accepted" in labels and state != "accepted" and issue["state"] == "open"
+        migrated = pending and bool(was) and "values_sha256" not in was
+        void = migrated or (pending and was.get("values_sha256") is not None
+                            and entry.get("values_sha256") != was["values_sha256"])
         if void:
             remove.append("accepted")
         dispatch = (not void and not dispatched and issue["state"] == "open" and state in CHECKED
@@ -242,7 +247,8 @@ def reconcile_actions(feed: dict, issues: list[dict], previous: dict | None) -> 
         dispatched = dispatched or dispatch  # one per run, so the next does not replace a pending one
         comment = _comment(entry) if add else None
         if void:
-            comment = CHANGED_AFTER_APPROVAL + (f"\n\n{comment}" if comment else "")
+            reason = APPROVED_BEFORE_HASHES if migrated else CHANGED_AFTER_APPROVAL
+            comment = reason + (f"\n\n{comment}" if comment else "")
         if add or remove or close or dispatch:
             out.append({"issue": number, "comment": comment, "add": add,
                         "remove": remove, "close": close, "dispatch": dispatch})
@@ -261,7 +267,9 @@ def accept_entry(feed: dict, issue: dict, lakes_in: Path, today: str, approved_a
     entry = _find(feed, number)
     if entry is None or entry["state"] not in CHECKED + ("accepted",):
         raise RequestError(f"Issue #{number} has no checked request that can be accepted.", 409)
-    if not entry.get("values_sha256") or issue_values_sha256(issue) != entry["values_sha256"]:
+    if "values_sha256" not in entry:
+        raise RequestError(APPROVED_BEFORE_HASHES, 409)  # checked by the previous version
+    if not entry["values_sha256"] or issue_values_sha256(issue) != entry["values_sha256"]:
         raise RequestError(CHANGED_AFTER_APPROVAL, 409)
     if approved_at is not None and approved_at < (entry.get("values_at") or ""):
         raise RequestError(CHANGED_AFTER_APPROVAL, 409)

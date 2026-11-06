@@ -399,6 +399,23 @@ def test_artifact_main_exit_codes(tmp_path):
     assert e.value.code == 2
 
 
+waiting = load_script("waiting")
+
+
+@pytest.mark.parametrize("found,expected", [
+    (issue(7, labels=("lake-request", "searched", "accepted")), "yes"),
+    (issue(7, labels=("lake-request", "searched")), "no"),
+    (issue(7, "closed", labels=("lake-request", "accepted")), "no"),
+    (issue(7, labels=("accepted",)), "no"),
+    (issue(8, labels=("lake-request", "accepted")), "no"),
+])
+def test_waiting(tmp_path, capsys, found, expected):
+    path = tmp_path / "issues.json"
+    path.write_text(json.dumps([found]), encoding="utf-8")
+    waiting.main([str(path), "7"])
+    assert capsys.readouterr().out == expected + "\n"
+
+
 # ---- shell scripts, run with a fake `gh` on PATH ---------------------------------------------
 
 def find_bash():
@@ -623,3 +640,21 @@ def test_commit_data_fails_after_three_push_attempts(tmp_path):
     assert r.returncode == 1
     assert r.stderr.count("push attempt") == 3
     assert gh_calls(env) == []
+
+
+@needs_bash
+def test_every_run_block_is_valid_bash():
+    import re
+
+    import yaml
+
+    files = sorted((ROOT / ".github" / "workflows").glob("*.yml")) + [ROOT / ".github/actions/rebuild/action.yml"]
+    for f in files:
+        doc = yaml.safe_load(f.read_text(encoding="utf-8"))
+        jobs = doc.get("jobs") or {"composite": {"steps": doc["runs"]["steps"]}}
+        for job_name, job in jobs.items():
+            for s in job.get("steps", []):
+                if s.get("run"):
+                    script = re.sub(r"\$\{\{.*?\}\}", "X", s["run"])
+                    r = subprocess.run([BASH, "-n"], input=script, capture_output=True, text=True)
+                    assert r.returncode == 0, f"{f.name}:{job_name}:{s.get('name')}: {r.stderr}"

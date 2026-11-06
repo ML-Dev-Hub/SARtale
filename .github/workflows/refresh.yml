@@ -19,7 +19,12 @@ jobs:
     concurrency:  # one rebuild at a time, shared with lake-accept.yml (see there)
       group: sartale-rebuild
       cancel-in-progress: false
+    outputs:
+      started: ${{ steps.started.outputs.started }}
     steps:
+      - id: started  # tells publish a cancelled run had started (a failure) or was queued out (next week)
+        run: echo "started=true" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: main
@@ -67,11 +72,23 @@ jobs:
           path: ${{ runner.temp }}/lake-data
 
       - name: Check and install the data
+        id: install
         if: needs.rebuild.result == 'success'
-        run: python3 .github/scripts/data_artifact.py unpack --repo . --from "$RUNNER_TEMP/lake-data"
+        run: |
+          set +e
+          python3 .github/scripts/data_artifact.py unpack --repo . --from "$RUNNER_TEMP/lake-data"
+          code=$?
+          set -e
+          case "$code" in
+            0) echo "result=ok" >> "$GITHUB_OUTPUT" ;;
+            6) echo "result=stale" >> "$GITHUB_OUTPUT"
+               echo "An accepted lake was published while this refresh ran; the next weekly run refreshes." \
+                 >> "$GITHUB_STEP_SUMMARY" ;;
+            *) exit "$code" ;;
+          esac
 
       - name: Commit only if the data changed
-        if: needs.rebuild.result == 'success'
+        if: steps.install.outputs.result == 'ok'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -84,9 +101,18 @@ jobs:
           fi
           bash .github/scripts/commit-data.sh "Weekly data refresh" app/public/data
 
+      - name: Note a refresh that never started
+        if: always() && needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true'
+        run: |
+          echo "The rebuild was queued out by another rebuild before it started; the next weekly run refreshes." \
+            >> "$GITHUB_STEP_SUMMARY"
+
       - name: Report a failed refresh
         # no issue to comment on: the failed run (and GitHub's mail to the owner) is the report
-        if: always() && (needs.rebuild.result != 'success' || failure() || cancelled())
+        if: >-
+          always() && steps.install.outputs.result != 'stale' &&
+          !(needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true') &&
+          (needs.rebuild.result != 'success' || failure() || cancelled())
         run: |
           url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           printf 'The weekly refresh failed or timed out; see %s for the step that stopped it.\n' "$url" \
