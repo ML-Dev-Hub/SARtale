@@ -191,6 +191,9 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
   const first = routeFromHash(window.location.hash) ?? { view: "home" as View };
   showView(first.view, false, false);
   if (first.lake) lakeView.select(first.lake);
+  // A link to a story section, such as #videos, arrives before the page is drawn, so scroll to it now.
+  const anchor = routeFromHash(window.location.hash) ? null : document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+  anchor?.scrollIntoView?.();
 
   return {
     destroy: () => {

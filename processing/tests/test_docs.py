@@ -32,4 +32,10 @@ def test_guide_relative_links_resolve():
     guide = ROOT / "docs" / "guide"
     for page in guide.glob("*.html"):
         for href in re.findall(r'(?:href|src)="([^"#:]+)(?:#[^"]*)?"', page.read_text(encoding="utf-8")):
-            assert (guide / href).exists(), f"{page.name}: {href}"
+            if href.startswith("../media/"):
+                # On the site the guide sits next to media/, which the app build copies from the repository's
+                # media/ folder, writing each .vtt from its .srt.
+                target = ROOT / "media" / re.sub(r"\.vtt$", ".srt", href[len("../media/"):])
+            else:
+                target = guide / href
+            assert target.exists(), f"{page.name}: {href}"

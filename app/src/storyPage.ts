@@ -201,7 +201,13 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
         text("p", "sp-kicker", c.eyebrow),
         text("h1", undefined, c.title),
         text("p", "sp-lede", c.lede),
-        el("div", "sp-actions", button(c.followLabel, "sp-btn-primary", opts.onFollowStory), button(c.openLabel, "sp-btn-ghost", opts.onOpenLakes)),
+        el(
+          "div",
+          "sp-actions",
+          button(c.followLabel, "sp-btn-primary", opts.onFollowStory),
+          button(c.openLabel, "sp-btn-ghost", opts.onOpenLakes),
+          Object.assign(link("#videos", c.videosLabel), { className: "sp-btn sp-btn-ghost" }),
+        ),
         stats,
       ),
     ),
@@ -327,6 +333,34 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   add.id = "add-lake";
   add.append(el("div", "sp-panel sp-add", el("div", "sp-add-intro", eyebrow(ad.label), text("h2", undefined, ad.title), text("p", undefined, f(ad.body)), addSteps), addLakeEl));
 
+  // 07 The videos: native players with captions on by default.
+  const vd = copy.videos;
+  const videoGrid = el("div", "sp-videos");
+  for (const item of vd.items) {
+    const video = el("video", "sp-video");
+    video.controls = true;
+    video.preload = "metadata";
+    video.poster = item.poster;
+    video.setAttribute("playsinline", "");
+    video.setAttribute("aria-label", `${item.title} (${item.length})`);
+    const source = el("source");
+    source.src = item.src;
+    source.type = "video/mp4";
+    const track = el("track");
+    track.kind = "captions";
+    track.srclang = "en";
+    track.label = "English";
+    track.src = item.captions;
+    track.default = true;
+    video.append(source, track, link(item.src, `Download ${item.title} (MP4)`));
+    videoGrid.append(
+      el("figure", "sp-panel sp-video-card", video, el("figcaption", undefined, el("h3", undefined, item.title, text("span", "sp-muted sp-video-len", ` · ${item.length}`)), text("p", "sp-muted", item.text))),
+    );
+  }
+  const videos = section("07 The videos", "sp-section");
+  videos.id = "videos";
+  videos.append(el("div", "sp-head", el("div", undefined, eyebrow(vd.label), text("h2", undefined, vd.title)), text("p", "sp-muted sp-head-note", vd.lede)), videoGrid);
+
   // Closing band
   const cl = copy.closing;
   const overlap = file ? opticalOverlapPhrase(file.checks) : null;
@@ -347,7 +381,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   setRequests(requests);
   const addLake = mountAddLake(addLakeEl, { watched: file?.lakes ?? [], requests });
 
-  page.append(cover, risk, gap, view, measure, watch, add, closing, footer);
+  page.append(cover, risk, gap, view, measure, watch, add, videos, closing, footer);
   root.replaceChildren(page);
 
   return {

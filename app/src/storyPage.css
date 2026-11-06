@@ -172,3 +172,17 @@
   .sp-quote { font-size: 23px; }
   .sp-page h2 { font-size: 32px; }
 }
+
+/* 07 The videos */
+.sp-videos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.sp-video-card { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.sp-video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+.sp-video-card figcaption { padding: 20px 24px 24px; }
+.sp-video-card h3 { font-size: 22px; font-weight: 700; color: #fff; }
+.sp-video-len { font-family: inherit; font-size: 16px; font-weight: 500; letter-spacing: 0; }
+.sp-video-card p { margin: 8px 0 0; line-height: 1.55; }
+.sp-page a.sp-btn { text-decoration: none; }
+.sp-page a.sp-btn-ghost { color: #fff; }
+@media (max-width: 860px) {
+  .sp-videos { grid-template-columns: 1fr; }
+}
