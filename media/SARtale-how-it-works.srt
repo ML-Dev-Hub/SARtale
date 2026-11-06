@@ -1,251 +1,306 @@
 1
-00:00:00,250 --> 00:00:06,390
-On the 7th of May 2022, the ice-dammed lake below Shisper Glacier broke through.
+00:00:00,250 --> 00:00:02,800
+On the 7th of May 2022,
 
 2
-00:00:06,770 --> 00:00:09,510
-Its flood tore down the Hassanabad Gorge,
+00:00:03,010 --> 00:00:06,440
+the ice-dammed lake below
+Shisper glacier broke through.
 
 3
-00:00:09,730 --> 00:00:12,350
-and the Karakoram Highway bridge was gone.
+00:00:06,770 --> 00:00:09,560
+Its flood tore down the Hassanabad gorge,
 
 4
-00:00:12,850 --> 00:00:15,790
-Across Gilgit-Baltistan and Khyber Pakhtunkhwa,
+00:00:09,730 --> 00:00:12,400
+and the Karakoram Highway bridge was gone.
 
 5
-00:00:15,990 --> 00:00:19,650
-more than three thousand glacial lakes fill every summer.
+00:00:12,850 --> 00:00:15,840
+Across Gilgit-Baltistan
+and Khyber Pakhtunkhwa,
 
 6
-00:00:20,110 --> 00:00:21,850
-Some of them could do the same.
+00:00:15,990 --> 00:00:19,700
+more than three thousand
+glacial lakes fill every summer.
 
 7
-00:00:22,270 --> 00:00:28,430
-Pakistan's space agency, SUPARCO, tracks one hundred and thirty-one of them as potentially dangerous,
+00:00:20,110 --> 00:00:21,900
+Some of them could do the same.
 
 8
-00:00:28,630 --> 00:00:30,510
-mostly with optical satellites.
+00:00:22,270 --> 00:00:24,820
+Pakistan's space agency, SUPARCO,
 
 9
-00:00:30,830 --> 00:00:34,170
-But in summer, when the lakes fill, the clouds come,
+00:00:24,890 --> 00:00:28,480
+tracks one hundred and thirty-one
+of them as potentially dangerous,
 
 10
-00:00:34,090 --> 00:00:34,590
-too.
+00:00:28,630 --> 00:00:30,560
+mostly with optical satellites.
 
 11
-00:00:34,970 --> 00:00:39,390
-Its own update in July said cloud cover after the 16th of June made
+00:00:30,830 --> 00:00:34,640
+But in summer, when the lakes
+fill, the clouds come, too.
 
 12
-00:00:39,270 --> 00:00:41,330
-lake changes difficult to assess.
+00:00:34,970 --> 00:00:38,970
+Its own update in July said cloud
+cover after the 16th of June
 
 13
-00:00:41,690 --> 00:00:47,690
-Over Attabad Lake alone, five of thirteen summer Sentinel-2 images were mostly cloud.
+00:00:39,010 --> 00:00:41,380
+made lake changes difficult to assess.
 
 14
-00:00:48,210 --> 00:00:50,590
-Radar doesn't wait for clear skies.
+00:00:41,690 --> 00:00:43,340
+Over Attabad Lake alone,
 
 15
-00:00:50,990 --> 00:00:53,870
-NISAR, the new satellite from NASA and ISRO,
+00:00:43,490 --> 00:00:47,740
+five of thirteen summer Sentinel-2
+images were mostly cloud.
 
 16
-00:00:54,030 --> 00:00:57,530
-sends L-band microwaves down and listens for the echo.
+00:00:48,210 --> 00:00:50,640
+Radar doesn't wait for clear skies.
 
 17
-00:00:57,890 --> 00:01:01,290
-Rough ground scatters the energy back, so it looks bright.
+00:00:50,990 --> 00:00:53,920
+NISAR, the new satellite
+from NASA and ISRO,
 
 18
-00:01:01,630 --> 00:01:05,250
-Calm water acts like a mirror and bounces the signal away,
+00:00:54,030 --> 00:00:57,580
+sends L-band microwaves down
+and listens for the echo.
 
 19
-00:01:05,410 --> 00:01:09,870
-so a lake looks dark, day or night, cloud or clear.
+00:00:57,890 --> 00:01:01,340
+Rough ground scatters the
+energy back, so it looks bright.
 
 20
-00:01:10,310 --> 00:01:12,450
-But mountains cast shadows, too.
+00:01:01,630 --> 00:01:05,300
+Calm water acts like a mirror
+and bounces the signal away,
 
 21
-00:01:12,810 --> 00:01:17,770
-Radar looks sideways, so a slope facing away from the satellite falls into radar
+00:01:05,410 --> 00:01:09,920
+so a lake looks dark, day
+or night, cloud or clear.
 
 22
-00:01:17,670 --> 00:01:20,310
-shadow, and it looks just as dark as water.
+00:01:10,310 --> 00:01:12,500
+But mountains cast shadows, too.
 
 23
-00:01:20,710 --> 00:01:24,970
-NISAR passes over each lake in two directions: once heading north,
+00:01:12,810 --> 00:01:14,360
+Radar looks sideways,
 
 24
-00:01:25,110 --> 00:01:26,190
-once heading south.
+00:01:14,410 --> 00:01:18,210
+so a slope facing away from the
+satellite falls into radar shadow,
 
 25
-00:01:26,490 --> 00:01:28,630
-A lake is dark from both sides.
+00:01:18,250 --> 00:01:20,360
+and it looks just as dark as water.
 
 26
-00:01:28,830 --> 00:01:31,010
-A shadow is dark from only one.
+00:01:20,710 --> 00:01:23,840
+NISAR passes over each
+lake in two directions:
 
 27
-00:01:31,330 --> 00:01:36,110
-So SARtale compares the two, and anything dark from just one side is set
+00:01:23,970 --> 00:01:26,240
+once heading north, once heading south.
 
 28
-00:01:35,950 --> 00:01:36,550
-aside.
+00:01:26,490 --> 00:01:28,680
+A lake is dark from both sides.
 
 29
-00:01:36,930 --> 00:01:42,390
-For every pass, SARtale reads a six-kilometer window around the lake straight from NASA's
+00:01:28,830 --> 00:01:31,060
+A shadow is dark from only one.
 
 30
-00:01:42,270 --> 00:01:44,790
-archive without downloading the whole file.
+00:01:31,330 --> 00:01:33,320
+So SARtale compares the two,
 
 31
-00:01:45,110 --> 00:01:49,890
-It calms the speckle, then marks every pixel at least three decibels darker than
+00:01:33,370 --> 00:01:36,600
+and anything dark from
+just one side is set aside.
 
 32
-00:01:49,730 --> 00:01:52,610
-the rest of the window in both polarizations.
+00:01:36,930 --> 00:01:41,340
+For every pass, SARtale reads a
+six-kilometre window around the lake
 
 33
-00:01:52,950 --> 00:01:56,870
-Inside the lake's outline, those pixels become a water area.
+00:01:41,430 --> 00:01:44,840
+straight from NASA's archive
+without downloading the whole file.
 
 34
-00:01:57,250 --> 00:02:02,210
-On the 23rd of October, Attabad held two point zero eight square kilometers.
+00:01:45,110 --> 00:01:46,480
+It calms the speckle,
 
 35
-00:02:02,590 --> 00:02:03,890
-But is that a change?
+00:01:46,530 --> 00:01:49,530
+then marks every pixel at
+least three decibels darker
 
 36
-00:02:04,270 --> 00:02:08,650
-One number can't tell you, so each lake is compared only with its own
+00:01:49,570 --> 00:01:52,660
+than the rest of the window
+in both polarisations.
 
 37
-00:02:08,530 --> 00:02:13,390
-earlier passes from the same track because a different angle sees the lake differently.
+00:01:52,950 --> 00:01:56,920
+Inside the lake's outline, those
+pixels become a water area.
 
 38
-00:02:13,650 --> 00:02:16,670
-The spread of those passes is the lake's own noise,
+00:01:57,250 --> 00:02:02,260
+On the 23rd of October, Attabad held
+two point zero eight square kilometres.
 
 39
-00:02:16,750 --> 00:02:21,110
-and only a change bigger than twice that noise counts as growing or shrinking.
+00:02:02,590 --> 00:02:03,940
+But is that a change?
 
 40
-00:02:21,390 --> 00:02:25,910
-For Attabad, the change was a quarter of a square kilometer against a noise
+00:02:04,270 --> 00:02:05,760
+One number can't tell you,
 
 41
-00:02:25,770 --> 00:02:26,510
-of half.
+00:02:05,970 --> 00:02:09,550
+so each lake is compared only
+with its own earlier passes
 
 42
-00:02:26,850 --> 00:02:27,390
-Stable.
+00:02:09,590 --> 00:02:13,440
+from the same track because a different
+angle sees the lake differently.
 
 43
-00:02:27,750 --> 00:02:31,130
-And a pass that looks wrong, like one on the 7th of July that
+00:02:13,650 --> 00:02:16,710
+The spread of those passes
+is the lake's own noise,
 
 44
-00:02:30,990 --> 00:02:33,370
-came back twenty-five decibels too bright,
+00:02:16,750 --> 00:02:18,570
+and only a change bigger than twice
 
 45
-00:02:33,550 --> 00:02:35,730
-is left out with the reason shown.
+00:02:18,610 --> 00:02:21,160
+that noise counts as growing or shrinking.
 
 46
-00:02:35,990 --> 00:02:40,330
-We also checked ourselves against Sentinel-2 on the days the sky was clear.
+00:02:21,390 --> 00:02:23,510
+For Attabad, the change was a quarter
 
 47
-00:02:40,890 --> 00:02:42,470
-The agreement was poor.
+00:02:23,550 --> 00:02:27,440
+of a square kilometre against
+a noise of half. Stable.
 
 48
-00:02:42,730 --> 00:02:47,850
-At every lake we tested, radar water and optical water overlapped by less than
+00:02:27,750 --> 00:02:29,270
+And a pass that looks wrong,
 
 49
-00:02:47,710 --> 00:02:48,590
-one-tenth.
+00:02:29,310 --> 00:02:33,420
+like one on the 7th of July that came
+back twenty-five decibels too bright,
 
 50
-00:02:49,030 --> 00:02:51,970
-Neither one is a perfect reference, and the app says so.
+00:02:33,550 --> 00:02:35,780
+is left out with the reason shown.
 
 51
-00:02:52,250 --> 00:02:55,230
-This is indicative screening on provisional data,
+00:02:35,990 --> 00:02:40,380
+We also checked ourselves against
+Sentinel-2 on the days the sky was clear.
 
 52
-00:02:55,370 --> 00:02:56,450
-not a warning.
+00:02:40,890 --> 00:02:42,520
+The agreement was poor.
 
 53
-00:02:56,770 --> 00:03:01,570
-Warnings come from PMD, NDMA, GBDMA, and PDMA.
+00:02:42,730 --> 00:02:44,350
+At every lake we tested,
 
 54
-00:03:01,990 --> 00:03:05,170
-In the app, every lake gets one plain status,
+00:02:44,390 --> 00:02:48,640
+radar water and optical water
+overlapped by less than one tenth.
 
 55
-00:03:05,250 --> 00:03:08,510
-a chart of every pass, and a one-page brief to print.
+00:02:49,030 --> 00:02:52,020
+Neither one is a perfect
+reference, and the app says so.
 
 56
-00:03:08,770 --> 00:03:11,550
-And anyone can put forward a lake we aren't watching yet.
+00:02:52,250 --> 00:02:56,500
+This is indicative screening on
+provisional data, not a warning.
 
 57
-00:03:11,990 --> 00:03:17,310
-Moments later, SARtale asks NASA's catalog how often NISAR passes over it.
+00:02:56,770 --> 00:03:01,620
+Warnings come from PMD,
+NDMA, GBDMA, and PDMA.
 
 58
-00:03:17,670 --> 00:03:20,250
-From the 17th of June to the 4th of August,
+00:03:01,990 --> 00:03:05,210
+In the app, every lake
+gets one plain status,
 
 59
-00:03:20,230 --> 00:03:26,010
-while clouds limited optical checks, NISAR gave us sixty valid looks across eleven lakes.
+00:03:05,250 --> 00:03:08,560
+a chart of every pass, and
+a one-page brief to print.
 
 60
-00:03:26,350 --> 00:03:28,190
-That is the promise of radar.
+00:03:08,770 --> 00:03:11,600
+And anyone can put forward a
+lake we aren't watching yet.
 
 61
-00:03:28,450 --> 00:03:31,470
-When clouds close in, the lakes stay in view.
+00:03:11,990 --> 00:03:17,360
+Moments later, SARtale asks NASA's
+catalogue how often NISAR passes over it.
 
 62
-00:03:32,090 --> 00:03:36,990
-SARtale by Team SARcastic Scientists for NASA Space Apps,
+00:03:17,670 --> 00:03:20,190
+From the 17th of June
+to the 4th of August,
 
 63
-00:03:37,090 --> 00:03:37,950
-Islamabad.
+00:03:20,230 --> 00:03:22,300
+while clouds limited optical checks,
+
+64
+00:03:22,410 --> 00:03:26,060
+NISAR gave us sixty valid
+looks across eleven lakes.
+
+65
+00:03:26,350 --> 00:03:28,240
+That is the promise of radar.
+
+66
+00:03:28,450 --> 00:03:31,520
+When clouds close in,
+the lakes stay in view.
+
+67
+00:03:32,090 --> 00:03:38,000
+SARtale by Team SARcastic Scientists
+for NASA Space Apps, Islamabad.
