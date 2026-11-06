@@ -15,19 +15,19 @@
   <a class="brand" href="index.html"><img src="assets/logo.png" alt=""> SARtale <small>Guide</small></a>
   <nav class="bar-links" aria-label="Project links">
     <a href="getting-started.html">Get started</a>
-    <a href="requests-api.html">API</a>
+    <a href="lake-requests.html">Lake requests</a>
     <a href="https://github.com/saeedahmadicp/SARtale">GitHub</a>
   </nav>
 </header>
 <div class="frame">
-  <aside class="rail" aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html" aria-current="page">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></aside>
+  <aside class="rail" aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html" aria-current="page">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="lake-requests.html">Lake requests</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></aside>
   <main id="content">
-    <details class="menu"><summary>Guide contents</summary><nav aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html" aria-current="page">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></nav></details>
+    <details class="menu"><summary>Guide contents</summary><nav aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html" aria-current="page">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="lake-requests.html">Lake requests</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></nav></details>
     <article class="doc wide">
 <section class="hero">
   <div>
     <h1>When clouds close in, the lakes stay in view.</h1>
-    <p class="lede">SARtale watches 11 glacial lakes in Gilgit-Baltistan and upper Khyber Pakhtunkhwa with NASA–ISRO NISAR radar, which sees through cloud, day or night. Each lake gets one plain status, a chart of every pass and a printable brief.</p>
+    <p class="lede">SARtale watches glacial lakes in Gilgit-Baltistan and upper Khyber Pakhtunkhwa with NASA–ISRO NISAR radar, which sees through cloud, day or night. Each lake gets one plain status, a chart of every pass and a printable brief.</p>
     <p>This guide is for anyone who wants to use the website, run it, rebuild its data or work on the code.</p>
   </div>
   <figure class="radar">
@@ -43,16 +43,16 @@
   <li><a href="getting-started.html"><b>Run it on your computer</b><span>Install, start the app and run the tests in about five minutes.</span></a></li>
   <li><a href="user-guide.html"><b>Use the website</b><span>The story page, Lake Watch, each lake's status and the "Add a lake" form.</span></a></li>
   <li><a href="method.html"><b>Understand the method</b><span>How dark radar pixels become a water area, and when a change counts.</span></a></li>
-  <li><a href="requests-api.html"><b>Work with the request API</b><span>Routes, payloads, errors and how the team reviews requests.</span></a></li>
+  <li><a href="lake-requests.html"><b>Handle lake requests</b><span>How a request becomes a GitHub issue, the labels, and how the team accepts or rejects.</span></a></li>
 </ul>
 
 <h2 id="why-it-exists">Why it exists<a class="anchor" href="#why-it-exists" aria-label="Link to this section">#</a></h2>
-<p>Pakistan has more than 3,000 glacial lakes (UNDP GLOF-II). SUPARCO tracks 131 of them as potentially dangerous, mostly with optical satellites. The lakes fill in summer, when cloud hides them. SUPARCO's <a href="https://space4climate.gov.pk/glof-status-update/">2 July 2026 update</a> said persistent cloud after 16 June had made lake changes difficult to assess. From 17 June to 4 August 2026, NISAR made 60 valid looks across the 11 lakes SARtale watches.</p>
+<p>Pakistan has more than 3,000 glacial lakes (UNDP GLOF-II). SUPARCO tracks 131 of them as potentially dangerous, mostly with optical satellites. The lakes fill in summer, when cloud hides them. SUPARCO's <a href="https://space4climate.gov.pk/glof-status-update/">2 July 2026 update</a> said persistent cloud after 16 June had made lake changes difficult to assess. From 17 June to 4 August 2026, NISAR made 60 valid looks across the 11 lakes SARtale first watched (build of 23 Oct 2026).</p>
 
 <h2 id="how-it-fits-together">How it fits together<a class="anchor" href="#how-it-fits-together" aria-label="Link to this section">#</a></h2>
 <figure>
-  <img src="assets/workflow.jpg" alt="Workflow: six pipeline steps from finding NISAR passes to deciding a status, which write lakes.json for the web app; visitors' lake requests go through the request server and team review into lakes_in.json, which feeds the pipeline again." width="1600" height="880">
-  <figcaption>The pipeline turns NISAR passes into <code>lakes.json</code>; the app reads it. A new lake comes in through a visitor's request and the team's review.</figcaption>
+  <img src="assets/workflow.jpg" alt="Workflow: six pipeline steps from finding NISAR passes to deciding a status, which write lakes.json for the web app; visitors' lake requests go through a GitHub issue and team review into lakes_in.json, which feeds the pipeline again." width="1600" height="880">
+  <figcaption>The pipeline turns NISAR passes into <code>lakes.json</code>; the app reads it. A new lake comes in through a visitor's GitHub issue and the team's review. The picture above shows the earlier request server; requests now go through issues (<a href="lake-requests.html">Lake requests</a>).</figcaption>
 </figure>
 
 <h2 id="what-is-in-the-repository">What is in the repository<a class="anchor" href="#what-is-in-the-repository" aria-label="Link to this section">#</a></h2>
@@ -60,7 +60,7 @@
   <thead><tr><th>Folder</th><th>What it holds</th></tr></thead>
   <tbody>
     <tr><td><code>app/</code></td><td>The website: TypeScript, Vite, MapLibre and uPlot. Page text is in <code>app/src/content/</code>; the data it shows is in <code>app/public/data/</code>.</td></tr>
-    <tr><td><code>processing/</code></td><td>The Python pipeline, the lake request server and their tests. The lake register is <code>processing/lakes_in.json</code>.</td></tr>
+    <tr><td><code>processing/</code></td><td>The Python pipeline and its tests. The lake register is <code>processing/lakes_in.json</code>.</td></tr>
     <tr><td><code>media/</code></td><td>The demo video, the how-it-works video, screenshots and the workflow figure.</td></tr>
     <tr><td><code>docs/</code></td><td>This guide, the data sources and licences, and the AI tool use statement.</td></tr>
   </tbody>

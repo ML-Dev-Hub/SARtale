@@ -99,9 +99,9 @@
     "title": "Know a lake we are not watching?",
     "body": "Give it a name, its coordinates and where they come from. SARtale searches NASA's catalogue for NISAR passes over it, reads a 6 km window from each, and gives it a status once it has {minLooks} looks on one track.",
     "steps": [
-      "Queued: the lake joins the watch list and the map.",
-      "Searched: NISAR passes over the point are found.",
-      "Watched: a status appears after {minLooks} looks on one track."
+      "Requested: the request opens as a GitHub issue.",
+      "Searched: NISAR passes over the point are counted.",
+      "Watched: once the team accepts it, a status appears after {minLooks} looks on one track."
     ],
     "form": {
       "nameLabel": "Lake name",
@@ -114,8 +114,11 @@
       "sourcePlaceholder": "Inventory, paper, field survey or map",
       "submitLabel": "Add to the watch list",
       "hint": "Gilgit-Baltistan and upper KP: 34.4–37.6 °N, 70.8–76.6 °E",
-      "closed": "Requests are not open on this copy of the site.",
-      "networkError": "The request could not be sent. Try again in a moment."
+      "finishBefore": "Almost done: press ",
+      "finishStrong": "Submit new issue",
+      "finishAfter": " on GitHub. The team reviews every request.",
+      "openAgain": "Open the request again",
+      "seeAll": "See all requests"
     }
   },
   "closing": {

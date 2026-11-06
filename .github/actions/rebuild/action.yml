@@ -1,0 +1,92 @@
+name: Rebuild the lake data
+description: >
+  Search, fetch and build every watched lake from processing/lakes_in.json, then run the Python and app tests.
+  Fails on any error, including the Attabad gate. The caller passes EARTHDATA_USERNAME and EARTHDATA_PASSWORD
+  through `env:` on the step that uses this action; they are written to a temporary ~/.netrc only for the fetch.
+
+runs:
+  using: composite
+  steps:
+    - name: Set up the Python environment
+      # the accept job sets it up earlier (it edits lakes_in.json before the rebuild)
+      if: env.SARTALE_ENV_READY != '1'
+      uses: mamba-org/setup-micromamba@add3a49764cedee8ee24e82dfde87f5bc2914462 # v2
+      with:
+        environment-file: environment.yml
+        environment-name: sartale
+        cache-environment: true
+        init-shell: bash
+
+    - name: Restore the NISAR window cache
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: data/lakes
+        key: lakes-${{ hashFiles('processing/lakes_in.json') }}-${{ github.run_id }}
+        restore-keys: |
+          lakes-
+
+    - name: Write the temporary Earthdata login
+      shell: bash
+      run: |
+        set +x
+        : "${EARTHDATA_USERNAME:?EARTHDATA_USERNAME is not set}"
+        : "${EARTHDATA_PASSWORD:?EARTHDATA_PASSWORD is not set}"
+        umask 077
+        printf 'machine urs.earthdata.nasa.gov login %s password %s\n' \
+          "$EARTHDATA_USERNAME" "$EARTHDATA_PASSWORD" > ~/.netrc
+        chmod 600 ~/.netrc
+
+    - name: Search the catalogue
+      shell: bash -el {0}
+      working-directory: processing
+      run: python -m sartale.run_pipeline lakes-search
+
+    - name: Fetch the passes (retried once)
+      shell: bash -el {0}
+      working-directory: processing
+      run: |
+        python -m sartale.run_pipeline lakes-fetch || {
+          echo "lakes-fetch failed; retrying once"
+          python -m sartale.run_pipeline lakes-fetch
+        }
+
+    - name: Remove the Earthdata login
+      if: always()
+      shell: bash
+      run: rm -f ~/.netrc
+
+    - name: Save the NISAR window cache
+      # only after a fetch that went through; a failed one keeps the last good cache
+      if: success()
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: data/lakes
+        key: lakes-${{ hashFiles('processing/lakes_in.json') }}-${{ github.run_id }}
+
+    - name: Build the lakes (fails when the Attabad gate fails)
+      shell: bash -el {0}
+      working-directory: processing
+      run: |
+        unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
+        python -m sartale.run_pipeline lakes-build
+
+    - name: Python tests
+      shell: bash -el {0}
+      working-directory: processing
+      run: |
+        unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
+        pytest tests -q
+
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with:
+        node-version: 22
+        cache: npm
+        cache-dependency-path: app/package-lock.json
+
+    - name: App tests
+      shell: bash
+      working-directory: app
+      run: |
+        unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
+        npm ci --ignore-scripts  # no package install scripts; tests and build pass without them
+        npm test -- --run

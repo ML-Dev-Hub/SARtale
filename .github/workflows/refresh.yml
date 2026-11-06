@@ -1,0 +1,142 @@
+name: Weekly data refresh
+
+# Two jobs, so that no job holds both a write token and the Earthdata login:
+#   rebuild  (earthdata, read only)          rebuild and test every lake, upload the data as an artifact
+#   publish  (write, no Earthdata, no build) check the artifact, commit if the data changed; reports failures;
+#                                            then starts the next accept waiting in the rebuild queue, if any
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    environment: earthdata
+    permissions:
+      contents: read
+    concurrency:  # one rebuild at a time, shared with lake-accept.yml (see there)
+      group: sartale-rebuild
+      cancel-in-progress: false
+    outputs:
+      started: ${{ steps.started.outputs.started }}
+    steps:
+      - id: started  # tells publish a cancelled run had started (a failure) or was queued out (next week)
+        run: echo "started=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Rebuild the lake data
+        timeout-minutes: 330  # below the job's 360, so the publish job can still report a timeout
+        uses: ./.github/actions/rebuild
+        env:
+          EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
+          EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
+
+      - name: Pack the rebuilt data
+        run: python3 .github/scripts/data_artifact.py pack --repo . --out "$RUNNER_TEMP/lake-data"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: lake-data
+          path: ${{ runner.temp }}/lake-data
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    needs: rebuild
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      issues: read  # next_accept.py lists the waiting requests
+      actions: write
+    concurrency:
+      group: sartale-data
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:  # always: the drain step reads requests.json
+          ref: main
+          persist-credentials: false
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: needs.rebuild.result == 'success'
+        with:
+          name: lake-data
+          path: ${{ runner.temp }}/lake-data
+
+      - name: Check and install the data
+        id: install
+        if: needs.rebuild.result == 'success'
+        run: |
+          set +e
+          python3 .github/scripts/data_artifact.py unpack --repo . --from "$RUNNER_TEMP/lake-data"
+          code=$?
+          set -e
+          case "$code" in
+            0) echo "result=ok" >> "$GITHUB_OUTPUT" ;;
+            6) echo "result=stale" >> "$GITHUB_OUTPUT"
+               echo "An accepted lake was published while this refresh ran; the next weekly run refreshes." \
+                 >> "$GITHUB_STEP_SUMMARY" ;;
+            *) exit "$code" ;;
+          esac
+
+      - name: Commit only if the data changed
+        if: steps.install.outputs.result == 'ok'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          lakes="$(python3 .github/scripts/json_changed.py app/public/data/lakes.json built)"
+          pictures="$(git status --porcelain -- app/public/data/lakes)"
+          if [ "$lakes" = same ] && [ -z "$pictures" ]; then
+            echo "Nothing changed but the build time; nothing to publish."
+            git checkout -- app/public/data/lakes.json
+            exit 0
+          fi
+          bash .github/scripts/commit-data.sh "Weekly data refresh" app/public/data
+
+      - name: Note a refresh that never started
+        if: always() && needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true'
+        run: |
+          echo "The rebuild was queued out by another rebuild before it started; the next weekly run refreshes." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report a failed refresh
+        # no issue to comment on: the failed run (and GitHub's mail to the owner) is the report
+        if: >-
+          always() && steps.install.outputs.result != 'stale' &&
+          !(needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true') &&
+          (needs.rebuild.result != 'success' || failure() || cancelled())
+        run: |
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          printf 'The weekly refresh failed or timed out; see %s for the step that stopped it.\n' "$url" \
+            >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: Start the next waiting accept
+        # at most one, the lowest-numbered (the check job's reconcile makes the same choice); never after a
+        # rebuild that was queued out, which would only push the waiting accept out of the queue again
+        if: always() && !(needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$(bash .github/scripts/busy.sh)" != idle ]; then
+            # another accept or refresh is active (or the lookup failed): its drain, or the daily check, starts it
+            echo "Another accept or refresh is active; no accept was started." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          next="$(python3 .github/scripts/next_accept.py --feed app/public/data/requests.json)" ||
+            { echo "::warning::could not list the waiting accepts; the daily check starts them"; exit 0; }
+          case "$next" in
+            none) echo "no accept is waiting"; exit 0 ;;
+            ''|*[!0-9]*) echo "::warning::next_accept.py printed no issue number"; exit 0 ;;
+          esac
+          gh workflow run lake-accept.yml --ref main -f "issue=$next" -f attempt=1
+          echo "started the accept for issue #$next"

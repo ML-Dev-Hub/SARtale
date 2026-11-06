@@ -1,0 +1,96 @@
+name: Lake requests
+
+# Issue text (title, body, comments) is untrusted. It is never put into a script through an expression:
+# the Python helpers read it through `gh` into files, and comments are posted with --body-file.
+# Every run reconciles all lake-request issues, so an event GitHub drops is caught by the next one.
+# The `accepted` label is handled by lake-accept.yml. A daily scheduled run reconciles too, with no event issue,
+# so an accept start that was dropped or failed is made again within a day even if no issue changes.
+# A manual run (Actions -> Lake requests -> Run workflow) behaves like the daily run. The owner runs it once after
+# setup: issue forms drop labels that do not exist yet, so the first request would carry no `lake-request` label
+# and never be seen until this job had created the labels.
+
+on:
+  issues:
+    types: [opened, edited, reopened, labeled, closed]
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    # the daily or a manual run (no issue), or an issue event; skip `accepted` (lake-accept.yml) and
+    # `lake-request` (the form sets it at creation; `opened` covers it)
+    if: >-
+      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
+      (contains(github.event.issue.labels.*.name, 'lake-request') &&
+       (github.event.action != 'labeled' ||
+        (github.event.label.name != 'accepted' && github.event.label.name != 'lake-request')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      issues: write
+      actions: write
+    concurrency:
+      group: sartale-data
+      cancel-in-progress: false
+    env:  # GH_TOKEN is given only to the steps that call gh or push
+      GH_REPO: ${{ github.repository }}
+      ISSUE: ${{ github.event.issue.number }}  # empty for the daily and manual runs; only the failure note uses it
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Make sure the labels exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ensure-labels.sh
+
+      - uses: mamba-org/setup-micromamba@add3a49764cedee8ee24e82dfde87f5bc2914462 # v2
+        with:
+          environment-file: environment.yml
+          environment-name: sartale
+          cache-environment: true
+          init-shell: bash
+
+      - name: List every lake request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 .github/scripts/fetch_issues.py --out "$RUNNER_TEMP/issues.json"
+          --confirmed-from app/public/data/requests.json
+
+      - name: Check the requests
+        shell: bash -el {0}
+        working-directory: processing
+        run: >-
+          python -m sartale.run_pipeline lake-issues --issues "$RUNNER_TEMP/issues.json"
+          --feed ../app/public/data/requests.json --lakes-in lakes_in.json
+          --actions "$RUNNER_TEMP/actions.json"
+
+      - name: Save requests.json if more than its time stamp changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$(python3 .github/scripts/json_changed.py app/public/data/requests.json updated)" = same ]; then
+            git checkout -- app/public/data/requests.json
+          fi
+          bash .github/scripts/commit-data.sh "Update lake requests" app/public/data/requests.json
+
+      - name: Comment, label and close the issues that need it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/apply-actions.sh "$RUNNER_TEMP/actions.json"
+
+      - name: Report a failed check
+        # no comment and no label: the next run reconciles every issue, and this run's log shows the failure
+        if: failure() || cancelled()
+        run: |
+          case "$ISSUE" in
+            ''|*[!0-9]*) what="The daily or manual check" ;;
+            *) what="The check for issue #$ISSUE" ;;
+          esac
+          printf '%s failed; the next lake request event or the daily check reconciles every issue.\n' "$what" \
+            >> "$GITHUB_STEP_SUMMARY"

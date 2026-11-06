@@ -6,7 +6,7 @@
   <thead><tr><th>For</th><th>Install</th></tr></thead>
   <tbody>
     <tr><td>The website</td><td>Node.js 20.19 or later (22 LTS recommended), with npm</td></tr>
-    <tr><td>The pipeline and the request server</td><td>Miniconda or Anaconda, for the <code>sartale</code> environment in <code>environment.yml</code> (Python 3.12, NumPy, SciPy, h5py, rasterio, GDAL, pyproj, Pillow, requests, pytest)</td></tr>
+    <tr><td>The pipeline</td><td>Miniconda or Anaconda, for the <code>sartale</code> environment in <code>environment.yml</code> (Python 3.12, NumPy, SciPy, h5py, rasterio, GDAL, pyproj, Pillow, requests, pytest)</td></tr>
     <tr><td>Rebuilding data from NISAR</td><td>A free <a href="https://urs.earthdata.nasa.gov/">NASA Earthdata login</a>, saved in <code>~/.netrc</code></td></tr>
   </tbody>
 </table></div>
@@ -28,10 +28,6 @@ conda run -n sartale pytest tests -q</code></pre>
 <p>Both suites run offline. The Python tests use small synthetic NISAR files built in <code>tests/gcov_fixture.py</code>, not real downloads.</p>
 
 <h2>Try the "Add a lake" form</h2>
-<p>The form needs the small request server. Start it next to the dev server, in a second terminal:</p>
-<pre><code>cd processing
-conda run -n sartale python -m sartale.run_pipeline lake-requests-serve
-<span class="c"># listening on 127.0.0.1:8787, saving to data/lake_requests.sqlite</span></code></pre>
-<p>The dev server forwards <code>/api</code> to it. Without the server, the form says "Requests are not open on this copy of the site." and the rest of the site works as normal. See <a href="requests-api.html">Lake request API</a>.</p>
+<p>The form needs no server. It checks your input in the browser, then opens GitHub's "Add a lake" issue form with the fields filled in, so you can only submit it from a copy with access to the repository. Nothing is saved locally. See <a href="lake-requests.html">Lake requests</a>.</p>
 
-<div class="note"><p><strong>Port already in use?</strong> If <code>8787</code> or <code>5173</code> is taken, another copy is probably running. Stop it, or pass <code>--port</code> to the server and <code>-- --port 5174</code> to <code>npm run dev</code>. The dev proxy always points at <code>127.0.0.1:8787</code>, so move the server only if you also change <code>app/vite.config.ts</code>.</p></div>
+<div class="note"><p><strong>Port already in use?</strong> If <code>5173</code> is taken, another copy is probably running. Stop it, or pass <code>-- --port 5174</code> to <code>npm run dev</code>.</p></div>

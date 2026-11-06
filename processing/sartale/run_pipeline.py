@@ -1,4 +1,4 @@
-"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-build, lakes-check, lake-requests-*."""
+"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-build, lakes-check, lake-issues, lake-issue-accept."""
 import argparse
 import json
 import os
@@ -11,7 +11,7 @@ from pathlib import Path
 from sartale.lake_catalog import Pass, coverage_report, search_lake_passes, select_lake_passes
 from sartale.lakebuild import attabad_gate, build_lakes
 from sartale.lakecheck import check_lake
-from sartale.lake_requests import OPEN_STATES, RequestStore
+from sartale.lake_requests import RequestError
 from sartale.lakes import load_lakes
 from sartale.remote import fetch_lake_passes
 
@@ -171,49 +171,6 @@ def cmd_lakes_check(args) -> None:
     write_json_atomic(path, doc)
     print(f"{len(rows)} checks -> {args.checks} and {path}")
 
-DEFAULT_DB = REPO_ROOT / "data" / "lake_requests.sqlite"
-
-
-def _store(args) -> RequestStore:
-    db = Path(args.db)
-    db.parent.mkdir(parents=True, exist_ok=True)
-    return RequestStore(db)
-
-
-def _open_request(store: RequestStore, rid: int) -> dict:
-    row = store.get(rid)
-    if row is None:
-        print(f"No request with id {rid}", file=sys.stderr)
-        sys.exit(1)
-    if row["state"] not in OPEN_STATES:
-        print(f"Request {rid} is {row['state']}, not open", file=sys.stderr)
-        sys.exit(1)
-    return row
-
-
-def cmd_lake_requests_serve(args) -> None:
-    from sartale.requests_server import make_server
-
-    store = _store(args)
-    watched = load_lakes(REPO_ROOT / "processing" / "lakes_in.json")
-    server = make_server(store, watched, host=args.host, port=args.port, allowed_origin=args.origin)
-    print(f"Serving lake requests on http://{args.host}:{server.server_address[1]} (Ctrl+C to stop)", flush=True)
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print("stopping")
-    finally:
-        server.server_close()
-
-
-def cmd_lake_requests_list(args) -> None:
-    rows = _store(args).list_open()
-    for r in rows:
-        print(f"{r['id']}: {r['name']} ({r['lat']}, {r['lon']}) [{r['state']}] source: {r['source']}")
-        if r.get("detail"):
-            print(f"    detail: {r['detail']}")
-    print(f"{len(rows)} open requests")
-
 
 def lake_slug(name: str, taken: set[str]) -> str:
     base = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "lake"
@@ -242,30 +199,39 @@ def append_lake_entry(path: Path, entry: dict) -> None:
     os.replace(tmp, path)
 
 
-def cmd_lake_requests_accept(args) -> None:
-    store = _store(args)
-    row = _open_request(store, args.id)
-    lakes_in = Path(args.lakes_in)
-    existing = _read_json(lakes_in)
-    taken = {x["id"] for x in existing}
-    entry = {"id": lake_slug(row["name"], taken), "name": row["name"], "lon": row["lon"], "lat": row["lat"],
-             "role": args.role, "coord_source": f"Requested {row['created'][:10]}: {row['source']}",
-             "outline": None, "downstream": None, "downstream_source": None}
-    same = next((x for x in existing if x.get("name") == entry["name"] and x.get("coord_source") == entry["coord_source"]), None)
-    if same:  # an earlier run wrote the entry but failed to mark the request: do not add a _2 duplicate
-        store.set_state(args.id, "accepted")
-        print(f"accepted {args.id}: {lakes_in} already has {same['id']}; nothing appended")
-        return
-    append_lake_entry(lakes_in, entry)
-    store.set_state(args.id, "accepted")
-    print(f"accepted {args.id} as {entry['id']} -> {lakes_in}")
+def cmd_lake_issues(args) -> None:
+    """Recompute requests.json from every lake-request issue; write actions for every issue that needs one."""
+    from sartale import lake_issues
+
+    issues = _read_json(Path(args.issues))
+    feed_path = Path(args.feed)
+    previous = _read_json(feed_path) if feed_path.exists() else None
+    feed = lake_issues.build_feed(issues, load_lakes(Path(args.lakes_in)), previous,
+                                  now=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    lake_issues.write_feed(feed, feed_path)
+    actions = lake_issues.reconcile_actions(feed, issues, previous)
+    Path(args.actions).write_text(json.dumps(actions, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(f"{len(feed['requests'])} requests; actions for issues {[a['issue'] for a in actions] or 'none'}")
 
 
-def cmd_lake_requests_reject(args) -> None:
-    store = _store(args)
-    _open_request(store, args.id)
-    store.set_state(args.id, "rejected", args.reason)
-    print(f"rejected {args.id}")
+def cmd_lake_issue_accept(args) -> None:
+    from sartale import lake_issues
+
+    issue = next((i for i in _read_json(Path(args.issues)) if i["number"] == args.issue), None)
+    if issue is None:
+        raise SystemExit(f"issue #{args.issue} is not in {args.issues}")
+    feed_path = Path(args.feed)
+    feed = _read_json(feed_path)
+    try:
+        lake_id = lake_issues.accept_entry(feed, issue, Path(args.lakes_in), args.today, args.approved_at)
+    except RequestError as e:
+        print(f"lake-issue-accept: {e}", file=sys.stderr)
+        raise SystemExit(1) from None
+    lake_issues.write_feed(feed, feed_path)
+    actions = [{"issue": args.issue, "comment": lake_issues.ACCEPTED_COMMENT.format(lake_id=lake_id),
+               "add": [], "remove": ["searched", "too few passes", "rebuild failed"], "close": True}]
+    Path(args.actions).write_text(json.dumps(actions, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(lake_id)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -298,26 +264,22 @@ def build_parser() -> argparse.ArgumentParser:
     lc.add_argument("--lakes", default="attabad,khurdopin,passu,shisper", help="comma-separated lake ids")
     lc.set_defaults(func=cmd_lakes_check)
 
-    rs = sub.add_parser("lake-requests-serve", help="serve the lake request API (never downloads NISAR data)")
-    rs.add_argument("--host", default="127.0.0.1")
-    rs.add_argument("--port", type=int, default=8787)
-    rs.add_argument("--db", default=str(DEFAULT_DB))
-    rs.add_argument("--origin", default="http://localhost:5173")
-    rs.set_defaults(func=cmd_lake_requests_serve)
-    rl = sub.add_parser("lake-requests-list", help="list open lake requests with their source")
-    rl.add_argument("--db", default=str(DEFAULT_DB))
-    rl.set_defaults(func=cmd_lake_requests_list)
-    ra = sub.add_parser("lake-requests-accept", help="add an open request to lakes_in.json and mark it accepted")
-    ra.add_argument("id", type=int)
-    ra.add_argument("--role", default="watch")
-    ra.add_argument("--db", default=str(DEFAULT_DB))
-    ra.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
-    ra.set_defaults(func=cmd_lake_requests_accept)
-    rr = sub.add_parser("lake-requests-reject", help="reject an open lake request")
-    rr.add_argument("id", type=int)
-    rr.add_argument("--reason", required=True)
-    rr.add_argument("--db", default=str(DEFAULT_DB))
-    rr.set_defaults(func=cmd_lake_requests_reject)
+    li = sub.add_parser("lake-issues", help="turn lake-request issues into requests.json and the event issue's actions")
+    li.add_argument("--issues", required=True, help="JSON list of every issue labelled lake-request")
+    li.add_argument("--feed", default=str(REPO_ROOT / "app" / "public" / "data" / "requests.json"))
+    li.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    li.add_argument("--event-issue", type=int, help="ignored; every issue is reconciled")
+    li.add_argument("--actions", required=True, help="where to write the list of per-issue actions")
+    li.set_defaults(func=cmd_lake_issues)
+    lia = sub.add_parser("lake-issue-accept", help="add an approved request to lakes_in.json and print the lake id")
+    lia.add_argument("--issues", required=True)
+    lia.add_argument("--feed", default=str(REPO_ROOT / "app" / "public" / "data" / "requests.json"))
+    lia.add_argument("--issue", type=int, required=True)
+    lia.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    lia.add_argument("--today", required=True, help="YYYY-MM-DD")
+    lia.add_argument("--approved-at", help="when the team added `accepted` (YYYY-MM-DDTHH:MM:SSZ)")
+    lia.add_argument("--actions", required=True, help="where to write the comment, labels and close flag")
+    lia.set_defaults(func=cmd_lake_issue_accept)
     return parser
 
 

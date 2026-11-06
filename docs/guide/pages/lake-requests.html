@@ -1,0 +1,89 @@
+<h1>Lake requests</h1>
+<p class="lede">A visitor asks for a lake by opening a GitHub issue. A workflow checks it and counts NISAR passes over the point from NASA's CMR catalogue, and a team member decides. There is no request server and no database: the issues are the record. NISAR data are downloaded only after the team accepts a lake.</p>
+
+<h2>How a request goes</h2>
+<ol>
+  <li>On the story page, the visitor fills in the "Add a lake" form. The website checks the input first (see <a href="#rules">Rules</a>), then opens GitHub's <b>Add a lake</b> issue form with the fields filled in: Lake name, Latitude (°N), Longitude (°E) and Where the coordinates come from.</li>
+  <li>The visitor presses <b>Submit new issue</b>. A GitHub sign-in is needed. The issue gets the label <code>lake-request</code>.</li>
+  <li>The <code>lake-request.yml</code> workflow reads the issue, applies the rules, counts NISAR passes over the point, comments with the result and sets a label.</li>
+  <li>A team member adds the label <code>accepted</code>. The <code>lake-accept.yml</code> workflow adds the lake to <code>processing/lakes_in.json</code>, searches, fetches and builds, runs the tests, commits the data, redeploys the site, comments "Accepted. The lake is now watched: …" with a link, and closes the issue.</li>
+  <li>To turn a request down, a team member closes the issue without <code>accepted</code>.</li>
+</ol>
+<div class="note"><p><strong>The repository is private for now.</strong> Until the owner makes it public, only collaborators can open request issues. Other visitors will not be able to submit.</p></div>
+
+<h2>Rules</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Rule</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Point</td><td>34.4–37.6 °N, 70.8–76.6 °E (Gilgit-Baltistan and upper KP)</td></tr>
+    <tr><td>Name</td><td>2–80 characters, and none of the phrases SARtale never uses (such as "safe" or "early warning"; the list is <code>BANNED_CLAIMS</code> in <code>app/src/content.ts</code>). Such a name is refused with: "The name uses a phrase SARtale does not use ("safe"); please use the lake's usual name."</td></tr>
+    <tr><td>Source</td><td>3–200 characters: an inventory, a paper, a field survey or a dated map. The source becomes the lake's <code>coord_source</code> in <code>lakes.json</code>, so the same phrases are refused, with: "The source uses a phrase SARtale does not use ("safe"); please describe where the coordinates come from."</td></tr>
+    <tr><td>Distance</td><td>A point within 1 km of a watched lake or of another request is refused, and the message names that lake. The earlier issue wins</td></tr>
+    <tr><td>Open requests</td><td>At most 200. Past that, new requests are marked invalid with "The request list is full; try again later."</td></tr>
+  </tbody>
+</table></div>
+<p>The website runs the same checks before it opens the issue, but the workflow checks again. An issue that breaks a rule is labelled <code>invalid</code>, gets a comment that starts "This request cannot be used." with the reason, and is closed.</p>
+
+<h2>Labels</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Label</th><th>Meaning</th><th>Set by</th></tr></thead>
+  <tbody>
+    <tr><td><code>lake-request</code></td><td>The issue is a lake request</td><td>The issue form</td></tr>
+    <tr><td><code>searched</code></td><td>The point passed the rules and has at least 3 NISAR passes. The comment gives the passes, the tracks and the first and last dates</td><td>Workflow</td></tr>
+    <tr><td><code>too few passes</code></td><td>The point is valid but has fewer than 3 NISAR passes, so there is no trend yet. The team can still accept it</td><td>Workflow</td></tr>
+    <tr><td><code>accepted</code></td><td>A team member approves the lake. This starts the rebuild</td><td>A team member</td></tr>
+    <tr><td><code>rebuild failed</code></td><td>The rebuild did not finish, or NASA's catalogue did not answer. Nothing was published</td><td>Workflow</td></tr>
+    <tr><td><code>invalid</code></td><td>A rule was broken. The issue is closed</td><td>Workflow</td></tr>
+    <tr><td><code>rejected</code></td><td>The team closed the request without <code>accepted</code></td><td>Workflow</td></tr>
+  </tbody>
+</table></div>
+
+<h2>Who can accept</h2>
+<p>Only someone with write, maintain or admin access to the repository. The check looks at the account that added the label, not at the issue author. If anyone else adds <code>accepted</code>, no rebuild runs: the workflow removes the label and comments "Only the SARtale team can accept a request." If the workflow cannot tell who added the label or when, or GitHub does not answer the permission check (it is tried twice), it also removes the label, and comments "SARtale could not check who added the label; a team member can add it again."</p>
+<p>The rebuild runs in separate jobs so that no job holds both the Earthdata login and a write token:</p>
+<ul>
+  <li><b>Rebuild</b> has the Earthdata login (the <code>earthdata</code> environment) and read-only access. It adds the lake, searches, fetches, builds and runs the tests, then hands the data over as an artifact.</li>
+  <li><b>Publish</b> has a write token and no Earthdata login. It checks the artifact, commits the data, redeploys, comments and closes the issue.</li>
+</ul>
+<p>Only one rebuild runs at a time, shared with the <a href="deploy.html#weekly-refresh">weekly refresh</a>. A second accept waits and is started when the first is done. If the data on <code>main</code> change during a rebuild, it starts itself again, at most 3 runs in all.</p>
+
+<h3>If the request changes after approval</h3>
+<p>An approval covers the name, coordinates and source the team saw. If the visitor edits the issue afterwards, the approval is withdrawn: the workflow removes <code>accepted</code> and comments "This request changed after it was approved. A team member must accept it again."</p>
+<p>A request labelled <code>accepted</code> before this system was deployed is refused once, with "This request was approved before the new check existed. A team member must accept it again."</p>
+
+<h2>Rejecting</h2>
+<p>Close the issue without adding <code>accepted</code>. The workflow labels it <code>rejected</code>. The reason shown on the website is the team's last comment on the issue, cleaned of control characters and cut to 200 characters. Write that comment for the visitor.</p>
+
+<h2>What the bot comments</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>When</th><th>Comment</th></tr></thead>
+  <tbody>
+    <tr><td>3 or more passes</td><td>"Checked against NASA's catalogue: 14 NISAR passes over this point on 2 tracks, 2026-06-18 to 2026-10-23. The team decides whether this lake is watched."</td></tr>
+    <tr><td>Fewer than 3 passes</td><td>"Checked against NASA's catalogue: 1 NISAR pass over this point, fewer than the 3 needed for a trend. The team still decides whether this lake is watched."</td></tr>
+    <tr><td>Rule broken</td><td>"This request cannot be used." and the reason</td></tr>
+    <tr><td>Catalogue down</td><td>"NASA's catalogue did not answer; the team will retry." The next run checks again</td></tr>
+    <tr><td>Accepted</td><td>"Accepted. The lake is now watched:" and a link to the lake on the site</td></tr>
+    <tr><td>Rebuild failed</td><td>"The rebuild failed; see" a link to the run, then "Nothing was published."</td></tr>
+  </tbody>
+</table></div>
+<p>The state label marks that a comment was sent, so a lost comment is sent again on the next run and a delivered one is not repeated.</p>
+
+<h2>requests.json</h2>
+<p>The website reads <code>app/public/data/requests.json</code> to show requested lakes on the map and to check the form. The <code>lake-request.yml</code> workflow keeps it up to date, on every issue event and once a day at 04:17 UTC, and commits it. Each entry has the issue number, name, point, state, passes, tracks, first and last date, a reason and the creation time. The daily run also starts waiting approvals again, one at a time, so an accept that was dropped is not lost.</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>State</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>searched</code>, <code>too_few_passes</code></td><td>Checked and waiting for the team</td></tr>
+    <tr><td><code>check_failed</code></td><td>The catalogue did not answer; it is tried again</td></tr>
+    <tr><td><code>accepted</code></td><td>Added to the register</td></tr>
+    <tr><td><code>invalid</code>, <code>rejected</code></td><td>Not used; the reason is given</td></tr>
+  </tbody>
+</table></div>
+
+<h2>Commands the workflows run</h2>
+<p>You rarely run these by hand. From <code>processing/</code>:</p>
+<pre><code>conda run -n sartale python -m sartale.run_pipeline lake-issues --help
+conda run -n sartale python -m sartale.run_pipeline lake-issue-accept --help</code></pre>
+<p><code>lake-issues</code> checks every request and writes <code>requests.json</code> and the comments and labels to apply. <code>lake-issue-accept</code> appends one entry to <code>lakes_in.json</code> with role <code>watch</code> and a <code>coord_source</code> naming the request. To add a lake without an issue, see <a href="pipeline.html#add-a-lake-by-hand">Add a lake by hand</a>.</p>
+
+<div class="note caution"><p><strong>Check the source first.</strong> Accept a lake only when its coordinate has a source someone can check: an inventory, a paper, a field survey or a dated map.</p></div>

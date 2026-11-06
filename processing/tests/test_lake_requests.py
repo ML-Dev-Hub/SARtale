@@ -1,7 +1,10 @@
+import re
+from pathlib import Path
+
 import pytest
 
 from sartale.lake_catalog import Pass
-from sartale.lake_requests import RATE_PER_HOUR, RequestError, RequestStore, coverage, validate
+from sartale.lake_requests import BANNED_CLAIMS, RequestError, coverage, find_banned_claims, validate
 from sartale.lakes import Lake
 
 ATTABAD = Lake(id="attabad", name="Attabad Lake", lon=74.8, lat=36.3, coord_source="s", outline=None,
@@ -51,45 +54,6 @@ def test_validate_refuses_a_point_near_an_open_request():
     assert e.status == 409 and str(e) == "Already requested: Earlier."
 
 
-def clean(name="A lake", lat=35.0, lon=75.0):
-    return {"name": name, "lat": lat, "lon": lon, "source": "a source"}
-
-
-def test_store_round_trip_and_states(tmp_path):
-    s = RequestStore(tmp_path / "r.sqlite")
-    row = s.add(clean(), "1.2.3.4", 1000.0)
-    assert row["state"] == "queued" and row["tracks"] == [] and row["passes"] is None
-    assert s.get(row["id"])["name"] == "A lake" and s.get(99) is None
-    s.set_searched(row["id"], 7, ["055A", "156A"], "2026-06-20", "2026-07-01")
-    got = s.get(row["id"])
-    assert (got["state"], got["passes"], got["tracks"], got["first"], got["last"]) == (
-        "searched", 7, ["055A", "156A"], "2026-06-20", "2026-07-01")
-    assert s.set_failed(row["id"], "CMR down") is False  # already searched: a late failure changes nothing
-    assert s.get(row["id"])["state"] == "searched"
-    assert s.open_count() == 1
-    second = s.add(clean("B lake", 36.0), "1.2.3.4", 1001.0)
-    assert s.set_failed(second["id"], "CMR down") is True
-    assert s.get(second["id"])["state"] == "search_failed" and s.get(second["id"])["reason"] == "CMR down"
-    assert [r["id"] for r in s.list_open()] == [second["id"], row["id"]]
-    s.set_state(row["id"], "accepted")
-    assert [r["id"] for r in s.list_open()] == [second["id"]] and s.open_count() == 1
-    s.set_state(second["id"], "rejected", "not a lake")
-    assert s.list_open() == [] and s.get(second["id"])["reason"] == "not a lake"
-    with pytest.raises(ValueError):
-        s.set_state(row["id"], "bogus")
-
-
-def test_recent_count_counts_only_that_address_after_since(tmp_path):
-    s = RequestStore(tmp_path / "r.sqlite")
-    s.add(clean("one"), "a", 100.0)
-    s.add(clean("two", 35.1), "a", 5000.0)
-    s.add(clean("three", 35.2), "b", 5000.0)
-    assert s.recent_count("a", 1000.0) == 1
-    assert s.recent_count("a", 0.0) == 2
-    assert s.recent_count("b", 0.0) == 1
-    assert RATE_PER_HOUR == 5
-
-
 def mk(track, d, date):
     return Pass(granule=f"g{track}{date}", url="u", date=date, start=date + "T01:00:00", track=track,
                 direction=d, frame="020", mode="4005", crid="P05023")
@@ -121,39 +85,52 @@ def test_validate_allows_ordinary_spaces_and_accents():
     assert validate({**GOOD, "name": "Yaz Sam é"}, [], [])["name"] == "Yaz Sam é"
 
 
-def test_an_old_database_gets_the_detail_column(tmp_path):
-    import sqlite3
-    path = tmp_path / "old.sqlite"
-    db = sqlite3.connect(path)
-    db.execute("CREATE TABLE requests (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, lat REAL NOT NULL, "
-               "lon REAL NOT NULL, source TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'queued', passes INTEGER, "
-               "tracks TEXT NOT NULL DEFAULT '[]', first TEXT, last TEXT, reason TEXT, addr TEXT NOT NULL, "
-               "created_ts REAL NOT NULL)")
-    db.commit()
-    db.close()
-    s = RequestStore(path)
-    rid = s.add(clean(), "1.2.3.4", 1.0)["id"]
-    s.set_failed(rid, "x" * 300, "raw")
-    row = s.get(rid)
-    assert len(row["reason"]) == 200 and row["detail"] == "raw"
+
+BANNED_NAME = 'The name uses a phrase SARtale does not use ("{}"); please use the lake\'s usual name.'
 
 
-def test_a_late_search_cannot_reopen_a_decision(tmp_path):
-    s = RequestStore(tmp_path / "r.sqlite")
-    rejected = s.add(clean("R lake", 36.0), "1.2.3.4", 1000.0)
-    accepted = s.add(clean("A lake", 35.5), "1.2.3.4", 1000.0)
-    s.set_state(rejected["id"], "rejected", "No public source")
-    s.set_state(accepted["id"], "accepted")
-    assert s.set_searched(rejected["id"], 3, ["055A"], "2026-06-20", "2026-07-01") is False
-    assert s.set_failed(accepted["id"], "late", "TimeoutError") is False
-    assert (s.get(rejected["id"])["state"], s.get(rejected["id"])["reason"]) == ("rejected", "No public source")
-    assert s.get(accepted["id"])["state"] == "accepted"
-    assert s.open_count() == 0
+@pytest.mark.parametrize("name, phrase", [("Safe lake", "safe"), ("Lake of EARLY  warning", "early warning"),
+                                          ("Damaged moraine", "damaged"), ("predict pond", "predict")])
+def test_validate_refuses_a_name_with_a_banned_phrase(name, phrase):
+    e = err({**GOOD, "name": name})
+    assert e.status == 400 and str(e) == BANNED_NAME.format(phrase)
 
 
-def test_a_failed_search_can_be_retried(tmp_path):
-    s = RequestStore(tmp_path / "r.sqlite")
-    row = s.add(clean("C lake", 35.0), "1.2.3.4", 1000.0)
-    assert s.set_failed(row["id"], "CMR down", "TimeoutError") is True
-    assert s.set_searched(row["id"], 2, ["055A"], "2026-06-20", "2026-06-30") is True
-    assert (s.get(row["id"])["state"], s.get(row["id"])["detail"]) == ("searched", None)
+def test_banned_phrases_match_whole_words_only():
+    assert validate({**GOOD, "name": "Safeguard lake"}, [], [])["name"] == "Safeguard lake"
+    assert find_banned_claims("unsafe, predictable") == []
+    assert find_banned_claims("SAFE and damage") == ["damage", "safe"]  # in list order, once each
+
+
+def test_banned_list_matches_the_app():
+    """BANNED_CLAIMS is a copy of the list in app/src/content.ts; the two must stay the same."""
+    source = (Path(__file__).resolve().parents[2] / "app" / "src" / "content.ts").read_text(encoding="utf-8")
+    block = re.search(r"export const BANNED_CLAIMS = \[(.*?)\] as const;", source, re.S)
+    assert block, "content.ts no longer defines BANNED_CLAIMS as a literal list"
+    assert tuple(re.findall(r'"([^"]*)"', block.group(1))) == BANNED_CLAIMS
+
+
+@pytest.mark.parametrize("bad", ["3.62e1", "3_6.2", "٣٦.٢", "３６.２", "36.", ".5", "0x24"])
+def test_validate_takes_only_plain_ascii_decimals_as_text(bad):
+    e = err({**GOOD, "lat": bad})
+    assert e.status == 400 and str(e) == "lat must be a number."
+
+
+def test_validate_still_takes_numbers_and_plain_decimal_text():
+    assert validate({**GOOD, "lat": " +35.5 ", "lon": 75}, [], [])["lat"] == 35.5
+
+
+BANNED_SOURCE = ('The source uses a phrase SARtale does not use ("{}"); '
+                 "please describe where the coordinates come from.")
+
+
+@pytest.mark.parametrize("source, phrase", [("Safe-route survey 2020", "safe"), ("Change  detection study", "change detection")])
+def test_validate_refuses_a_source_with_a_banned_phrase(source, phrase):
+    e = err({**GOOD, "source": source})
+    assert e.status == 400 and str(e) == BANNED_SOURCE.format(phrase)
+
+
+def test_banned_source_comes_after_the_name_and_source_rules():
+    assert str(err({**GOOD, "name": "Safe lake", "source": "A safe survey"})).startswith("The name uses")
+    assert str(err({**GOOD, "source": "ok"})) == "source must be 3–200 characters."
+    assert validate({**GOOD, "source": "Unsafe-slope inventory"}, [], [])["source"] == "Unsafe-slope inventory"

@@ -3,11 +3,15 @@ import { describe, expect, it } from "vitest";
 import lakesJson from "../public/data/lakes.json";
 import { findBannedClaims } from "./content";
 import storyCopy from "./content/storyPage.json";
-import { fixtureLakes } from "./fixtures";
+import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
+import frozenJson from "./frozen/lakes.json";
 import type { LakesFile } from "./lakes";
 import { mapPin, renderStoryPage, storyNumbers } from "./storyPage";
 
+/** The data this build ships. A rebuild replaces it, so tests on it check only what holds for any build. */
 const real = lakesJson as unknown as LakesFile;
+/** A frozen copy of the 23 Oct 2026 build, for the tests that check exact numbers. */
+const frozen = frozenJson as unknown as LakesFile;
 const opts = { onOpenLakes() {}, onOpenEvidence() {}, onFollowStory() {} };
 
 function render(file: LakesFile | null) {
@@ -19,7 +23,7 @@ function render(file: LakesFile | null) {
 
 describe("storyNumbers", () => {
   it("reads every number from the file", () => {
-    const n = storyNumbers(real);
+    const n = storyNumbers(frozen);
     expect(n.lakes).toBe("11");
     expect(n.cloudLooks).toBe("60");
     expect(n.passes).toBe("232");
@@ -29,6 +33,16 @@ describe("storyNumbers", () => {
     expect(n.attabadTrack).toBe("156A");
     expect(n.iou).toBe("IoU 0.013–0.09");
     expect(n.latest).toBe("23 Oct 2026");
+  });
+
+  it("reads the shipped file's own totals, whatever it holds", () => {
+    const n = storyNumbers(real);
+    expect(real.lakes.length).toBeGreaterThanOrEqual(11);
+    expect(real.lakes.some((l) => l.id === "attabad")).toBe(true);
+    expect(n.lakes).toBe(String(real.lakes.length));
+    expect(n.cloudLooks).toBe(String(real.lakes.reduce((k, l) => k + l.cloud_window_looks, 0)));
+    expect(n.passes).toBe(String(real.lakes.reduce((k, l) => k + l.series.length, 0)));
+    for (const v of Object.values(n)) expect(v).not.toMatch(/NaN|undefined/);
   });
 
   it("gives a dash for everything when there is no file", () => {
@@ -96,13 +110,35 @@ describe("renderStoryPage", () => {
   });
 
   it("exposes the add-a-lake slot with its form, the lake list and the map", () => {
-    const { root, page } = render(real);
+    const { root, page } = render(frozen);
     expect(page.addLakeEl.querySelector("form")).not.toBeNull();
     expect(root.querySelector('section[aria-label="06 Add a lake"]')!.contains(page.addLakeEl)).toBe(true);
     expect(page.listEl.children.length).toBe(11);
     expect(page.mapEl.querySelectorAll(".sp-pin").length).toBe(11);
     // sorted by area, largest first
     expect(page.listEl.children[0].textContent).toContain("Attabad");
+  });
+
+  it("lists and pins every lake of the shipped file", () => {
+    const { page } = render(real);
+    expect(page.listEl.children.length).toBe(real.lakes.length);
+    expect(page.mapEl.querySelectorAll(".sp-pin").length).toBe(real.lakes.length);
+  });
+
+  it("takes a 12th lake that has no NISAR pass yet, as the rebuild after an accept writes it", () => {
+    for (const base of [frozen, real]) {
+      const file = withRequestedLake(base);
+      const { root, page } = render(file);
+      const text = root.textContent ?? "";
+      expect(text).not.toMatch(/\{\w+\}|NaN|undefined/);
+      expect(page.listEl.children.length).toBe(base.lakes.length + 1);
+      expect(page.mapEl.querySelectorAll(".sp-pin").length).toBe(base.lakes.length + 1);
+      expect(page.listEl.textContent).toContain(requestedLake.name);
+      expect(storyNumbers(file).lakes).toBe(String(base.lakes.length + 1));
+      expect(storyNumbers(file).passes).toBe(storyNumbers(base).passes);
+      expect(findBannedClaims(text)).toEqual([]);
+    }
+    expect(withRequestedLake(frozen).lakes).toHaveLength(12);
   });
 
   it("every image has alt text and a visible source line", () => {
@@ -153,8 +189,8 @@ describe("closing band wording follows the IoU values", () => {
   const closing = (file: LakesFile) => render(file).root.querySelector(".sp-closing-text p")!.textContent ?? "";
 
   it("says poorly when every IoU is low", () => {
-    expect(closing(real)).toContain("overlapped optical water poorly");
-    expect(closing(real)).toContain("IoU 0.013–0.09");
+    expect(closing(frozen)).toContain("overlapped optical water poorly");
+    expect(closing(frozen)).toContain("IoU 0.013–0.09");
   });
 
   it("does not say poorly when the IoU is high", () => {

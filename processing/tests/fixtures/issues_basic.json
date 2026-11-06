@@ -1,0 +1,8 @@
+[
+ {"number": 3, "title": "Add a lake: Moraine lake above Gulmit", "state": "open",
+  "labels": [{"name": "lake-request"}], "created_at": "2026-11-03T10:00:00Z", "user": {"login": "visitor"},
+  "body": "### Lake name\n\nMoraine lake above Gulmit\n\n### Latitude (°N)\n\n36.2\n\n### Longitude (°E)\n\n74.0\n\n### Where the coordinates come from\n\nGlacier survey sheet 4"},
+ {"number": 5, "title": "Add a lake: Far away", "state": "open",
+  "labels": [{"name": "lake-request"}], "created_at": "2026-11-04T10:00:00Z", "user": {"login": "other"},
+  "body": "### Lake name\n\nFar away\n\n### Latitude (°N)\n\n10\n\n### Longitude (°E)\n\n74.0\n\n### Where the coordinates come from\n\n_No response_"}
+]

@@ -1,0 +1,33 @@
+name: Add a lake
+description: Ask for a lake to be added to SARtale.
+title: "Add a lake: "
+labels: [lake-request]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The SARtale team reviews every request. SARtale is indicative screening on provisional NISAR data, not a warning service.
+  - type: input
+    id: name
+    attributes:
+      label: Lake name
+    validations:
+      required: true
+  - type: input
+    id: lat
+    attributes:
+      label: Latitude (°N)
+    validations:
+      required: true
+  - type: input
+    id: lon
+    attributes:
+      label: Longitude (°E)
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Where the coordinates come from
+    validations:
+      required: true

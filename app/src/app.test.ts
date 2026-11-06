@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import lakesJson from "../public/data/lakes.json";
 import { mountApp, routeFromHash, type AppOptions } from "./app";
 import { findBannedClaims } from "./content";
-import { fixtureLakes } from "./fixtures";
+import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
 import { featuredLake, type LakesFile } from "./lakes";
 
 const realLakes = lakesJson as unknown as LakesFile;
@@ -285,6 +285,20 @@ describe("routing", () => {
     window.history.replaceState(null, "", `#lakes/${id}`);
     const { root } = setup();
     expect(root.querySelector('.lw-row[aria-pressed="true"]')?.getAttribute("data-lake-id")).toBe(id);
+    window.history.replaceState(null, "", "/");
+  });
+});
+
+describe("after an accept adds a 12th lake", () => {
+  test("the app mounts, pins and lists it, and #lakes/<id> opens it", () => {
+    const file = withRequestedLake(realLakes);
+    window.history.replaceState(null, "", `#lakes/${requestedLake.id}`);
+    const { root, $ } = setup({ lakes: file });
+    expect(root.querySelector('.lw-row[aria-pressed="true"]')?.getAttribute("data-lake-id")).toBe(requestedLake.id);
+    expect($("lakes-view").querySelectorAll(".lw-row")).toHaveLength(realLakes.lakes.length + 1);
+    $("home").click();
+    expect($("home-root").querySelectorAll(".sp-pin:not(.sp-pin-request)")).toHaveLength(realLakes.lakes.length + 1);
+    expect(root.textContent).not.toMatch(/NaN|undefined/);
     window.history.replaceState(null, "", "/");
   });
 });

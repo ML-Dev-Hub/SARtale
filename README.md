@@ -17,7 +17,8 @@
 <p align="center">
   <a href="media/SARtale-lake-watch-demo.mp4"><b>Demo video</b></a> (38 s) ·
   <a href="media/SARtale-how-it-works.mp4"><b>How it works</b></a> (3 min 41 s) ·
-  <a href="docs/guide/index.html"><b>Guide</b></a>
+  <a href="https://saeedahmadicp.github.io/SARtale/"><b>Live site</b></a> ·
+  <a href="https://saeedahmadicp.github.io/SARtale/guide/"><b>Guide</b></a>
 </p>
 
 ![The SARtale story page](media/screens/story.jpg)
@@ -28,14 +29,14 @@ Pakistan has more than 3,000 glacial lakes (UNDP GLOF-II), and SUPARCO tracks 13
 
 > "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days."
 
-Radar sees through cloud, day or night. From 17 June to 4 August 2026, while cloud limited the optical checks, NISAR made **60 valid looks across the 11 lakes** SARtale watches.
+Radar sees through cloud, day or night. From 17 June to 4 August 2026, while cloud limited the optical checks, NISAR made **60 valid looks across the 11 lakes** SARtale first watched (build of 23 Oct 2026).
 
 ## What it does
 
-- **Gives each of 11 lakes one plain status:** Growing, Stable, Shrinking, Not seen this pass, Not observable, or Not enough NISAR looks yet. All 11 read Stable in this build.
+- **Gives each watched lake one plain status:** Growing, Stable, Shrinking, Not seen this pass, Not observable, or Not enough NISAR looks yet. The site shows the current status of each.
 - **Shows the evidence:** the latest radar picture with the water read from it, a chart and a table of every pass, and each pass left out, with the reason.
 - **Prints a one-page brief** per lake: dates, looks, noise and limits.
-- **Takes requests for new lakes.** A visitor names a lake and a coordinate; SARtale counts the NISAR passes over it, and the team decides.
+- **Takes requests for new lakes through GitHub issues.** A visitor fills in the website's form, which opens a pre-filled "Add a lake" issue (a GitHub sign-in is needed). A workflow checks the point, counts the NISAR passes over it and comments; a team member adds the `accepted` label to start the rebuild, or closes the issue to reject it. See [Lake requests](docs/guide/lake-requests.html). The repository is private for now, so only collaborators can open request issues until it is made public.
 
 ![Lake Watch: lake map, list with radar thumbnails, and Attabad's status and water picture](media/screens/lake-watch.jpg)
 
@@ -70,7 +71,7 @@ conda run -n sartale pytest tests -q
 
 ## Guide
 
-The developer and user guide is a small website in [`docs/guide/`](docs/guide/). Open `docs/guide/index.html` in a browser, or publish it with GitHub Pages (Settings → Pages → Deploy from branch `main`, folder `/docs`; it is then at `/guide/`).
+The developer and user guide is a small website in [`docs/guide/`](docs/guide/). It is published with the site at <https://saeedahmadicp.github.io/SARtale/guide/>; you can also open `docs/guide/index.html` in a browser.
 
 | Page | For |
 |---|---|
@@ -79,8 +80,20 @@ The developer and user guide is a small website in [`docs/guide/`](docs/guide/).
 | [The method](docs/guide/method.html) | The six steps, noise, exclusions, constants |
 | [Pipeline](docs/guide/pipeline.html) and [Data files](docs/guide/data.html) | Commands, the Attabad gate, `lakes_in.json` and `lakes.json` |
 | [Web app](docs/guide/app.html) | Modules, routing, copy rules, tests |
-| [Lake request API](docs/guide/requests-api.html) | Routes, errors, reviewing requests |
-| [Deploying](docs/guide/deploy.html), [Contributing](docs/guide/contributing.html), [Questions and limits](docs/guide/faq.html) | Hosting, ground rules, FAQ |
+| [Lake requests](docs/guide/lake-requests.html) | The issue flow, labels, accepting and rejecting |
+| [Deploying](docs/guide/deploy.html) (with the owner setup), [Contributing](docs/guide/contributing.html), [Questions and limits](docs/guide/faq.html) | Hosting, ground rules, FAQ |
+
+## Deploying
+
+The site is at <https://saeedahmadicp.github.io/SARtale/>, published by `.github/workflows/deploy.yml` on every push to `main`. A weekly workflow refreshes the data, and the lake-request workflows handle issues. The owner sets up three things once, in this order, before any lake request is opened (steps in the [Deploying](docs/guide/deploy.html) page):
+
+1. Settings → Pages → Source: **GitHub Actions**.
+2. Settings → Environments → new environment `earthdata`, deployment branches limited to `main`, with the secrets `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD`; then delete the repository-level copies.
+3. Actions → Lake requests → Run workflow once, to create the labels. The issue form drops labels that do not exist yet, so a request opened before this is never seen.
+
+The default workflow permissions can stay at **Read repository contents**: every workflow declares the permissions it needs.
+
+On a public repository GitHub pauses scheduled workflows after 60 days without activity.
 
 ## Limits
 
@@ -94,7 +107,7 @@ The developer and user guide is a small website in [`docs/guide/`](docs/guide/).
 | Path | Contents |
 |---|---|
 | `app/` | The website: TypeScript, Vite, MapLibre, uPlot |
-| `processing/` | The Python pipeline, the lake request server and their tests |
+| `processing/` | The Python pipeline and its tests |
 | `media/` | Videos, screenshots and the workflow figure |
 | `docs/` | The [guide](docs/guide/), [data sources and licences](docs/DATA_SOURCES.md), [AI tool use](docs/SI_USE.md) |
 

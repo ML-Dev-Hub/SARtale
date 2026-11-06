@@ -13,8 +13,9 @@ cd processing && conda run -n sartale pytest tests -q</code></pre>
   <li><b>Screening, not warning.</b> Do not describe a status as a hazard, a prediction or a warning. The wording check in <code>content.ts</code> enforces the main phrases.</li>
   <li><b>Constants live in one place.</b> Method constants belong in <code>processing/sartale/config.py</code>; the build copies them into <code>lakes.json</code> for the app.</li>
   <li><b>Same track only.</b> Never compare areas across tracks or viewing directions in the status.</li>
-  <li><b>No secrets in the repository.</b> Earthdata logins stay in <code>~/.netrc</code>; other keys in a git-ignored <code>.env.local</code>.</li>
-  <li><b>Data stay out of git.</b> Downloaded windows and the request database live in <code>data/</code>, which is ignored.</li>
+  <li><b>No secrets in the repository.</b> Earthdata logins stay in <code>~/.netrc</code> locally and in the <code>earthdata</code> environment on GitHub; other keys in a git-ignored <code>.env.local</code>.</li>
+  <li><b>Data stay out of git.</b> Downloaded windows live in <code>data/</code>, which is ignored.</li>
+  <li><b>Lake requests are issues.</b> Accept or reject them on GitHub as described in <a href="lake-requests.html">Lake requests</a>; do not edit <code>requests.json</code> by hand, because the workflow rewrites it.</li>
 </ul>
 
 <h2>Changing the method</h2>
