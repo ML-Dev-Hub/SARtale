@@ -793,3 +793,10 @@ def test_every_run_block_is_valid_bash():
                     script = re.sub(r"\$\{\{.*?\}\}", "X", s["run"])
                     r = subprocess.run([BASH, "-n"], input=script, capture_output=True, text=True)
                     assert r.returncode == 0, f"{f.name}:{job_name}:{s.get('name')}: {r.stderr}"
+
+
+def test_the_accept_comment_has_one_wording():
+    from sartale import lake_issues
+
+    assert data_artifact.ACCEPTED_COMMENT == lake_issues.ACCEPTED_COMMENT
+    assert data_artifact.SITE == lake_issues.SITE_LAKE

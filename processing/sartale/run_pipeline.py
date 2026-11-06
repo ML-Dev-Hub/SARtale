@@ -228,7 +228,7 @@ def cmd_lake_issue_accept(args) -> None:
         print(f"lake-issue-accept: {e}", file=sys.stderr)
         raise SystemExit(1) from None
     lake_issues.write_feed(feed, feed_path)
-    actions = [{"issue": args.issue, "comment": f"Accepted. The lake is now watched: https://saeedahmadicp.github.io/SARtale/#lakes/{lake_id}",
+    actions = [{"issue": args.issue, "comment": lake_issues.ACCEPTED_COMMENT.format(lake_id=lake_id),
                "add": [], "remove": ["searched", "too few passes", "rebuild failed"], "close": True}]
     Path(args.actions).write_text(json.dumps(actions, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(lake_id)

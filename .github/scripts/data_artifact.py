@@ -36,6 +36,8 @@ MANIFEST = "manifest.json"
 SEGMENT = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9._-]*$")
 LAKE_ID = re.compile(r"^[a-z0-9_]+$")
 SITE = "https://saeedahmadicp.github.io/SARtale/#lakes/"
+# the same words as sartale.lake_issues.ACCEPTED_COMMENT (this script runs without that package; a test checks)
+ACCEPTED_COMMENT = "Accepted. The lake is now watched: " + SITE + "{lake_id}"
 CHECKED = ("searched", "too_few_passes")
 
 
@@ -172,7 +174,7 @@ def accept(repo: Path, src: Path, number: int) -> list[dict]:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_bytes((json.dumps(feed, ensure_ascii=False, indent=1) + "\n").encode("utf-8"))
     os.replace(tmp, path)
-    return [{"issue": number, "comment": f"Accepted. The lake is now watched: {SITE}{built['lake_id']}",
+    return [{"issue": number, "comment": ACCEPTED_COMMENT.format(lake_id=built["lake_id"]),
              "add": [], "remove": ["searched", "too few passes", "rebuild failed"], "close": True,
              "dispatch": False}]
 
