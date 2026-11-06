@@ -1,12 +1,12 @@
 {
- "updated": "2026-11-06T12:26:37Z",
+ "updated": "2026-11-06T12:28:29Z",
  "requests": [
   {
    "issue": 2,
    "name": "Live test request",
    "lat": 36.2,
    "lon": 73.9,
-   "state": "searched",
+   "state": "rejected",
    "passes": 14,
    "tracks": [
     "063D",
@@ -14,11 +14,11 @@
    ],
    "first": "2026-06-25",
    "last": "2026-10-23",
-   "reason": null,
+   "reason": "Test request, closed to check the rejection path.",
    "lake_id": null,
    "created": "2026-11-06T12:26:12Z",
-   "values_sha256": "ec460c47fb1d58a721f4c3c67dbe380da7020963f6c875079f4c048c2c445ae9",
-   "values_at": "2026-11-06T12:26:37Z"
+   "values_sha256": null,
+   "values_at": null
   }
  ]
 }
