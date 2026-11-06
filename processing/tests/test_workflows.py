@@ -529,7 +529,7 @@ def test_daily_reconcile_needs_no_secrets():
     doc = load(LAKE_REQUEST)
     assert on_of(doc)["schedule"] == [{"cron": "17 4 * * *"}]
     check = doc["jobs"]["check"]
-    assert check["if"].startswith("github.event_name == 'schedule' ||")
+    assert check["if"].startswith("github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||")
     assert "environment" not in check and "secrets." not in yaml.safe_dump(check)
     run = " ".join(s.get("run") or "" for s in check["steps"])
     assert "lake-issues" in run and "apply-actions.sh" in run
@@ -649,3 +649,20 @@ def test_single_line_run_pattern():
     assert SINGLE_LINE_RUN.match("        run: bash x.sh  # note").group(1) == "bash x.sh  # note"
     assert not SINGLE_LINE_RUN.match("        run: |  # a block")
     assert not SINGLE_LINE_RUN.match("        run: >-")
+
+
+def test_a_manual_run_creates_the_labels_and_reconciles_like_the_daily_run():
+    """Issue forms drop labels that do not exist, so the owner runs this once before the first request."""
+    doc = load(LAKE_REQUEST)
+    on = on_of(doc)
+    assert "workflow_dispatch" in on and not (on["workflow_dispatch"] or {}).get("inputs"), "no event issue"
+    check = doc["jobs"]["check"]
+    # a dispatch passes the job `if` on its own, without an issue's labels
+    head = check["if"].split("(contains(")[0]
+    assert "github.event_name == 'workflow_dispatch'" in head
+    names = [s.get("name") for s in check["steps"]]
+    labels = names.index("Make sure the labels exist")
+    assert labels < names.index("List every lake request") < names.index("Check the requests")
+    assert "ensure-labels.sh" in check["steps"][labels]["run"] and "if" not in check["steps"][labels]
+    assert not any("if" in s and "event_name" in str(s["if"]) for s in check["steps"]), "every step runs on dispatch"
+
