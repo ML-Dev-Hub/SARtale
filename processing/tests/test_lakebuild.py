@@ -75,7 +75,7 @@ def test_build_writes_schema_keys(built):
 
 def test_build_has_notes_field(built):
     doc, _ = built
-    assert "not georeferenced overlays" in doc["notes"] and "1 km search circle" in doc["notes"]
+    assert "north up; they are pictures, not map overlays" in doc["notes"] and "1 km search circle" in doc["notes"]
 
 
 def test_build_json_has_no_nan(built):

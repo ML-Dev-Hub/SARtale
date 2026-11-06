@@ -29,7 +29,7 @@ OUTLINE_LABEL = "water area in the lake outline (buffered 200 m)"
 WATER_RGBA = (0x2b, 0x8c, 0xff, 200)
 SHADOW_RGBA = (128, 128, 128, 120)
 NOTES = ("Areas are water within a 1 km search circle (or outline) and underestimate lakes whose shores sit "
-         "in radar shadow; images are radar-geometry pictures, not georeferenced overlays.")
+         "in radar shadow; images are crops on the UTM grid, north up; they are pictures, not map overlays.")
 NO_LOOKS_REASON = "No valid NISAR pass yet."
 OUTLINE_ROOT = Path(__file__).resolve().parents[1]  # processing/
 
