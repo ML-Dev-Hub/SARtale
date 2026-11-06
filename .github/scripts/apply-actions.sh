@@ -4,10 +4,12 @@
 # "dispatch": bool} to the issues. Comments go through a file (--body-file) and labels through quoted
 # arguments; no command is ever built from text. Every entry is checked before anything is applied:
 # issue numbers are positive integers and labels are among the seven SARtale labels.
-# `dispatch` starts lake-accept.yml for that issue again (an accept run that GitHub dropped).
+# `dispatch` starts lake-accept.yml for that issue again (an accept run that GitHub dropped), unless busy.sh
+# finds another accept or refresh active (or cannot tell): that run's drain, or the daily check, starts it.
 set -euo pipefail
 
 actions="$1"
+here="$(cd "$(dirname "$0")" && pwd)"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
@@ -72,6 +74,11 @@ for d in "$work"/*/; do
   fi
 
   if [ "$(cat "$d/dispatch")" = yes ]; then
-    gh workflow run lake-accept.yml --ref main -f "issue=$number"
+    if [ "$(bash "$here/busy.sh")" = idle ]; then
+      gh workflow run lake-accept.yml --ref main -f "issue=$number"
+    else
+      echo "Another accept or refresh is active; the accept for issue #$number was not started." \
+        >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+    fi
   fi
 done

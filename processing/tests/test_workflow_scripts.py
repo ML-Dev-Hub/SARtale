@@ -467,6 +467,42 @@ def test_next_accept_refuses_a_non_numeric_exclude(tmp_path, monkeypatch):
         next_accept.main(["--feed", str(tmp_path / "f.json"), "--exclude", "4; rm"], runner=FakeGh("[]"))
 
 
+busy = load_script("busy")
+
+
+def run_entry(number, status):
+    return {"databaseId": number, "status": status}
+
+
+@pytest.mark.parametrize("accept,refresh,expected", [
+    ([], [], "idle"),
+    ([run_entry(1, "completed")], [run_entry(2, "completed")], "idle"),
+    ([run_entry(500, "in_progress")], [], "idle"),                               # this run itself
+    ([run_entry(500, "in_progress"), run_entry(7, "queued")], [], "busy"),
+    ([], [run_entry(8, "in_progress")], "busy"),
+    ([], [run_entry(8, "waiting")], "busy"),
+    ([], [run_entry(8, "requested")], "busy"),
+    ([run_entry(8, "pending")], [], "busy"),
+    ("not json", [], "busy"),                                                    # unreadable: fail safe
+    ({"databaseId": 1}, [], "busy"),                                             # not a list
+    ([{"databaseId": "8", "status": "completed"}], [], "busy"),                 # no integer id
+])
+def test_busy(tmp_path, monkeypatch, capsys, accept, refresh, expected):
+    monkeypatch.setenv("GITHUB_RUN_ID", "500")
+    paths = []
+    for name, value in (("a.json", accept), ("r.json", refresh)):
+        (tmp_path / name).write_text(value if isinstance(value, str) else json.dumps(value), encoding="utf-8")
+        paths.append(str(tmp_path / name))
+    busy.main(paths)
+    assert capsys.readouterr().out == expected + "\n"
+
+
+def test_busy_without_lists_or_files_is_busy(tmp_path, capsys):
+    busy.main([])
+    busy.main([str(tmp_path / "missing.json")])
+    assert capsys.readouterr().out == "busy\nbusy\n"
+
+
 # ---- shell scripts, run with a fake `gh` on PATH ---------------------------------------------
 
 def find_bash():
@@ -489,6 +525,10 @@ for a in "$@"; do
 done
 if [ "$1 $2" = "issue view" ] && [ -f "${GH_LABELS:-}" ]; then cat "$GH_LABELS"; fi
 if [ "$1 $2" = "workflow run" ] && [ -n "${GH_FAIL_WORKFLOW:-}" ]; then exit 1; fi
+if [ "$1 $2" = "run list" ] && [ -n "${GH_FAIL_RUNS:-}" ]; then exit 1; fi
+if [ "$1 $2" = "run list" ]; then
+  if [ -n "${GH_RUNS:-}" ]; then cat "$GH_RUNS"; else echo "[]"; fi
+fi
 exit 0
 """
 
@@ -506,6 +546,8 @@ def fake_env(tmp_path):
     env.pop("GH_TOKEN", None)
     env["GH_LOG"], env["GH_BODIES"] = str(tmp_path / "gh.log"), str(tmp_path / "bodies.txt")
     env["FAKE_BIN"] = str(bin_dir)
+    env["GITHUB_REPOSITORY"] = "o/r"
+    env.pop("GITHUB_STEP_SUMMARY", None)
     return env
 
 
@@ -567,6 +609,48 @@ def test_apply_actions_loops_over_every_issue(tmp_path):
     assert ["workflow", "run", "lake-accept.yml", "--ref", "main", "-f", "issue=9"] in calls
     assert ["issue", "close", "10"] in calls
     assert Path(env["GH_BODIES"]).read_text(encoding="utf-8") == "Two===\nAccepted.===\n"
+    assert ["run", "list", "--repo", "o/r", "--workflow", "lake-accept.yml", "--json", "databaseId,status",
+            "--limit", "100"] in calls, "it asked for active runs first"
+
+
+@needs_bash
+@pytest.mark.parametrize("runs,fail,expected", [
+    ("[]", False, "idle"),
+    ('[{"databaseId": 41, "status": "completed"}]', False, "idle"),
+    ('[{"databaseId": 42, "status": "queued"}]', False, "busy"),
+    ('[{"databaseId": 41, "status": "in_progress"}]', False, "idle"),   # GITHUB_RUN_ID: this run
+    ("$(touch pwned)", False, "busy"),                                   # not JSON, and never run
+    ("[]", True, "busy"),                                                # lookup failed: fail safe
+])
+def test_busy_sh(tmp_path, runs, fail, expected):
+    env = fake_env(tmp_path)
+    (tmp_path / "runs.json").write_text(runs, encoding="utf-8")
+    env["GH_RUNS"], env["GITHUB_RUN_ID"] = str(tmp_path / "runs.json"), "41"
+    if fail:
+        env["GH_FAIL_RUNS"] = "1"
+    r = bash(SCRIPTS / "busy.sh", [], env, tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout == expected + "\n"
+    assert not (tmp_path / "pwned").exists()
+    calls = gh_calls(env)
+    asked = [c[c.index("--workflow") + 1] for c in calls]
+    assert asked == (["lake-accept.yml"] if fail else ["lake-accept.yml", "refresh.yml"])
+    assert all(c[:4] == ["run", "list", "--repo", "o/r"] for c in calls)
+
+
+@needs_bash
+@pytest.mark.parametrize("runs", ['[{"databaseId": 7, "status": "in_progress"}]', "gh: not json"])
+def test_apply_actions_starts_no_accept_while_another_is_active(tmp_path, runs):
+    env = fake_env(tmp_path)
+    (tmp_path / "runs.json").write_text(runs, encoding="utf-8")
+    env["GH_RUNS"], env["GITHUB_STEP_SUMMARY"] = str(tmp_path / "runs.json"), str(tmp_path / "summary.md")
+    actions = write_actions(tmp_path, [act(9, "Checked.", dispatch=True)])
+    r = bash(SCRIPTS / "apply-actions.sh", [str(actions)], env, tmp_path)
+    assert r.returncode == 0, r.stderr
+    calls = gh_calls(env)
+    assert not any(c[:2] == ["workflow", "run"] for c in calls)
+    assert [c[2] for c in calls if c[:2] == ["issue", "comment"]] == ["9"], "the rest is still applied"
+    assert "the accept for issue #9 was not started" in (tmp_path / "summary.md").read_text(encoding="utf-8")
 
 
 @needs_bash

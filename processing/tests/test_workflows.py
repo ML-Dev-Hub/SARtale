@@ -578,6 +578,56 @@ def test_rebuild_skips_an_issue_no_longer_waiting():
     assert "needs.gate.outputs.decision == 'allowed'" in publish["if"], "a skip still drains the queue"
     for s in publish["steps"][1:-1]:  # between the checkout and the drain, every step needs its own reason
         assert "if" in s, s.get("name")
+
+
+ISSUE_WRITES = ("gh issue comment", "gh issue edit", "gh issue close", "apply-actions.sh")
+
+
+def test_publish_touches_an_issue_only_for_a_named_outcome():
+    # a 'skip' or 'done' rebuild reaches publish too: nothing may comment or label on a bare always()
+    steps = accept_jobs()["publish"]["steps"]
+    touching = [s for s in steps if any(w in (s.get("run") or "") for w in ISSUE_WRITES)]
+    assert len(touching) >= 6
+    for s in touching:
+        cond = str(s.get("if", ""))
+        assert "decision ==" in cond or "result ==" in cond, f"{s.get('name')}: {cond!r}"
+        assert cond.strip() != "always()"
+    drain, _ = drain_step(LAKE_ACCEPT)
+    assert not any(w in drain["run"] for w in ISSUE_WRITES)
+
+
+def calls_busy(job):
+    return any("busy.sh" in (s.get("run") or "") or "apply-actions.sh" in (s.get("run") or "")
+               for s in job["steps"])
+
+
+@pytest.mark.parametrize("path", (LAKE_ACCEPT, REFRESH), ids=lambda p: p.name)
+def test_drain_asks_for_active_runs_first(path):
+    drain, _ = drain_step(path)
+    run = drain["run"]
+    ask = run.index('if [ "$(bash .github/scripts/busy.sh)" != idle ]; then')
+    assert ask < run.index("next_accept.py") < run.index("gh workflow run")
+    note = run[ask:run.index("fi", ask)]
+    assert "GITHUB_STEP_SUMMARY" in note and "exit 0" in note
+
+
+def test_reconcile_dispatch_asks_for_active_runs_first():
+    text = (SCRIPTS / "apply-actions.sh").read_text(encoding="utf-8")
+    ask = text.index('if [ "$(bash "$here/busy.sh")" = idle ]; then')
+    assert ask < text.index("gh workflow run lake-accept.yml") < text.index("GITHUB_STEP_SUMMARY", ask)
+    assert text.count("gh workflow run") == 1
+
+
+def test_jobs_that_ask_for_runs_can_read_actions_and_issues():
+    for path in DATA_WORKFLOWS:
+        for job_name, job in jobs_of(load(path)):
+            if calls_busy(job):
+                assert job["permissions"].get("actions") in ("read", "write"), f"{path.name}:{job_name}"
+    for path in (LAKE_ACCEPT, REFRESH):
+        perms = load(path)["jobs"]["publish"]["permissions"]
+        assert perms.get("issues") in ("read", "write"), f"{path.name}: next_accept.py lists issues"
+    assert load(REFRESH)["jobs"]["publish"]["permissions"] == {"contents": "write", "issues": "read",
+                                                               "actions": "write"}
     migrated = "This request was approved before the new check existed. A team member must accept it again."
     assert migrated in LAKE_ACCEPT.read_text(encoding="utf-8")
 

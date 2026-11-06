@@ -371,6 +371,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if [ "$(bash .github/scripts/busy.sh)" != idle ]; then
+            # another accept or refresh is active (or the lookup failed): its drain, or the daily check, starts it
+            echo "Another accept or refresh is active; no accept was started." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           next="$(python3 .github/scripts/next_accept.py --feed app/public/data/requests.json --exclude "$ISSUE")" ||
             { echo "::warning::could not list the waiting accepts; the daily check starts them"; exit 0; }
           case "$next" in
