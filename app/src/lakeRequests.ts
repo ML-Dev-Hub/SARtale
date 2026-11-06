@@ -112,6 +112,12 @@ export function bannedNameError(name: string): string | null {
   return found.length ? `The name uses a phrase SARtale does not use ("${found[0]}"); please use the lake's usual name.` : null;
 }
 
+/** The same for the source, which lands in lakes.json as the lake's coord_source (lake_requests.banned_source_message). */
+export function bannedSourceError(source: string): string | null {
+  const found = findBannedClaims(source.trim());
+  return found.length ? `The source uses a phrase SARtale does not use ("${found[0]}"); please describe where the coordinates come from.` : null;
+}
+
 /** The first problem with a request, in the same order and words as the Python validate; null when it is fine. */
 export function checkRequest(f: RequestFields, watched: Lake[], requests: LakeRequest[]): string | null {
   const lat = numberField("lat", f.lat);
@@ -121,7 +127,8 @@ export function checkRequest(f: RequestFields, watched: Lake[], requests: LakeRe
   const b = BOUNDS;
   if (lat < b.latMin || lat > b.latMax || lon < b.lonMin || lon > b.lonMax)
     return `The point must be in Gilgit-Baltistan or upper KP: ${b.latMin}–${b.latMax} °N, ${b.lonMin}–${b.lonMax} °E.`;
-  const bad = textError("name", f.name, 2, 80) ?? bannedNameError(f.name) ?? textError("source", f.source, 3, 200);
+  const bad =
+    textError("name", f.name, 2, 80) ?? bannedNameError(f.name) ?? textError("source", f.source, 3, 200) ?? bannedSourceError(f.source);
   if (bad) return bad;
   for (const l of watched) if (km(lat, lon, l.lat, l.lon) <= NEAR_KM) return `Already watched: ${l.name}.`;
   const near = requests.filter((r) => LIVE.includes(r.state) && km(lat, lon, r.lat, r.lon) <= NEAR_KM).map((r) => r.issue);

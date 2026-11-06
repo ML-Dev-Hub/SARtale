@@ -85,6 +85,14 @@ describe("checkRequest", () => {
     expect(checkRequest({ ...form, name: "Safe lake", source: "ab" }, watched, [])).toBe(words("safe"));
     expect(checkRequest({ ...form, name: "s" }, watched, [])).toBe("name must be 2–80 characters.");
   });
+  it("refuses a source with wording SARtale never uses, in the Python words, after the source length rule", () => {
+    const words = (phrase: string) => `The source uses a phrase SARtale does not use ("${phrase}"); please describe where the coordinates come from.`;
+    expect(checkRequest({ ...form, source: "Safe-route survey 2020" }, watched, [])).toBe(words("safe"));
+    expect(checkRequest({ ...form, source: "Change  detection study" }, watched, [])).toBe(words("change detection"));
+    expect(checkRequest({ ...form, source: "Unsafe-slope inventory" }, watched, [])).toBeNull();
+    expect(checkRequest({ ...form, name: "Safe lake", source: "A safe survey" }, watched, [])).toMatch(/^The name uses/);
+    expect(checkRequest({ ...form, source: "ok" }, watched, [])).toBe("source must be 3–200 characters.");
+  });
   it("blocks near a live request and ignores invalid or rejected ones", () => {
     for (const state of ["searched", "too_few_passes", "check_failed", "accepted"] as const)
       expect(checkRequest(form, watched, [row({ state, issue: 12 })])).toBe("Already requested: issue #12.");

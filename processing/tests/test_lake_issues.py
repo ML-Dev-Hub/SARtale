@@ -579,3 +579,26 @@ def test_a_searched_comment_with_many_passes():
     entry = {"state": "searched", "passes": 14, "tracks": ["055A", "156A"], "first": "2026-06-18", "last": "2026-10-23"}
     assert _comment(entry) == ("Checked against NASA's catalogue: 14 NISAR passes over this point on 2 tracks, "
                                "2026-06-18 to 2026-10-23. The team decides whether this lake is watched.")
+
+
+BANNED_SOURCE = ('The source uses a phrase SARtale does not use ("{}"); '
+                 "please describe where the coordinates come from.")
+
+
+def test_a_source_with_a_banned_phrase_is_invalid(watched):
+    feed = build_feed([issue(1, source="Early warning survey")], watched, None, search=fake_search, now=NOW)
+    entry = one(feed, 1)
+    assert entry["state"] == "invalid" and entry["reason"] == BANNED_SOURCE.format("early warning")
+    assert "Early warning survey" not in json.dumps(feed)
+
+
+def test_accept_refuses_a_banned_source_checked_before_the_rule(watched, tmp_path):
+    lakes_in = tmp_path / "lakes_in.json"
+    lakes_in.write_text(LAKES_IN, encoding="utf-8")
+    feed = build_feed([issue(7)], watched, None, search=fake_search, now=NOW)
+    old = issue(7, source="A safe survey")
+    one(feed, 7)["values_sha256"] = issue_values_sha256(old)  # as a check before the source rule recorded it
+    with pytest.raises(RequestError) as e:
+        accept_entry(feed, old, lakes_in, "2026-11-05")
+    assert str(e.value) == BANNED_SOURCE.format("safe")
+    assert lakes_in.read_text(encoding="utf-8") == LAKES_IN

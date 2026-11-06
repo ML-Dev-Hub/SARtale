@@ -43,7 +43,7 @@
   <tbody>
     <tr><td>Point</td><td>34.4–37.6 °N, 70.8–76.6 °E (Gilgit-Baltistan and upper KP)</td></tr>
     <tr><td>Name</td><td>2–80 characters, and none of the phrases SARtale never uses (such as "safe" or "early warning"; the list is <code>BANNED_CLAIMS</code> in <code>app/src/content.ts</code>). Such a name is refused with: "The name uses a phrase SARtale does not use ("safe"); please use the lake's usual name."</td></tr>
-    <tr><td>Source</td><td>3–200 characters: an inventory, a paper, a field survey or a dated map</td></tr>
+    <tr><td>Source</td><td>3–200 characters: an inventory, a paper, a field survey or a dated map. The source becomes the lake's <code>coord_source</code> in <code>lakes.json</code>, so the same phrases are refused, with: "The source uses a phrase SARtale does not use ("safe"); please describe where the coordinates come from."</td></tr>
     <tr><td>Distance</td><td>A point within 1 km of a watched lake or of another request is refused, and the message names that lake. The earlier issue wins</td></tr>
     <tr><td>Open requests</td><td>At most 200. Past that, new requests are marked invalid with "The request list is full; try again later."</td></tr>
   </tbody>

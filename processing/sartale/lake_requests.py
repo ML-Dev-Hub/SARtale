@@ -62,6 +62,15 @@ def banned_name_message(name: str) -> str | None:
     return f"The name uses a phrase SARtale does not use (\"{found[0]}\"); please use the lake's usual name."
 
 
+def banned_source_message(source: str) -> str | None:
+    """The same for the source: it lands in lakes.json as the lake's coord_source."""
+    found = find_banned_claims(source)
+    if not found:
+        return None
+    return (f"The source uses a phrase SARtale does not use (\"{found[0]}\"); "
+            "please describe where the coordinates come from.")
+
+
 def _text(payload: dict, key: str, low: int, high: int) -> str:
     value = payload.get(key)
     text = value.strip() if isinstance(value, str) else ""
@@ -84,6 +93,9 @@ def validate(payload: dict, watched: list[Lake], open_requests: list[dict]) -> d
     if banned:
         raise RequestError(banned)
     source = _text(payload, "source", 3, 200)
+    banned = banned_source_message(source)
+    if banned:
+        raise RequestError(banned)
     for lake in watched:
         if haversine_km(lat, lon, lake.lat, lake.lon) <= NEAR_KM:
             raise RequestError(f"Already watched: {lake.name}.", 409)

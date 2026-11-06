@@ -118,3 +118,19 @@ def test_validate_takes_only_plain_ascii_decimals_as_text(bad):
 
 def test_validate_still_takes_numbers_and_plain_decimal_text():
     assert validate({**GOOD, "lat": " +35.5 ", "lon": 75}, [], [])["lat"] == 35.5
+
+
+BANNED_SOURCE = ('The source uses a phrase SARtale does not use ("{}"); '
+                 "please describe where the coordinates come from.")
+
+
+@pytest.mark.parametrize("source, phrase", [("Safe-route survey 2020", "safe"), ("Change  detection study", "change detection")])
+def test_validate_refuses_a_source_with_a_banned_phrase(source, phrase):
+    e = err({**GOOD, "source": source})
+    assert e.status == 400 and str(e) == BANNED_SOURCE.format(phrase)
+
+
+def test_banned_source_comes_after_the_name_and_source_rules():
+    assert str(err({**GOOD, "name": "Safe lake", "source": "A safe survey"})).startswith("The name uses")
+    assert str(err({**GOOD, "source": "ok"})) == "source must be 3–200 characters."
+    assert validate({**GOOD, "source": "Unsafe-slope inventory"}, [], [])["source"] == "Unsafe-slope inventory"
