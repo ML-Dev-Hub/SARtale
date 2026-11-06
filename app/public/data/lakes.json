@@ -1,7 +1,7 @@
 {
  "version": 1,
  "built": "2026-11-04T13:39:48Z",
- "notes": "Areas are water within a 1 km search circle (or outline) and underestimate lakes whose shores sit in radar shadow; images are radar-geometry pictures, not georeferenced overlays.",
+ "notes": "Areas are water within a 1 km search circle (or outline) and underestimate lakes whose shores sit in radar shadow; images are crops on the UTM grid, north up; they are pictures, not map overlays.",
  "crid": "P05023",
  "cloud_window": [
   "2026-06-17",

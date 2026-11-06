@@ -35,7 +35,7 @@ BASE = (LAKES_IN, LAKES_JSON, PICTURES)  # inputs that only the rebuild jobs cha
 MANIFEST = "manifest.json"
 SEGMENT = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9._-]*$")
 LAKE_ID = re.compile(r"^[a-z0-9_]+$")
-SITE = "https://saeedahmadicp.github.io/SARtale/#lakes/"
+SITE = "https://saeedahmad.me/SARtale/#lakes/"
 # the same words as sartale.lake_issues.ACCEPTED_COMMENT (this script runs without that package; a test checks)
 ACCEPTED_COMMENT = "Accepted. The lake is now watched: " + SITE + "{lake_id}"
 CHECKED = ("searched", "too_few_passes")

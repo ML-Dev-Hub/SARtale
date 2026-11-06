@@ -51,8 +51,8 @@
 
 <h2 id="how-it-fits-together">How it fits together<a class="anchor" href="#how-it-fits-together" aria-label="Link to this section">#</a></h2>
 <figure>
-  <img src="assets/workflow.jpg" alt="Workflow: six pipeline steps from finding NISAR passes to deciding a status, which write lakes.json for the web app; visitors' lake requests go through a GitHub issue and team review into lakes_in.json, which feeds the pipeline again." width="1600" height="880">
-  <figcaption>The pipeline turns NISAR passes into <code>lakes.json</code>; the app reads it. A new lake comes in through a visitor's GitHub issue and the team's review. The picture above shows the earlier request server; requests now go through issues (<a href="lake-requests.html">Lake requests</a>).</figcaption>
+  <img src="assets/workflow.jpg" alt="Workflow: six pipeline steps from finding NISAR passes to deciding a status, which write lakes.json for the web app. A lower loop shows a lake request: the form on the site opens a pre-filled GitHub issue, a workflow comments with the NISAR pass count, a team member adds the accepted label, the data are rebuilt and committed to main, and Pages redeploys. A weekly refresh feeds the same rebuild." width="1600" height="880">
+  <figcaption>The pipeline turns NISAR passes into <code>lakes.json</code>; the app reads it. A new lake comes in through a visitor's GitHub issue and the team's review, and a weekly refresh feeds the same rebuild (<a href="lake-requests.html">Lake requests</a>).</figcaption>
 </figure>
 
 <h2 id="what-is-in-the-repository">What is in the repository<a class="anchor" href="#what-is-in-the-repository" aria-label="Link to this section">#</a></h2>

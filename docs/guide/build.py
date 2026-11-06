@@ -10,6 +10,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = "https://github.com/saeedahmadicp/SARtale"
+# The live site. Page bodies write {{SITE}} where they need it; the README and the code keep their own copy
+# (README.md, processing/sartale/lake_issues.py, .github/scripts/data_artifact.py), pinned equal by processing/tests/test_docs.py.
+SITE = "https://saeedahmad.me/SARtale/"
 
 # (file, title in the menu, group)
 PAGES = [
@@ -67,7 +70,7 @@ def anchors(body: str) -> str:
 
 def page(i: int) -> str:
     file, title, _ = PAGES[i]
-    body = anchors((HERE / "pages" / f"{file}.html").read_text(encoding="utf8"))
+    body = anchors((HERE / "pages" / f"{file}.html").read_text(encoding="utf8").replace("{{SITE}}", SITE))
     prev = PAGES[i - 1] if i > 0 else None
     nxt = PAGES[i + 1] if i + 1 < len(PAGES) else None
     pager = '<nav class="pager" aria-label="Next and previous page">'

@@ -1,6 +1,6 @@
 # Data sources and licences
 
-Updated 4 Nov 2026. Space Apps rules say we must confirm that non-NASA data and code are freely and publicly available or open source, and name their licences. Where a licence has not been checked, this file says "terms not confirmed" and does not guess.
+Updated 6 Nov 2026. Space Apps rules say we must confirm that non-NASA data and code are freely and publicly available or open source, and name their licences. Where a licence has not been checked, this file says "terms not confirmed" and does not guess.
 
 ## Status in one paragraph
 
@@ -96,6 +96,7 @@ Only the packages named in `environment.yml`; their own dependencies have not be
 | pyproj | 3.8.0 | MIT | Coordinate transforms |
 | pillow | 13.0.0 | MIT-CMU | Writing the lake images |
 | requests | 2.34.2 | Apache-2.0 | CMR search, HTTPS range reads, Sentinel-2 search |
+| pyyaml | 6.0.3 | MIT | Reading the workflow files in tests |
 | pytest | 9.2.0 | MIT | Tests |
 | Python | 3.12 | Python Software Foundation licence | |
 

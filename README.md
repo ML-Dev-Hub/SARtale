@@ -17,8 +17,8 @@
 <p align="center">
   <a href="media/SARtale-lake-watch-demo.mp4"><b>Demo video</b></a> (38 s) ·
   <a href="media/SARtale-how-it-works.mp4"><b>How it works</b></a> (3 min 41 s) ·
-  <a href="https://saeedahmadicp.github.io/SARtale/"><b>Live site</b></a> ·
-  <a href="https://saeedahmadicp.github.io/SARtale/guide/"><b>Guide</b></a>
+  <a href="https://saeedahmad.me/SARtale/"><b>Live site</b></a> ·
+  <a href="https://saeedahmad.me/SARtale/guide/"><b>Guide</b></a>
 </p>
 
 ![The SARtale story page](media/screens/story.jpg)
@@ -71,7 +71,7 @@ conda run -n sartale pytest tests -q
 
 ## Guide
 
-The developer and user guide is a small website in [`docs/guide/`](docs/guide/). It is published with the site at <https://saeedahmadicp.github.io/SARtale/guide/>; you can also open `docs/guide/index.html` in a browser.
+The developer and user guide is a small website in [`docs/guide/`](docs/guide/). It is published with the site at <https://saeedahmad.me/SARtale/guide/>; you can also open `docs/guide/index.html` in a browser.
 
 | Page | For |
 |---|---|
@@ -85,7 +85,7 @@ The developer and user guide is a small website in [`docs/guide/`](docs/guide/).
 
 ## Deploying
 
-The site is at <https://saeedahmadicp.github.io/SARtale/>, published by `.github/workflows/deploy.yml` on every push to `main`. A weekly workflow refreshes the data, and the lake-request workflows handle issues. The owner sets up three things once, in this order, before any lake request is opened (steps in the [Deploying](docs/guide/deploy.html) page):
+The site is at <https://saeedahmad.me/SARtale/>, published by `.github/workflows/deploy.yml` on every push to `main`. A weekly workflow refreshes the data, and the lake-request workflows handle issues. The owner sets up three things once, in this order, before any lake request is opened (steps in the [Deploying](docs/guide/deploy.html) page):
 
 1. Settings → Pages → Source: **GitHub Actions**.
 2. Settings → Environments → new environment `earthdata`, deployment branches limited to `main`, with the secrets `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD`; then delete the repository-level copies.
