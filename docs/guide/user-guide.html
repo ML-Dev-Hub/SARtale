@@ -15,14 +15,14 @@
   <a class="brand" href="index.html"><img src="assets/logo.png" alt=""> SARtale <small>Guide</small></a>
   <nav class="bar-links" aria-label="Project links">
     <a href="getting-started.html">Get started</a>
-    <a href="requests-api.html">API</a>
+    <a href="lake-requests.html">Lake requests</a>
     <a href="https://github.com/saeedahmadicp/SARtale">GitHub</a>
   </nav>
 </header>
 <div class="frame">
-  <aside class="rail" aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html" aria-current="page">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></aside>
+  <aside class="rail" aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html" aria-current="page">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="lake-requests.html">Lake requests</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></aside>
   <main id="content">
-    <details class="menu"><summary>Guide contents</summary><nav aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html" aria-current="page">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></nav></details>
+    <details class="menu"><summary>Guide contents</summary><nav aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html" aria-current="page">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="lake-requests.html">Lake requests</a></li><li><a href="deploy.html">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></nav></details>
     <article class="doc">
 <h1>Using the website</h1>
 <p class="lede">The site has three views, all reached from the header: the story page, Lake Watch and How we know. Every page carries the label "Provisional NISAR data".</p>
@@ -80,11 +80,12 @@
 <p>At the end of the story page, under <b>Know a lake we are not watching?</b>, anyone can put forward a lake:</p>
 <ol>
   <li>Enter the lake's name, its latitude and longitude, and where the coordinates come from (an inventory, a paper, a field survey or a map).</li>
-  <li>Choose <b>Add to the watch list</b>. The point must be in Gilgit-Baltistan or upper KP: 34.4–37.6 °N, 70.8–76.6 °E.</li>
-  <li>The request appears on the map as a requested lake. Within moments the step text shows how many NISAR passes cover the point.</li>
-  <li>The team reviews it. An accepted lake joins the register and gets a status after 3 looks on one track.</li>
+  <li>Choose <b>Add to the watch list</b>. The site checks the input: the point must be in Gilgit-Baltistan or upper KP (34.4–37.6 °N, 70.8–76.6 °E).</li>
+  <li>The site then opens a GitHub issue form with your answers filled in. Press <b>Submit new issue</b>. You need to be signed in to GitHub.</li>
+  <li>A bot comments on the issue with the number of NISAR passes over the point. The request appears on the map as a requested lake.</li>
+  <li>The team reviews it. An accepted lake joins the register and gets a status after 3 looks on one track. A rejected one is closed with a reason.</li>
 </ol>
-<p>A point within 1 km of a watched or already requested lake is turned down with the name of that lake. On a copy of the site without the request server, the form says "Requests are not open on this copy of the site."</p>
+<p>A point within 1 km of a watched or already requested lake is turned down with the name of that lake. The details, including the labels you will see, are in <a href="lake-requests.html">Lake requests</a>.</p>
 
     </article>
     <nav class="pager" aria-label="Next and previous page"><a href="getting-started.html"><small>Previous</small>Getting started</a><a href="method.html" style="text-align:right"><small>Next</small>The method</a></nav>

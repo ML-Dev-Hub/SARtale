@@ -5,7 +5,7 @@
 <div class="table-wrap"><table>
   <thead><tr><th>Command</th><th>What it does</th></tr></thead>
   <tbody>
-    <tr><td><code>npm --prefix app run dev</code></td><td>Dev server on <code>http://localhost:5173</code>, forwarding <code>/api</code> to <code>127.0.0.1:8787</code></td></tr>
+    <tr><td><code>npm --prefix app run dev</code></td><td>Dev server on <code>http://localhost:5173</code></td></tr>
     <tr><td><code>npm --prefix app test -- --run</code></td><td>Vitest, once. Drop <code>--run</code> to watch</td></tr>
     <tr><td><code>npm --prefix app run build</code></td><td><code>tsc --noEmit</code>, then a production build in <code>app/dist/</code></td></tr>
     <tr><td><code>npm --prefix app run preview</code></td><td>Serves <code>app/dist/</code> locally to check a build</td></tr>
@@ -25,7 +25,7 @@
     <tr><td><code>chart.ts</code></td><td>The uPlot area chart, one series per track</td></tr>
     <tr><td><code>lakeBrief.ts</code></td><td>The printable one-page brief</td></tr>
     <tr><td><code>evidenceView.ts</code></td><td>How we know</td></tr>
-    <tr><td><code>lakeRequests.ts</code></td><td>The request API client and the "Add a lake" form</td></tr>
+    <tr><td><code>lakeRequests.ts</code></td><td>The "Add a lake" form: checks the input, then opens the GitHub issue form; also reads <code>requests.json</code></td></tr>
     <tr><td><code>lakes.ts</code></td><td>Types for <code>lakes.json</code>, loading, sorting and status sentences</td></tr>
     <tr><td><code>content.ts</code>, <code>content/*.json</code></td><td>All page text, and the banned-wording list</td></tr>
   </tbody>
@@ -53,9 +53,4 @@
 <p>Tests sit next to the code as <code>*.test.ts</code> and run in jsdom. MapLibre and uPlot are replaced by small fakes through the factory options (<code>createLocator</code>, <code>createChart</code>), so tests check what the app shows, not how the libraries draw. <code>publicData.test.ts</code> checks that every picture <code>lakes.json</code> names is in <code>app/public/data/</code>.</p>
 
 <h2>Configuration</h2>
-<div class="table-wrap"><table>
-  <thead><tr><th>Setting</th><th>Default</th><th>Use</th></tr></thead>
-  <tbody>
-    <tr><td><code>VITE_REQUESTS_API</code></td><td><code>api</code></td><td>Base URL of the request API at build time. The default means the same origin, or the dev proxy.</td></tr>
-  </tbody>
-</table></div>
+<p>The app has no build-time settings and no server to reach. The "Add a lake" form opens the repository's issue form on GitHub, and the app reads <code>data/lakes.json</code> and <code>data/requests.json</code> as static files. See <a href="lake-requests.html">Lake requests</a>.</p>

@@ -20,7 +20,7 @@ PAGES = [
     ("pipeline", "Pipeline", "How it works"),
     ("data", "Data files", "How it works"),
     ("app", "Web app", "Build and run"),
-    ("requests-api", "Lake request API", "Build and run"),
+    ("lake-requests", "Lake requests", "Build and run"),
     ("deploy", "Deploying", "Build and run"),
     ("contributing", "Contributing", "Project"),
     ("faq", "Questions and limits", "Project"),
@@ -92,7 +92,7 @@ def page(i: int) -> str:
   <a class="brand" href="index.html"><img src="assets/logo.png" alt=""> SARtale <small>Guide</small></a>
   <nav class="bar-links" aria-label="Project links">
     <a href="getting-started.html">Get started</a>
-    <a href="requests-api.html">API</a>
+    <a href="lake-requests.html">Lake requests</a>
     <a href="{REPO}">GitHub</a>
   </nav>
 </header>

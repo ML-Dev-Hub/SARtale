@@ -15,49 +15,61 @@
   <a class="brand" href="index.html"><img src="assets/logo.png" alt=""> SARtale <small>Guide</small></a>
   <nav class="bar-links" aria-label="Project links">
     <a href="getting-started.html">Get started</a>
-    <a href="requests-api.html">API</a>
+    <a href="lake-requests.html">Lake requests</a>
     <a href="https://github.com/saeedahmadicp/SARtale">GitHub</a>
   </nav>
 </header>
 <div class="frame">
-  <aside class="rail" aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html" aria-current="page">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></aside>
+  <aside class="rail" aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="lake-requests.html">Lake requests</a></li><li><a href="deploy.html" aria-current="page">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></aside>
   <main id="content">
-    <details class="menu"><summary>Guide contents</summary><nav aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="requests-api.html">Lake request API</a></li><li><a href="deploy.html" aria-current="page">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></nav></details>
+    <details class="menu"><summary>Guide contents</summary><nav aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="lake-requests.html">Lake requests</a></li><li><a href="deploy.html" aria-current="page">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></nav></details>
     <article class="doc">
 <h1>Deploying</h1>
-<p class="lede">The website is static files, so any static host can serve it. The request server is optional: without it, the site works and the form says requests are not open.</p>
+<p class="lede">The site is published to GitHub Pages by a workflow. Lake requests, accepts and weekly data refreshes run as GitHub Actions too, so there is no server to run. The live site is <a href="https://saeedahmadicp.github.io/SARtale/">saeedahmadicp.github.io/SARtale</a> and this guide is at <a href="https://saeedahmadicp.github.io/SARtale/guide/">/guide/</a>.</p>
 
-<h2 id="the-website-alone">The website alone<a class="anchor" href="#the-website-alone" aria-label="Link to this section">#</a></h2>
+<h2 id="one-time-owner-setup">One-time owner setup<a class="anchor" href="#one-time-owner-setup" aria-label="Link to this section">#</a></h2>
+<p>Do these three things once, in the repository's Settings on GitHub.</p>
+<ol>
+  <li><b>Turn on Pages.</b> Settings → Pages → Source: <b>GitHub Actions</b>.</li>
+  <li><b>Create the <code>earthdata</code> environment.</b>
+    <ol>
+      <li>Settings → Environments → New environment, named <code>earthdata</code>.</li>
+      <li>Deployment branches: <b>Selected branches</b>, then add <code>main</code>.</li>
+      <li>In that environment, add the secrets <code>EARTHDATA_USERNAME</code> and <code>EARTHDATA_PASSWORD</code> (your free <a href="https://urs.earthdata.nasa.gov/">NASA Earthdata login</a>).</li>
+      <li>Delete any repository-level copies of those secrets: Settings → Secrets and variables → Actions. Then only the rebuild jobs, which run on <code>main</code>, can read them.</li>
+    </ol>
+  </li>
+  <li><b>Let workflows commit.</b> Settings → Actions → General → Workflow permissions: <b>Read and write permissions</b>.</li>
+</ol>
+<div class="note"><p><strong>Private for now.</strong> The repository is private (GitHub Pro). Until the owner makes it public, only collaborators can open lake-request issues. Making it public is the owner's choice and is not part of the setup above.</p></div>
+
+<h2 id="the-workflows">The workflows<a class="anchor" href="#the-workflows" aria-label="Link to this section">#</a></h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>File</th><th>Runs</th><th>Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>deploy.yml</code></td><td>On every push to <code>main</code>, and by hand</td><td>Runs the app tests, builds the app, copies this guide to <code>/guide/</code> and publishes to GitHub Pages</td></tr>
+    <tr><td><code>lake-request.yml</code></td><td>On issue events and daily at 04:17 UTC</td><td>Checks every lake-request issue, counts NISAR passes, comments, labels, closes invalid ones, updates <code>requests.json</code> and restarts waiting approvals one at a time</td></tr>
+    <tr><td><code>lake-accept.yml</code></td><td>When a team member adds <code>accepted</code></td><td>Rebuilds with the added lake, then commits the data, redeploys, comments and closes the issue. See <a href="lake-requests.html#who-can-accept">Lake requests</a></td></tr>
+    <tr><td><code>refresh.yml</code></td><td>Mondays at 03:00 UTC, and by hand</td><td>Rebuilds all lakes from NISAR and commits only if the data changed</td></tr>
+  </tbody>
+</table></div>
+<p>The two rebuild jobs (in <code>lake-accept.yml</code> and <code>refresh.yml</code>) use the <code>earthdata</code> environment and have read-only access. A separate publish job has the write token and no Earthdata login.</p>
+
+<h2 id="weekly-refresh">Weekly refresh<a class="anchor" href="#weekly-refresh" aria-label="Link to this section">#</a></h2>
+<p>New NISAR passes arrive all the time. Each Monday <code>refresh.yml</code> searches, fetches and builds every lake and runs the tests. If the data changed it commits them, and the commit redeploys the site. You can also start it from Actions → Weekly data refresh → Run workflow.</p>
+<div class="note caution"><p><strong>Scheduled runs can pause.</strong> On a public repository GitHub pauses scheduled workflows after 60 days without repository activity. The weekly refresh and the daily request check then stop until someone pushes a commit or turns them on again in the Actions tab.</p></div>
+
+<h2 id="check-a-build-locally">Check a build locally<a class="anchor" href="#check-a-build-locally" aria-label="Link to this section">#</a></h2>
 <pre><code>npm --prefix app ci
-npm --prefix app run build      <span class="c"># writes app/dist/</span></code></pre>
-<p>Upload the contents of <code>app/dist/</code> to any static host (GitHub Pages, Netlify, an S3 bucket, nginx). The build uses relative paths, so it also works from a sub-folder such as <code>https://example.org/sartale/</code>. Check it locally first with <code>npm --prefix app run preview</code>.</p>
+npm --prefix app run build      <span class="c"># writes app/dist/</span>
+npm --prefix app run preview</code></pre>
+<p>The build uses relative paths, so it also works from a sub-folder such as <code>/SARtale/</code>. Another static host can serve the contents of <code>app/dist/</code>, but the request form would still open issues on GitHub, and the workflows would still run there.</p>
 
-<h2 id="with-the-request-server">With the request server<a class="anchor" href="#with-the-request-server" aria-label="Link to this section">#</a></h2>
-<p>Run the server on a machine you control, behind a reverse proxy that adds HTTPS:</p>
-<pre><code>cd processing
-conda run -n sartale python -m sartale.run_pipeline lake-requests-serve \
-  --host 127.0.0.1 --port 8787 --origin https://lakes.example.org</code></pre>
-<p>Then either:</p>
-<ul>
-  <li><b>Same origin:</b> have the proxy send <code>/api/</code> on the site's own domain to <code>127.0.0.1:8787</code>. Build the app as above.</li>
-  <li><b>Separate origin:</b> serve the API on its own domain and build the app with <code>VITE_REQUESTS_API=https://api.example.org/api npm --prefix app run build</code>.</li>
-</ul>
-<p>In both cases <code>--origin</code> must be the exact origin the site is served from, scheme and port included. Browser requests from any other origin are refused.</p>
-
-<div class="note caution"><p><strong>Rate limits behind a proxy.</strong> The server limits requests per client address. Behind a reverse proxy it sees the proxy's address, so all visitors share one limit of 5 requests per hour. Set a per-client limit in the proxy as well if the site is public.</p></div>
-
-<h2 id="back-up-and-review">Back up and review<a class="anchor" href="#back-up-and-review" aria-label="Link to this section">#</a></h2>
-<ul>
-  <li>The whole request state is one SQLite file (<code>--db</code>). Back it up with the server stopped, or with <code>sqlite3 data/lake_requests.sqlite ".backup backup.sqlite"</code>.</li>
-  <li>Review requests regularly with <code>lake-requests-list</code>; at 200 open requests the server stops taking new ones.</li>
-  <li>The server is built for a demo or a small pilot. For wider use, put it behind a proxy with time limits for slow clients, and keep it off the open internet without one.</li>
-</ul>
-
-<h2 id="updating-the-data">Updating the data<a class="anchor" href="#updating-the-data" aria-label="Link to this section">#</a></h2>
-<p>After running the pipeline, commit <code>app/public/data/lakes.json</code> and the changed pictures, then rebuild and upload the site. The app reads the data at start-up, so nothing else needs to change.</p>
+<h2 id="updating-the-data-by-hand">Updating the data by hand<a class="anchor" href="#updating-the-data-by-hand" aria-label="Link to this section">#</a></h2>
+<p>After running the pipeline yourself, commit <code>app/public/data/lakes.json</code> and the changed pictures to <code>main</code>. The deploy workflow rebuilds and publishes the site. The app reads the data at start-up, so nothing else needs to change.</p>
 
     </article>
-    <nav class="pager" aria-label="Next and previous page"><a href="requests-api.html"><small>Previous</small>Lake request API</a><a href="contributing.html" style="text-align:right"><small>Next</small>Contributing</a></nav>
+    <nav class="pager" aria-label="Next and previous page"><a href="lake-requests.html"><small>Previous</small>Lake requests</a><a href="contributing.html" style="text-align:right"><small>Next</small>Contributing</a></nav>
     <footer class="foot">SARtale, by team SARcastic Scientists for NASA Space Apps Challenge 2026. Code under the Apache License 2.0. Indicative screening on provisional NISAR data, not a warning service.</footer>
   </main>
 </div>
