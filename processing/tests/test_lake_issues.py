@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 
 from sartale import lake_issues, run_pipeline
-from sartale.lake_issues import (accept_entry, build_feed, issue_actions, parse_issue_body, reconcile_actions,
-                                 write_feed)
+from sartale.lake_issues import (accept_entry, build_feed, issue_actions, issue_values_sha256, parse_issue_body,
+                                 reconcile_actions, write_feed)
 from sartale.lake_requests import RequestError
 from sartale.lakes import load_lakes
 
@@ -552,3 +552,15 @@ def test_a_name_with_a_banned_phrase_is_invalid_and_never_reaches_requests_json(
     assert entry["reason"] == ('The name uses a phrase SARtale does not use ("safe"); '
                                "please use the lake's usual name.")
     assert entry["name"] == "Request #1" and "Safe lake" not in json.dumps(feed)
+
+
+# exponent, digit-group underscore, Arabic-Indic and full-width digits: float() takes them, the app does not
+LOOSE_NUMBERS = ("3.62e1", "3_6.2", "٣٦.٢", "３６.２", "36.2e0°N")
+
+
+@pytest.mark.parametrize("bad", LOOSE_NUMBERS)
+def test_coordinates_only_in_plain_ascii_decimals(watched, bad):
+    feed = build_feed([issue(1, lat=bad)], watched, None, search=fake_search, now=NOW)
+    entry = one(feed, 1)
+    assert entry["state"] == "invalid" and entry["reason"] == "lat must be a number." and entry["lat"] is None
+    assert issue_values_sha256(issue(1, lat=bad)) is None

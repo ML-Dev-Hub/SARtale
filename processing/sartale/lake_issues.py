@@ -27,7 +27,8 @@ CATALOGUE_DOWN = "NASA's catalogue did not answer; the team will retry."
 CHANGED_AFTER_APPROVAL = "This request changed after it was approved. A team member must accept it again."
 APPROVED_BEFORE_HASHES = ("This request was approved before the new check existed. "
                           "A team member must accept it again.")
-_COORD = re.compile(r"^([+-]?\d+(?:\.\d+)?)\s*°?\s*[NnEe]?$")
+# ASCII digits and spaces only, as the app's COORD in lakeRequests.ts (float() would also take 3.62e1, 3_6.2, ٣٦)
+_COORD = re.compile(r"^([+-]?[0-9]+(?:\.[0-9]+)?)\s*°?\s*[NnEe]?$", re.ASCII)
 
 
 def parse_issue_body(body: str) -> dict[str, str]:
@@ -48,10 +49,10 @@ def parse_issue_body(body: str) -> dict[str, str]:
     return out
 
 
-def _coord(text: str) -> str:
-    """`36.2°N` and `74.0 °E` read as numbers; anything else is left for validate to refuse."""
+def _coord(text: str) -> str | None:
+    """`36.2°N` and `74.0 °E` read as numbers; anything else is None, which validate refuses as not a number."""
     m = _COORD.match(text.strip())
-    return m.group(1) if m else text
+    return m.group(1) if m else None
 
 
 def _number(value) -> float | None:

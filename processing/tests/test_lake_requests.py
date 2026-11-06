@@ -108,3 +108,13 @@ def test_banned_list_matches_the_app():
     block = re.search(r"export const BANNED_CLAIMS = \[(.*?)\] as const;", source, re.S)
     assert block, "content.ts no longer defines BANNED_CLAIMS as a literal list"
     assert tuple(re.findall(r'"([^"]*)"', block.group(1))) == BANNED_CLAIMS
+
+
+@pytest.mark.parametrize("bad", ["3.62e1", "3_6.2", "٣٦.٢", "３６.２", "36.", ".5", "0x24"])
+def test_validate_takes_only_plain_ascii_decimals_as_text(bad):
+    e = err({**GOOD, "lat": bad})
+    assert e.status == 400 and str(e) == "lat must be a number."
+
+
+def test_validate_still_takes_numbers_and_plain_decimal_text():
+    assert validate({**GOOD, "lat": " +35.5 ", "lon": 75}, [], [])["lat"] == 35.5

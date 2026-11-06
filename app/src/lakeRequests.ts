@@ -80,8 +80,11 @@ function km(lat1: number, lon1: number, lat2: number, lon2: number): number {
   return 2 * 6371.0088 * Math.asin(Math.sqrt(a));
 }
 
-/** The coordinate forms the issue reader accepts (lake_issues.py _COORD): "36.2", "36.2°", "36.2°N", "74.0 °E". */
-const COORD = /^([+-]?\d+(?:\.\d+)?)\s*°?\s*[NnEe]?$/;
+/**
+ * The coordinate forms the issue reader accepts (lake_issues.py _COORD): "36.2", "36.2°", "36.2°N", "74.0 °E".
+ * ASCII digits and ASCII spaces only, as Python's re.ASCII \s.
+ */
+const COORD = /^([+-]?[0-9]+(?:\.[0-9]+)?)[ \t\n\v\f\r]*°?[ \t\n\v\f\r]*[NnEe]?$/;
 const MAX_OPEN = 200;
 const OPEN_STATES: RequestState[] = ["searched", "too_few_passes", "check_failed"];
 

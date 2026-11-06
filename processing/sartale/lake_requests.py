@@ -10,6 +10,7 @@ BOUNDS = (34.4, 37.6, 70.8, 76.6)  # lat_min, lat_max, lon_min, lon_max
 NEAR_KM = 1.0
 MAX_OPEN = 200
 EARTH_KM = 6371.0088
+_DECIMAL = re.compile(r"[+-]?[0-9]+(?:\.[0-9]+)?", re.ASCII)  # a number given as text: plain decimal digits only
 # Wording the app must never use: a copy of BANNED_CLAIMS in app/src/content.ts (a test keeps them the same).
 # A requested name lands in lakes.json, where the app's tests refuse these phrases.
 BANNED_CLAIMS = (
@@ -37,7 +38,7 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 def _number(payload: dict, key: str) -> float:
     value = payload.get(key)
-    if isinstance(value, bool):
+    if isinstance(value, bool) or (isinstance(value, str) and not _DECIMAL.fullmatch(value.strip())):
         raise RequestError(f"{key} must be a number.")
     try:
         number = float(value)
