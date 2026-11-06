@@ -1,9 +1,12 @@
 import json
+import shutil
 from pathlib import Path
 
 import pytest
 
+from sartale.lake_requests import BOUNDS
 from sartale.lakes import Lake, lake_bbox, load_lakes
+from sartale.run_pipeline import append_lake_entry, lake_slug
 
 ROW = {"id": "x", "name": "X", "lon": 74.0, "lat": 36.0, "coord_source": "src", "role": "watch"}
 
@@ -45,11 +48,35 @@ def test_lake_bbox_is_centred_and_sized():
     assert (lon1 - lon0) * 111.32 * 0.8066 == pytest.approx(6.0, rel=0.02)  # cos(36.33 deg)
 
 
-def test_shipped_register_loads_with_sources_and_inside_the_study_area():
-    lakes = load_lakes(Path(__file__).resolve().parents[1] / "lakes_in.json")
+SHIPPED_REGISTER = Path(__file__).resolve().parents[1] / "lakes_in.json"
+
+
+def check_register(path):
+    """What every register must hold, whatever lakes it has: a request adds a lake, so no count is pinned."""
+    lakes = load_lakes(path)
     assert len(lakes) >= 7
     assert {"attabad", "shisper", "passu"} <= {l.id for l in lakes}
-    assert all(71 <= l.lon <= 77.8 and 34.5 <= l.lat <= 37.1 for l in lakes)
+    lat_min, lat_max, lon_min, lon_max = BOUNDS  # the same box a lake request must fall in
+    assert all(lon_min <= l.lon <= lon_max and lat_min <= l.lat <= lat_max for l in lakes)
     shisper = next(l for l in lakes if l.id == "shisper")
     assert shisper.downstream_source == "Radio Pakistan, 7 May 2022"
     assert all(l.downstream_source for l in lakes if l.downstream)
+    return lakes
+
+
+def test_shipped_register_loads_with_sources_and_inside_the_study_area():
+    check_register(SHIPPED_REGISTER)
+
+
+def test_register_checks_still_pass_after_an_accepted_request(tmp_path):
+    """Guard: an accept appends a lake and the rebuild runs these tests on the new register."""
+    copy = tmp_path / "lakes_in.json"
+    shutil.copyfile(SHIPPED_REGISTER, copy)
+    shipped = load_lakes(copy)
+    lake_id = lake_slug("Requested lake", {l.id for l in shipped})  # as accept_entry picks it
+    # in the request box but outside the older, narrower study box (34.5-37.1 N, 71-77.8 E)
+    append_lake_entry(copy, {"id": lake_id, "name": "Requested lake", "lon": 70.9, "lat": 37.5,
+                             "role": "watch", "coord_source": "Requested 2026-11-06 (issue #7): a survey",
+                             "outline": None, "downstream": None, "downstream_source": None})
+    lakes = check_register(copy)
+    assert len(lakes) == len(shipped) + 1 and lakes[-1].id == lake_id

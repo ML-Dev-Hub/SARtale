@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test } from "vitest";
 import { findBannedClaims } from "./content";
-import { fixtureLakes } from "./fixtures";
+import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
 import { sortLakes, type Lake, type LakesFile } from "./lakes";
 import { createLakeWatchView, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
 
@@ -206,5 +206,25 @@ describe("Lake Watch", () => {
   test("missing file shows the message", () => {
     const { root } = setup(null);
     expect(root.textContent).toContain("No lake data in this build");
+  });
+});
+
+describe("Lake Watch after an accept", () => {
+  test("mounts the shipped data with a 12th lake that has no pass yet, and opens that lake", async () => {
+    const real = (await import("../public/data/lakes.json")).default as unknown as LakesFile;
+    const frozen = (await import("./fixtures/lakes.json")).default as unknown as LakesFile;
+    for (const base of [frozen, real]) {
+      const file = withRequestedLake(base);
+      const { root } = setup(file);
+      expect(rowIds(root)).toHaveLength(base.lakes.length + 1);
+      expect(rowIds(root)).toContain(requestedLake.id);
+      root.querySelector<HTMLElement>(`.lw-row[data-lake-id="${requestedLake.id}"]`)!.click();
+      expect(root.querySelector('.lw-row[aria-pressed="true"]')?.getAttribute("data-lake-id")).toBe(requestedLake.id);
+      expect(root.querySelector(".lw-title")?.textContent).toBe(requestedLake.name);
+      expect(root.textContent).not.toMatch(/NaN|undefined|\{\w+\}/);
+      expect(findBannedClaims(root.textContent ?? "")).toEqual([]);
+      document.body.innerHTML = "";
+    }
+    expect(withRequestedLake(frozen).lakes).toHaveLength(12);
   });
 });

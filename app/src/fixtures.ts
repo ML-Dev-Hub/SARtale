@@ -53,3 +53,41 @@ export const fixtureLakes: LakesFile = {
   ],
   checks: [],
 };
+
+/**
+ * A lake the way lakebuild writes it on the first rebuild after an accept, before any NISAR window is
+ * fetched (lakebuild._empty with _no_looks): no passes, no images, no bounds.
+ */
+export const requestedLake: Lake = {
+  id: "requested_lake",
+  name: "Requested lake",
+  lon: 70.9,
+  lat: 37.5,
+  role: "watch",
+  coord_source: "Requested 2026-11-06 (issue #7): a survey",
+  outline_source: null,
+  area_label: "water area in the search window",
+  downstream: null,
+  downstream_source: null,
+  status: {
+    status: "Not enough NISAR looks yet",
+    track: null,
+    latest_date: null,
+    looks: 0,
+    change_km2: null,
+    noise_km2: null,
+    reason: "No valid NISAR pass yet.",
+  },
+  cloud_window_looks: 0,
+  directions: [],
+  limits: ["no NISAR windows fetched yet"],
+  series: [],
+  excluded: [],
+  images: { latest_hh: null, water: null, date: null, track: null },
+  bounds: null,
+};
+
+/** A copy of a lakes file with requestedLake appended, as the rebuild after an accept leaves it. */
+export function withRequestedLake(file: LakesFile): LakesFile {
+  return { ...file, lakes: [...file.lakes, requestedLake] };
+}
