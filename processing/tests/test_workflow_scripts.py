@@ -416,6 +416,57 @@ def test_waiting(tmp_path, capsys, found, expected):
     assert capsys.readouterr().out == expected + "\n"
 
 
+next_accept = load_script("next_accept")
+
+
+def feed_of(**states):
+    return {"requests": [{"issue": int(n[1:]), "state": st} for n, st in states.items()]}
+
+
+def test_next_accept_lists_open_accepted_requests_only():
+    gh = FakeGh(json.dumps([issue(3, labels=("lake-request", "accepted"))]) + json.dumps([{"pull_request": {},
+                **issue(4, labels=("lake-request", "accepted"))}, dict(issue(5), number="5")]))
+    assert [i["number"] for i in next_accept.waiting_issues("o/r", runner=gh)] == [3]
+    (call,) = gh.calls
+    assert call == ["api", "--paginate", "repos/o/r/issues?labels=lake-request,accepted&state=open&per_page=100"]
+
+
+@pytest.mark.parametrize("issues,feed,exclude,expected", [
+    ([issue(9, labels=("lake-request", "searched", "accepted")),
+      issue(4, labels=("lake-request", "too few passes", "accepted"))],
+     feed_of(n9="searched", n4="too_few_passes"), None, "4"),                  # the lowest number
+    ([issue(4, labels=("lake-request", "searched", "accepted")),
+      issue(9, labels=("lake-request", "searched", "accepted"))],
+     feed_of(n4="searched", n9="searched"), 4, "9"),                            # not the one just handled
+    ([issue(4, labels=("lake-request", "searched", "accepted", "rebuild failed"))],
+     feed_of(n4="searched"), None, "none"),                                     # failed: the team re-adds it
+    ([issue(4, labels=("lake-request", "accepted"))], feed_of(n4="accepted"), None, "none"),   # done already
+    ([issue(4, labels=("lake-request", "accepted"))], feed_of(n4="invalid"), None, "none"),    # not checked
+    ([issue(4, labels=("lake-request", "accepted"))], feed_of(), None, "none"),                # never checked
+    ([issue(4, "closed", labels=("lake-request", "accepted"))], feed_of(n4="searched"), None, "none"),
+])
+def test_next_accept_main(tmp_path, monkeypatch, capsys, issues, feed, exclude, expected):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    path = tmp_path / "requests.json"
+    path.write_text(json.dumps(feed), encoding="utf-8")
+    argv = ["--feed", str(path)] + (["--exclude", str(exclude)] if exclude else [])
+    next_accept.main(argv, runner=FakeGh(json.dumps(issues)))
+    assert capsys.readouterr().out == expected + "\n"
+
+
+def test_next_accept_without_a_feed_starts_nothing(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    waiting_one = [issue(4, labels=("lake-request", "searched", "accepted"))]
+    next_accept.main(["--feed", str(tmp_path / "missing.json")], runner=FakeGh(json.dumps(waiting_one)))
+    assert capsys.readouterr().out == "none\n"
+
+
+def test_next_accept_refuses_a_non_numeric_exclude(tmp_path, monkeypatch):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    with pytest.raises(SystemExit):
+        next_accept.main(["--feed", str(tmp_path / "f.json"), "--exclude", "4; rm"], runner=FakeGh("[]"))
+
+
 # ---- shell scripts, run with a fake `gh` on PATH ---------------------------------------------
 
 def find_bash():

@@ -3,19 +3,24 @@ name: Lake requests
 # Issue text (title, body, comments) is untrusted. It is never put into a script through an expression:
 # the Python helpers read it through `gh` into files, and comments are posted with --body-file.
 # Every run reconciles all lake-request issues, so an event GitHub drops is caught by the next one.
-# The `accepted` label is handled by lake-accept.yml.
+# The `accepted` label is handled by lake-accept.yml. A daily scheduled run reconciles too, with no event issue,
+# so an accept start that was dropped or failed is made again within a day even if no issue changes.
 
 on:
   issues:
     types: [opened, edited, reopened, labeled, closed]
+  schedule:
+    - cron: "17 4 * * *"
 
 jobs:
   check:
-    # skip `accepted` (lake-accept.yml) and `lake-request` (the form sets it at creation; `opened` covers it)
+    # the daily run (no issue), or an issue event; skip `accepted` (lake-accept.yml) and `lake-request` (the
+    # form sets it at creation; `opened` covers it)
     if: >-
-      contains(github.event.issue.labels.*.name, 'lake-request') &&
-      (github.event.action != 'labeled' ||
-       (github.event.label.name != 'accepted' && github.event.label.name != 'lake-request'))
+      github.event_name == 'schedule' ||
+      (contains(github.event.issue.labels.*.name, 'lake-request') &&
+       (github.event.action != 'labeled' ||
+        (github.event.label.name != 'accepted' && github.event.label.name != 'lake-request')))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -27,7 +32,7 @@ jobs:
       cancel-in-progress: false
     env:  # GH_TOKEN is given only to the steps that call gh or push
       GH_REPO: ${{ github.repository }}
-      ISSUE: ${{ github.event.issue.number }}
+      ISSUE: ${{ github.event.issue.number }}  # empty for the daily run; only the failure note uses it
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -79,5 +84,9 @@ jobs:
         # no comment and no label: the next run reconciles every issue, and this run's log shows the failure
         if: failure() || cancelled()
         run: |
-          printf 'The check failed for issue #%s; the next lake request event reconciles every issue.\n' "$ISSUE" \
+          case "$ISSUE" in
+            ''|*[!0-9]*) what="The daily check" ;;
+            *) what="The check for issue #$ISSUE" ;;
+          esac
+          printf '%s failed; the next lake request event or the daily check reconciles every issue.\n' "$what" \
             >> "$GITHUB_STEP_SUMMARY"

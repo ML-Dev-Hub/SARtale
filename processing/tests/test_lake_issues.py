@@ -474,6 +474,29 @@ def test_reconcile_dispatches_one_issue_per_run(watched):
     assert [a["issue"] for a in acts] == [3], "the others wait for a later run"
 
 
+def test_reconcile_and_the_publish_drain_choose_the_same_issue(watched):
+    from sartale.accept_queue import next_accept
+
+    issues = [issue(5, labels=["searched", "accepted"], lat="36.9"),
+              issue(3, labels=["searched", "accepted", "rebuild failed"]),
+              issue(4, labels=["searched", "accepted"], lat="36.5")]
+    feed = build_feed(issues, watched, None, search=fake_search, now=NOW)
+    acts = reconcile_actions(feed, issues, feed)
+    assert [a["issue"] for a in acts if a["dispatch"]] == [4] == [next_accept(feed, issues)]
+    assert next_accept(feed, issues, exclude={4}) == 5
+
+
+def test_reconcile_dispatches_the_next_one_when_the_lowest_is_voided(watched):
+    before = build_feed([issue(1, labels=["searched"]), issue(2, labels=["searched"], lat="36.5")],
+                        watched, None, search=fake_search, now=NOW)
+    now = [issue(1, labels=["searched", "accepted"], name="Other name"),
+           issue(2, labels=["searched", "accepted"], lat="36.5")]
+    feed = build_feed(now, watched, before, search=fake_search, now="2026-11-06T00:00:00Z")
+    acts = {a["issue"]: a for a in reconcile_actions(feed, now, before)}
+    assert acts[1]["dispatch"] is False and "accepted" in acts[1]["remove"]
+    assert acts[2]["dispatch"] is True
+
+
 def test_cli_accept_passes_the_approval_time(tmp_path, monkeypatch):
     monkeypatch.setattr(lake_issues, "coverage", fake_search)
     lakes_in = tmp_path / "lakes_in.json"

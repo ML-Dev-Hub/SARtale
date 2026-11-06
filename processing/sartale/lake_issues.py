@@ -13,6 +13,7 @@ from pathlib import Path
 
 import requests
 
+from sartale.accept_queue import CHECKED, next_accept
 from sartale.config import MIN_LOOKS
 from sartale.lake_requests import MAX_OPEN, RequestError, _text, coverage, validate
 from sartale.lakes import Lake
@@ -21,7 +22,6 @@ FIELDS = {"Lake name": "name", "Latitude (°N)": "lat", "Longitude (°E)": "lon"
           "Where the coordinates come from": "source"}
 STATE_LABELS = {"searched": "searched", "too_few_passes": "too few passes", "invalid": "invalid",
                 "check_failed": "rebuild failed", "rejected": "rejected"}
-CHECKED = ("searched", "too_few_passes")
 FORM_CHANGED = "The request form was changed; open a new request from the SARtale site."
 CATALOGUE_DOWN = "NASA's catalogue did not answer; the team will retry."
 CHANGED_AFTER_APPROVAL = "This request changed after it was approved. A team member must accept it again."
@@ -220,13 +220,25 @@ def reconcile_actions(feed: dict, issues: list[dict], previous: dict | None) -> 
     `rebuild failed` stays on a checked request (it marks a failed accept) unless the last check had failed.
     """
     old = {r["issue"]: r for r in (previous or {}).get("requests", [])}
-    out, dispatched = [], False
+    rows = []
     for issue in sorted(issues, key=lambda i: i["number"]):
         number, labels = issue["number"], _labels(issue)
         entry = _find(feed, number)
         if entry is None:
             continue
-        state, was = entry["state"], old.get(number) or {}
+        was = old.get(number) or {}
+        # an approval covers the values the team saw: an edit since the last check voids it, and so does an
+        # approval given while requests.json had no hashes yet (nothing to compare with)
+        pending = "accepted" in labels and entry["state"] != "accepted" and issue["state"] == "open"
+        migrated = pending and bool(was) and "values_sha256" not in was
+        void = migrated or (pending and was.get("values_sha256") is not None
+                            and entry.get("values_sha256") != was["values_sha256"])
+        rows.append((issue, labels, entry, was, migrated, void))
+    # one dispatch per run, so the next does not replace a pending one; same choice as the publish drain step
+    chosen = next_accept(feed, issues, exclude={r[0]["number"] for r in rows if r[5]})
+    out = []
+    for issue, labels, entry, was, migrated, void in rows:
+        number, state = issue["number"], entry["state"]
         want = STATE_LABELS.get(state)  # None for accepted: the team's own label stays
         keep = {want}
         if state in CHECKED and was.get("state", state) != "check_failed":
@@ -234,17 +246,9 @@ def reconcile_actions(feed: dict, issues: list[dict], previous: dict | None) -> 
         add = [want] if want and want not in labels else []
         remove = [v for v in STATE_LABELS.values() if v not in keep and v in labels]
         close = state == "invalid" and issue["state"] == "open"
-        # an approval covers the values the team saw: an edit since the last check voids it, and so does an
-        # approval given while requests.json had no hashes yet (nothing to compare with)
-        pending = "accepted" in labels and state != "accepted" and issue["state"] == "open"
-        migrated = pending and bool(was) and "values_sha256" not in was
-        void = migrated or (pending and was.get("values_sha256") is not None
-                            and entry.get("values_sha256") != was["values_sha256"])
         if void:
             remove.append("accepted")
-        dispatch = (not void and not dispatched and issue["state"] == "open" and state in CHECKED
-                    and "accepted" in labels and "rebuild failed" not in labels)
-        dispatched = dispatched or dispatch  # one per run, so the next does not replace a pending one
+        dispatch = number == chosen
         comment = _comment(entry) if add else None
         if void:
             reason = APPROVED_BEFORE_HASHES if migrated else CHANGED_AFTER_APPROVAL

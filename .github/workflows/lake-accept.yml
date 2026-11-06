@@ -1,14 +1,16 @@
 name: Accept a lake request
 
-# Runs when someone adds `accepted` to a lake-request issue, or when the check job starts it again for an
-# accept that GitHub dropped from the queue. Three jobs, so that no job holds both a write token and the
+# Runs when someone adds `accepted` to a lake-request issue, or when it is started for a waiting accept: by the
+# check job (one per run, daily at the latest), by the drain step that ends every accept and refresh publish job,
+# or by itself after a stale base. Three jobs, so that no job holds both a write token and the
 # Earthdata login:
 #   gate     (read only)                     who approved, and do they have write, maintain or admin?
 #   rebuild  (earthdata, read only)          add the lake, rebuild, test, upload the data as an artifact
 #   publish  (write, no Earthdata, no build) check the artifact, commit, comment; reports every failure
 # Issue text is never put into a script; the issue number goes through env and must be digits.
-# A rebuild that was queued out before it started, or whose inputs changed on main meanwhile, is started
-# again (input `attempt`, at most 3 runs) instead of being reported as failed.
+# A rebuild whose inputs changed on main meanwhile is started again (input `attempt`, at most 3 runs) instead
+# of being reported as failed. A rebuild queued out of `sartale-rebuild` before it started ends quietly: it
+# neither starts itself again nor reports, and the drain step of a later publish starts it again.
 
 on:
   issues:
@@ -54,6 +56,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SENDER: ${{ github.event.sender.login }}
+          LABELED_AT: ${{ github.event.issue.updated_at }}
           EVENT: ${{ github.event_name }}
         run: |
           decide() { echo "decision=$1" >> "$GITHUB_OUTPUT"; echo "decision: $1"; }
@@ -75,8 +78,12 @@ jobs:
             approver="$(printf '%s\n' "$found" | sed -n 1p)"
             approved_at="$(printf '%s\n' "$found" | sed -n 2p)"
           else
-            approver="$SENDER"  # the account that just added the label; approved as of this run
-            approved_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            approver="$SENDER"         # the account that just added the label
+            approved_at="$LABELED_AT"  # when it did: the event's issue update time, not this run's clock
+            if ! printf '%s' "$approved_at" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'; then
+              echo "the label event carries no usable time" >&2
+              decide refuse-team; exit 0
+            fi
           fi
           if ! printf '%s' "$approver" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9-]*$'; then
             decide refuse-team; exit 0
@@ -194,11 +201,10 @@ jobs:
 
   publish:
     needs: [gate, rebuild]
-    # refusals, a finished rebuild, and every rebuild failure or timeout (reported from here)
+    # refusals, a finished rebuild, and every rebuild failure or timeout (reported from here). A rebuild that
+    # decided 'done' or 'skip' still held the rebuild queue, so publish runs for it too, but only to drain.
     if: >-
-      always() && (needs.gate.outputs.decision == 'refuse-team' ||
-      (needs.gate.outputs.decision == 'allowed' && needs.rebuild.outputs.decision != 'done' &&
-       needs.rebuild.outputs.decision != 'skip'))
+      always() && (needs.gate.outputs.decision == 'refuse-team' || needs.gate.outputs.decision == 'allowed')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -279,14 +285,11 @@ jobs:
           gh issue edit "$ISSUE" --remove-label accepted
 
       - name: Start the accept again, or give up after three tries
-        # the data were built on an older main, or the rebuild was queued out before it started
-        if: >-
-          always() && needs.gate.outputs.decision == 'allowed' &&
-          (steps.install.outputs.result == 'stale' ||
-           (needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true'))
+        # the data were built on an older main; only these stale-base outcomes count towards the three tries
+        id: again
+        if: always() && needs.gate.outputs.decision == 'allowed' && steps.install.outputs.result == 'stale'
         env:
           GH_TOKEN: ${{ github.token }}
-          STALE: ${{ steps.install.outputs.result == 'stale' }}
         run: |
           case "$ATTEMPT" in
             ''|*[!0-9]*) attempt=3 ;;  # not a number: do not start again
@@ -294,19 +297,23 @@ jobs:
           esac
           if [ "$attempt" -lt 3 ]; then
             gh workflow run lake-accept.yml --ref main -f "issue=$ISSUE" -f "attempt=$((attempt + 1))"
+            echo "restarted=true" >> "$GITHUB_OUTPUT"  # this run's own dispatch takes the queue: no drain
             echo "started try $((attempt + 1)) of 3"
             exit 0
           fi
-          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          if [ "$STALE" = true ]; then
-            printf '%s\n' "The data changed three times while this lake was being added. A team member can add the accepted label again." \
-              > "$RUNNER_TEMP/failed.md"
-          else
-            printf 'The rebuild failed; see %s. Nothing was published.\n' "$url" > "$RUNNER_TEMP/failed.md"
-          fi
+          printf '%s\n' "The data changed three times while this lake was being added. A team member can add the accepted label again." \
+            > "$RUNNER_TEMP/failed.md"
           gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/failed.md"
           gh issue edit "$ISSUE" --add-label "rebuild failed"
           gh issue edit "$ISSUE" --remove-label accepted
+
+      - name: Note an accept that never started
+        # queued out of sartale-rebuild by a newer accept or refresh: no comment, no label, no new run; the
+        # drain step of a later publish (or the daily check) starts it again
+        if: always() && needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true'
+        run: |
+          printf 'The rebuild for issue #%s was queued out before it started; a later run starts it again.\n' \
+            "$ISSUE" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit the new lake and start the deploy
         id: commit
@@ -353,3 +360,22 @@ jobs:
             # the team re-adds `accepted` to retry; until then no check run starts the accept again
             gh issue edit "$ISSUE" --remove-label accepted
           fi
+
+      - name: Start the next waiting accept
+        # at most one, the lowest-numbered (the check job's reconcile makes the same choice); never after a
+        # rebuild that was queued out (two such runs would keep pushing each other out) or after this run
+        # started itself again
+        if: >-
+          always() && steps.again.outputs.restarted != 'true' &&
+          !(needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          next="$(python3 .github/scripts/next_accept.py --feed app/public/data/requests.json --exclude "$ISSUE")" ||
+            { echo "::warning::could not list the waiting accepts; the daily check starts them"; exit 0; }
+          case "$next" in
+            none) echo "no accept is waiting"; exit 0 ;;
+            ''|*[!0-9]*) echo "::warning::next_accept.py printed no issue number"; exit 0 ;;
+          esac
+          gh workflow run lake-accept.yml --ref main -f "issue=$next" -f attempt=1
+          echo "started the accept for issue #$next"

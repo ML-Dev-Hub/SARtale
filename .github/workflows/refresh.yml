@@ -2,7 +2,8 @@ name: Weekly data refresh
 
 # Two jobs, so that no job holds both a write token and the Earthdata login:
 #   rebuild  (earthdata, read only)          rebuild and test every lake, upload the data as an artifact
-#   publish  (write, no Earthdata, no build) check the artifact, commit if the data changed; reports failures
+#   publish  (write, no Earthdata, no build) check the artifact, commit if the data changed; reports failures;
+#                                            then starts the next accept waiting in the rebuild queue, if any
 
 on:
   schedule:
@@ -60,8 +61,7 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        if: needs.rebuild.result == 'success'
-        with:
+        with:  # always: the drain step reads requests.json
           ref: main
           persist-credentials: false
 
@@ -118,3 +118,19 @@ jobs:
           printf 'The weekly refresh failed or timed out; see %s for the step that stopped it.\n' "$url" \
             >> "$GITHUB_STEP_SUMMARY"
           exit 1
+
+      - name: Start the next waiting accept
+        # at most one, the lowest-numbered (the check job's reconcile makes the same choice); never after a
+        # rebuild that was queued out, which would only push the waiting accept out of the queue again
+        if: always() && !(needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          next="$(python3 .github/scripts/next_accept.py --feed app/public/data/requests.json)" ||
+            { echo "::warning::could not list the waiting accepts; the daily check starts them"; exit 0; }
+          case "$next" in
+            none) echo "no accept is waiting"; exit 0 ;;
+            ''|*[!0-9]*) echo "::warning::next_accept.py printed no issue number"; exit 0 ;;
+          esac
+          gh workflow run lake-accept.yml --ref main -f "issue=$next" -f attempt=1
+          echo "started the accept for issue #$next"

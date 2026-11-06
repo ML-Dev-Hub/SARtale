@@ -450,7 +450,7 @@ def test_rebuild_jobs_mark_their_start():
         assert job["outputs"]["started"] == "${{ steps.started.outputs.started }}"
 
 
-def test_accept_starts_again_when_stale_or_never_started():
+def test_accept_starts_again_only_when_stale():
     doc = load(LAKE_ACCEPT)
     attempt = on_of(doc)["workflow_dispatch"]["inputs"]["attempt"]
     assert attempt["default"] == "1" and attempt["required"] is False
@@ -458,15 +458,94 @@ def test_accept_starts_again_when_stale_or_never_started():
     steps = doc["jobs"]["publish"]["steps"]
     install = next(s for s in steps if "data_artifact.py unpack" in (s.get("run") or ""))
     assert '6) echo "result=stale"' in install["run"]
-    again = next(s for s in steps if "gh workflow run lake-accept.yml" in (s.get("run") or ""))
-    assert again["if"].startswith("always()")
-    assert "steps.install.outputs.result == 'stale'" in again["if"] and UNSTARTED in again["if"]
+    again = next(s for s in steps if "attempt=$((attempt + 1))" in (s.get("run") or ""))
+    assert again["id"] == "again" and again["if"].startswith("always()")
+    assert "steps.install.outputs.result == 'stale'" in again["if"]
+    assert "cancelled" not in again["if"], "the three tries count stale bases only"
     assert '-f "issue=$ISSUE" -f "attempt=$((attempt + 1))"' in again["run"]
     assert "*[!0-9]*" in again["run"], "the attempt number must be digits"
+    assert 'echo "restarted=true" >> "$GITHUB_OUTPUT"' in again["run"]
     assert THREE_TIMES in again["run"] and '"rebuild failed"' in again["run"]
+    assert "The rebuild failed" not in again["run"], "giving up is only ever about stale data"
     (failed,) = failure_steps(steps)
     assert "steps.install.outputs.result != 'stale'" in failed["if"]
     assert f"!({UNSTARTED})" in failed["if"]
+
+
+def test_an_accept_that_never_started_ends_quietly():
+    steps = accept_jobs()["publish"]["steps"]
+    unstarted = [s for s in steps if UNSTARTED in str(s.get("if", ""))]
+    quiet = [s for s in unstarted if f"!({UNSTARTED})" not in s["if"]]
+    (note,) = quiet
+    assert "GH_TOKEN" not in (note.get("env") or {}) and "gh " not in note["run"]
+    assert "GITHUB_STEP_SUMMARY" in note["run"]
+    for s in unstarted:
+        if s is not note:
+            assert f"!({UNSTARTED})" in s["if"], f"{s.get('name')} must not run for a queued-out rebuild"
+    dispatching = [s for s in steps if "gh workflow run" in (s.get("run") or "")]
+    assert len(dispatching) == 2  # start this one again (stale), and the drain
+    for s in dispatching:
+        assert UNSTARTED not in s["if"] or f"!({UNSTARTED})" in s["if"]
+
+
+def drain_step(path):
+    steps = load(path)["jobs"]["publish"]["steps"]
+    return steps[-1], steps
+
+
+@pytest.mark.parametrize("path", (LAKE_ACCEPT, REFRESH), ids=lambda p: p.name)
+def test_publish_ends_by_starting_one_waiting_accept(path):
+    drain, steps = drain_step(path)
+    run = drain["run"]
+    assert drain["if"].startswith("always()") and f"!({UNSTARTED})" in drain["if"]
+    assert "python3 .github/scripts/next_accept.py --feed app/public/data/requests.json" in run
+    assert "GH_TOKEN" in drain["env"] and "secrets." not in yaml.safe_dump(drain)
+    assert run.count("gh workflow run") == 1, "at most one accept per run"
+    digits, dispatch = run.index("''|*[!0-9]*)"), run.index("gh workflow run")
+    assert digits < dispatch, "the issue number is checked as digits before it is used"
+    assert 'gh workflow run lake-accept.yml --ref main -f "issue=$next" -f attempt=1' in run
+    assert "${{" not in run
+    checkout = next(s for s in steps if str(s.get("uses", "")).startswith("actions/checkout@"))
+    assert "if" not in checkout, "the drain step reads requests.json from the checkout"
+
+
+def test_accept_drain_skips_its_own_issue_and_a_restart():
+    drain, _ = drain_step(LAKE_ACCEPT)
+    assert '--exclude "$ISSUE"' in drain["run"]
+    assert "steps.again.outputs.restarted != 'true'" in drain["if"]
+
+
+def test_publish_runs_for_every_allowed_rebuild():
+    # a rebuild that decided 'done' or 'skip' still held the queue: publish runs, but only the drain does work
+    publish = accept_jobs()["publish"]
+    assert publish["if"] == ("always() && (needs.gate.outputs.decision == 'refuse-team' || "
+                             "needs.gate.outputs.decision == 'allowed')")
+    for s in publish["steps"]:
+        if "commit-data.sh" in (s.get("run") or "") or "data_artifact.py" in (s.get("run") or ""):
+            assert "'ok'" in s["if"] or "decision == 'rebuild'" in s["if"]
+
+
+def test_daily_reconcile_needs_no_secrets():
+    doc = load(LAKE_REQUEST)
+    assert on_of(doc)["schedule"] == [{"cron": "17 4 * * *"}]
+    check = doc["jobs"]["check"]
+    assert check["if"].startswith("github.event_name == 'schedule' ||")
+    assert "environment" not in check and "secrets." not in yaml.safe_dump(check)
+    run = " ".join(s.get("run") or "" for s in check["steps"])
+    assert "lake-issues" in run and "apply-actions.sh" in run
+    (failed,) = failure_steps(check["steps"])
+    assert "''|*[!0-9]*)" in failed["run"], "the daily run has no issue number"
+
+
+def test_label_events_take_the_approval_time_from_the_event():
+    perm = next(s for s in accept_jobs()["gate"]["steps"] if checks_permission(s))
+    assert perm["env"]["LABELED_AT"] == "${{ github.event.issue.updated_at }}"
+    run = perm["run"]
+    other = run.index("else", run.index('if [ "$EVENT" = workflow_dispatch ]; then'))
+    branch = run[other:run.index("fi\n", run.index("decide refuse-team", other)) + 3]
+    assert 'approved_at="$LABELED_AT"' in branch and "date -u" not in run
+    assert "'^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'" in branch
+    assert "decide refuse-team; exit 0" in branch, "a missing or malformed time refuses the approval"
 
 
 def test_refresh_waits_for_next_week_when_stale_or_never_started():
@@ -488,13 +567,35 @@ def test_label_events_do_not_ask_the_events_api():
     other = run.index("else", branch)
     assert branch < run.index("approver.py") < other, "approver.py only for a dispatched run"
     assert run.count("approver.py") == 1
-    assert 'approver="$SENDER"' in run[other:] and "date -u +%Y-%m-%dT%H:%M:%SZ" in run[other:]
+    assert 'approver="$SENDER"' in run[other:] and 'approved_at="$LABELED_AT"' in run[other:]
     assert "^[A-Za-z0-9][A-Za-z0-9-]*$" in run, "the sender login is checked too"
 
 
 def test_rebuild_skips_an_issue_no_longer_waiting():
     add = next(s for s in accept_jobs()["rebuild"]["steps"] if "lake-issue-accept" in (s.get("run") or ""))
     assert "waiting.py" in add["run"] and "decide skip" in add["run"]
-    assert "'skip'" in accept_jobs()["publish"]["if"]
+    publish = accept_jobs()["publish"]
+    assert "needs.gate.outputs.decision == 'allowed'" in publish["if"], "a skip still drains the queue"
+    for s in publish["steps"][1:-1]:  # between the checkout and the drain, every step needs its own reason
+        assert "if" in s, s.get("name")
     migrated = "This request was approved before the new check existed. A team member must accept it again."
     assert migrated in LAKE_ACCEPT.read_text(encoding="utf-8")
+
+
+SINGLE_LINE_RUN = re.compile(r"^\s*(?:-\s+)?run:[ \t]+(?![|>])(\S.*)$")
+
+
+@pytest.mark.parametrize("path", WORKFLOWS + [REBUILD], ids=lambda p: p.name)
+def test_single_line_run_values_have_no_comment_marker(path):
+    # in a plain YAML scalar " #" starts a comment and silently cuts the command (see the round-3 commit bug)
+    for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        m = SINGLE_LINE_RUN.match(line)
+        if m:
+            assert " #" not in m.group(1), f"{path.name}:{n}: {line.strip()}"
+
+
+def test_single_line_run_pattern():
+    assert SINGLE_LINE_RUN.match('      - run: echo "a #b"')
+    assert SINGLE_LINE_RUN.match("        run: bash x.sh  # note").group(1) == "bash x.sh  # note"
+    assert not SINGLE_LINE_RUN.match("        run: |  # a block")
+    assert not SINGLE_LINE_RUN.match("        run: >-")
