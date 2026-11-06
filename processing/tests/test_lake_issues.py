@@ -555,7 +555,7 @@ def test_a_name_with_a_banned_phrase_is_invalid_and_never_reaches_requests_json(
 
 
 # exponent, digit-group underscore, Arabic-Indic and full-width digits: float() takes them, the app does not
-LOOSE_NUMBERS = ("3.62e1", "3_6.2", "٣٦.٢", "３６.２", "36.2e0°N")
+LOOSE_NUMBERS = ("3.62e1", "3_6.2", "٣٦.٢", "３６.２", "36.2e0°N", "36.2 °N")
 
 
 @pytest.mark.parametrize("bad", LOOSE_NUMBERS)

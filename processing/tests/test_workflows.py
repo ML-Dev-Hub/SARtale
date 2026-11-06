@@ -12,12 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS = sorted((ROOT / ".github" / "workflows").glob("*.y*ml"))
 FORM = ROOT / ".github" / "ISSUE_TEMPLATE" / "add-lake.yml"
 
-FORBIDDEN_IN_RUN = (
-    "github.event.issue.title",
-    "github.event.issue.body",
-    "github.event.comment",
-    "github.head_ref",
-)
+REBUILD_ACTION = ROOT / ".github" / "actions" / "rebuild" / "action.yml"
 
 
 def load(path):
@@ -32,18 +27,22 @@ def test_workflows_exist():
     assert WORKFLOWS, "no workflow files found"
 
 
-@pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
-def test_no_issue_text_in_run_scripts(path):
-    for job_name, job in jobs_of(load(path)):
-        for step in job.get("steps", []):
-            bodies = [step.get("run")]
-            if str(step.get("uses", "")).startswith("actions/github-script"):
-                bodies.append((step.get("with") or {}).get("script"))
-            for body in bodies:
-                if body is None:
-                    continue
-                for bad in FORBIDDEN_IN_RUN:
-                    assert bad not in body, f"{path.name}:{job_name} puts {bad} in a script"
+def script_steps(doc):
+    """(job name, step) for every step of a workflow, or of a composite action."""
+    jobs = doc.get("jobs") or {"composite": {"steps": (doc.get("runs") or {}).get("steps", [])}}
+    return [(name, step) for name, job in jobs.items() for step in job.get("steps", [])]
+
+
+@pytest.mark.parametrize("path", WORKFLOWS + [REBUILD_ACTION], ids=lambda p: p.name)
+def test_no_expression_in_run_scripts(path):
+    """No `${{ }}` at all in a script: every value, issue text or not, reaches it through `env:`."""
+    for job_name, step in script_steps(load(path)):
+        bodies = [step.get("run")]
+        if str(step.get("uses", "")).startswith("actions/github-script"):
+            bodies.append((step.get("with") or {}).get("script"))
+        for body in bodies:
+            if body is not None:
+                assert "${{" not in body, f"{path.name}:{job_name}:{step.get('name')} puts an expression in a script"
 
 
 @pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
@@ -362,8 +361,7 @@ def test_rebuild_action_order():
     for s in steps:
         if "run" in s:
             assert "shell" in s, "composite run steps need a shell"
-            for bad in FORBIDDEN_IN_RUN + ("secrets.",):
-                assert bad not in s["run"]
+            assert "${{" not in s["run"] and "secrets." not in s["run"]
 
 
 def test_no_allow_gate_fail():
