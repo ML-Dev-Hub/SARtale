@@ -177,7 +177,7 @@ def test_accept_checks_permission_before_rebuild():
     assert "github.event.sender" not in perm["run"]
     assert "approver.py" in perm["run"], "the approval time and a dispatched run's approver come from the events"
     assert "sleep 5" in perm["run"] and perm["run"].count("perm=\"$(lookup)\"") == 2, "one retry"
-    assert "refuse-team" in perm["run"] and "4) decide refuse-team" in perm["run"], "no valid approver: refuse"
+    assert "refuse-team" in perm["run"] and "4) decide refuse-lookup" in perm["run"], "no valid approver: cannot check"
     assert "environment" not in gate and not writes(gate, {})
     assert "secrets." not in yaml.safe_dump(gate)
     assert rebuild["needs"] == "gate" and rebuild["if"] == "needs.gate.outputs.decision == 'allowed'"
@@ -559,10 +559,10 @@ def test_label_events_take_the_approval_time_from_the_event():
     assert perm["env"]["LABELED_AT"] == "${{ github.event.issue.updated_at }}"
     run = perm["run"]
     other = run.index("else", run.index('if [ "$EVENT" = workflow_dispatch ]; then'))
-    branch = run[other:run.index("fi\n", run.index("decide refuse-team", other)) + 3]
+    branch = run[other:run.index("fi\n", run.index("decide refuse-lookup", other)) + 3]
     assert 'approved_at="$LABELED_AT"' in branch and "date -u" not in run
     assert "'^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'" in branch
-    assert "decide refuse-team; exit 0" in branch, "a missing or malformed time refuses the approval"
+    assert "decide refuse-lookup; exit 0" in branch, "a missing or malformed time: the check could not be made"
 
 
 def test_refresh_waits_for_next_week_when_stale_or_never_started():
@@ -683,3 +683,12 @@ def test_a_manual_run_creates_the_labels_and_reconciles_like_the_daily_run():
     assert "ensure-labels.sh" in check["steps"][labels]["run"] and "if" not in check["steps"][labels]
     assert not any("if" in s and "event_name" in str(s["if"]) for s in check["steps"]), "every step runs on dispatch"
 
+
+def test_only_a_confirmed_non_team_permission_gets_the_team_only_refusal():
+    """No usable time, no valid sender or a failed lookup are could-not-check cases, never a team refusal."""
+    perm = next(s for s in accept_jobs()["gate"]["steps"] if checks_permission(s))
+    run = perm["run"]
+    assert run.count("decide refuse-team") == 1, "only the permission answer can refuse someone"
+    team = run.index("decide refuse-team")
+    assert run.rindex('case "$perm" in', 0, team) < team, "inside the case on the looked-up permission"
+    assert run.count("decide refuse-lookup") == 4  # approver.py exit 4, bad time, bad sender, failed lookup
