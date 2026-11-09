@@ -24,6 +24,8 @@ export interface LakeSeriesPoint {
   area_km2: number | null;
   observable_share: number | null;
   excluded: string | null;
+  /** NISAR processing version (composite release ID) of the pass, e.g. "P05036" (absent in older builds). */
+  crid?: string;
 }
 
 export interface Lake {
@@ -103,7 +105,10 @@ export interface LakesFile {
   version: number;
   built: string;
   notes: string;
+  /** Every NISAR processing version used, sorted and joined with ", ", e.g. "P05023, P05036". */
   crid: string;
+  /** CMR collections the passes came from (absent in older builds). */
+  collections?: string[];
   cloud_window: [string, string];
   constants: {
     drop_db: number;
@@ -265,6 +270,13 @@ export function methodLimits(file: LakesFile): string[] {
   return out.filter((t) => !!t);
 }
 
+/** "processing version P05023", or "processing versions P05023 and P05036" when lakes.json lists more than one. */
+export function processingVersions(crid: string): string {
+  const ids = crid.split(",").map((s) => s.trim()).filter((s) => s);
+  if (ids.length <= 1) return `processing version ${ids[0] ?? "unknown"}`;
+  return `processing versions ${ids.slice(0, -1).join(", ")} and ${ids[ids.length - 1]}`;
+}
+
 /** The numbers and dates that copy quotes, taken from lakes.json so the words cannot drift from the data. */
 export function lakeTokens(file: LakesFile): Record<string, string> {
   const c = file.constants;
@@ -283,6 +295,7 @@ export function lakeTokens(file: LakesFile): Record<string, string> {
     cloud_lakes: String(file.lakes.filter((l) => l.cloud_window_looks > 0).length),
     lake_count: String(file.lakes.length),
     crid: file.crid,
+    processing_versions: processingVersions(file.crid),
     notes: file.notes,
     iou_range: iouRange(file.checks) ?? "no IoU yet",
   };

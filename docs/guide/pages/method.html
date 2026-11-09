@@ -2,7 +2,7 @@
 <p class="lede">SARtale uses plain statistics on radar backscatter: a darkness rule, a two-direction shadow rule and a change test against each lake's own noise. No AI model runs in the pipeline or the app.</p>
 
 <h2>The data</h2>
-<p>SARtale reads NASA's NISAR Level-2 GCOV product (geocoded, polarimetric covariance, about 10 m pixels) from the ASF archive. All passes in this build are from the provisional release, CRID <code>P05023</code>, which NASA has not validated and will reprocess. It uses two polarisations: HH (sent and received horizontally) and HV (sent horizontally, received vertically).</p>
+<p>SARtale reads NASA's NISAR Level-2 GCOV product (geocoded, polarimetric covariance, about 10 m pixels) from the ASF archive. Passes up to 21 Oct 2026 are from the provisional release, CRID <code>P05023</code>, which NASA has not validated and will reprocess. Later passes are NASA's standard GCOV product, CRID <code>P05036</code>; we have no statement that it is validated. Each pass keeps its own CRID, and a lake whose status track mixes the two carries a limit, because a calibration change between them can shift areas. It uses two polarisations: HH (sent and received horizontally) and HV (sent horizontally, received vertically).</p>
 
 <h2>Six steps, per lake and per pass</h2>
 <ol class="steps">

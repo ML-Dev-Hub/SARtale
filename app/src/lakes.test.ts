@@ -1,8 +1,20 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { fixtureLakes } from "./fixtures";
-import { loadLakes, methodLimits, opticalCheckSentence, sortLakes, statusSentence, STATUS_ORDER } from "./lakes";
+import { lakeTokens, loadLakes, methodLimits, opticalCheckSentence, processingVersions, sortLakes, statusSentence, STATUS_ORDER } from "./lakes";
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("processingVersions", () => {
+  test("names one processing version, or several joined with and", () => {
+    expect(processingVersions("P05023")).toBe("processing version P05023");
+    expect(processingVersions("P05023, P05036")).toBe("processing versions P05023 and P05036");
+    expect(processingVersions("P05023, P05036, P05040")).toBe("processing versions P05023, P05036 and P05040");
+  });
+
+  test("is the token the copy quotes", () => {
+    expect(lakeTokens({ ...fixtureLakes, crid: "P05023, P05036" }).processing_versions).toBe("processing versions P05023 and P05036");
+  });
+});
 
 describe("loadLakes", () => {
   test("test_loadLakes_returns_null_on_404", async () => {

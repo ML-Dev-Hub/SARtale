@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import lakesJson from "../public/data/lakes.json";
 import { findBannedClaims } from "./content";
+import { MATURITY } from "./app";
 import type { LakesFile } from "./lakes";
 
 const lakes = lakesJson as unknown as LakesFile;
@@ -16,8 +17,14 @@ describe("the data the app ships (app/public/data)", () => {
     expect(dataFiles.sort()).toEqual(["lakes.json", "requests.json", ...images].sort());
   });
 
-  test("is NISAR's provisional release, with the cloud window and the method constants", () => {
-    expect(lakes.crid).toBe("P05023");
+  test("names its NISAR processing versions and collections, with the cloud window and the method constants", () => {
+    // every CRID used, sorted and comma-joined; the provisional release (P05023) is in every build that keeps June
+    expect(lakes.crid).toMatch(/^P\d{5}(, P\d{5})*$/);
+    expect(lakes.crid.split(", ")).toContain("P05023");
+    const crids = new Set(lakes.lakes.flatMap((l) => l.series.map((p) => p.crid)));
+    expect([...crids].sort().join(", ")).toBe(lakes.crid);
+    expect(lakes.collections).toContain("NISAR_L2_GCOV_PROVISIONAL_V1");
+    expect(MATURITY).toBe("Provisional NISAR data"); // the label stays while any provisional pass is used
     expect(lakes.cloud_window).toEqual(["2026-06-17", "2026-08-04"]);
     expect(lakes.constants.change_factor).toBeGreaterThan(1);
     expect(lakes.lakes.length).toBeGreaterThan(0);

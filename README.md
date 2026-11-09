@@ -98,7 +98,7 @@ On a public repository GitHub pauses scheduled workflows after 60 days without a
 
 ## Limits
 
-- **Indicative screening on provisional data.** NASA's provisional GCOV product (CRID `P05023`) is not validated and will be reprocessed. A status is not a measure of volume or hazard.
+- **Indicative screening on provisional data.** Passes up to 21 Oct 2026 are NASA's provisional GCOV release (CRID `P05023`), which is not validated and will be reprocessed. Later passes are NASA's standard GCOV product (CRID `P05036`); we have no statement that it is validated, and a lake whose track spans both carries a limit because a calibration change can shift areas. A status is not a measure of volume or hazard.
 - **Optical agreement is poor.** On clear days, radar and Sentinel-2 water overlapped poorly at all four lakes tested (IoU 0.013 to 0.09). Neither is a clean reference.
 - **Zones are approximate.** Attabad is measured in its OpenStreetMap outline; the others in a 1 km circle around a published coordinate. Shadowed shores are under-counted.
 - **Not a warning service.** Official warnings come from PMD, NDMA, GBDMA and PDMA.

@@ -146,6 +146,18 @@ describe("Lake Watch", () => {
     expect(rows.map((r) => r[0])).toEqual(["1 Jul 2026", "13 Jul 2026", "25 Jul 2026"]);
     expect(rows.map((r) => r[4])).toEqual(["Too little of the zone seen", "Left out: window too bright", "Yes"]);
     expect(rows[1][2]).toBe("–");
+    expect(rows.map((r) => r[5])).toEqual(["–", "–", "–"]); // an older build has no CRID per pass
+  });
+
+  test("test_the_readings_table_names_each_pass_processing_version", () => {
+    const pt = (date: string, crid: string) => ({ date, track: "156A", area_km2: 1, observable_share: 1, excluded: null, crid });
+    const lake: Lake = { ...fixtureLakes.lakes[2], series: [pt("2026-10-11", "P05023"), pt("2026-11-04", "P05036")] };
+    const { root, view } = setup({ ...fixtureLakes, crid: "P05023, P05036", lakes: [lake] });
+    view.select(lake.id);
+    const head = [...root.querySelectorAll('[data-role="lw-readings"] thead th')].map((th) => th.textContent);
+    expect(head[5]).toBe("Version");
+    const rows = [...root.querySelectorAll('[data-role="lw-readings"] tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent));
+    expect(rows.map((r) => r[5])).toEqual(["P05023", "P05036"]);
   });
 
   test("test_a_check_note_shows_as_a_line_and_does_not_break_the_panel", () => {

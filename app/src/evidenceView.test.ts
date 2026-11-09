@@ -49,6 +49,18 @@ describe("How we know", () => {
     expect(root.querySelector(".evidence-title")!.textContent).toBe("How we know");
   });
 
+  test("a build with two processing versions names both, and says which part is provisional", () => {
+    const text = open({ ...realLakes, crid: "P05023, P05036" }).text;
+    expect(text).toContain("this build uses processing versions P05023 and P05036");
+    expect(text).toContain("from 17 June 2026, processing versions P05023 and P05036, read as a 6 km window");
+    expect(text).toContain("Passes up to 21 Oct 2026 are the provisional release (P05023)");
+    expect(text).toContain("standard GCOV product (P05036)");
+    expect(text).not.toMatch(/processing version P05023, P05036/);
+    expect(text).not.toMatch(/\bvalidated standard\b|standard product is validated/i);
+    const one = open({ ...realLakes, crid: "P05023" }).text;
+    expect(one).toContain("this build uses processing version P05023.");
+  });
+
   test("the constants are filled from lakes.json, not typed in", () => {
     const t = lakeTokens(realLakes);
     const c = realLakes.constants;
