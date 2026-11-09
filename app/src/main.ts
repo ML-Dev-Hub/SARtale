@@ -1,7 +1,7 @@
 import "./styles.css";
 import { createUplotLakeChart } from "./chart";
 import { createLakeLocator } from "./lakeLocator";
-import { printBrief } from "./lakeBrief";
+import { printLatestBrief } from "./lakeBrief";
 import { loadRequests } from "./lakeRequests";
 import { loadLakes } from "./lakes";
 import { mountOrShowError } from "./startup";
@@ -15,6 +15,8 @@ void Promise.all([loadLakes("data/lakes.json"), loadRequests()]).then(([lakes, r
     createLakeChart: createUplotLakeChart,
     createLakeLocator,
     requests,
-    onLakeBrief: (lake) => lakes && printBrief(lake, lakes),
+    onLakeBrief: (lake) => {
+      if (lakes) void printLatestBrief(lake, lakes);
+    },
   }),
 );

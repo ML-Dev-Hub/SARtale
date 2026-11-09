@@ -2,7 +2,8 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { findBannedClaims } from "./content";
 import { fixtureLakes } from "./fixtures";
-import { briefHtml, printBrief } from "./lakeBrief";
+import { briefHtml, dataLine, printBrief, printLatestBrief } from "./lakeBrief";
+import type { LakesFile } from "./lakes";
 import type { Lake, LakeSeriesPoint } from "./lakes";
 
 const NOW = new Date("2026-11-02T10:00:00Z");
@@ -21,7 +22,7 @@ afterEach(() => {
 describe("lake brief", () => {
   test("test_brief_has_footer_and_built_date", () => {
     const html = briefHtml(lakeOf(), fixtureLakes, NOW);
-    expect(text(html)).toContain("Indicative screening from provisional NISAR data. Not an official warning; official warnings come from PMD, NDMA, GBDMA and PDMA. Built 2026-11-02T00:00:00Z.");
+    expect(text(html)).toContain("Indicative screening from NISAR data (processing version P05023). Not an official warning; official warnings come from PMD, NDMA, GBDMA and PDMA. Built 2026-11-02T00:00:00Z.");
     expect(html).toContain("Fixture stable");
     expect(html).toContain("Coordinates");
   });
@@ -159,5 +160,43 @@ describe("brief check notes", () => {
     const lake = fixtureLakes.lakes[2];
     const html = briefHtml(lake, { ...fixtureLakes, checks: [], check_notes: [{ lake: lake.id, note: "no clear <scene>" }] }, new Date(2026, 10, 5));
     expect(html).toContain("Sentinel-2 check: no clear &lt;scene&gt;.");
+  });
+});
+
+describe("brief freshness", () => {
+  test("states the newest pass for the lake and when the data were built", () => {
+    const series = [pass("2026-10-11", 2.0, 0.7), pass("2026-11-04", 2.1, 0.7), pass("2026-10-28", 2.2, 0.7, null, "055A")];
+    const file = { ...fixtureLakes, built: "2026-11-09T14:55:16Z" } as LakesFile;
+    expect(dataLine(lakeOf({ series }), file)).toBe("Data: newest NISAR pass for this lake 4 Nov 2026; data built 9 Nov 2026.");
+    expect(text(briefHtml(lakeOf({ series }), file, NOW))).toContain("newest NISAR pass for this lake 4 Nov 2026");
+    expect(dataLine(lakeOf({ series: [] }), file)).toContain("none yet");
+  });
+
+  test("lists each pass's processing version", () => {
+    const series = [{ ...pass("2026-11-04", 2.1, 0.7), crid: "P05036" }, { ...pass("2026-10-11", 2.0, 0.7), crid: "P05023" }];
+    const t = text(briefHtml(lakeOf({ series }), fixtureLakes, NOW));
+    expect(t).toContain("Processing version");
+    expect(t).toContain("P05036");
+    expect(t).toContain("P05023");
+  });
+
+  test("prints from the newest data when the server has it", async () => {
+    const win = { document, print: vi.fn() } as unknown as Window;
+    const old = lakeOf();
+    const newer = { ...old, series: [pass("2026-11-04", 9.999, 0.7)] };
+    const fresh = { ...fixtureLakes, built: "2026-11-09T00:00:00Z", lakes: [newer] } as LakesFile;
+    await printLatestBrief(old, fixtureLakes, async () => fresh, win);
+    expect(win.print).toHaveBeenCalledOnce();
+    expect(document.querySelector(".lake-brief")?.textContent).toContain("9.999");
+  });
+
+  test("falls back to the loaded data when the server cannot be reached or lacks the lake", async () => {
+    const win = { document, print: vi.fn() } as unknown as Window;
+    const old = lakeOf();
+    await printLatestBrief(old, fixtureLakes, async () => null, win);
+    expect(document.querySelector(".lake-brief h1")?.textContent).toBe(old.name);
+    await printLatestBrief(old, fixtureLakes, async () => ({ ...fixtureLakes, lakes: [] }) as LakesFile, win);
+    expect(document.querySelectorAll(".lake-brief").length).toBe(1);
+    expect(win.print).toHaveBeenCalledTimes(2);
   });
 });

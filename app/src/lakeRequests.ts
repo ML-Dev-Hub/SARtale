@@ -70,7 +70,7 @@ function isRequest(x: unknown): x is LakeRequest {
 /** Reads requests.json; any failure or unexpected shape is an empty list. */
 export async function loadRequests(url = "data/requests.json", fetchFn: typeof fetch = (...a) => fetch(...a)): Promise<LakeRequest[]> {
   try {
-    const res = await fetchFn(url);
+    const res = await fetchFn(url, { cache: "no-cache" });
     if (!res.ok) return [];
     const json: unknown = await res.json();
     const list = json && typeof json === "object" ? (json as { requests?: unknown }).requests : null;
