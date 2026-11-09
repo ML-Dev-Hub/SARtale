@@ -15,14 +15,19 @@ Lake Watch shows NISAR radar data labelled **Provisional**. `app/public/data/lak
 
 ## Lake locations and outlines
 
+A location check on 10 Nov 2026 compared every register point with Sentinel-2 imagery of summer 2026, OpenStreetMap
+and HMAGLOFDB. Ghulkin (the zone measured the Hunza River), Batura (no lake), Yarkhun (wet snow and glacier ice) and
+Bindo Gol (no lake at the point) were dropped from the register. Shisper and Khurdopin are kept as sites with no lake
+now; Rogheli is kept as a lake not confirmed in 2026 imagery.
+
 | Item | Use | Licence or terms | Access date |
 |---|---|---|---|
-| OpenStreetMap way 60065056, "Attabad lake" (`processing/outlines/attabad_osm.geojson`) | Attabad's lake outline, buffered 200 m. 7.2 km² in total, 72% of it inside the 6 km radar window | © OpenStreetMap contributors, ODbL 1.0 | 2026-11-04 |
-| HMAGLOFDB (https://github.com/fidelsteiner/HMAGLOFDB) | Coordinates of Rogheli, Yarkhun, Shazore and Bindo Gol, each with the event date recorded in `processing/lakes_in.json` | CC0 1.0 Universal (read from the repository's `LICENSE` file) | 2026-11-02 |
-| Shrestha et al. 2023, ESSD 15:3941 | Table 3 coordinates for Khurdopin, Ghulkin, Karambar and Batura | CC BY 4.0 (stated on the article page). Attribution required | 2026-11-02 |
-| Muhammad et al. 2021, doi 10.1080/19475705.2021.1975833 | The Shisper map frame (36°21′–36°22′ N, 74°34′–74°36′ E, Fig. 2), used to place the Shisper search circle | Journal licence: terms not confirmed. Cited, not redistributed | 2026-11-02 |
-| Passu event table, doi 10.1016/j.rcar.2025.03.005 | Coordinate for Passu lake | Journal licence: terms not confirmed. Cited, not redistributed | 2026-11-02 |
-| Attabad point coordinate | Chosen by the team on 2 Nov 2026 from where the lake shows in NISAR passes | Part of this repository, Apache License 2.0 | Not applicable |
+| OpenStreetMap way 60065056, "Attabad lake" (`processing/outlines/attabad_osm.geojson`) | Attabad's lake outline, buffered 200 m. 7.2 km² in total; only the part inside the 6 km radar window is counted. Attabad's register point is a point inside this outline | © OpenStreetMap contributors, ODbL 1.0 | 2026-11-04 (outline), 2026-11-10 (point) |
+| OpenStreetMap way 360957778, "Passu lake" (`processing/outlines/passu_osm.geojson`) | Passu's lake outline, buffered 200 m | © OpenStreetMap contributors, ODbL 1.0 | 2026-11-10 |
+| OpenStreetMap way 349316277, an unnamed lake at Shazore (`processing/outlines/shazore_osm.geojson`) | Shazore's lake outline, buffered 200 m | © OpenStreetMap contributors, ODbL 1.0 | 2026-11-10 |
+| HMAGLOFDB v1.3.0 (Zenodo 18257243; https://github.com/fidelsteiner/HMAGLOFDB), the dataset of Shrestha et al. 2023, ESSD 15:3941 | Coordinates of Khurdopin (lake point), Karambar (lake GL074079E36622N, with a 300 m search circle on the terminus pond), Rogheli and Shazore, and the Shisper lake point cited beside the Sentinel-2 position | CC0 1.0 Universal (read from the repository's `LICENSE` file) | 2026-11-02, 2026-11-10 |
+| Sentinel-2 L2A, via Earth Search (Element 84) | The Shisper basin position (water centroids on 25 May 2020 and 5 Apr 2022), and the no-lake and not-confirmed notes for Shisper, Khurdopin and Rogheli (scenes of Jul to Sep 2026) | Copernicus Sentinel data terms, as above | 2026-11-10 |
+| Passu event table, doi 10.1016/j.rcar.2025.03.005 | Coordinate for Passu lake (within 50 m of the HMAGLOFDB point) | Journal licence: terms not confirmed. Cited, not redistributed | 2026-11-02 |
 
 ## Context and quotes
 
