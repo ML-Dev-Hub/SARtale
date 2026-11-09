@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from sartale.lake_catalog import Pass, coverage_report, search_lake_passes, select_lake_passes
-from sartale.lakebuild import attabad_gate, build_lakes
+from sartale.lakebuild import PASSES_JSON, attabad_gate, build_lakes, read_listed, unlisted_windows
 from sartale.lakecheck import check_lake
 from sartale.lake_requests import RequestError
 from sartale.lakes import load_lakes
@@ -128,6 +128,15 @@ def cmd_lakes_build(args) -> None:
     built = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     checks_path = Path(args.checks)
     checks = json.loads(checks_path.read_text(encoding="utf-8")) if checks_path.is_file() else []
+    listed = read_listed(Path(args.cache) / PASSES_JSON)
+    if listed is None:
+        print(f"no {Path(args.cache) / PASSES_JSON}: run lakes-search first (the build uses only the passes it lists)",
+              file=sys.stderr)
+        sys.exit(1)
+    for lake in lakes:
+        gone = unlisted_windows(Path(args.cache) / lake.id, listed.get(lake.id, set()))
+        if gone:
+            print(f"{lake.id}: ignoring {len(gone)} cached window(s) the catalogue no longer lists: {', '.join(gone)}")
     doc = build_lakes(lakes, Path(args.cache), out, built, checks)
     write_json_atomic(out / "lakes.json", doc)
     for gone in prune_lake_images(out, doc):

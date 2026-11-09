@@ -66,7 +66,7 @@
 <div class="table-wrap"><table>
   <thead><tr><th>Key</th><th>Contents</th></tr></thead>
   <tbody>
-    <tr><td><code>status</code></td><td><code>status</code>, <code>track</code>, <code>latest_date</code>, <code>looks</code>, <code>change_km2</code>, <code>noise_km2</code> and a plain <code>reason</code></td></tr>
+    <tr><td><code>status</code></td><td><code>status</code>, <code>track</code>, <code>latest_date</code>, <code>looks</code>, <code>change_km2</code>, <code>noise_km2</code>, a plain <code>reason</code>, and <code>new_crid</code> (for Change not confirmed yet, the new processing version the change waits on; otherwise null)</td></tr>
     <tr><td><code>series</code></td><td>Every pass: <code>date</code>, <code>track</code>, <code>area_km2</code>, <code>observable_share</code>, <code>excluded</code> (null, or the reason it was left out) and <code>crid</code> (the pass's processing version)</td></tr>
     <tr><td><code>excluded</code></td><td>The passes left out, as <code>{"pass", "reason"}</code></td></tr>
     <tr><td><code>images</code></td><td>Paths, relative to <code>data/</code>, of <code>latest_hh</code> and <code>water</code></td></tr>

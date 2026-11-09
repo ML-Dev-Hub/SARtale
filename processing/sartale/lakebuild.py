@@ -67,14 +67,46 @@ def _load_outline(lake: Lake):
     return f["geometry"] if f else None
 
 
-def _read_cache(lake_dir: Path, limits: list[str]) -> list[dict]:
+PASSES_JSON = "passes.json"  # written by lakes-search into the cache folder
+
+
+def read_listed(passes_json: Path) -> dict[str, set[tuple[str, str, str]]] | None:
+    """Per lake id, the (date, track key, CRID) of every pass the last lakes-search listed. None if there is no
+    passes.json. Only these passes are built: a cached window of a pass the catalogue no longer lists is ignored
+    (kept on disk), so a build from a long-lived cache equals a build from a fresh one."""
+    p = Path(passes_json)
+    if not p.is_file():
+        return None
+    out: dict[str, set[tuple[str, str, str]]] = {}
+    for lake_id, by_key in json.loads(p.read_text(encoding="utf-8")).get("lakes", {}).items():
+        out[lake_id] = {(row["date"], f"{row['track']}{row['direction']}", row["crid"])
+                        for rows in by_key.values() for row in rows}
+    return out
+
+
+def unlisted_windows(lake_dir: Path, listed: set[tuple[str, str, str]] | None) -> list[str]:
+    """Names of the cached windows in `lake_dir` that `listed` leaves out (empty when there is no list)."""
+    if listed is None or not Path(lake_dir).is_dir():
+        return []
+    out = []
+    for f in sorted(Path(lake_dir).glob("*.npz")):
+        parts = f.stem.split("_")
+        if len(parts) == 3 and all(parts) and tuple(parts) not in listed:
+            out.append(f.name)
+    return out
+
+
+def _read_cache(lake_dir: Path, limits: list[str], listed: set[tuple[str, str, str]] | None = None) -> list[dict]:
     """Every cached window `<date>_<key>_<CRID>.npz`, whatever its CRID. A file whose name does not have those three
-    parts is skipped. When one date and track is cached under more than one CRID (a pass reprocessed into a
-    newer release), the latest CRID is used and the others are noted."""
+    parts is skipped, and so is one whose (date, key, CRID) is not in `listed` (when a list is given: the passes
+    the catalogue lists now). When one date and track is cached under more than one CRID (a pass reprocessed into
+    a newer release), the latest CRID is used and the others are noted."""
     files: dict[tuple[str, str], dict[str, Path]] = {}
     for f in sorted(lake_dir.glob("*.npz")):
         parts = f.stem.split("_")
         if len(parts) != 3 or not all(parts):
+            continue
+        if listed is not None and tuple(parts) not in listed:
             continue
         date, key, crid = parts
         files.setdefault((date, key), {})[crid] = f
@@ -282,7 +314,7 @@ def pictured_pass(series: list[SeriesPoint], track: str | None) -> str | None:
 
 def _no_looks() -> dict:
     return {"status": "Not enough NISAR looks yet", "track": None, "latest_date": None, "looks": 0,
-            "change_km2": None, "noise_km2": None, "reason": NO_LOOKS_REASON}
+            "change_km2": None, "noise_km2": None, "reason": NO_LOOKS_REASON, "new_crid": None}
 
 
 def _empty(entry: dict, limits: list[str]) -> dict:
@@ -291,7 +323,9 @@ def _empty(entry: dict, limits: list[str]) -> dict:
             "bounds": None}
 
 
-def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str, str] | None = None) -> dict:
+def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str, str] | None = None,
+               listed: set[tuple[str, str, str]] | None = None) -> dict:
+    """`listed`: the (date, key, CRID) of the passes lakes-search listed for this lake; None reads every window."""
     limits: list[str] = []
     feature = _outline_feature(lake)
     outline = feature["geometry"] if feature else None
@@ -307,7 +341,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
     lake_dir = Path(cache_dir) / lake.id
     if not lake_dir.is_dir():
         return _empty(entry, limits + ["no NISAR windows fetched yet"])
-    raw = _read_cache(lake_dir, limits)
+    raw = _read_cache(lake_dir, limits, listed)
     passes, xs, ys = _align(raw, limits, lake) if raw else ([], None, None)
     if not passes:
         return _empty(entry, limits + ["no usable NISAR window"])
@@ -381,10 +415,13 @@ def attabad_gate(doc: dict) -> dict:
 def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, checks: list[dict] | None = None,
                 collections: dict[str, str] | None = None) -> dict:
     """`checks` are the Sentinel-2 cross-check rows from `lakes-check`, merged in as the `checks` block.
-    `collections` maps CRID -> CMR short name (default: read from `cache_dir`/passes.json)."""
+    `collections` maps CRID -> CMR short name (default: read from `cache_dir`/passes.json). Only the passes that
+    `cache_dir`/passes.json lists are built; without that file every cached window is read."""
     if collections is None:
-        collections = read_collections(Path(cache_dir) / "passes.json")
-    built_lakes = [build_lake(lake, Path(cache_dir), Path(out_dir), collections) for lake in lakes]
+        collections = read_collections(Path(cache_dir) / PASSES_JSON)
+    listed = read_listed(Path(cache_dir) / PASSES_JSON)
+    built_lakes = [build_lake(lake, Path(cache_dir), Path(out_dir), collections,
+                              None if listed is None else listed.get(lake.id, set())) for lake in lakes]
     crids = sorted({p["crid"] for lk in built_lakes for p in lk["series"]})
     return {
         "version": 1, "built": built, "notes": NOTES,
@@ -413,7 +450,9 @@ def radar_water_masks(lake: Lake, cache_dir: Path, pass_id: str) -> dict:
     limits: list[str] = []
     outline = _load_outline(lake)
     lake_dir = Path(cache_dir) / lake.id
-    raw = _read_cache(lake_dir, limits) if lake_dir.is_dir() else []
+    listed = read_listed(Path(cache_dir) / PASSES_JSON)
+    mine = None if listed is None else listed.get(lake.id, set())
+    raw = _read_cache(lake_dir, limits, mine) if lake_dir.is_dir() else []
     passes, xs, ys = _align(raw, limits, lake) if raw else ([], None, None)
     if pass_id not in {p["id"] for p in passes}:
         raise KeyError(f"{lake.id}: no usable cached pass {pass_id}")

@@ -129,15 +129,16 @@ a:hover { color: #b8ecfa; }
 .lw-status-growing { border-color: var(--warm); color: var(--warm); }
 .lw-status-shrinking { border-color: #5b8cff; color: #c4d3ff; }
 .lw-status-stable { border-color: var(--accent); color: var(--accent); }
-.lw-status-not-observable, .lw-status-not-enough-nisar-looks-yet, .lw-status-not-seen-this-pass { border-style: dashed; color: var(--muted); }
+.lw-status-not-observable, .lw-status-not-enough-nisar-looks-yet, .lw-status-not-seen-this-pass, .lw-status-change-not-confirmed-yet { border-style: dashed; color: var(--muted); }
 .lw-locator { height: 260px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); color: var(--muted); font-size: 0.88rem; }
 .lw-town { color: var(--muted); font-size: 0.72rem; pointer-events: none; padding-top: 3px; text-shadow: 0 0 3px var(--ground); }
 .site-marker { width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 3px solid var(--ground); background: var(--muted); box-shadow: 0 0 0 2px var(--muted); cursor: pointer; }
-/* Pins carry the status colour the pills use: Stable cyan, Growing amber, Shrinking blue, anything not observed a hollow muted ring. */
+/* Pins carry the status colour the pills use: Stable cyan, Growing amber, Shrinking blue; anything not observed or
+   not confirmed (Change not confirmed yet) a hollow muted ring, never the change colours. */
 .lw-marker[data-status="stable"] { background: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .lw-marker[data-status="growing"] { background: var(--warm); box-shadow: 0 0 0 2px var(--warm); }
 .lw-marker[data-status="shrinking"] { background: #5b8cff; box-shadow: 0 0 0 2px #5b8cff; }
-.lw-marker[data-status="not-observable"], .lw-marker[data-status="not-enough-nisar-looks-yet"], .lw-marker[data-status="not-seen-this-pass"] { background: transparent; border-color: var(--muted); box-shadow: none; }
+.lw-marker[data-status="not-observable"], .lw-marker[data-status="not-enough-nisar-looks-yet"], .lw-marker[data-status="not-seen-this-pass"], .lw-marker[data-status="change-not-confirmed-yet"] { background: transparent; border-color: var(--muted); box-shadow: none; }
 .lw-marker[data-control="true"] { border-style: dashed; }
 /* Selection is a white ring around the pin, never a colour, so it cannot be read as a status. */
 .lw-marker[data-selected] { box-shadow: 0 0 0 2px var(--ground), 0 0 0 5px #fff; }

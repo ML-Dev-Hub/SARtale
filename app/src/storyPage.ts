@@ -159,7 +159,8 @@ function eyebrow(label: string): HTMLElement {
   return text("p", "sp-eyebrow", label);
 }
 
-function statusClass(status: string): string {
+/** Only a confirmed change gets the change colour; "Change not confirmed yet" and the unobserved statuses are other. */
+export function statusClass(status: string): string {
   if (status === "Stable") return "sp-st-stable";
   if (status === "Growing" || status === "Shrinking") return "sp-st-change";
   return "sp-st-other";

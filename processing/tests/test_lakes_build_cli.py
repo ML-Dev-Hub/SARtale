@@ -54,6 +54,7 @@ def _cli(tmp_path, monkeypatch, gate_pass, extra=()):
     keep = out / "lakes" / "attabad"
     keep.mkdir(parents=True)
     (keep / "latest_hh.webp").write_bytes(b"k")
+    (tmp_path / "passes.json").write_text(json.dumps({"lakes": {}}), encoding="utf-8")
     monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: [])
     monkeypatch.setattr(run_pipeline, "build_lakes", lambda *a, **k: DOC)
     monkeypatch.setattr(run_pipeline, "attabad_gate", lambda d: {
@@ -83,6 +84,15 @@ def test_lakes_build_prunes_stale_images_only_under_lakes(tmp_path, monkeypatch)
     assert not stale.exists()
     assert (keep / "latest_hh.webp").exists() and other.exists()
     assert json.loads((out / "lakes.json").read_text(encoding="utf-8"))["lakes"][0]["id"] == "attabad"
+
+
+def test_lakes_build_needs_the_search_manifest(tmp_path, monkeypatch, capsys):
+    argv, out, _, _ = _cli(tmp_path, monkeypatch, gate_pass=True)
+    (tmp_path / "passes.json").unlink()
+    with pytest.raises(SystemExit) as e:
+        run_pipeline.main(argv)
+    assert e.value.code == 1 and "run lakes-search first" in capsys.readouterr().err
+    assert not (out / "lakes.json").exists()
 
 
 def test_prune_keeps_referenced_images(tmp_path):

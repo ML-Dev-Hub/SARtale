@@ -4,6 +4,7 @@ export type LakeStatusName =
   | "Growing"
   | "Stable"
   | "Shrinking"
+  | "Change not confirmed yet"
   | "Not seen this pass"
   | "Not observable"
   | "Not enough NISAR looks yet";
@@ -16,6 +17,8 @@ export interface LakeStatus {
   change_km2: number | null;
   noise_km2: number | null;
   reason: string;
+  /** For "Change not confirmed yet": the processing version of the latest pass that its baseline lacks. */
+  new_crid?: string | null;
 }
 
 export interface LakeSeriesPoint {
@@ -129,6 +132,7 @@ export interface LakesFile {
 export const STATUS_ORDER: LakeStatusName[] = [
   "Growing",
   "Shrinking",
+  "Change not confirmed yet",
   "Not seen this pass",
   "Stable",
   "Not enough NISAR looks yet",
@@ -186,7 +190,10 @@ export function statusSentence(lake: Lake, changeFactor: number): string {
   // Round first, then pick the sign, so a change that rounds to zero never prints as "-0.000".
   const sign = Number(shown) === 0 ? "" : (s.change_km2 as number) > 0 ? "+" : "-";
   const when = s.latest_date ? `, latest ${formatDate(s.latest_date)}` : "";
-  return `${s.status}: ${sign}${shown} km²${scope} since earlier ${s.track} passes (noise ±${km2(s.noise_km2 as number)} km²; change must exceed ${changeFactor}× noise), ${s.looks} looks${when}`;
+  const pending = s.status === "Change not confirmed yet"
+    ? `; first pass on NISAR processing version ${s.new_crid ?? "new"}, so the change waits for a second pass on that version`
+    : "";
+  return `${s.status}: ${sign}${shown} km²${scope} since earlier ${s.track} passes (noise ±${km2(s.noise_km2 as number)} km²; change must exceed ${changeFactor}× noise), ${s.looks} looks${when}${pending}`;
 }
 
 /**

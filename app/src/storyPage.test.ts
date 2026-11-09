@@ -6,7 +6,7 @@ import storyCopy from "./content/storyPage.json";
 import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
 import frozenJson from "./frozen/lakes.json";
 import type { LakesFile } from "./lakes";
-import { mapPin, renderStoryPage, storyNumbers } from "./storyPage";
+import { mapPin, renderStoryPage, statusClass, storyNumbers } from "./storyPage";
 
 /** The data this build ships. A rebuild replaces it, so tests on it check only what holds for any build. */
 const real = lakesJson as unknown as LakesFile;
@@ -234,5 +234,14 @@ describe("mapPin", () => {
     expect(mapPin(74, 38)).toBeNull();
     expect(mapPin(77, 36)).toBeNull();
     expect(mapPin(74, 34)).toBeNull();
+  });
+});
+
+describe("story page status colours", () => {
+  it("only a confirmed change gets the change colour", () => {
+    expect(statusClass("Growing")).toBe("sp-st-change");
+    expect(statusClass("Shrinking")).toBe("sp-st-change");
+    expect(statusClass("Stable")).toBe("sp-st-stable");
+    expect(statusClass("Change not confirmed yet")).toBe("sp-st-other");
   });
 });

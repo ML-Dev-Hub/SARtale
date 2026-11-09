@@ -13,6 +13,19 @@ from .config import (
 )
 
 
+UNCONFIRMED = "Change not confirmed yet"
+# Every status a lake can have, in the order the app lists them (app/src/lakes.ts STATUS_ORDER).
+STATUS_NAMES = (
+    "Growing",
+    "Shrinking",
+    UNCONFIRMED,
+    "Not seen this pass",
+    "Stable",
+    "Not enough NISAR looks yet",
+    "Not observable",
+)
+
+
 class SeriesPoint(TypedDict):
     date: str  # ISO YYYY-MM-DD
     track: str  # e.g. "156A"
@@ -39,7 +52,8 @@ def is_valid(p: SeriesPoint) -> bool:
     )
 
 
-def _result(status, track=None, latest_date=None, looks=0, change=None, noise=None, reason=""):
+def _result(status, track=None, latest_date=None, looks=0, change=None, noise=None, reason="", new_crid=None):
+    """`new_crid` is set only for UNCONFIRMED: the processing version of the latest pass that the baseline lacks."""
     return {
         "status": status,
         "track": track,
@@ -48,6 +62,7 @@ def _result(status, track=None, latest_date=None, looks=0, change=None, noise=No
         "change_km2": change,
         "noise_km2": noise,
         "reason": reason,
+        "new_crid": new_crid,
     }
 
 
@@ -63,6 +78,11 @@ def lake_status(
 
     Noise is measured on the best track's EARLIER valid areas only (latest point
     excluded), so a real change cannot inflate its own threshold.
+
+    A change past the threshold is "Change not confirmed yet" (UNCONFIRMED) when the latest valid pass is on a
+    processing version (CRID) that none of the earlier valid passes it is compared with has: a calibration change
+    between versions can look like growth or shrinkage. A second pass on that version makes the version part of
+    the baseline, and the usual Growing or Shrinking applies again.
     """
     if not any(p["observable_share"] >= MIN_OBSERVABLE for p in series):
         return _result(
@@ -113,22 +133,24 @@ def lake_status(
     ref = median(areas[:-1])
     change = areas[-1] - ref
     noise = track_noise_km2(areas[:-1])
+    reason = (f"Track {best}: {areas[-1]:.3f} km2 on {latest['date']} vs median {ref:.3f} of "
+              f"{looks - 1} earlier looks (noise {noise:.3f} km2)")
     if change > CHANGE_FACTOR * noise:
         status = "Growing"
     elif change < -CHANGE_FACTOR * noise:
         status = "Shrinking"
     else:
         status = "Stable"
-    return _result(
-        status,
-        best,
-        latest["date"],
-        looks,
-        change,
-        noise,
-        f"Track {best}: {areas[-1]:.3f} km2 on {latest['date']} vs median {ref:.3f} of "
-        f"{looks - 1} earlier looks (noise {noise:.3f} km2).",
-    )
+    new_crid = latest.get("crid")
+    baseline_crids = {p.get("crid") for p in pts[:-1]} - {None}
+    if status != "Stable" and new_crid and baseline_crids and new_crid not in baseline_crids:
+        return _result(
+            UNCONFIRMED, best, latest["date"], looks, change, noise,
+            f"{reason}; this is the first pass on NISAR processing version {new_crid}, so the change waits for "
+            "a second pass on that version.",
+            new_crid,
+        )
+    return _result(status, best, latest["date"], looks, change, noise, reason + ".")
 
 
 def cloud_window_looks(

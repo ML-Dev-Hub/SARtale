@@ -2,7 +2,7 @@ import type { Lake, LakesFile, LakeStatusName } from "./lakes";
 
 
 function fixtureLake(id: string, status: LakeStatusName, latest: string | null, extra: Partial<Lake> = {}): Lake {
-  const measured = status === "Growing" || status === "Shrinking" || status === "Stable";
+  const measured = status === "Growing" || status === "Shrinking" || status === "Stable" || status === "Change not confirmed yet";
   return {
     id,
     name: `Fixture ${id}`,

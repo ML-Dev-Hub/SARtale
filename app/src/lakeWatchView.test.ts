@@ -240,3 +240,18 @@ describe("Lake Watch after an accept", () => {
     expect(withRequestedLake(frozen).lakes).toHaveLength(12);
   });
 });
+
+describe("Change not confirmed yet", () => {
+  test("its chip carries its own class (styles.css styles it dashed and neutral; test_lakestatus checks the rule)", () => {
+    const lake: Lake = { ...fixtureLakes.lakes[2], status: { ...fixtureLakes.lakes[2].status, status: "Change not confirmed yet", new_crid: "P05036" } };
+    const { root, view } = setup({ ...fixtureLakes, lakes: [lake] });
+    view.select(lake.id);
+    expect(root.querySelector(".lw-chip.lw-status-change-not-confirmed-yet")).not.toBeNull();
+  });
+
+  test("sorts after the confirmed changes and before Not seen this pass", () => {
+    const mk = (id: string, status: Lake["status"]["status"]) => ({ ...fixtureLakes.lakes[2], id, status: { ...fixtureLakes.lakes[2].status, status } });
+    const ids = sortLakes([mk("seen", "Not seen this pass"), mk("pending", "Change not confirmed yet"), mk("grow", "Growing")]).map((l) => l.id);
+    expect(ids).toEqual(["grow", "pending", "seen"]);
+  });
+});

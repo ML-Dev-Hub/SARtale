@@ -48,8 +48,9 @@ describe("sortLakes", () => {
     expect(ids).toEqual(["grow-new", "grow-old", "shrink", "stable", "few", "hidden", "control"]);
   });
   test("status order is the documented one", () => {
-    expect(STATUS_ORDER[0]).toBe("Growing");
-    expect(STATUS_ORDER[STATUS_ORDER.length - 1]).toBe("Not observable");
+    expect(STATUS_ORDER).toEqual([
+      "Growing", "Shrinking", "Change not confirmed yet", "Not seen this pass", "Stable", "Not enough NISAR looks yet", "Not observable",
+    ]);
   });
   test("does not mutate its input", () => {
     const copy = [...fixtureLakes.lakes];
@@ -66,6 +67,13 @@ describe("statusSentence", () => {
     );
     const s = statusSentence(by("shrink"), 2);
     expect(s).toContain("-0.040 km²");
+  });
+  test("an unconfirmed change gives its numbers and says it waits for a second pass on the new version", () => {
+    const lake = { ...by("grow-new"), status: { ...by("grow-new").status, status: "Change not confirmed yet" as const, track: "084A",
+      change_km2: 0.065, noise_km2: 0.016, latest_date: "2026-10-30", new_crid: "P05036" } };
+    expect(statusSentence(lake, 2)).toBe(
+      "Change not confirmed yet: +0.065 km² since earlier 084A passes (noise ±0.016 km²; change must exceed 2× noise), 9 looks, latest 30 Oct 2026; first pass on NISAR processing version P05036, so the change waits for a second pass on that version",
+    );
   });
   test("test_statusSentence_point_only_lake_says_search_window", () => {
     expect(statusSentence(by("shrink"), 2)).toContain("in the search window");
