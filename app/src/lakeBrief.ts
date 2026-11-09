@@ -1,4 +1,4 @@
-import { isTrendPass, methodLimits, statusSentence, type Lake, type LakesFile } from "./lakes";
+import { isTrendPass, loadLakes, methodLimits, processingVersions, statusSentence, type Lake, type LakesFile } from "./lakes";
 import { checkLine } from "./lakeWatchView";
 import { formatDate } from "./format";
 
@@ -17,6 +17,13 @@ export function localIsoDate(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** "Data: newest NISAR pass for this lake 4 Nov 2026; data built 9 Nov 2026." so a reader can see how fresh the printout is. */
+export function dataLine(lake: Lake, file: LakesFile): string {
+  const newest = lake.series.reduce<string | null>((m, p) => (m === null || p.date > m ? p.date : m), null);
+  const built = file.built ? formatDate(file.built.slice(0, 10)) : "unknown";
+  return `Data: newest NISAR pass for this lake ${newest ? formatDate(newest) : "none yet"}; data built ${built}.`;
+}
+
 /** The one-page brief for a lake, as an HTML fragment. Every piece of data text is escaped. */
 export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): string {
   const minShare = file.constants.min_observable;
@@ -28,8 +35,8 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): strin
     .slice(0, PASS_ROWS);
   const passesHead = track ? `Latest valid passes on track ${esc(track)} (the status compares only these)` : "Latest valid passes";
   const passes = valid.length
-    ? `<table class="lake-brief-passes"><thead><tr><th>Date</th><th>Track</th><th>Area (km²)</th><th>Observable share</th></tr></thead><tbody>${valid
-        .map((p) => `<tr><td>${esc(formatDate(p.date))}</td><td>${esc(p.track)}</td><td>${(p.area_km2 as number).toFixed(3)}</td><td>${Math.round((p.observable_share as number) * 100)}%</td></tr>`)
+    ? `<table class="lake-brief-passes"><thead><tr><th>Date</th><th>Track</th><th>Area (km²)</th><th>Observable share</th><th>Processing version</th></tr></thead><tbody>${valid
+        .map((p) => `<tr><td>${esc(formatDate(p.date))}</td><td>${esc(p.track)}</td><td>${(p.area_km2 as number).toFixed(3)}</td><td>${Math.round((p.observable_share as number) * 100)}%</td><td>${esc(p.crid ?? "")}</td></tr>`)
         .join("")}</tbody></table>`
     : `<p>${esc(lake.status.reason)}</p>`;
   const lakeLimits = lake.limits.length ? `<h3>Limits for this lake</h3>${list(lake.limits)}` : "";
@@ -43,6 +50,7 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): strin
 <h1>${esc(lake.name)}</h1>
 <p class="lake-brief-meta">Coordinates ${lake.lat.toFixed(4)}, ${lake.lon.toFixed(4)}. Source: ${esc(lake.coord_source)}</p>${outline}
 <p class="lake-brief-meta">Measures: ${esc(lake.area_label)}. Brief made ${esc(formatDate(localIsoDate(generatedAt)))}.</p>
+<p class="lake-brief-meta">${esc(dataLine(lake, file))}</p>
 <h2>Status</h2>
 <p class="lake-brief-status">${esc(statusSentence(lake, file.constants.change_factor))}</p>
 <h2>${passesHead}</h2>
@@ -53,7 +61,7 @@ ${lake.excluded.length ? list(lake.excluded.map((x) => `${x.pass}: ${x.reason}`)
 ${list(methodLimits(file))}${lakeLimits}
 <h2>Downstream</h2>
 <p>${downstream}</p>
-<p class="lake-brief-footer">Indicative screening from provisional NISAR data. Not an official warning; official warnings come from PMD, NDMA, GBDMA and PDMA. Built ${esc(file.built)}.</p>
+<p class="lake-brief-footer">Indicative screening from NISAR data (${esc(processingVersions(file.crid))}). Not an official warning; official warnings come from PMD, NDMA, GBDMA and PDMA. Built ${esc(file.built)}.</p>
 </section>`;
 }
 
@@ -65,4 +73,20 @@ export function printBrief(lake: Lake, file: LakesFile, win: Window = window): v
   host.innerHTML = briefHtml(lake, file, new Date());
   doc.body.append(...host.children);
   win.print();
+}
+
+/**
+ * Prints from the newest data on the server, so a tab left open across a weekly update still prints today's numbers.
+ * Falls back to the data the page loaded when the server cannot be reached or no longer lists the lake.
+ */
+export async function printLatestBrief(
+  lake: Lake,
+  loaded: LakesFile,
+  load: () => Promise<LakesFile | null> = () => loadLakes("data/lakes.json"),
+  win: Window = window,
+): Promise<void> {
+  const fresh = await load();
+  const freshLake = fresh?.lakes.find((l) => l.id === lake.id);
+  if (fresh && freshLake) printBrief(freshLake, fresh, win);
+  else printBrief(lake, loaded, win);
 }

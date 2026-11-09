@@ -17,6 +17,12 @@ describe("processingVersions", () => {
 });
 
 describe("loadLakes", () => {
+  test("asks the server each time, so a weekly update shows on the next load", async () => {
+    const fetchFn = vi.fn(async () => new Response(JSON.stringify(fixtureLakes))) as unknown as typeof fetch;
+    await loadLakes("data/lakes.json", fetchFn);
+    expect(fetchFn).toHaveBeenCalledWith("data/lakes.json", { cache: "no-cache" });
+  });
+
   test("test_loadLakes_returns_null_on_404", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 404 })));
     expect(await loadLakes("data/lakes.json")).toBeNull();

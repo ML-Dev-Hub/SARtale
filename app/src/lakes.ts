@@ -144,10 +144,14 @@ function isLakesFile(v: unknown): v is LakesFile {
   return !!f && Array.isArray(f.lakes) && Array.isArray(f.checks) && f.lakes.every((l) => !!l && typeof l.id === "string" && !!l.status);
 }
 
-/** Loads data/lakes.json. Returns null if it is absent or unusable; Lake Watch then says "No lake data in this build". */
-export async function loadLakes(url: string): Promise<LakesFile | null> {
+/**
+ * Loads data/lakes.json. Returns null if it is absent or unusable; Lake Watch then says "No lake data in this build".
+ * `no-cache` makes the browser check with the server every time (a cheap ETag check), so a weekly data update shows
+ * up on the next load instead of after the browser's cache runs out.
+ */
+export async function loadLakes(url: string, fetchFn: typeof fetch = (...a) => fetch(...a)): Promise<LakesFile | null> {
   try {
-    const res = await fetch(url);
+    const res = await fetchFn(url, { cache: "no-cache" });
     if (!res.ok) return null;
     const json: unknown = await res.json();
     return isLakesFile(json) ? splitChecks(json) : null;
