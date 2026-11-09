@@ -255,3 +255,39 @@ describe("Change not confirmed yet", () => {
     expect(ids).toEqual(["grow", "pending", "seen"]);
   });
 });
+
+describe("Lake Watch: a site with no lake now", () => {
+  const series = [
+    { date: "2026-07-01", track: "156A", area_km2: 0.9, observable_share: 1, excluded: null },
+    { date: "2026-07-13", track: "156A", area_km2: 0.95, observable_share: 1, excluded: null },
+    { date: "2026-07-25", track: "156A", area_km2: 0.97, observable_share: 1, excluded: null },
+  ];
+  const basin: Lake = {
+    ...fixtureLakes.lakes[2],
+    id: "basin",
+    name: "Empty basin",
+    lake_state: "no_lake",
+    lake_state_source: "a dry basin",
+    series,
+    images: { latest_hh: "lakes/basin/latest_hh.webp", water: null, date: "2026-07-25", track: "156A" },
+    status: { status: "No lake now", track: "156A", latest_date: "2026-07-25", looks: 3, change_km2: null, noise_km2: null, reason: "No lake in recent imagery: a dry basin. SARtale keeps the site to watch for a lake forming." },
+  };
+  const file: LakesFile = { ...fixtureLakes, lakes: [...fixtureLakes.lakes, basin] };
+
+  test("is never the lake the view opens on, even with the most dark area", () => {
+    expect(openingLake(file.lakes).id).not.toBe("basin");
+  });
+
+  test("shows its reason instead of an area chart, and says why there is no water layer", () => {
+    const { root, view, charts } = setup(file);
+    const before = charts.length;
+    view.select("basin");
+    expect(charts.length).toBe(before);
+    const detail = root.querySelector('[data-role="lw-detail"]')!;
+    expect(detail.querySelector(".lw-chip")?.className).toContain("lw-status-no-lake-now");
+    expect(detail.textContent).toContain("SARtale keeps the site to watch for a lake forming.");
+    expect(detail.textContent).toContain("No water layer: there is no lake at this site now.");
+    expect(detail.textContent).not.toContain("No radar picture yet for the water pixels");
+    expect(findBannedClaims(detail.textContent ?? "")).toEqual([]);
+  });
+});

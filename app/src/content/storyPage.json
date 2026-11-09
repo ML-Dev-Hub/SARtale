@@ -7,7 +7,7 @@
     "videosLabel": "Watch the videos",
     "openLabel": "Open Lake Watch",
     "stats": [
-      { "value": "{lakes}", "label": "glacial lakes watched" },
+      { "value": "{lakes}", "label": "lakes watched" },
       { "value": "{cloudLooks}", "label": "radar looks through the cloud gap" },
       { "value": "{passes}", "label": "NISAR passes read" }
     ],
@@ -85,14 +85,15 @@
   },
   "watch": {
     "label": "05 · THE WATCH",
-    "title": "{lakes} lakes, one plain status each",
-    "noDataTitle": "Lakes, one plain status each",
-    "lede": "Latest pass {latest}. Each status compares a lake with its own earlier passes and its own noise.",
+    "title": "{sites} sites, one plain status each",
+    "noDataTitle": "Sites, one plain status each",
+    "lede": "Latest pass {latest}. Each status compares a lake with its own earlier passes and its own noise. A site with no lake now is kept to watch for a lake forming.",
     "noDataLede": "No lake data in this build.",
     "mapAlt": "Satellite map of northern Pakistan with the watched lakes marked",
     "mapImage": "story/north_map.jpg",
     "mapCredit": "Base map: NASA MODIS Terra, 5 Oct 2026",
     "keyWatched": "Watched lake",
+    "keyNoLake": "No lake now",
     "keyRequested": "Requested lake"
   },
   "add": {

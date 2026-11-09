@@ -22,6 +22,7 @@ MAX_CLOUD_PCT = 20.0
 SCL_BAD = (0, 1, 3, 8, 9, 10)
 SCL_SNOW = 11
 NO_SCENE = "no clear Sentinel-2 scene within 3 days"
+BOA_FLAG = "earthsearch:boa_offset_applied"  # item property: the DNs already have the BOA offset applied
 
 
 def mndwi_water(green: np.ndarray, swir: np.ndarray, threshold: float = 0.0) -> np.ndarray:
@@ -66,7 +67,8 @@ def _scene(f: dict, target: Date) -> dict:
     p = f["properties"]
     day = datetime.fromisoformat(p["datetime"].replace("Z", "+00:00")).date()
     return {"id": f["id"], "date": day.isoformat(), "cloud": float(p.get("eo:cloud_cover", 100.0)),
-            "days_apart": abs((day - target).days), "assets": f.get("assets", {})}
+            "days_apart": abs((day - target).days), "assets": f.get("assets", {}),
+            "boa_offset_applied": bool(p.get(BOA_FLAG, False))}
 
 
 def search_scenes(bbox, start: str, end: str, limit: int = 500) -> list[dict]:
@@ -101,8 +103,15 @@ def _href(scene: dict, name: str) -> str:
 
 
 def _reflectance(scene: dict, name: str, dn: np.ndarray) -> np.ndarray:
+    """Surface reflectance from DNs: DN * scale + offset, NaN where DN is 0 (no data).
+
+    Earth Search items flagged `earthsearch:boa_offset_applied` already have the -0.1 BOA offset (processing
+    baseline 04.00 and later) taken out of the DNs, so the offset is 0 for them; the band's scale still applies.
+    Other items use the band's offset from `raster:bands`.
+    """
     band = (scene["assets"][name].get("raster:bands") or [{}])[0]
-    scale, offset = band.get("scale", 1e-4), band.get("offset", -0.1)
+    scale = band.get("scale", 1e-4)
+    offset = 0.0 if scene.get("boa_offset_applied") else band.get("offset", -0.1)
     return np.where(dn == 0, np.nan, dn.astype(np.float64) * scale + offset)
 
 

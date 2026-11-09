@@ -140,13 +140,13 @@ def _ring(outline_polygon) -> list:
     return list(outline_polygon)
 
 
-def lake_zone(shape, x, y, epsg, lake: Lake, outline_polygon=None, half_km: float = 1.0) -> np.ndarray:
+def lake_zone(shape, x, y, epsg, lake: Lake, outline_polygon=None, half_km: float | None = None) -> np.ndarray:
     """Boolean mask of the lake zone on the window grid.
 
     With `outline_polygon`: the outline rasterised and buffered by 200 m. It is either a list of
     (lon, lat) WGS84 vertices (exterior ring) or a GeoJSON Polygon dict {"type": "Polygon",
-    "coordinates": [[[lon, lat], ...]]}. Without it: a circle of radius `half_km` around the
-    lake's point (water area "in the search window").
+    "coordinates": [[[lon, lat], ...]]}. Without it: a circle around the lake's point (water area "in the
+    search window") of radius `half_km`, by default the lake's own `zone_radius_km` (1 km unless set).
     `x`, `y` are the window's UTM coordinate vectors (metres, pixel centres) in `epsg`.
     """
     x, y = np.asarray(x, float), np.asarray(y, float)
@@ -154,6 +154,8 @@ def lake_zone(shape, x, y, epsg, lake: Lake, outline_polygon=None, half_km: floa
     dy = float(y[1] - y[0]) if len(y) > 1 else -1.0
     to_utm = Transformer.from_crs(4326, epsg, always_xy=True)
     if outline_polygon is None:
+        if half_km is None:
+            half_km = getattr(lake, "zone_radius_km", 1.0)
         cx, cy = to_utm.transform(lake.lon, lake.lat)
         xx, yy = np.meshgrid(x, y)
         return ((xx - cx) ** 2 + (yy - cy) ** 2) <= (half_km * 1000.0) ** 2

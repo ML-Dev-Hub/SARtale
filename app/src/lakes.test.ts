@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { fixtureLakes } from "./fixtures";
-import { lakeTokens, loadLakes, methodLimits, opticalCheckSentence, processingVersions, sortLakes, statusSentence, STATUS_ORDER } from "./lakes";
+import { cloudHeadline, lakeTokens, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -55,7 +55,7 @@ describe("sortLakes", () => {
   });
   test("status order is the documented one", () => {
     expect(STATUS_ORDER).toEqual([
-      "Growing", "Shrinking", "Change not confirmed yet", "Not seen this pass", "Stable", "Not enough NISAR looks yet", "Not observable",
+      "Growing", "Shrinking", "Change not confirmed yet", "Not seen this pass", "Stable", "Not enough NISAR looks yet", "Not observable", "No lake now",
     ]);
   });
   test("does not mutate its input", () => {
@@ -135,5 +135,45 @@ describe("splitChecks", () => {
     const out = splitChecks(raw);
     expect(out.checks).toEqual([measured]);
     expect(out.check_notes).toEqual([{ lake: "attabad", note: "no clear Sentinel-2 scene within 3 days" }]);
+  });
+});
+
+describe("sites with no lake now", () => {
+  const file = (): LakesFile => ({
+    ...fixtureLakes,
+    lakes: fixtureLakes.lakes.map((l) =>
+      l.id === "hidden" ? { ...l, lake_state: "no_lake" as const, status: { ...l.status, status: "No lake now" as const } } : l,
+    ),
+  });
+
+  test("are left out of the lake count and the cloud-window looks, and named in the list", () => {
+    const f = file();
+    const t = lakeTokens(f);
+    expect(t.site_count).toBe("7");
+    expect(t.lake_count).toBe("6");
+    expect(t.cloud_looks).toBe(String(6 * 7));
+    expect(t.cloud_lakes).toBe("6");
+    expect(t.watch_list).toBe("6 lakes and 1 site with no lake now");
+    expect(watchList(fixtureLakes)).toBe("7 lakes");
+    expect(cloudHeadline(f)).toContain("NISAR made 42 valid looks across 6 lakes.");
+  });
+
+  test("sort after every other status", () => {
+    expect(sortLakes(file().lakes).map((l) => l.id).slice(-2)).toEqual(["hidden", "control"]);
+  });
+
+  test("say why in the status sentence, without an area", () => {
+    const l = { ...file().lakes[1], status: { ...file().lakes[1].status, reason: "No lake in recent imagery: a dry basin. SARtale keeps the site to watch for a lake forming.", latest_date: "2026-11-04" } };
+    expect(statusSentence(l, 2)).toBe("No lake now: No lake in recent imagery: a dry basin. SARtale keeps the site to watch for a lake forming., latest 4 Nov 2026");
+  });
+});
+
+describe("opticalOverlapPhrase", () => {
+  const row = (iou: number): LakeCheck => ({ lake: "x", nisar_date: "2026-08-17", nisar_track: "055A", s2_date: "2026-08-17", s2_id: "S2", days_apart: 0, s2_window_cloud_pct: 0, scope: "zone", radar_km2: 0.1, optical_km2: 0.1, area_error_pct: 0, iou, zone_valid_share: 1, window_radar_km2: 0.1, window_optical_km2: 0.1, window_area_error_pct: 0, window_iou: 0.1 });
+  test("is worded from the IoU values", () => {
+    expect(opticalOverlapPhrase([row(0.02), row(0.3)])).toBe("overlapped optical water poorly at every lake checked (IoU 0.02–0.3)");
+    expect(opticalOverlapPhrase([row(0.05), row(0.46), row(0.61)])).toBe("overlapped optical water unevenly across the 3 lakes checked (IoU 0.05–0.61)");
+    expect(opticalOverlapPhrase([row(0.7), row(0.8)])).toBe("overlapped optical water with IoU 0.7–0.8 across the 2 lakes checked");
+    expect(opticalOverlapPhrase([])).toBeNull();
   });
 });

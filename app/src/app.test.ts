@@ -209,6 +209,9 @@ describe("the lake story", () => {
     ]);
     expect(featuredLake(f)?.id).toBe("c");
     expect(featuredLake({ ...f, lakes: f.lakes.filter((l) => l.role !== "watch") })).toBeNull();
+    // a site with no lake now, or a lake recent imagery does not confirm, is never featured
+    const unsure = { ...f, lakes: f.lakes.map((l) => (l.id === "c" ? { ...l, lake_state: "no_lake" as const } : l.id === "b" ? { ...l, lake_state: "unconfirmed" as const } : l)) };
+    expect(featuredLake(unsure)?.id).toBe("a");
     expect(featuredLake(null)).toBeNull();
   });
 

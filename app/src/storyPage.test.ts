@@ -5,7 +5,7 @@ import { findBannedClaims } from "./content";
 import storyCopy from "./content/storyPage.json";
 import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
 import frozenJson from "./frozen/lakes.json";
-import type { LakesFile } from "./lakes";
+import { hasLakeNow, type Lake, type LakesFile } from "./lakes";
 import { mapPin, renderStoryPage, statusClass, storyNumbers } from "./storyPage";
 
 /** The data this build ships. A rebuild replaces it, so tests on it check only what holds for any build. */
@@ -37,10 +37,13 @@ describe("storyNumbers", () => {
 
   it("reads the shipped file's own totals, whatever it holds", () => {
     const n = storyNumbers(real);
-    expect(real.lakes.length).toBeGreaterThanOrEqual(11);
+    expect(real.lakes.length).toBeGreaterThanOrEqual(7);
     expect(real.lakes.some((l) => l.id === "attabad")).toBe(true);
-    expect(n.lakes).toBe(String(real.lakes.length));
-    expect(n.cloudLooks).toBe(String(real.lakes.reduce((k, l) => k + l.cloud_window_looks, 0)));
+    const now = real.lakes.filter(hasLakeNow);
+    expect(n.sites).toBe(String(real.lakes.length));
+    expect(n.lakes).toBe(String(now.length));
+    // looks at a site with no lake now are not looks at a lake
+    expect(n.cloudLooks).toBe(String(now.reduce((k, l) => k + l.cloud_window_looks, 0)));
     expect(n.passes).toBe(String(real.lakes.reduce((k, l) => k + l.series.length, 0)));
     for (const v of Object.values(n)) expect(v).not.toMatch(/NaN|undefined/);
   });
@@ -134,7 +137,8 @@ describe("renderStoryPage", () => {
       expect(page.listEl.children.length).toBe(base.lakes.length + 1);
       expect(page.mapEl.querySelectorAll(".sp-pin").length).toBe(base.lakes.length + 1);
       expect(page.listEl.textContent).toContain(requestedLake.name);
-      expect(storyNumbers(file).lakes).toBe(String(base.lakes.length + 1));
+      expect(storyNumbers(file).sites).toBe(String(base.lakes.length + 1));
+      expect(storyNumbers(file).lakes).toBe(String(base.lakes.filter(hasLakeNow).length + 1));
       expect(storyNumbers(file).passes).toBe(storyNumbers(base).passes);
       expect(findBannedClaims(text)).toEqual([]);
     }
@@ -243,5 +247,44 @@ describe("story page status colours", () => {
     expect(statusClass("Shrinking")).toBe("sp-st-change");
     expect(statusClass("Stable")).toBe("sp-st-stable");
     expect(statusClass("Change not confirmed yet")).toBe("sp-st-other");
+  });
+});
+
+describe("a site with no lake now", () => {
+  const empty = (l: Lake): Lake => ({
+    ...l,
+    lake_state: "no_lake",
+    lake_state_source: "Sentinel-2 shows a dry basin on 17 Aug 2026",
+    status: { ...l.status, status: "No lake now", change_km2: null, noise_km2: null, reason: "No lake in recent imagery." },
+    images: l.images ? { ...l.images, water: null } : null,
+  });
+  const file = (): LakesFile => ({ ...frozen, lakes: frozen.lakes.map((l) => (l.id === "khurdopin" ? empty(l) : l)) });
+
+  it("is counted as a site, not a lake, and its looks are not cloud-window looks of a lake", () => {
+    const n = storyNumbers(file());
+    const k = frozen.lakes.find((l) => l.id === "khurdopin")!;
+    expect(n.sites).toBe("11");
+    expect(n.lakes).toBe("10");
+    expect(n.cloudLooks).toBe(String(60 - k.cloud_window_looks));
+    expect(n.passes).toBe("232"); // its passes were still read
+  });
+
+  it("gets a hollow pin, a key entry, a neutral status and no area", () => {
+    const { root, page } = render(file());
+    const pins = [...page.mapEl.querySelectorAll(".sp-pin")];
+    const hollow = pins.filter((p) => p.classList.contains("sp-pin-nolake"));
+    expect(hollow).toHaveLength(1);
+    expect(hollow[0].getAttribute("title")).toContain("No lake now");
+    expect(page.mapEl.querySelector(".sp-key-nolake")).not.toBeNull();
+    expect(page.mapEl.querySelector(".sp-map-key")?.textContent).toContain("No lake now");
+    const row = [...page.listEl.children].find((r) => r.textContent?.includes("Khurdopin"))!;
+    expect(row.querySelector(".sp-lake-status")?.className).toContain("sp-st-other");
+    expect(row.querySelector(".sp-lake-area")?.textContent).toBe("—");
+    expect(root.textContent).not.toMatch(/\{\w+\}|NaN|undefined/);
+  });
+
+  it("has no key entry when every site holds a lake", () => {
+    const { page } = render(frozen);
+    expect(page.mapEl.querySelector(".sp-key-nolake")).toBeNull();
   });
 });

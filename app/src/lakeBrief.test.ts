@@ -200,3 +200,19 @@ describe("brief freshness", () => {
     expect(win.print).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("briefHtml for a site with no lake now", () => {
+  test("lists no pass areas and says why", () => {
+    const base = fixtureLakes.lakes[2];
+    const lake = {
+      ...base,
+      lake_state: "no_lake" as const,
+      series: [{ date: "2026-07-25", track: "156A", area_km2: 0.97, observable_share: 1, excluded: null }],
+      status: { ...base.status, status: "No lake now" as const, track: "156A", change_km2: null, noise_km2: null, reason: "No lake in recent imagery: a dry basin. SARtale keeps the site to watch for a lake forming." },
+    };
+    const html = briefHtml(lake, fixtureLakes, NOW);
+    expect(html).not.toContain("lake-brief-passes");
+    expect(html).not.toContain("0.970");
+    expect(html).toContain("SARtale keeps the site to watch for a lake forming.");
+  });
+});

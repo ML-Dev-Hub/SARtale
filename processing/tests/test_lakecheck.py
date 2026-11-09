@@ -171,3 +171,36 @@ def test_check_skips_passes_the_status_would_not_use(monkeypatch):
         {"date": "2026-08-05", "track": "156A", "excluded": "bright", "area_km2": None, "observable_share": 0.9},
     ]
     assert lakecheck.check_lake(lake, "unused", series, log=lambda *_: None) == {"lake": "x", "note": "no valid NISAR pass"}
+
+
+def _band(offset):
+    return {"green": {"href": "g.tif", "raster:bands": [{"scale": 0.0001, "offset": offset}]}}
+
+
+def test_reflectance_keeps_the_band_offset_when_the_item_has_not_applied_it():
+    f = {"id": "old", "properties": {"datetime": "2026-08-17T05:30:00Z", "eo:cloud_cover": 1},
+         "assets": _band(-0.1)}
+    scene = lakecheck._scene(f, lakecheck.Date(2026, 8, 17))
+    r = lakecheck._reflectance(scene, "green", np.array([0, 1000, 2500]))
+    assert np.isnan(r[0])  # DN 0 is no data
+    assert r[1:] == pytest.approx([0.0, 0.15])
+
+
+def test_reflectance_drops_the_offset_earth_search_has_already_applied():
+    """Earth Search items flagged earthsearch:boa_offset_applied already had the -0.1 BOA offset removed from the
+    DNs; applying the band's offset again shifts every reflectance by -0.1 and breaks MNDWI over turbid lakes."""
+    f = {"id": "new", "properties": {"datetime": "2026-08-17T05:30:00Z", "eo:cloud_cover": 1,
+                                     "earthsearch:boa_offset_applied": True},
+         "assets": _band(-0.1)}
+    scene = lakecheck._scene(f, lakecheck.Date(2026, 8, 17))
+    assert scene["boa_offset_applied"] is True
+    r = lakecheck._reflectance(scene, "green", np.array([0, 1, 1500]))
+    assert np.isnan(r[0])
+    assert r[1:] == pytest.approx([0.0001, 0.15])  # scale kept, offset 0
+
+
+def test_reflectance_flag_false_keeps_the_offset():
+    f = {"id": "x", "properties": {"datetime": "2026-08-17T05:30:00Z", "earthsearch:boa_offset_applied": False},
+         "assets": _band(-0.1)}
+    scene = lakecheck._scene(f, lakecheck.Date(2026, 8, 17))
+    assert lakecheck._reflectance(scene, "green", np.array([2000]))[0] == pytest.approx(0.1)

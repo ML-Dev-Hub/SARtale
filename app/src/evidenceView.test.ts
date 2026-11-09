@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import lakesJson from "../public/data/lakes.json";
 import { findBannedClaims } from "./content";
 import { createEvidenceView } from "./evidenceView";
-import { iouRange, lakeTokens, type LakesFile } from "./lakes";
+import { iouRange, lakeTokens, opticalOverlapPhrase, type LakesFile } from "./lakes";
 
 const realLakes = lakesJson as unknown as LakesFile;
 
@@ -111,11 +111,11 @@ describe("How we know", () => {
     });
   });
 
-  test("says agreement is poor at every lake, with the range from the data, that neither source is a clean reference, and that this is not a validation", () => {
+  test("words the agreement from the data, with its range, says neither source is a clean reference, and that this is not a validation", () => {
     const { text } = withLakes();
-    expect(text).toContain(`overlapped poorly at every lake checked (${iouRange(realLakes.checks)}), and their areas disagreed widely`);
-    expect(text).toMatch(/Shisper/);
-    expect(text).toMatch(/ice or shadow/);
+    expect(text).toContain(`Radar water ${opticalOverlapPhrase(realLakes.checks)}.`);
+    expect(text).toContain(iouRange(realLakes.checks)!);
+    expect(text).not.toMatch(/\{\w+\}/);
     expect(text).toMatch(/neither is a clean reference/);
     expect(text).toMatch(/not a validation of lake extent/);
   });

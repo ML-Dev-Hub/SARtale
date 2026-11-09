@@ -14,6 +14,9 @@ from .config import (
 
 
 UNCONFIRMED = "Change not confirmed yet"
+# A site the register marks lake_state "no_lake": recent imagery shows no lake there (an ice-dammed lake's empty
+# basin, say). It gets no growing/shrinking verdict and its dark radar area is not lake area.
+NO_LAKE = "No lake now"
 # Every status a lake can have, in the order the app lists them (app/src/lakes.ts STATUS_ORDER).
 STATUS_NAMES = (
     "Growing",
@@ -23,6 +26,7 @@ STATUS_NAMES = (
     "Stable",
     "Not enough NISAR looks yet",
     "Not observable",
+    NO_LAKE,
 )
 
 
@@ -158,3 +162,11 @@ def cloud_window_looks(
 ) -> int:
     """Valid, non-excluded points with enough observable zone, dated start..end inclusive."""
     return sum(1 for p in series if is_valid(p) and start <= p["date"] <= end)
+
+
+def no_lake_status(computed: dict, source: str | None) -> dict:
+    """The status of a site with no lake now: keeps the track, latest date and looks the passes give (so the site's
+    picture and pass count still show), drops any change and noise, and says why."""
+    why = f"No lake in recent imagery: {source.rstrip('.')}." if source else "No lake in recent imagery."
+    return _result(NO_LAKE, computed["track"], computed["latest_date"], computed["looks"],
+                   reason=f"{why} SARtale keeps the site to watch for a lake forming.")

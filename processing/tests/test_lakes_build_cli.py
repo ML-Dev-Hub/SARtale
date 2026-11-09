@@ -128,3 +128,17 @@ def test_lakes_check_writes_the_rows_and_merges_them_into_lakes_json(tmp_path, m
     rows = [{"lake": "attabad", "note": "no clear scene"}]
     assert json.loads(checks.read_text(encoding="utf-8")) == rows
     assert json.loads((out / "lakes.json").read_text(encoding="utf-8"))["checks"] == rows
+
+
+def test_lakes_check_defaults_to_every_lake_that_holds_a_lake_now():
+    from dataclasses import replace
+
+    from sartale.lakes import Lake
+    from sartale.run_pipeline import check_ids
+
+    base = Lake(id="a", name="A", lon=74.0, lat=36.0, coord_source="s", outline=None, role="watch",
+                downstream=None, downstream_source=None)
+    lakes = [base, replace(base, id="gone", lake_state="no_lake", lake_state_source="s"),
+             replace(base, id="maybe", lake_state="unconfirmed", lake_state_source="s")]
+    assert check_ids(lakes, None) == ["a", "maybe"]
+    assert check_ids(lakes, " gone , a ") == ["gone", "a"]

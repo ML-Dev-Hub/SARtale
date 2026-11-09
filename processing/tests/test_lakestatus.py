@@ -136,7 +136,7 @@ def test_without_crids_or_on_the_same_version_the_usual_rule_applies():
 
 def test_the_status_names_list_every_status():
     from sartale.lakestatus import STATUS_NAMES
-    assert len(STATUS_NAMES) == 7 and "Change not confirmed yet" in STATUS_NAMES
+    assert len(STATUS_NAMES) == 8 and "Change not confirmed yet" in STATUS_NAMES and STATUS_NAMES[-1] == "No lake now"
 
 
 def test_the_app_lists_the_same_statuses_and_styles_the_unconfirmed_one_as_neutral():
@@ -152,3 +152,8 @@ def test_the_app_lists_the_same_statuses_and_styles_the_unconfirmed_one_as_neutr
     pin = next(line for line in css if '.lw-marker[data-status="change-not-confirmed-yet"]' in line)
     assert "border-style: dashed" in chip and "--warm" not in chip
     assert "background: transparent" in pin and "--warm" not in pin
+    for slug in ("no-lake-now",):  # a site with no lake is neutral too, never the change colour
+        chip = next(line for line in css if f".lw-status-{slug}" in line)
+        pin = next(line for line in css if f'.lw-marker[data-status="{slug}"]' in line)
+        assert "border-style: dashed" in chip and "--warm" not in chip
+        assert "background: transparent" in pin and "--warm" not in pin
