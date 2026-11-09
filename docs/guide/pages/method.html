@@ -2,7 +2,7 @@
 <p class="lede">SARtale uses plain statistics on radar backscatter: a darkness rule, a two-direction shadow rule and a change test against each lake's own noise. No AI model runs in the pipeline or the app.</p>
 
 <h2>The data</h2>
-<p>SARtale reads NASA's NISAR Level-2 GCOV product (geocoded, polarimetric covariance, about 10 m pixels) from the ASF archive. All passes in this build are from the provisional release, CRID <code>P05023</code>, which NASA has not validated and will reprocess. It uses two polarisations: HH (sent and received horizontally) and HV (sent horizontally, received vertically).</p>
+<p>SARtale reads NASA's NISAR Level-2 GCOV product (geocoded, polarimetric covariance, about 10 m pixels) from the ASF archive. Passes up to 21 Oct 2026 are from the provisional release, CRID <code>P05023</code>, which NASA has not validated and will reprocess. Later passes are NASA's standard GCOV product, CRID <code>P05036</code>; we have no statement that it is validated. Each pass keeps its own CRID, and a lake whose status track mixes the two carries a limit, because a calibration change between them can shift areas. It uses two polarisations: HH (sent and received horizontally) and HV (sent horizontally, received vertically).</p>
 
 <h2>Six steps, per lake and per pass</h2>
 <ol class="steps">
@@ -20,6 +20,7 @@
   <li>Reference: the median of the earlier areas.</li>
   <li>Noise: 1.4826 × the median of the absolute pass-to-pass differences, at least 0.005 km². With fewer than three earlier areas the noise is the floor.</li>
   <li>Change: the latest area minus the reference. Growing if change &gt; 2 × noise, Shrinking if change &lt; −2 × noise, otherwise Stable.</li>
+  <li>New processing version: if the change is past 2 × noise but the latest pass is the first on a processing version (CRID) that none of the earlier passes has, the status is Change not confirmed yet. A second pass on that version joins the baseline, and Growing or Shrinking applies if the change holds. A change within the noise stays Stable.</li>
 </ul>
 <p><b>Worked example.</b> Attabad on 23 October 2026, track 156A: 2.082 km² against a median of 1.834 km² from 6 earlier looks. The change is +0.248 km² and the noise 0.520 km², so the threshold is 1.040 km² and the lake reads <b>Stable</b>.</p>
 

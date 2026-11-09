@@ -43,7 +43,7 @@
         "label": "Lake Watch",
         "title": "Lake Watch: one status for each lake",
         "body": [
-          "Lake Watch lists {lake_count} lakes, each with a status: Growing, Stable, Shrinking, Not seen this pass, Not observable, or Not enough NISAR looks yet.",
+          "Lake Watch lists {lake_count} lakes, each with a status: Growing, Stable, Shrinking, Change not confirmed yet, Not seen this pass, Not observable, or Not enough NISAR looks yet.",
           "A status compares a lake only with its own earlier passes from the same track. Growing or Shrinking needs a change larger than {change_factor} times the lake's own noise, so a label can change between passes on a small change.",
           "Control lakes, kept to check the method, are listed last."
         ],

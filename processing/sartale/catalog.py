@@ -1,9 +1,14 @@
-"""NISAR GCOV granule names and the CMR collection Lake Watch searches."""
+"""NISAR GCOV granule names and the CMR collections Lake Watch searches."""
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
 CMR_URL = "https://cmr.earthdata.nasa.gov/search/granules.umm_json"
-SHORT_NAME = "NISAR_L2_GCOV_PROVISIONAL_V1"
+# NASA released NISAR GCOV first as a provisional collection (CRID P05023, passes up to 21 Oct 2026), then as the
+# standard collection (CRID P05036 from 21 Oct 2026). Both are searched; when one acquisition is in both, the
+# standard one is kept. The beta collection (X0500x, Dec 2025 - Jan 2026) predates calibration and is not searched.
+STANDARD = "NISAR_L2_GCOV_V1"
+PROVISIONAL = "NISAR_L2_GCOV_PROVISIONAL_V1"
+SHORT_NAMES = (STANDARD, PROVISIONAL)  # order of preference
 _TIME = "%Y%m%dT%H%M%S"
 
 

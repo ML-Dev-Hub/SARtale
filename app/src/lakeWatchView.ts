@@ -217,7 +217,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     t.append(el("caption", undefined, `NISAR passes over ${lake.name}: water area by date and track`));
     const thead = el("thead");
     const head = el("tr");
-    for (const h of ["Date", "Track", "Area (km²)", "Zone seen", "Used"]) {
+    for (const h of ["Date", "Track", "Area (km²)", "Zone seen", "Used", "Version"]) {
       const th = el("th", undefined, h);
       th.scope = "col";
       head.append(th);
@@ -237,6 +237,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
         el("td", undefined, p.area_km2 === null ? "–" : p.area_km2.toFixed(3)),
         el("td", undefined, p.observable_share === null ? "–" : `${Math.round(p.observable_share * 100)}%`),
         el("td", undefined, used),
+        el("td", undefined, p.crid ?? "–"),
       );
       tbody.append(tr);
     }

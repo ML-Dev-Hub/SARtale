@@ -4,13 +4,13 @@ Updated 6 Nov 2026. Space Apps rules say we must confirm that non-NASA data and 
 
 ## Status in one paragraph
 
-Lake Watch shows NISAR radar data labelled **Provisional**. `app/public/data/lakes.json` and the per-lake images are built by the pipeline in `processing/` (`lakes-search`, `lakes-fetch`, `lakes-build`, `lakes-check`) from 6 km windows of NASA's provisional NISAR GCOV passes, read over HTTPS without downloading whole files. Only derived data is committed; the cached windows live in `data/lakes/` (git-ignored).
+Lake Watch shows NISAR radar data labelled **Provisional**. `app/public/data/lakes.json` and the per-lake images are built by the pipeline in `processing/` (`lakes-search`, `lakes-fetch`, `lakes-build`, `lakes-check`) from 6 km windows of NASA's NISAR GCOV passes (the provisional release up to 21 Oct 2026, the standard product after it), read over HTTPS without downloading whole files. Only derived data is committed; the cached windows live in `data/lakes/` (git-ignored).
 
 ## Satellite data
 
 | Item | Use | Licence or terms | Access date |
 |---|---|---|---|
-| NISAR L2 GCOV, provisional (NASA, from ASF). CMR short name `NISAR_L2_GCOV_PROVISIONAL_V1`, CRID `P05023`, mode 4005, DHDH, frequency A, HH and HV | A 6 km window of every calibrated pass over each lake from 17 Jun 2026: 232 passes, about 5.4 GB read in total. Every lake area and radar picture | NASA data, openly available. Provisional product, not validated; NASA expects reprocessing. Exact citation wording: terms not confirmed | 2026-11-02 |
+| NISAR L2 GCOV (NASA, from ASF): the provisional release, CMR short name `NISAR_L2_GCOV_PROVISIONAL_V1`, CRID `P05023`, passes up to 21 Oct 2026; and the standard product, CMR short name `NISAR_L2_GCOV_V1` (C3622241360-ASF), CRID `P05036`, passes from 21 Oct 2026. Mode 4005, DHDH, frequency A, HH and HV | A 6 km window of every calibrated pass over each lake from 17 Jun 2026: 232 passes, about 5.4 GB read in total. Every lake area and radar picture | NASA data, openly available. The provisional release is not validated and NASA expects to reprocess it; we have no statement that the standard product is validated. A status track that spans both is flagged on the lake. Exact citation wording: terms not confirmed | 2026-11-02 |
 | Sentinel-2 L2A, via Earth Search (Element 84) | Optical water (MNDWI) cross-check for Attabad, Khurdopin, Passu and Shisper. Only derived areas are kept | Copernicus Sentinel data terms (free, full and open; attribution "Contains modified Copernicus Sentinel data"). Exact legal notice wording: terms not confirmed | 2026-11-04 |
 
 ## Lake locations and outlines

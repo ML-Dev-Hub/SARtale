@@ -1,5 +1,6 @@
 """Lake Watch settings and method constants."""
-CRID = "P05023"  # NISAR composite release ID of the passes used
+# No CRID is pinned: every pass keeps the composite release ID (CRID) of its own file, so a new NASA release is
+# picked up without a code change. lakes.json lists the CRIDs used.
 
 # Lake Watch method constants (docs: global-constraints in the Lake Watch plan).
 DROP_DB = 3.0  # dark = HH and HV both at least this far below the window median

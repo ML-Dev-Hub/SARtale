@@ -366,6 +366,11 @@ def test_rebuild_action_order():
         return next(i for i, r in enumerate(runs) if word in r)
 
     assert at("lakes-search") < at("lakes-fetch") < at("lakes-build") < at("pytest tests -q")
+    # the published lakes.json is kept before the build and compared with the new one after it
+    assert at("git show HEAD:app/public/data/lakes.json") < at("lakes-build") < at("lakes-diff") < at("pytest tests -q")
+    assert '--old "$RUNNER_TEMP/lakes.published.json"' in runs[at("lakes-diff")]
+    assert '> "$RUNNER_TEMP/lakes.published.json"' in runs[at("git show HEAD:app/public/data/lakes.json")]
+    assert "continue-on-error" not in steps[at("lakes-diff")], "a large drop must fail the rebuild"
     assert at("pytest tests -q") < at("npm test -- --run")
     assert "npm ci --ignore-scripts" in runs[at("npm test -- --run")]
     assert runs[at("lakes-fetch")].count("run_pipeline lakes-fetch") == 2, "lakes-fetch is retried once"

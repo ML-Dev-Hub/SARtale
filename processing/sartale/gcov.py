@@ -8,8 +8,9 @@ from pyproj import Transformer
 
 from sartale.radiometry import mask_power
 
-# This layout was confirmed on the real P05023 files: HH and HV terms, 10 m pixels, EPSG:32643, mask values
-# 0, 1 and 255 (one subswath), and granuleId and compositeReleaseId. If a later release differs, fix it here only.
+# This layout was confirmed on the real P05023 (provisional) files: HH and HV terms, 10 m pixels, EPSG:32643, mask
+# values 0, 1 and 255 (one subswath), and granuleId and compositeReleaseId. The standard P05036 windows read with the
+# same paths. If a later release differs, fix it here only.
 GRID_GROUP = "/science/LSAR/GCOV/grids/frequencyA"
 LOOKS = "numberOfLooks"
 MASK = "mask"
@@ -44,8 +45,9 @@ def _text(value) -> str:
 def check_identity(path: Path, expected_granule: str, expected_crid: str | None = None) -> None:
     """Raise ValueError if the file's own granule ID or release ID differs from what the manifest says.
 
-    A renamed file must never be labelled with another granule's name or as Provisional P05023.
-    The granule ID is required. The release ID is compared only where the file has the field.
+    A renamed file must never be labelled with another granule's name or release. Pass the CRID of the pass's own
+    granule name (each pass keeps its own; none is pinned). The granule ID is required. The release ID is compared
+    only where the file has the field.
     """
     with h5py.File(path, "r") as f:
         ident = f[IDENTIFICATION_GROUP] if IDENTIFICATION_GROUP in f else None

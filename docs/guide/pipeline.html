@@ -41,10 +41,11 @@ conda run -n sartale python -m sartale.run_pipeline lakes-check    <span class="
 <div class="table-wrap"><table>
   <thead><tr><th>Command</th><th>What it does</th><th>Reads</th><th>Writes</th></tr></thead>
   <tbody>
-    <tr><td><code>lakes-search</code></td><td>Searches NASA CMR for NISAR GCOV granules over each lake and prints a coverage report</td><td><code>lakes_in.json</code></td><td><code>data/lakes/passes.json</code></td></tr>
+    <tr><td><code>lakes-search</code></td><td>Searches NASA CMR for NISAR GCOV granules over each lake in the standard collection (<code>NISAR_L2_GCOV_V1</code>) and the provisional one (<code>NISAR_L2_GCOV_PROVISIONAL_V1</code>), keeps the standard copy of an acquisition found in both, and prints a coverage report. Exits 1 if no lake has any pass (a catalogue outage)</td><td><code>lakes_in.json</code></td><td><code>data/lakes/passes.json</code></td></tr>
     <tr><td><code>lakes-fetch</code></td><td>Reads a 6 km window from each pass with HTTP range requests and caches it. You can stop it and run it again; it skips cached windows and exits 1 if any pass failed</td><td><code>passes.json</code></td><td><code>data/lakes/&lt;lake&gt;/&lt;date&gt;_&lt;track&gt;_&lt;CRID&gt;.npz</code></td></tr>
-    <tr><td><code>lakes-build</code></td><td>Runs the method on every cached window, then the Attabad gate (below)</td><td>the cache, <code>lake_checks.json</code></td><td><code>app/public/data/lakes.json</code>, <code>app/public/data/lakes/&lt;lake&gt;/*.webp</code></td></tr>
+    <tr><td><code>lakes-build</code></td><td>Runs the method on the cached windows of the passes <code>passes.json</code> lists, whatever their CRID, then the Attabad gate (below). A cached window of a pass the catalogue no longer lists is ignored, not deleted, so a long-lived cache builds the same as a fresh one; it exits 1 without <code>passes.json</code>. A lake whose status track mixes CRIDs gets a limit</td><td>the cache, <code>passes.json</code>, <code>lake_checks.json</code></td><td><code>app/public/data/lakes.json</code>, <code>app/public/data/lakes/&lt;lake&gt;/*.webp</code></td></tr>
     <tr><td><code>lakes-check</code></td><td>Compares radar water with Sentinel-2 water for <code>--lakes</code> (default <code>attabad,khurdopin,passu,shisper</code>)</td><td>the cache, <code>lakes.json</code></td><td><code>processing/lake_checks.json</code>; the next <code>lakes-build</code> copies it into <code>lakes.json</code></td></tr>
+    <tr><td><code>lakes-diff</code></td><td>Compares a previous <code>lakes.json</code> (<code>--old</code>) with the new one pass by pass: prints added and dropped passes per lake, writes them to the GitHub job summary, warns for every dropped pass and every lake whose latest date moved back, and exits 1 if more than a quarter of the previous passes would be dropped. The rebuild runs it against the published file</td><td>two <code>lakes.json</code> files</td><td>the log and <code>$GITHUB_STEP_SUMMARY</code></td></tr>
   </tbody>
 </table></div>
 <p>Each command takes <code>--help</code>. The paths above are the defaults, and each one can be overridden with a flag: <code>--lakes-in</code>, <code>--passes</code>, <code>--cache</code>, <code>--out</code> or <code>--checks</code>.</p>
@@ -65,12 +66,13 @@ conda run -n sartale python -m sartale.run_pipeline lakes-check    <span class="
   <thead><tr><th>Module</th><th>Job</th></tr></thead>
   <tbody>
     <tr><td><code>run_pipeline.py</code></td><td>The command line: every command above and the lake request commands</td></tr>
-    <tr><td><code>config.py</code></td><td>Every method constant, the CRID, the cloud window and the manual exclusions</td></tr>
-    <tr><td><code>lakes.py</code>, <code>lake_catalog.py</code>, <code>catalog.py</code></td><td>The lake register, the CMR search, picking passes, parsing granule names</td></tr>
+    <tr><td><code>config.py</code></td><td>Every method constant, the cloud window and the manual exclusions. No CRID is pinned: each pass keeps its own</td></tr>
+    <tr><td><code>lakes.py</code>, <code>lake_catalog.py</code>, <code>catalog.py</code></td><td>The lake register, the CMR collections and search, picking passes, parsing granule names</td></tr>
     <tr><td><code>remote.py</code>, <code>gcov.py</code></td><td>HTTP range reads of remote HDF5 files, and reading a GCOV window with its mask</td></tr>
     <tr><td><code>radiometry.py</code>, <code>lakewater.py</code></td><td>Speckle box, decibels, the dark rule, the shadow rule, pass screening and the lake zone</td></tr>
     <tr><td><code>lakestatus.py</code></td><td>Noise and the status of each lake</td></tr>
     <tr><td><code>lakebuild.py</code>, <code>render.py</code></td><td>Puts it together: <code>lakes.json</code>, the pictures and the Attabad gate</td></tr>
+    <tr><td><code>lakes_diff.py</code></td><td>The pass-by-pass comparison behind <code>lakes-diff</code></td></tr>
     <tr><td><code>lakecheck.py</code></td><td>The Sentinel-2 comparison</td></tr>
     <tr><td><code>lake_requests.py</code>, <code>lake_issues.py</code>, <code>accept_queue.py</code></td><td>The request rules (point, name, source, distance), reading issues into <code>requests.json</code> and their comments and labels, and choosing the next waiting accept</td></tr>
   </tbody>

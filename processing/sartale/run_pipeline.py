@@ -1,4 +1,5 @@
-"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-build, lakes-check, lake-issues, lake-issue-accept."""
+"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-build, lakes-check, lakes-diff, lake-issues,
+lake-issue-accept."""
 import argparse
 import json
 import os
@@ -9,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from sartale.lake_catalog import Pass, coverage_report, search_lake_passes, select_lake_passes
-from sartale.lakebuild import attabad_gate, build_lakes
+from sartale.lakebuild import PASSES_JSON, attabad_gate, build_lakes, read_listed, unlisted_windows
 from sartale.lakecheck import check_lake
 from sartale.lake_requests import RequestError
 from sartale.lakes import load_lakes
@@ -37,6 +38,10 @@ def cmd_lakes_search(args) -> None:
         tracks = ", ".join(f"{k} x{n}" for k, n in sorted(row["tracks"].items())) or "no passes"
         print(f"{row['id']} ({row['role']}): {tracks}; enough looks: {'yes' if row['enough_looks'] else 'no'}")
     print(f"{len(lakes)} lakes -> {out}")
+    if lakes and not any(by_key for by_key in passes.values()):
+        print("lakes-search found no pass for any lake: the catalogue is probably down or has moved; stopping",
+              file=sys.stderr)
+        sys.exit(1)
 
 
 def fetch_all(lakes, doc: dict, out: Path, session, fetch=fetch_lake_passes) -> list[str]:
@@ -123,6 +128,15 @@ def cmd_lakes_build(args) -> None:
     built = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     checks_path = Path(args.checks)
     checks = json.loads(checks_path.read_text(encoding="utf-8")) if checks_path.is_file() else []
+    listed = read_listed(Path(args.cache) / PASSES_JSON)
+    if listed is None:
+        print(f"no {Path(args.cache) / PASSES_JSON}: run lakes-search first (the build uses only the passes it lists)",
+              file=sys.stderr)
+        sys.exit(1)
+    for lake in lakes:
+        gone = unlisted_windows(Path(args.cache) / lake.id, listed.get(lake.id, set()))
+        if gone:
+            print(f"{lake.id}: ignoring {len(gone)} cached window(s) the catalogue no longer lists: {', '.join(gone)}")
     doc = build_lakes(lakes, Path(args.cache), out, built, checks)
     write_json_atomic(out / "lakes.json", doc)
     for gone in prune_lake_images(out, doc):
@@ -170,6 +184,28 @@ def cmd_lakes_check(args) -> None:
     doc["checks"] = rows
     write_json_atomic(path, doc)
     print(f"{len(rows)} checks -> {args.checks} and {path}")
+
+
+def cmd_lakes_diff(args) -> None:
+    """Compare the previous lakes.json with the new one: print added and dropped passes per lake, write them to
+    the job summary, warn for every dropped pass and backwards latest date, fail above the drop threshold."""
+    from sartale.lakes_diff import diff_lakes, summary_markdown, text_report, warnings
+
+    old_path = Path(args.old)
+    if not old_path.is_file():
+        print(f"no previous lakes.json at {old_path}; nothing to compare")
+        return
+    result = diff_lakes(_read_json(old_path), _read_json(Path(args.new)))
+    print(text_report(result))
+    for w in warnings(result):
+        print(w)
+    summary = args.summary or os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary, "a", encoding="utf-8") as fh:
+            fh.write(summary_markdown(result))
+    if result["fail"]:
+        print(f"::error::{result['fail']}")
+        sys.exit(1)
 
 
 def lake_slug(name: str, taken: set[str]) -> str:
@@ -263,6 +299,12 @@ def build_parser() -> argparse.ArgumentParser:
     lc.add_argument("--checks", default=str(REPO_ROOT / "processing" / "lake_checks.json"))
     lc.add_argument("--lakes", default="attabad,khurdopin,passu,shisper", help="comma-separated lake ids")
     lc.set_defaults(func=cmd_lakes_check)
+
+    ld = sub.add_parser("lakes-diff", help="compare a previous lakes.json with the new one, pass by pass")
+    ld.add_argument("--old", required=True, help="the previously published lakes.json")
+    ld.add_argument("--new", default=str(REPO_ROOT / "app" / "public" / "data" / "lakes.json"))
+    ld.add_argument("--summary", help="Markdown file to append to (default: $GITHUB_STEP_SUMMARY when set)")
+    ld.set_defaults(func=cmd_lakes_diff)
 
     li = sub.add_parser("lake-issues", help="turn lake-request issues into requests.json and the event issue's actions")
     li.add_argument("--issues", required=True, help="JSON list of every issue labelled lake-request")

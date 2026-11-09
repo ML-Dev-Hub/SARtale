@@ -4,6 +4,7 @@ export type LakeStatusName =
   | "Growing"
   | "Stable"
   | "Shrinking"
+  | "Change not confirmed yet"
   | "Not seen this pass"
   | "Not observable"
   | "Not enough NISAR looks yet";
@@ -16,6 +17,8 @@ export interface LakeStatus {
   change_km2: number | null;
   noise_km2: number | null;
   reason: string;
+  /** For "Change not confirmed yet": the processing version of the latest pass that its baseline lacks. */
+  new_crid?: string | null;
 }
 
 export interface LakeSeriesPoint {
@@ -24,6 +27,8 @@ export interface LakeSeriesPoint {
   area_km2: number | null;
   observable_share: number | null;
   excluded: string | null;
+  /** NISAR processing version (composite release ID) of the pass, e.g. "P05036" (absent in older builds). */
+  crid?: string;
 }
 
 export interface Lake {
@@ -103,7 +108,10 @@ export interface LakesFile {
   version: number;
   built: string;
   notes: string;
+  /** Every NISAR processing version used, sorted and joined with ", ", e.g. "P05023, P05036". */
   crid: string;
+  /** CMR collections the passes came from (absent in older builds). */
+  collections?: string[];
   cloud_window: [string, string];
   constants: {
     drop_db: number;
@@ -124,6 +132,7 @@ export interface LakesFile {
 export const STATUS_ORDER: LakeStatusName[] = [
   "Growing",
   "Shrinking",
+  "Change not confirmed yet",
   "Not seen this pass",
   "Stable",
   "Not enough NISAR looks yet",
@@ -181,7 +190,10 @@ export function statusSentence(lake: Lake, changeFactor: number): string {
   // Round first, then pick the sign, so a change that rounds to zero never prints as "-0.000".
   const sign = Number(shown) === 0 ? "" : (s.change_km2 as number) > 0 ? "+" : "-";
   const when = s.latest_date ? `, latest ${formatDate(s.latest_date)}` : "";
-  return `${s.status}: ${sign}${shown} km²${scope} since earlier ${s.track} passes (noise ±${km2(s.noise_km2 as number)} km²; change must exceed ${changeFactor}× noise), ${s.looks} looks${when}`;
+  const pending = s.status === "Change not confirmed yet"
+    ? `; first pass on NISAR processing version ${s.new_crid ?? "new"}, so the change waits for a second pass on that version`
+    : "";
+  return `${s.status}: ${sign}${shown} km²${scope} since earlier ${s.track} passes (noise ±${km2(s.noise_km2 as number)} km²; change must exceed ${changeFactor}× noise), ${s.looks} looks${when}${pending}`;
 }
 
 /**
@@ -265,6 +277,13 @@ export function methodLimits(file: LakesFile): string[] {
   return out.filter((t) => !!t);
 }
 
+/** "processing version P05023", or "processing versions P05023 and P05036" when lakes.json lists more than one. */
+export function processingVersions(crid: string): string {
+  const ids = crid.split(",").map((s) => s.trim()).filter((s) => s);
+  if (ids.length <= 1) return `processing version ${ids[0] ?? "unknown"}`;
+  return `processing versions ${ids.slice(0, -1).join(", ")} and ${ids[ids.length - 1]}`;
+}
+
 /** The numbers and dates that copy quotes, taken from lakes.json so the words cannot drift from the data. */
 export function lakeTokens(file: LakesFile): Record<string, string> {
   const c = file.constants;
@@ -283,6 +302,7 @@ export function lakeTokens(file: LakesFile): Record<string, string> {
     cloud_lakes: String(file.lakes.filter((l) => l.cloud_window_looks > 0).length),
     lake_count: String(file.lakes.length),
     crid: file.crid,
+    processing_versions: processingVersions(file.crid),
     notes: file.notes,
     iou_range: iouRange(file.checks) ?? "no IoU yet",
   };

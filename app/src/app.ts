@@ -35,7 +35,10 @@ export function routeFromHash(hash: string): { view: View; lake?: string } | nul
   const m = /^#lakes\/([a-z0-9_-]+)$/.exec(hash);
   return m ? { view: "lakes", lake: m[1] } : null;
 }
-/** Every NISAR file in this build is NASA's provisional GCOV product, so the label is fixed. */
+/**
+ * Passes up to 21 Oct 2026 are NASA's provisional GCOV release (P05023), later ones the standard product (P05036).
+ * The label stays while any provisional pass is used, which is every build that keeps the season from June.
+ */
 export const MATURITY = "Provisional NISAR data";
 
 const TEMPLATE = `

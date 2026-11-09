@@ -61,7 +61,7 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
   const head = el("header", "evidence-head");
   const title = el("h2", "evidence-title", evidenceCopy.title);
   head.append(title, el("p", "evidence-lede", fill(evidenceCopy.lede)));
-  head.append(el("p", "evidence-status", "Provisional NISAR data. NASA expects to reprocess these files."));
+  head.append(el("p", "evidence-status", "Provisional NISAR data up to 21 Oct 2026, which NASA expects to reprocess; later passes are NASA's standard product."));
 
   const verdict = el("div", "evidence-verdict");
   const can = el("section", "verdict-can");

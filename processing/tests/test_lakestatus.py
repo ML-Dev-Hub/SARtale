@@ -97,3 +97,58 @@ def test_status_observable_but_none_valid():
     s = lake_status(series)
     assert s["status"] == "Not enough NISAR looks yet"
     assert s["track"] is None and s["looks"] == 0
+
+
+def versioned(track, areas, crids, start=1):
+    return [{**pt(f"2026-10-{start + i:02d}", track, a), "crid": c} for i, (a, c) in enumerate(zip(areas, crids))]
+
+
+OLD5 = ["P05023"] * 5
+
+
+def test_a_change_on_the_first_pass_of_a_new_processing_version_is_not_confirmed():
+    from sartale.lakestatus import UNCONFIRMED
+    s = lake_status(versioned("084A", NOISY + [1.5], OLD5 + ["P05036"]))
+    assert s["status"] == UNCONFIRMED == "Change not confirmed yet"
+    assert s["change_km2"] > 0.4 and s["noise_km2"] is not None and s["looks"] == 6 and s["new_crid"] == "P05036"
+    assert s["reason"].startswith("Track 084A: 1.500 km2 on 2026-10-06 vs median 1.000 of 5 earlier looks (noise ")
+    assert s["reason"].endswith("km2); this is the first pass on NISAR processing version P05036, so the change "
+                                "waits for a second pass on that version.")
+    shrink = lake_status(versioned("084A", NOISY + [0.5], OLD5 + ["P05036"]))
+    assert shrink["status"] == UNCONFIRMED and shrink["change_km2"] < 0
+
+
+def test_a_second_pass_on_the_new_version_confirms_the_change():
+    s = lake_status(versioned("084A", NOISY + [1.5, 1.5], OLD5 + ["P05036", "P05036"]))
+    assert s["status"] == "Growing" and s["new_crid"] is None
+    assert s["reason"].endswith("km2).")
+
+
+def test_a_within_noise_change_on_a_new_version_stays_stable():
+    s = lake_status(versioned("084A", NOISY + [1.01], OLD5 + ["P05036"]))
+    assert s["status"] == "Stable" and s["new_crid"] is None
+
+
+def test_without_crids_or_on_the_same_version_the_usual_rule_applies():
+    assert lake_status(flat("156A", NOISY + [1.5]))["status"] == "Growing"
+    assert lake_status(versioned("156A", NOISY + [1.5], ["P05036"] * 6))["status"] == "Growing"
+
+
+def test_the_status_names_list_every_status():
+    from sartale.lakestatus import STATUS_NAMES
+    assert len(STATUS_NAMES) == 7 and "Change not confirmed yet" in STATUS_NAMES
+
+
+def test_the_app_lists_the_same_statuses_and_styles_the_unconfirmed_one_as_neutral():
+    import re
+    from pathlib import Path
+    from sartale.lakestatus import STATUS_NAMES
+    app = Path(__file__).resolve().parents[2] / "app" / "src"
+    ts = (app / "lakes.ts").read_text(encoding="utf-8")
+    order = re.search(r"STATUS_ORDER: LakeStatusName\[\] = \[(.*?)\];", ts, re.S).group(1)
+    assert tuple(re.findall(r'"([^"]+)"', order)) == STATUS_NAMES
+    css = (app / "styles.css").read_text(encoding="utf-8").splitlines()
+    chip = next(line for line in css if ".lw-status-change-not-confirmed-yet" in line)
+    pin = next(line for line in css if '.lw-marker[data-status="change-not-confirmed-yet"]' in line)
+    assert "border-style: dashed" in chip and "--warm" not in chip
+    assert "background: transparent" in pin and "--warm" not in pin
