@@ -8,6 +8,7 @@ from PIL import Image
 from pyproj import Transformer
 
 from sartale import config
+from sartale.catalog import PROVISIONAL, STANDARD
 from sartale.lakes import Lake
 from sartale.lakestatus import SeriesPoint, cloud_window_looks, is_valid, lake_status
 from sartale.lakewater import (
@@ -67,20 +68,59 @@ def _load_outline(lake: Lake):
 
 
 def _read_cache(lake_dir: Path, limits: list[str]) -> list[dict]:
-    passes = []
+    """Every cached window `<date>_<key>_<CRID>.npz`, whatever its CRID. A file whose name does not have those three
+    parts is skipped. When one date and track is cached under more than one CRID (a pass reprocessed into a
+    newer release), the latest CRID is used and the others are noted."""
+    files: dict[tuple[str, str], dict[str, Path]] = {}
     for f in sorted(lake_dir.glob("*.npz")):
         parts = f.stem.split("_")
-        if len(parts) != 3:
+        if len(parts) != 3 or not all(parts):
             continue
         date, key, crid = parts
-        if crid != config.CRID:
-            limits.append(f"ignored {f.name}: CRID {crid} is not {config.CRID}")
-            continue
-        with np.load(f) as z:
-            passes.append({"date": date, "key": key, "id": f"{date}_{key}",
+        files.setdefault((date, key), {})[crid] = f
+    passes = []
+    for (date, key), by_crid in sorted(files.items()):
+        crid = max(by_crid)
+        for other in sorted(set(by_crid) - {crid}):
+            limits.append(f"ignored {by_crid[other].name}: the same pass is cached as {crid}")
+        with np.load(by_crid[crid]) as z:
+            passes.append({"date": date, "key": key, "id": f"{date}_{key}", "crid": crid,
                            "hh": z["hh"], "hv": z["hv"], "x": np.asarray(z["x"], float),
                            "y": np.asarray(z["y"], float), "epsg": int(z["epsg"])})
     return passes
+
+
+def read_collections(passes_json: Path) -> dict[str, str]:
+    """CRID -> CMR short name, from the passes.json lakes-search wrote. Empty if the file is missing or older."""
+    p = Path(passes_json)
+    if not p.is_file():
+        return {}
+    out: dict[str, str] = {}
+    for by_key in json.loads(p.read_text(encoding="utf-8")).get("lakes", {}).values():
+        for rows in by_key.values():
+            for row in rows:
+                if row.get("crid") and row.get("collection"):
+                    out.setdefault(row["crid"], row["collection"])
+    return out
+
+
+def _release_word(short_name: str | None) -> str | None:
+    if short_name == PROVISIONAL:
+        return "provisional"
+    if short_name == STANDARD:
+        return "standard"
+    return None
+
+
+def mixed_crid_limit(track: str, crids: list[str], collections: dict[str, str]) -> str:
+    """The limit a lake carries when its status track mixes processing versions."""
+    named = []
+    for c in sorted(crids):
+        word = _release_word(collections.get(c))
+        named.append(f"{c} ({word})" if word else c)
+    listed = ", ".join(named[:-1]) + " and " + named[-1]
+    return (f"Track {track} mixes NISAR processing versions {listed}; a calibration change between them can "
+            "shift areas.")
 
 
 def _common_axis(axes: list[np.ndarray]) -> np.ndarray:
@@ -251,7 +291,7 @@ def _empty(entry: dict, limits: list[str]) -> dict:
             "bounds": None}
 
 
-def build_lake(lake: Lake, cache_dir: Path, out_dir: Path) -> dict:
+def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str, str] | None = None) -> dict:
     limits: list[str] = []
     feature = _outline_feature(lake)
     outline = feature["geometry"] if feature else None
@@ -285,7 +325,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path) -> dict:
         reason = excluded.get(p["id"])
         series.append({"date": p["date"], "track": p["key"],
                        "area_km2": None if reason else w["area_km2"],
-                       "observable_share": w["observable_share"], "excluded": reason})
+                       "observable_share": w["observable_share"], "excluded": reason, "crid": p["crid"]})
 
     latest_expected: dict[str, str] = {}  # R-P2: newest cached pass per track, excluded or not
     for p in passes:
@@ -293,6 +333,10 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path) -> dict:
 
     good = [p for p in passes if p["id"] not in excluded]
     status = lake_status(series, latest_expected)
+    if status["track"]:
+        track_crids = sorted({p["crid"] for p in series if p["track"] == status["track"]})
+        if len(track_crids) > 1:
+            limits.append(mixed_crid_limit(status["track"], track_crids, collections or {}))
     images = {"latest_hh": None, "water": None, "date": None, "track": None}
     pictured = pictured_pass(series, status["track"])
     if good and pictured:
@@ -334,17 +378,26 @@ def attabad_gate(doc: dict) -> dict:
             "attabad_cloud_window_looks": cw, "pass": ok}
 
 
-def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, checks: list[dict] | None = None) -> dict:
-    """`checks` are the Sentinel-2 cross-check rows from `lakes-check`, merged in as the `checks` block."""
+def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, checks: list[dict] | None = None,
+                collections: dict[str, str] | None = None) -> dict:
+    """`checks` are the Sentinel-2 cross-check rows from `lakes-check`, merged in as the `checks` block.
+    `collections` maps CRID -> CMR short name (default: read from `cache_dir`/passes.json)."""
+    if collections is None:
+        collections = read_collections(Path(cache_dir) / "passes.json")
+    built_lakes = [build_lake(lake, Path(cache_dir), Path(out_dir), collections) for lake in lakes]
+    crids = sorted({p["crid"] for lk in built_lakes for p in lk["series"]})
     return {
-        "version": 1, "built": built, "notes": NOTES, "crid": config.CRID, "cloud_window": list(config.CLOUD_WINDOW),
+        "version": 1, "built": built, "notes": NOTES,
+        "crid": ", ".join(crids),  # every processing version used, e.g. "P05023, P05036"
+        "collections": sorted({collections[c] for c in crids if c in collections}),
+        "cloud_window": list(config.CLOUD_WINDOW),
         "constants": {"drop_db": config.DROP_DB, "min_looks": config.MIN_LOOKS,
                       "min_observable": config.MIN_OBSERVABLE, "noise_floor_km2": config.NOISE_FLOOR_KM2,
                       "change_factor": config.CHANGE_FACTOR, "speckle_box": config.SPECKLE_BOX,
                       "bright_pass_db": config.BRIGHT_PASS_DB, "outlier_z": config.OUTLIER_Z,
                       "outlier_share_floor": config.OUTLIER_SHARE_FLOOR,
                       "outlier_hv_floor_db": config.OUTLIER_HV_FLOOR_DB},
-        "lakes": [build_lake(lake, Path(cache_dir), Path(out_dir)) for lake in lakes],
+        "lakes": built_lakes,
         "checks": list(checks or []),
     }
 

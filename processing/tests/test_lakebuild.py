@@ -21,7 +21,7 @@ def make_lake(lid, lon=74.86, lat=36.33, role="watch"):
                 role=role, downstream=None, downstream_source=None)
 
 
-def write_pass(cache, lake, date, key, bright_db=0.0, dx=0, dy=0):
+def write_pass(cache, lake, date, key, bright_db=0.0, dx=0, dy=0, crid="P05023"):
     """A window with a dark disc (water) at the lake point; dx/dy shift the window in pixels."""
     cx, cy = Transformer.from_crs(4326, EPSG, always_xy=True).transform(lake.lon, lake.lat)
     x = cx - (N // 2) * PX + (np.arange(N) + dx) * PX
@@ -33,7 +33,7 @@ def write_pass(cache, lake, date, key, bright_db=0.0, dx=0, dy=0):
     hv = hh / 5
     d = Path(cache) / lake.id
     d.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(d / f"{date}_{key}_{config.CRID}.npz", hh=hh, hv=hv, looks=np.ones((N, N)),
+    np.savez_compressed(d / f"{date}_{key}_{crid}.npz", hh=hh, hv=hv, looks=np.ones((N, N)),
                         mask=np.ones((N, N), np.uint8), x=x, y=y, epsg=EPSG)
 
 
@@ -55,7 +55,8 @@ def lake(doc, lid):
 
 def test_build_writes_schema_keys(built):
     doc, _ = built
-    assert doc["version"] == 1 and doc["crid"] == config.CRID
+    assert doc["version"] == 1 and doc["crid"] == "P05023"
+    assert all(p["crid"] == "P05023" for lk in doc["lakes"] for p in lk["series"])
     assert doc["cloud_window"] == list(config.CLOUD_WINDOW)
     assert doc["constants"]["drop_db"] == config.DROP_DB
     keys = {"id", "name", "lon", "lat", "role", "coord_source", "outline_source", "area_label", "downstream",
@@ -186,3 +187,53 @@ def test_a_relative_outline_path_is_read_from_the_processing_folder():
     lk = replace(make_lake("attabad"), outline="outlines/attabad_osm.geojson")
     poly = _load_outline(lk)
     assert poly is not None and poly["type"] == "Polygon"
+
+
+COLLECTIONS = {"P05023": "NISAR_L2_GCOV_PROVISIONAL_V1", "P05036": "NISAR_L2_GCOV_V1"}
+
+
+def test_a_status_track_that_mixes_crids_is_built_with_a_limit(tmp_path):
+    cache, out = tmp_path / "c", tmp_path / "o"
+    a = make_lake("alpha")
+    for d in ["2026-09-17", "2026-09-29", "2026-10-11"]:
+        write_pass(cache, a, d, "156A", crid="P05023")
+    for d in ["2026-10-23", "2026-11-04"]:
+        write_pass(cache, a, d, "156A", crid="P05036")
+    doc = build_lakes([a], cache, out, "t", collections=COLLECTIONS)
+    lk = doc["lakes"][0]
+    assert [(p["date"], p["crid"]) for p in lk["series"]][-2:] == [("2026-10-23", "P05036"), ("2026-11-04", "P05036")]
+    assert lk["status"]["track"] == "156A" and lk["status"]["latest_date"] == "2026-11-04"
+    assert ("Track 156A mixes NISAR processing versions P05023 (provisional) and P05036 (standard); a calibration "
+            "change between them can shift areas.") in lk["limits"]
+    assert doc["crid"] == "P05023, P05036"
+    assert doc["collections"] == ["NISAR_L2_GCOV_PROVISIONAL_V1", "NISAR_L2_GCOV_V1"]
+
+
+def test_one_crid_on_the_status_track_has_no_mixing_limit(built):
+    doc, _ = built
+    assert not any("mixes NISAR processing versions" in m for lk in doc["lakes"] for m in lk["limits"])
+
+
+def test_a_pass_cached_under_two_crids_is_counted_once_from_the_later(tmp_path):
+    cache, out = tmp_path / "c", tmp_path / "o"
+    a = make_lake("alpha")
+    for d in ["2026-09-29", "2026-10-11", "2026-10-23"]:
+        write_pass(cache, a, d, "156A", crid="P05023")
+    write_pass(cache, a, "2026-10-23", "156A", crid="P05036")
+    (cache / "alpha" / "notes.npz").write_bytes(b"")  # a name that does not parse is skipped
+    lk = build_lakes([a], cache, out, "t", collections={})["lakes"][0]
+    assert [(p["date"], p["crid"]) for p in lk["series"]] == [
+        ("2026-09-29", "P05023"), ("2026-10-11", "P05023"), ("2026-10-23", "P05036")]
+    assert "ignored 2026-10-23_156A_P05023.npz: the same pass is cached as P05036" in lk["limits"]
+    assert "Track 156A mixes NISAR processing versions P05023 and P05036; a calibration change between them can " \
+           "shift areas." in lk["limits"]
+
+
+def test_collections_come_from_the_search_manifest(tmp_path):
+    from sartale.lakebuild import read_collections
+    p = tmp_path / "passes.json"
+    p.write_text(json.dumps({"lakes": {"alpha": {"156A": [
+        {"crid": "P05023", "collection": "NISAR_L2_GCOV_PROVISIONAL_V1"},
+        {"crid": "P05036", "collection": "NISAR_L2_GCOV_V1"}, {"crid": "P09999"}]}}}), encoding="utf-8")
+    assert read_collections(p) == COLLECTIONS
+    assert read_collections(tmp_path / "missing.json") == {}

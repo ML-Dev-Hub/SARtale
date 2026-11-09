@@ -44,9 +44,9 @@ def test_select_lake_passes_keeps_mode_4005_after_jun17():
     assert [p.date for p in out["156A"]] == ["2026-06-17", "2026-06-25"]
 
 
-def test_select_lake_passes_rejects_mixed_crid():
-    with pytest.raises(ValueError, match="CRID"):
-        select_lake_passes([make_pass(crid="P05023"), make_pass(crid="P05024", date="2026-07-07")])
+def test_select_lake_passes_accepts_a_track_that_mixes_crids():
+    out = select_lake_passes([make_pass(crid="P05023"), make_pass(crid="P05036", date="2026-10-28")])
+    assert [p.crid for p in out["156A"]] == ["P05023", "P05036"]
 
 
 def test_select_lake_passes_allows_other_crid_on_other_track():
@@ -70,12 +70,15 @@ def test_coverage_report_keeps_lake_without_enough_looks():
 
 
 class FakeSession:
-    def __init__(self, pages):
-        self.pages, self.calls = pages, []
+    """`pages` are the provisional collection's pages; `standard` (by default none) the standard collection's."""
+
+    def __init__(self, pages, standard=None):
+        self.by_collection = {"NISAR_L2_GCOV_PROVISIONAL_V1": pages, "NISAR_L2_GCOV_V1": standard or [[]]}
+        self.calls = []
 
     def get(self, url, params=None, timeout=None):
         self.calls.append(params)
-        page = self.pages[params["page_num"] - 1]
+        page = self.by_collection[params["short_name"]][params["page_num"] - 1]
         return type("R", (), {"raise_for_status": lambda s: None, "json": lambda s: {"items": page}})()
 
 
@@ -85,8 +88,38 @@ def test_search_lake_passes_queries_the_point_and_pages_until_short(monkeypatch)
     s = FakeSession([[a, b], [c]])
     out = search_lake_passes(LAKE, session=s)
     assert [p.date for p in out] == ["2026-07-01", "2026-07-02", "2026-07-03"]
-    assert len(s.calls) == 2
-    assert s.calls[0]["point"] == "74.0,36.0" and s.calls[0]["short_name"] == "NISAR_L2_GCOV_PROVISIONAL_V1"
+    provisional = [c for c in s.calls if c["short_name"] == "NISAR_L2_GCOV_PROVISIONAL_V1"]
+    assert len(provisional) == 2 and [c["page_num"] for c in provisional] == [1, 2]
+    assert provisional[0]["point"] == "74.0,36.0"
+    assert all(p.collection == "NISAR_L2_GCOV_PROVISIONAL_V1" for p in out)
+
+
+def test_search_lake_passes_searches_the_standard_and_provisional_collections_only():
+    s = FakeSession([[]])
+    search_lake_passes(LAKE, session=s)
+    assert {c["short_name"] for c in s.calls} == {"NISAR_L2_GCOV_V1", "NISAR_L2_GCOV_PROVISIONAL_V1"}
+    assert lake_catalog.SHORT_NAMES == ("NISAR_L2_GCOV_V1", "NISAR_L2_GCOV_PROVISIONAL_V1")
+
+
+def test_search_lake_passes_keeps_the_standard_copy_of_an_acquisition_in_both():
+    old = umm(name(start="20261023T010203", crid="P05023"))
+    new = umm(name(start="20261023T010209", crid="P05036"))  # same acquisition, reprocessed
+    only_old = umm(name(start="20261016T010203", crid="P05023"))
+    only_new = umm(name(start="20261028T010203", crid="P05036"))
+    other_frame = umm(name(frame="021", start="20261023T010203", crid="P05023"))
+    out = search_lake_passes(LAKE, session=FakeSession([[old, only_old, other_frame]], [[new, only_new]]))
+    got = [(p.date, p.frame, p.crid, p.collection) for p in out]
+    assert got == [
+        ("2026-10-16", "020", "P05023", "NISAR_L2_GCOV_PROVISIONAL_V1"),
+        ("2026-10-23", "021", "P05023", "NISAR_L2_GCOV_PROVISIONAL_V1"),
+        ("2026-10-23", "020", "P05036", "NISAR_L2_GCOV_V1"),
+        ("2026-10-28", "020", "P05036", "NISAR_L2_GCOV_V1"),
+    ]
+
+
+def test_a_pass_row_written_before_the_collection_field_still_loads():
+    row = {k: v for k, v in make_pass().__dict__.items() if k != "collection"}
+    assert Pass(**row).collection == ""
 
 
 def test_search_lake_passes_lists_each_granule_once(monkeypatch):

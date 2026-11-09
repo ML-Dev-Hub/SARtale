@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from statistics import median
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 from .config import (
     CHANGE_FACTOR,
@@ -19,6 +19,7 @@ class SeriesPoint(TypedDict):
     area_km2: float | None
     observable_share: float
     excluded: str | None  # reason, or None
+    crid: NotRequired[str]  # NISAR processing version (composite release ID) of the pass, e.g. "P05036"
 
 
 def track_noise_km2(areas: list[float]) -> float:

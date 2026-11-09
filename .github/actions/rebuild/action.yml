@@ -1,8 +1,10 @@
 name: Rebuild the lake data
 description: >
-  Search, fetch and build every watched lake from processing/lakes_in.json, then run the Python and app tests.
-  Fails on any error, including the Attabad gate. The caller passes EARTHDATA_USERNAME and EARTHDATA_PASSWORD
-  through `env:` on the step that uses this action; they are written to a temporary ~/.netrc only for the fetch.
+  Search, fetch and build every watched lake from processing/lakes_in.json, compare the build with the published
+  lakes.json, then run the Python and app tests. Fails on any error, including the Attabad gate, a search that
+  finds no pass for any lake, and a build that would drop more than a quarter of the published passes. The caller
+  passes EARTHDATA_USERNAME and EARTHDATA_PASSWORD through `env:` on the step that uses this action; they are
+  written to a temporary ~/.netrc only for the fetch.
 
 runs:
   using: composite
@@ -63,12 +65,29 @@ runs:
         path: data/lakes
         key: lakes-${{ hashFiles('processing/lakes_in.json') }}-${{ github.run_id }}
 
+    - name: Keep the published lakes.json for the comparison
+      shell: bash
+      run: |
+        if git show HEAD:app/public/data/lakes.json > "$RUNNER_TEMP/lakes.published.json" 2>/dev/null; then
+          echo "kept the published lakes.json"
+        else
+          rm -f "$RUNNER_TEMP/lakes.published.json"
+          echo "no published lakes.json to compare with"
+        fi
+
     - name: Build the lakes (fails when the Attabad gate fails)
       shell: bash -el {0}
       working-directory: processing
       run: |
         unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
         python -m sartale.run_pipeline lakes-build
+
+    - name: Compare with the published passes (fails when too many would be dropped)
+      shell: bash -el {0}
+      working-directory: processing
+      run: |
+        unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
+        python -m sartale.run_pipeline lakes-diff --old "$RUNNER_TEMP/lakes.published.json"
 
     - name: Python tests
       shell: bash -el {0}
