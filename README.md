@@ -30,11 +30,11 @@ Pakistan has more than 3,000 glacial lakes (UNDP GLOF-II), and SUPARCO tracks 13
 
 > "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days."
 
-Radar sees through cloud, day or night. From 17 June to 4 August 2026, while cloud limited the optical checks, NISAR made **60 valid looks across the 11 lakes** SARtale first watched (build of 23 Oct 2026).
+Radar sees through cloud, day or night. From 17 June to 4 August 2026, while cloud limited the optical checks, NISAR kept looking at the watched lakes; the site gives the count of valid looks from the current data.
 
 ## What it does
 
-- **Gives each watched lake one plain status:** Growing, Stable, Shrinking, Change not confirmed yet, Not seen this pass, Not observable, or Not enough NISAR looks yet. The site shows the current status of each.
+- **Gives each watched lake one plain status:** Growing, Stable, Shrinking, Change not confirmed yet, Not seen this pass, Not observable, Not enough NISAR looks yet, or No lake now (a site, such as a drained ice-dammed lake's basin, with no lake in recent imagery, kept to watch for a lake forming). The site shows the current status of each.
 - **Shows the evidence:** the latest radar picture with the water read from it, a chart and a table of every pass, and each pass left out, with the reason.
 - **Prints a one-page brief** per lake: dates, looks, noise and limits.
 - **Takes requests for new lakes through GitHub issues.** A visitor fills in the website's form, which opens a pre-filled "Add a lake" issue (a GitHub sign-in is needed). A workflow checks the point, counts the NISAR passes over it and comments; a team member adds the `accepted` label to start the rebuild, or closes the issue to reject it. See [Lake requests](docs/guide/lake-requests.html). The repository is private for now, so only collaborators can open request issues until it is made public.
@@ -99,8 +99,8 @@ On a public repository GitHub pauses scheduled workflows after 60 days without a
 ## Limits
 
 - **Indicative screening on provisional data.** Passes up to 21 Oct 2026 are NASA's provisional GCOV release (CRID `P05023`), which is not validated and will be reprocessed. Later passes are NASA's standard GCOV product (CRID `P05036`); we have no statement that it is validated, and a lake whose track spans both carries a limit because a calibration change can shift areas. A status is not a measure of volume or hazard.
-- **Optical agreement is poor.** On clear days, radar and Sentinel-2 water overlapped poorly at all four lakes tested (IoU 0.013 to 0.09). Neither is a clean reference.
-- **Zones are approximate.** Attabad is measured in its OpenStreetMap outline; the others in a 1 km circle around a published coordinate. Shadowed shores are under-counted.
+- **Optical agreement is rough.** On clear days radar water is compared with Sentinel-2 water at each lake; How we know gives the overlap from the current data. Neither is a clean reference, and radar under-reads small lakes.
+- **Zones are approximate.** Attabad, Passu and Shazore are measured in their OpenStreetMap outlines; the others in a search circle around a published coordinate. Shadowed shores are under-counted.
 - **Not a warning service.** Official warnings come from PMD, NDMA, GBDMA and PDMA.
 
 ## Repository

@@ -74,7 +74,7 @@
           [
             "Lake coordinates",
             "Where each lake's search zone sits.",
-            "From published inventories and papers, each named on its lake card."
+            "From published inventories, papers, OpenStreetMap and Sentinel-2 imagery, each named on its lake card. A location check against 2026 imagery removed points that were not lakes."
           ]
         ]
       }

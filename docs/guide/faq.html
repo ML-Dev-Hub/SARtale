@@ -31,16 +31,16 @@
 <p>No. It is indicative screening on provisional data. It shows whether a lake's water area has changed against its own noise. Official warnings come from PMD, NDMA, GBDMA and PDMA.</p>
 
 <h3 id="why-these-lakes-and-not-all-131-that-suparco-tracks">Why these lakes and not all 131 that SUPARCO tracks?<a class="anchor" href="#why-these-lakes-and-not-all-131-that-suparco-tracks" aria-label="Link to this section">#</a></h3>
-<p>Each lake needs a coordinate with a published source and enough NISAR passes on one track. The first 11 were chosen for their sources and their history, with Attabad as a check on the method. The method is the same for any lake, and anyone can put one forward with "Add a lake". The team adds it once its source checks out.</p>
+<p>Each lake needs a coordinate with a published source and enough NISAR passes on one track. The first ones were chosen for their sources and their history, with Attabad as a check on the method. A location check against 2026 imagery then removed points that were not lakes, and marked sites whose lake has drained as No lake now. The method is the same for any lake, and anyone can put one forward with "Add a lake". The team adds it once its source checks out.</p>
 
 <h3 id="can-radar-really-see-through-cloud">Can radar really see through cloud?<a class="anchor" href="#can-radar-really-see-through-cloud" aria-label="Link to this section">#</a></h3>
-<p>Yes. NISAR's L-band microwaves pass through cloud and need no sunlight, so it sees the lakes day or night. From 17 June to 4 August 2026, while cloud limited optical images, NISAR made 60 valid looks across the 11 lakes SARtale first watched (build of 23 Oct 2026).</p>
+<p>Yes. NISAR's L-band microwaves pass through cloud and need no sunlight, so it sees the lakes day or night. From 17 June to 4 August 2026, while cloud limited optical images, NISAR kept looking at the watched lakes; the story page and Lake Watch give the count of valid looks from the current data.</p>
 
 <h3 id="do-mountain-shadows-hide-lakes">Do mountain shadows hide lakes?<a class="anchor" href="#do-mountain-shadows-hide-lakes" aria-label="Link to this section">#</a></h3>
 <p>They can, for both kinds of satellite. Radar looks sideways, so a slope facing away from it falls in radar shadow and looks as dark as water. SARtale compares the views from the two directions and sets aside anything dark from only one. If less than half of a lake's zone can be seen, it reads Not observable instead of a guess.</p>
 
 <h3 id="why-do-radar-and-sentinel-2-disagree-so-much">Why do radar and Sentinel-2 disagree so much?<a class="anchor" href="#why-do-radar-and-sentinel-2-disagree-so-much" aria-label="Link to this section">#</a></h3>
-<p>At the four lakes checked, radar water and optical water overlapped poorly (IoU 0.013 to 0.09). Optical water indices also flag shadow and wet ground, radar misses wind-roughened water and shadowed shores, and even on the same day the two satellites pass at different hours. Neither is a clean reference, which is why the app calls its status indicative.</p>
+<p>How we know gives the overlap (IoU) at each lake checked, from the current data. Radar under-reads small lakes and loses water marked shadow-prone; optical water indices miss shaded or very dark lakes and flag wet ground, radar misses wind-roughened water and shadowed shores, and even on the same day the two satellites pass at different hours. Neither is a clean reference, which is why the app calls its status indicative.</p>
 
 <h3 id="how-current-is-the-data">How current is the data?<a class="anchor" href="#how-current-is-the-data" aria-label="Link to this section">#</a></h3>
 <p>As current as the last pipeline run, which the weekly refresh repeats each Monday. The story page and every lake show the date of their latest pass.</p>
@@ -54,7 +54,7 @@
 <h2 id="known-limits">Known limits<a class="anchor" href="#known-limits" aria-label="Link to this section">#</a></h2>
 <ul>
   <li>A status is about water area only, not volume, depth or hazard.</li>
-  <li>Zones are approximate: an outline for Attabad, a 1 km circle elsewhere.</li>
+  <li>Zones are approximate: an OpenStreetMap outline where a lake has one, a search circle elsewhere.</li>
   <li>Frozen lakes, lakes under 0.05 km² and wind-roughened water are not validated.</li>
   <li>Lake requests need a GitHub sign-in, and until the repository is public only collaborators can open them (see <a href="lake-requests.html">Lake requests</a>).</li>
 </ul>

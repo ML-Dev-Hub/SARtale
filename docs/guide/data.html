@@ -32,13 +32,22 @@
 <pre><code>{
   "id": "attabad",                                  <span class="c">// lower case, digits and _; also the picture folder name</span>
   "name": "Attabad Lake (landslide-dammed control)",
-  "lon": 74.86, "lat": 36.33,                       <span class="c">// decimal degrees, WGS 84</span>
+  "lon": 74.8665, "lat": 36.333,                    <span class="c">// decimal degrees, WGS 84: a point on the lake</span>
   "role": "control",                                <span class="c">// "watch", "story" or "control"</span>
-  "coord_source": "SARtale spike 2 Nov 2026: lake visible in NISAR passes",
-  "outline": "outlines/attabad_osm.geojson",        <span class="c">// or null for a 1 km circle</span>
+  "coord_source": "A point on the lake, ... inside OpenStreetMap way 60065056 ...",
+  "outline": "outlines/attabad_osm.geojson",        <span class="c">// or null for a search circle</span>
   "downstream": null,                               <span class="c">// optional: what lies downstream</span>
   "downstream_source": null
 }</code></pre>
+<p>Optional fields:</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>zone_radius_km</code></td><td>Radius of the search circle when there is no outline: 1 km by default, at most 2.5 km (the window is 6 km across). Karambar's terminus pond uses 0.3.</td></tr>
+    <tr><td><code>lake_state</code></td><td><code>"lake"</code> (default); <code>"unconfirmed"</code>, a lake recent imagery does not confirm, which keeps its status and gets a limit; or <code>"no_lake"</code>, a site with no lake now, whose status is No lake now with no verdict and no water layer.</td></tr>
+    <tr><td><code>lake_state_source</code></td><td>What shows the state, with dates. Required unless <code>lake_state</code> is <code>"lake"</code>.</td></tr>
+  </tbody>
+</table></div>
 <div class="table-wrap"><table>
   <thead><tr><th>Role</th><th>Meaning</th></tr></thead>
   <tbody>
@@ -72,13 +81,14 @@
     <tr><td><code>images</code></td><td>Paths, relative to <code>data/</code>, of <code>latest_hh</code> and <code>water</code></td></tr>
     <tr><td><code>bounds</code></td><td>The window's <code>[west, south, east, north]</code> in degrees</td></tr>
     <tr><td><code>area_label</code>, <code>outline_source</code>, <code>limits</code>, <code>directions</code>, <code>cloud_window_looks</code></td><td>What the area measures, the outline's source, lake-specific limits, the viewing directions seen (A, D) and looks in the cloud window</td></tr>
+    <tr><td><code>lake_state</code>, <code>lake_state_source</code></td><td>Copied from the register. The app leaves sites with <code>"no_lake"</code> out of the lake count and the cloud-window looks, and never features a site that is not a confirmed lake</td></tr>
   </tbody>
 </table></div>
 <p>A sample pass from <code>series</code>:</p>
 <pre><code>{ "date": "2026-06-18", "track": "055A", "area_km2": 2.665, "observable_share": 0.675, "excluded": null, "crid": "P05023" }</code></pre>
 
 <h2 id="pictures">Pictures<a class="anchor" href="#pictures" aria-label="Link to this section">#</a></h2>
-<p>For each lake, <code>lakes-build</code> writes two lossless WebP files to <code>app/public/data/lakes/&lt;id&gt;/</code>: <code>latest_hh.webp</code>, a grey HH picture of the latest valid pass, and <code>water.webp</code>, a transparent layer with water in blue and shadow-prone ground hatched. Both cover the 6 km window on the UTM grid, north up.</p>
+<p>For each lake, <code>lakes-build</code> writes two lossless WebP files to <code>app/public/data/lakes/&lt;id&gt;/</code>: <code>latest_hh.webp</code>, a grey HH picture of the latest valid pass, and <code>water.webp</code>, a transparent layer with water in blue and shadow-prone ground hatched (not written for a site with no lake now). Both cover the 6 km window on the UTM grid, north up.</p>
 
 <h2 id="licences">Licences<a class="anchor" href="#licences" aria-label="Link to this section">#</a></h2>
 <p>NISAR data are NASA's; OpenStreetMap outlines are © OpenStreetMap contributors under the ODbL. The full list of sources and terms is in <a href="https://github.com/saeedahmadicp/SARtale/blob/main/docs/DATA_SOURCES.md">DATA_SOURCES.md</a>.</p>

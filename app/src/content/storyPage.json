@@ -18,8 +18,8 @@
   "risk": {
     "label": "01 · THE RISK",
     "title": "One lake, one bridge, one morning",
-    "body": "On 7 May 2022 the ice-dammed lake below Shisper glacier burst. Its flood ran 6.4 km down the Hassanabad gorge and destroyed the Karakoram Highway bridge, Hunza's link to the rest of the country.",
-    "source": "Sources: Radio Pakistan, 7 May 2022. The 6.4 km is the straight line from the register point to OpenStreetMap way 651792498.",
+    "body": "On 7 May 2022 the ice-dammed lake below Shisper glacier burst. Its flood ran 6.6 km down the Hassanabad gorge and destroyed the Karakoram Highway bridge, Hunza's link to the rest of the country.",
+    "source": "Sources: Radio Pakistan, 7 May 2022. The 6.6 km is the straight line from the register point at the lake basin to OpenStreetMap way 651792498.",
     "facts": [
       { "value": "131", "label": "potentially dangerous lakes on SUPARCO's watch", "source": "SUPARCO, GLOF Status Update, 2 July 2026" },
       { "value": "16 Jun", "label": "the last image SUPARCO's 2 Jul update could use", "source": "SUPARCO, GLOF Status Update, 2 July 2026" }

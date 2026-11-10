@@ -1,6 +1,6 @@
 # Data sources and licences
 
-Updated 6 Nov 2026. Space Apps rules say we must confirm that non-NASA data and code are freely and publicly available or open source, and name their licences. Where a licence has not been checked, this file says "terms not confirmed" and does not guess.
+Updated 10 Nov 2026. Space Apps rules say we must confirm that non-NASA data and code are freely and publicly available or open source, and name their licences. Where a licence has not been checked, this file says "terms not confirmed" and does not guess.
 
 ## Status in one paragraph
 
@@ -10,8 +10,8 @@ Lake Watch shows NISAR radar data labelled **Provisional**. `app/public/data/lak
 
 | Item | Use | Licence or terms | Access date |
 |---|---|---|---|
-| NISAR L2 GCOV (NASA, from ASF): the provisional release, CMR short name `NISAR_L2_GCOV_PROVISIONAL_V1`, CRID `P05023`, passes up to 21 Oct 2026; and the standard product, CMR short name `NISAR_L2_GCOV_V1` (C3622241360-ASF), CRID `P05036`, passes from 21 Oct 2026. Mode 4005, DHDH, frequency A, HH and HV | A 6 km window of every calibrated pass over each lake from 17 Jun 2026: 232 passes, about 5.4 GB read in total. Every lake area and radar picture | NASA data, openly available. The provisional release is not validated and NASA expects to reprocess it; we have no statement that the standard product is validated. A status track that spans both is flagged on the lake. Exact citation wording: terms not confirmed | 2026-11-02 |
-| Sentinel-2 L2A, via Earth Search (Element 84) | Optical water (MNDWI) cross-check for Attabad, Khurdopin, Passu and Shisper. Only derived areas are kept | Copernicus Sentinel data terms (free, full and open; attribution "Contains modified Copernicus Sentinel data"). Exact legal notice wording: terms not confirmed | 2026-11-04 |
+| NISAR L2 GCOV (NASA, from ASF): the provisional release, CMR short name `NISAR_L2_GCOV_PROVISIONAL_V1`, CRID `P05023`, passes up to 21 Oct 2026; and the standard product, CMR short name `NISAR_L2_GCOV_V1` (C3622241360-ASF), CRID `P05036`, passes from 21 Oct 2026. Mode 4005, DHDH, frequency A, HH and HV | A 6 km window of every calibrated pass over each lake from 17 Jun 2026 (the passes used are listed per lake in `lakes.json`). Every lake area and radar picture | NASA data, openly available. The provisional release is not validated and NASA expects to reprocess it; we have no statement that the standard product is validated. A status track that spans both is flagged on the lake. Exact citation wording: terms not confirmed | 2026-11-02 |
+| Sentinel-2 L2A, via Earth Search (Element 84) | Optical water (MNDWI) cross-check for every lake that holds a lake now (sites with no lake now are not compared). Only derived areas are kept. Scenes Earth Search flags `earthsearch:boa_offset_applied` already have the BOA offset applied, so it is not applied again | Copernicus Sentinel data terms (free, full and open; attribution "Contains modified Copernicus Sentinel data"). Exact legal notice wording: terms not confirmed | 2026-11-04 |
 
 ## Lake locations and outlines
 
@@ -38,7 +38,7 @@ now; Rogheli is kept as a lake not confirmed in 2026 imagery.
 
 SUPARCO quote, verbatim: "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days." (space4climate.gov.pk, GLOF Status Update, 2 Jul 2026.)
 
-Sentinel-2 cross-check result (`lakes.json`, `checks`): radar and optical water overlapped poorly at every lake checked (IoU 0.013 to 0.09), and their areas disagreed widely. Attabad, now measured inside its outline: radar 2.65 km² against optical 1.02 km². Khurdopin 0.036 against 0.885; Passu 0.048 against 0.239; Shisper, where no lake is expected, 0.087 against 0.288 (optical also flags water there). Neither is a clean reference, and this is not a validation of lake extent.
+Sentinel-2 cross-check result (`lakes.json`, `checks`): one NISAR pass against one Sentinel-2 scene per lake, inside the lake's zone. The app's How we know page lists every row and words the agreement from the IoU values. Until 10 Nov 2026 the check applied the Sentinel-2 BOA offset twice, which pushed turbid lakes below the water threshold and made the agreement look far worse than it was. Neither source is a clean reference, and this is not a validation of lake extent.
 
 ## Demo video (`media/SARtale-lake-watch-demo.mp4`)
 
@@ -69,7 +69,7 @@ Sentinel-2 cross-check result (`lakes.json`, `checks`): radar and optical water 
 | `attabad_radar_0630.jpg`: NISAR GCOV L-band HH, 30 Jun 2026, track 055A | Radar side of the same pair | NASA data, as above |
 | `north_map.jpg`: NASA MODIS Terra true colour, 5 Oct 2026, 70.8-76.6 E, 34.4-37.6 N | Base map for the lake pins | NASA EOSDIS data, openly available. Exact citation wording: terms not confirmed |
 | Radio Pakistan, 7 May 2022 | The Shisper outburst and the destroyed Karakoram Highway bridge (story 01) | Terms not confirmed. Cited only |
-| OpenStreetMap way 651792498 | The 6.4 km straight line from the Shisper register point to the Hassanabad bridge (story 01) | © OpenStreetMap contributors, ODbL 1.0 |
+| OpenStreetMap way 651792498 | The 6.6 km straight line from the Shisper register point (the lake basin) to the Hassanabad bridge (story 01) | © OpenStreetMap contributors, ODbL 1.0 |
 | NASA CMR granule search (`cmr.earthdata.nasa.gov/search/granules.umm_json`) | Lists the NISAR passes over a requested lake's point, to say whether radar covers it. Catalogue entries only; no NISAR data is downloaded for a request | Public, no login. Exact citation wording: terms not confirmed |
 
 ## App dependencies (npm)
