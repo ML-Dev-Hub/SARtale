@@ -88,7 +88,7 @@ describe("How we know", () => {
     expect(text).toContain("inside the lake zone, not shadow-prone, and valid");
     expect(text).toMatch(/robust z-score above 3\.5/);
     expect(text).toMatch(/that is radar shadow, not water/);
-    expect(text).toContain("1 km search circle");
+    expect(text).toContain("search circle around its coordinates, 1 km unless the lake sets a smaller one");
     expect(text).toContain("underestimate lakes whose shores sit in radar shadow");
     expect(text).toContain(realLakes.notes);
     expect(text).toMatch(/only with its own earlier passes from the same track/);
