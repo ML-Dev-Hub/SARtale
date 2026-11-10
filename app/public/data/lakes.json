@@ -1,7 +1,7 @@
 {
  "version": 1,
- "built": "2026-11-09T14:55:16Z",
- "notes": "Areas are water within a 1 km search circle (or outline) and underestimate lakes whose shores sit in radar shadow; images are crops on the UTM grid, north up; they are pictures, not map overlays.",
+ "built": "2026-11-10T00:11:11Z",
+ "notes": "Areas are water within a lake's outline (buffered 200 m) or, without one, a search circle (1 km unless the lake sets a smaller one), and underestimate lakes whose shores sit in radar shadow; images are crops on the UTM grid, north up; they are pictures, not map overlays.",
  "crid": "P05023, P05036",
  "collections": [
   "NISAR_L2_GCOV_PROVISIONAL_V1",
@@ -27,12 +27,14 @@
   {
    "id": "attabad",
    "name": "Attabad Lake (landslide-dammed control)",
-   "lon": 74.86,
-   "lat": 36.33,
+   "lon": 74.8665,
+   "lat": 36.333,
    "role": "control",
-   "coord_source": "SARtale spike 2 Nov 2026: lake visible in NISAR passes",
+   "coord_source": "A point on the lake, about 190 m from shore, inside OpenStreetMap way 60065056 (Attabad lake, ODbL); SARtale location check, 10 Nov 2026",
    "outline_source": "OpenStreetMap way 60065056 (natural=water, water=lake, wikidata Q780770), fetched 4 Nov 2026",
    "area_label": "water area in the lake outline (buffered 200 m)",
+   "lake_state": "lake",
+   "lake_state_source": null,
    "downstream": null,
    "downstream_source": null,
    "status": {
@@ -40,9 +42,9 @@
     "track": "156A",
     "latest_date": "2026-11-04",
     "looks": 7,
-    "change_km2": 0.2399,
-    "noise_km2": 0.51416568,
-    "reason": "Track 156A: 2.077 km2 on 2026-11-04 vs median 1.837 of 6 earlier looks (noise 0.514 km2).",
+    "change_km2": 0.22540000000000004,
+    "noise_km2": 0.45708558,
+    "reason": "Track 156A: 2.128 km2 on 2026-11-04 vs median 1.902 of 6 earlier looks (noise 0.457 km2).",
     "new_crid": null
    },
    "cloud_window_looks": 7,
@@ -51,39 +53,39 @@
     "D"
    ],
    "limits": [
-    "the outline runs past the 6 km radar window; 72% of it is inside and only that part is counted",
+    "the outline runs past the 6 km radar window; 69% of it is inside and only that part is counted",
     "Track 156A mixes NISAR processing versions P05023 (provisional) and P05036 (standard); a calibration change between them can shift areas."
    ],
    "series": [
     {
      "date": "2026-06-18",
      "track": "055A",
-     "area_km2": 2.6694,
-     "observable_share": 0.6762434767061137,
+     "area_km2": 2.7549,
+     "observable_share": 0.70474735933966,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-06-25",
      "track": "156A",
-     "area_km2": 2.2799,
-     "observable_share": 0.6909495233944595,
+     "area_km2": 2.3258,
+     "observable_share": 0.7121855107608366,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-06-30",
      "track": "055A",
-     "area_km2": 2.7306,
-     "observable_share": 0.6760870294009186,
+     "area_km2": 2.8141,
+     "observable_share": 0.7046774080723762,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-06-30",
      "track": "063D",
-     "area_km2": 2.8833,
-     "observable_share": 0.6935979527752635,
+     "area_km2": 2.9496,
+     "observable_share": 0.7113694126425257,
      "excluded": null,
      "crid": "P05023"
     },
@@ -91,71 +93,71 @@
      "date": "2026-07-07",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.6872730117223731,
-     "excluded": "window median HH 25.4 dB from the track median",
+     "observable_share": 0.7072772635064238,
+     "excluded": "window median HH 26.1 dB from the track median",
      "crid": "P05023"
     },
     {
      "date": "2026-07-12",
      "track": "055A",
-     "area_km2": 1.9437,
-     "observable_share": 0.6761317286309744,
+     "area_km2": 2.1234,
+     "observable_share": 0.7045608226269032,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-07-24",
      "track": "055A",
-     "area_km2": 2.7311,
-     "observable_share": 0.6760870294009186,
+     "area_km2": 2.7822,
+     "observable_share": 0.704630773894187,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-07-24",
      "track": "063D",
-     "area_km2": 2.8573,
-     "observable_share": 0.6902455105210813,
+     "area_km2": 2.9533,
+     "observable_share": 0.7078018980110523,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-12",
      "track": "156A",
-     "area_km2": 1.9331,
-     "observable_share": 0.691061271469599,
+     "area_km2": 2.0175,
+     "observable_share": 0.7122671205726677,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-17",
      "track": "055A",
-     "area_km2": 2.6562,
-     "observable_share": 0.6761429034384883,
+     "area_km2": 2.7363,
+     "observable_share": 0.7046657495278289,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-17",
      "track": "063D",
-     "area_km2": 2.8152,
-     "observable_share": 0.6928604154793434,
+     "area_km2": 2.9096,
+     "observable_share": 0.7105533145242148,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-24",
      "track": "156A",
-     "area_km2": 1.7403,
-     "observable_share": 0.6909830478170014,
+     "area_km2": 1.7869,
+     "observable_share": 0.7122204863944785,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-29",
      "track": "055A",
-     "area_km2": 2.6071,
-     "observable_share": 0.6759641065182652,
+     "area_km2": 2.6908,
+     "observable_share": 0.7044675542705249,
      "excluded": null,
      "crid": "P05023"
     },
@@ -163,95 +165,103 @@
      "date": "2026-09-05",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.6909383485869456,
-     "excluded": "window dark share 24.1% is an outlier on its track (robust z +3.6, limit 3.5)",
+     "observable_share": 0.7122204863944785,
+     "excluded": "window dark share 23.5% is an outlier on its track (robust z +3.5, limit 3.5)",
      "crid": "P05023"
     },
     {
      "date": "2026-09-10",
      "track": "055A",
-     "area_km2": 2.4929,
-     "observable_share": 0.6761987774760579,
+     "area_km2": 2.5612,
+     "observable_share": 0.7047939935178492,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-10",
      "track": "063D",
-     "area_km2": 2.7403,
-     "observable_share": 0.6958552638930794,
+     "area_km2": 2.8303,
+     "observable_share": 0.7136778044628909,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-17",
      "track": "156A",
-     "area_km2": 1.6393,
-     "observable_share": 0.6909830478170014,
+     "area_km2": 1.69,
+     "observable_share": 0.7121272180381001,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-22",
      "track": "055A",
-     "area_km2": 2.5274,
-     "observable_share": 0.6761540782460023,
+     "area_km2": 2.5956,
+     "observable_share": 0.7046074568050924,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-29",
      "track": "156A",
-     "area_km2": 2.1069,
-     "observable_share": 0.6908042508967783,
+     "area_km2": 2.146,
+     "observable_share": 0.7120805838599109,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-04",
      "track": "055A",
-     "area_km2": 2.5532,
-     "observable_share": 0.6759752813257791,
+     "area_km2": 2.6407,
+     "observable_share": 0.7045258469932614,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-04",
      "track": "063D",
-     "area_km2": 2.8104,
-     "observable_share": 0.694424888531295,
+     "area_km2": 2.9096,
+     "observable_share": 0.7122438034835731,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-11",
      "track": "156A",
-     "area_km2": 1.431,
-     "observable_share": 0.6909048241644038,
+     "area_km2": 1.5068,
+     "observable_share": 0.7121388765826474,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-16",
      "track": "055A",
-     "area_km2": 2.6534,
-     "observable_share": 0.6760982042084325,
+     "area_km2": 2.7395,
+     "observable_share": 0.7045724811714505,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-28",
      "track": "055A",
-     "area_km2": 2.4869,
-     "observable_share": 0.6760982042084325,
+     "area_km2": 2.5767,
+     "observable_share": 0.7046657495278289,
+     "excluded": null,
+     "crid": "P05036"
+    },
+    {
+     "date": "2026-10-28",
+     "track": "063D",
+     "area_km2": 2.8001,
+     "observable_share": 0.7112994613752419,
      "excluded": null,
      "crid": "P05036"
     },
     {
      "date": "2026-11-04",
      "track": "156A",
-     "area_km2": 2.0766,
-     "observable_share": 0.6908712997418619,
+     "area_km2": 2.1276,
+     "observable_share": 0.7120922424044582,
      "excluded": null,
      "crid": "P05036"
     }
@@ -259,11 +269,11 @@
    "excluded": [
     {
      "pass": "2026-07-07_156A",
-     "reason": "window median HH 25.4 dB from the track median"
+     "reason": "window median HH 26.1 dB from the track median"
     },
     {
      "pass": "2026-09-05_156A",
-     "reason": "window dark share 24.1% is an outlier on its track (robust z +3.6, limit 3.5)"
+     "reason": "window dark share 23.5% is an outlier on its track (robust z +3.5, limit 3.5)"
     }
    ],
    "images": {
@@ -273,31 +283,33 @@
     "track": "156A"
    },
    "bounds": [
-    74.82645972021969,
-    36.30299653127857,
-    74.89351929205114,
-    36.356987163145554
+    74.83291771403255,
+    36.305980824445186,
+    74.89997561034671,
+    36.36005798537268
    ]
   },
   {
    "id": "shisper",
    "name": "Shisper / Mochowar ice-dammed lake",
-   "lon": 74.583,
+   "lon": 74.567,
    "lat": 36.358,
    "role": "story",
-   "coord_source": "Centre of the lake map frame 36\u00b021\u2032\u201336\u00b022\u2032N, 74\u00b034\u2032\u201374\u00b036\u2032E, Muhammad et al. 2021, Fig. 2",
+   "coord_source": "The ice-dammed lake's basin at the Muchuhar\u2013Shisper confluence: Sentinel-2 water centroids 74.5656 E, 36.3593 N (0.32 km\u00b2, 25 May 2020) and 74.5681 E, 36.3577 N (0.20 km\u00b2, 5 Apr 2022); HMAGLOFDB v1.3.0 (CC0) lake point 74.572267 E, 36.35594 N, events GF 499\u2013516",
    "outline_source": null,
-   "area_label": "water area in the search window",
+   "area_label": "dark radar area in the search circle; there is no lake here now, so it is not lake area",
+   "lake_state": "no_lake",
+   "lake_state_source": "no water in the basin in Sentinel-2, 17 Aug 2026 (clearest scene of 1 Jul\u201330 Sep 2026); the lake last held water in spring 2022 and burst on 7 May 2022",
    "downstream": "Hassanabad village and the Karakoram Highway bridge",
    "downstream_source": "Radio Pakistan, 7 May 2022",
    "status": {
-    "status": "Stable",
+    "status": "No lake now",
     "track": "156A",
     "latest_date": "2026-11-04",
     "looks": 7,
-    "change_km2": 0.004150000000000001,
-    "noise_km2": 0.028169399999999983,
-    "reason": "Track 156A: 0.080 km2 on 2026-11-04 vs median 0.076 of 6 earlier looks (noise 0.028 km2).",
+    "change_km2": null,
+    "noise_km2": null,
+    "reason": "No lake in recent imagery: no water in the basin in Sentinel-2, 17 Aug 2026 (clearest scene of 1 Jul\u201330 Sep 2026); the lake last held water in spring 2022 and burst on 7 May 2022. SARtale keeps the site to watch for a lake forming.",
     "new_crid": null
    },
    "cloud_window_looks": 3,
@@ -310,34 +322,18 @@
    ],
    "series": [
     {
-     "date": "2026-06-18",
-     "track": "055A",
-     "area_km2": 0.0412,
-     "observable_share": 0.05881791272796715,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
      "date": "2026-06-25",
      "track": "156A",
-     "area_km2": 0.0933,
-     "observable_share": 0.6477927368789586,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-06-30",
-     "track": "055A",
-     "area_km2": 0.0438,
-     "observable_share": 0.05592157611636271,
+     "area_km2": 0.112,
+     "observable_share": 0.8229995543955694,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-06-30",
      "track": "063D",
-     "area_km2": 0.103,
-     "observable_share": 0.6940704669149241,
+     "area_km2": 0.0742,
+     "observable_share": 0.8205169011394742,
      "excluded": null,
      "crid": "P05023"
     },
@@ -345,71 +341,39 @@
      "date": "2026-07-07",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.6489385403736593,
-     "excluded": "window median HH 23.7 dB from the track median",
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-12",
-     "track": "055A",
-     "area_km2": 0.0411,
-     "observable_share": 0.05814952735605844,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-24",
-     "track": "055A",
-     "area_km2": 0.0462,
-     "observable_share": 0.06120500334192686,
-     "excluded": null,
+     "observable_share": 0.8230950410592653,
+     "excluded": "window median HH 22.6 dB from the track median",
      "crid": "P05023"
     },
     {
      "date": "2026-07-24",
      "track": "063D",
-     "area_km2": 0.1059,
-     "observable_share": 0.6941341226646297,
+     "area_km2": 0.0539,
+     "observable_share": 0.8205805589152715,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-12",
      "track": "156A",
-     "area_km2": 0.0743,
-     "observable_share": 0.6482701550017506,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-17",
-     "track": "055A",
-     "area_km2": 0.0415,
-     "observable_share": 0.06524714344823196,
+     "area_km2": 0.0927,
+     "observable_share": 0.8229677255076707,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-17",
      "track": "063D",
-     "area_km2": 0.0882,
-     "observable_share": 0.6940068111652185,
+     "area_km2": 0.0547,
+     "observable_share": 0.8206442166910688,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-24",
      "track": "156A",
-     "area_km2": 0.078,
-     "observable_share": 0.648047359877781,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-29",
-     "track": "055A",
-     "area_km2": 0.0427,
-     "observable_share": 0.058308666730322416,
+     "area_km2": 0.0583,
+     "observable_share": 0.8229358966197721,
      "excluded": null,
      "crid": "P05023"
     },
@@ -417,95 +381,63 @@
      "date": "2026-09-05",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.6481746713771921,
-     "excluded": "window dark share 30.6% is an outlier on its track (robust z +13.1, limit 3.5)",
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-10",
-     "track": "055A",
-     "area_km2": 0.0394,
-     "observable_share": 0.05560329736783475,
-     "excluded": null,
+     "observable_share": 0.8229040677318734,
+     "excluded": "window dark share 29.7% is an outlier on its track (robust z +14.9, limit 3.5)",
      "crid": "P05023"
     },
     {
      "date": "2026-09-10",
      "track": "063D",
-     "area_km2": 0.0927,
-     "observable_share": 0.6943250899137464,
+     "area_km2": 0.0648,
+     "observable_share": 0.8206442166910688,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-17",
      "track": "156A",
-     "area_km2": 0.0671,
-     "observable_share": 0.647888220503517,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-22",
-     "track": "055A",
-     "area_km2": 0.0387,
-     "observable_share": 0.06378306120500334,
+     "area_km2": 0.0548,
+     "observable_share": 0.823126869947164,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-29",
      "track": "156A",
-     "area_km2": 0.0909,
-     "observable_share": 0.6480791877526337,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-04",
-     "track": "055A",
-     "area_km2": 0.0409,
-     "observable_share": 0.06215983958751074,
+     "area_km2": 0.0842,
+     "observable_share": 0.8230632121713667,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-04",
      "track": "063D",
-     "area_km2": 0.0944,
-     "observable_share": 0.6942932620388936,
+     "area_km2": 0.0652,
+     "observable_share": 0.8205169011394742,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-11",
      "track": "156A",
-     "area_km2": 0.0693,
-     "observable_share": 0.6479837041280754,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-16",
-     "track": "055A",
-     "area_km2": 0.0386,
-     "observable_share": 0.0617142493395716,
+     "area_km2": 0.1071,
+     "observable_share": 0.823126869947164,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-28",
-     "track": "055A",
-     "area_km2": 0.0415,
-     "observable_share": 0.060281994971195775,
+     "track": "063D",
+     "area_km2": 0.0699,
+     "observable_share": 0.8205487300273728,
      "excluded": null,
      "crid": "P05036"
     },
     {
      "date": "2026-11-04",
      "track": "156A",
-     "area_km2": 0.0803,
-     "observable_share": 0.6479518762532226,
+     "area_km2": 0.094,
+     "observable_share": 0.8230632121713667,
      "excluded": null,
      "crid": "P05036"
     }
@@ -513,24 +445,24 @@
    "excluded": [
     {
      "pass": "2026-07-07_156A",
-     "reason": "window median HH 23.7 dB from the track median"
+     "reason": "window median HH 22.6 dB from the track median"
     },
     {
      "pass": "2026-09-05_156A",
-     "reason": "window dark share 30.6% is an outlier on its track (robust z +13.1, limit 3.5)"
+     "reason": "window dark share 29.7% is an outlier on its track (robust z +14.9, limit 3.5)"
     }
    ],
    "images": {
     "latest_hh": "lakes/shisper/latest_hh.webp",
-    "water": "lakes/shisper/water.webp",
+    "water": null,
     "date": "2026-11-04",
     "track": "156A"
    },
    "bounds": [
-    74.54921433068948,
-    36.33085241788135,
-    74.61671134217444,
-    36.38517796259867
+    74.53327007385629,
+    36.33079130568152,
+    74.60077846392431,
+    36.38521585486571
    ]
   },
   {
@@ -539,9 +471,11 @@
    "lon": 74.879,
    "lat": 36.457,
    "role": "watch",
-   "coord_source": "Event table, doi:10.1016/j.rcar.2025.03.005",
-   "outline_source": null,
-   "area_label": "water area in the search window",
+   "coord_source": "Event table, doi:10.1016/j.rcar.2025.03.005; within 50 m of HMAGLOFDB v1.3.0 (CC0) 74.879432 E, 36.457073 N",
+   "outline_source": "OpenStreetMap way 360957778 (name=Passu lake, natural=water, water=lake), fetched 10 Nov 2026",
+   "area_label": "water area in the lake outline (buffered 200 m)",
+   "lake_state": "lake",
+   "lake_state_source": null,
    "downstream": null,
    "downstream_source": null,
    "status": {
@@ -549,9 +483,9 @@
     "track": "156A",
     "latest_date": "2026-11-04",
     "looks": 7,
-    "change_km2": -0.0051,
-    "noise_km2": 0.021052919999999996,
-    "reason": "Track 156A: 0.043 km2 on 2026-11-04 vs median 0.049 of 6 earlier looks (noise 0.021 km2).",
+    "change_km2": -0.006399999999999996,
+    "noise_km2": 0.00919212,
+    "reason": "Track 156A: 0.016 km2 on 2026-11-04 vs median 0.022 of 6 earlier looks (noise 0.009 km2).",
     "new_crid": null
    },
    "cloud_window_looks": 6,
@@ -566,32 +500,32 @@
     {
      "date": "2026-06-18",
      "track": "055A",
-     "area_km2": 0.0526,
-     "observable_share": 0.8914254783965359,
+     "area_km2": 0.02,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-06-25",
      "track": "156A",
-     "area_km2": 0.0639,
-     "observable_share": 0.8968701244945394,
+     "area_km2": 0.0294,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-06-30",
      "track": "055A",
-     "area_km2": 0.0549,
-     "observable_share": 0.8913299582895533,
+     "area_km2": 0.0198,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-06-30",
      "track": "063D",
-     "area_km2": 0.0781,
-     "observable_share": 0.8944821218199764,
+     "area_km2": 0.0373,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
@@ -599,7 +533,7 @@
      "date": "2026-07-07",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.8968701244945394,
+     "observable_share": 0.8625901751975267,
      "excluded": "window median HH 20.1 dB from the track median",
      "crid": "P05023"
     },
@@ -607,63 +541,63 @@
      "date": "2026-07-12",
      "track": "055A",
      "area_km2": null,
-     "observable_share": 0.8912981182538925,
+     "observable_share": 0.8625901751975267,
      "excluded": "window dark share 6.5% is an outlier on its track (robust z -6.2, limit 3.5)",
      "crid": "P05023"
     },
     {
      "date": "2026-07-24",
      "track": "055A",
-     "area_km2": 0.0464,
-     "observable_share": 0.8912981182538925,
+     "area_km2": 0.013,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-07-24",
      "track": "063D",
-     "area_km2": 0.071,
-     "observable_share": 0.8946413219982806,
+     "area_km2": 0.0361,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-12",
      "track": "156A",
-     "area_km2": 0.0497,
-     "observable_share": 0.8969019645302003,
+     "area_km2": 0.0237,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-17",
      "track": "055A",
-     "area_km2": 0.048,
-     "observable_share": 0.8913617983252141,
+     "area_km2": 0.0149,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-17",
      "track": "063D",
-     "area_km2": 0.0734,
-     "observable_share": 0.8946731620339414,
+     "area_km2": 0.0387,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-24",
      "track": "156A",
-     "area_km2": 0.0448,
-     "observable_share": 0.8968701244945394,
+     "area_km2": 0.0171,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-29",
      "track": "055A",
-     "area_km2": 0.0444,
-     "observable_share": 0.8912662782182316,
+     "area_km2": 0.0128,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
@@ -671,95 +605,103 @@
      "date": "2026-09-05",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.8968701244945394,
+     "observable_share": 0.8625901751975267,
      "excluded": "anomalous over Hunza lakes; spec \u00a75",
      "crid": "P05023"
     },
     {
      "date": "2026-09-10",
      "track": "055A",
-     "area_km2": 0.0442,
-     "observable_share": 0.8912662782182316,
+     "area_km2": 0.0136,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-10",
      "track": "063D",
-     "area_km2": 0.0719,
-     "observable_share": 0.894577641926959,
+     "area_km2": 0.0344,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-17",
      "track": "156A",
-     "area_km2": 0.0473,
-     "observable_share": 0.8969338045658611,
+     "area_km2": 0.0207,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-22",
      "track": "055A",
-     "area_km2": 0.0475,
-     "observable_share": 0.8912344381825708,
+     "area_km2": 0.0163,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-29",
      "track": "156A",
-     "area_km2": 0.0618,
-     "observable_share": 0.8968701244945394,
+     "area_km2": 0.0269,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-04",
      "track": "055A",
-     "area_km2": 0.0473,
-     "observable_share": 0.8912344381825708,
+     "area_km2": 0.017,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-04",
      "track": "063D",
-     "area_km2": 0.065,
-     "observable_share": 0.8946413219982806,
+     "area_km2": 0.0341,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-11",
      "track": "156A",
-     "area_km2": 0.0419,
-     "observable_share": 0.8968701244945394,
+     "area_km2": 0.0198,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-16",
      "track": "055A",
-     "area_km2": 0.0396,
-     "observable_share": 0.8913936383608749,
+     "area_km2": 0.0054,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-28",
      "track": "055A",
-     "area_km2": 0.0335,
-     "observable_share": 0.8912981182538925,
+     "area_km2": 0.0089,
+     "observable_share": 0.8625901751975267,
+     "excluded": null,
+     "crid": "P05036"
+    },
+    {
+     "date": "2026-10-28",
+     "track": "063D",
+     "area_km2": 0.0304,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05036"
     },
     {
      "date": "2026-11-04",
      "track": "156A",
-     "area_km2": 0.0434,
-     "observable_share": 0.8968701244945394,
+     "area_km2": 0.0158,
+     "observable_share": 0.8625901751975267,
      "excluded": null,
      "crid": "P05036"
     }
@@ -794,22 +736,24 @@
   {
    "id": "khurdopin",
    "name": "Khurdopin ice-dammed lake",
-   "lon": 75.47,
-   "lat": 36.34,
+   "lon": 75.474953,
+   "lat": 36.344239,
    "role": "watch",
-   "coord_source": "Shrestha et al. 2023, ESSD 15:3941, Table 3",
+   "coord_source": "HMAGLOFDB v1.3.0 (Zenodo 18257243, CC0) lake point, the dataset of Shrestha et al. 2023, ESSD 15:3941",
    "outline_source": null,
-   "area_label": "water area in the search window",
+   "area_label": "dark radar area in the search circle; there is no lake here now, so it is not lake area",
+   "lake_state": "no_lake",
+   "lake_state_source": "the basin against the Khurdopin glacier tongue is a dry sediment flat in Sentinel-2, 17 Aug 2026 (clearest scene of 1 Jul\u201330 Sep 2026); the lake last formed in 2017\u20132021 (HMAGLOFDB events 2017, 2018 and 2021)",
    "downstream": null,
    "downstream_source": null,
    "status": {
-    "status": "Stable",
+    "status": "No lake now",
     "track": "055A",
     "latest_date": "2026-10-28",
     "looks": 11,
-    "change_km2": -0.00045000000000000595,
-    "noise_km2": 0.005,
-    "reason": "Track 055A: 0.036 km2 on 2026-10-28 vs median 0.036 of 10 earlier looks (noise 0.005 km2).",
+    "change_km2": null,
+    "noise_km2": null,
+    "reason": "No lake in recent imagery: the basin against the Khurdopin glacier tongue is a dry sediment flat in Sentinel-2, 17 Aug 2026 (clearest scene of 1 Jul\u201330 Sep 2026); the lake last formed in 2017\u20132021 (HMAGLOFDB events 2017, 2018 and 2021). SARtale keeps the site to watch for a lake forming.",
     "new_crid": null
    },
    "cloud_window_looks": 9,
@@ -824,40 +768,40 @@
     {
      "date": "2026-06-18",
      "track": "055A",
-     "area_km2": 0.039,
-     "observable_share": 0.7333672884701089,
+     "area_km2": 0.084,
+     "observable_share": 0.561757681897787,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-06-23",
      "track": "135D",
-     "area_km2": 0.0605,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.2922,
+     "observable_share": 0.5792071326221939,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-06-25",
      "track": "156A",
-     "area_km2": 0.126,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.4436,
+     "observable_share": 0.5786339754816112,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-06-30",
      "track": "055A",
-     "area_km2": 0.0369,
-     "observable_share": 0.7335901190551983,
+     "area_km2": 0.0842,
+     "observable_share": 0.5618532080878841,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-06-30",
      "track": "063D",
-     "area_km2": 0.0788,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.3405,
+     "observable_share": 0.5792071326221939,
      "excluded": null,
      "crid": "P05023"
     },
@@ -865,199 +809,183 @@
      "date": "2026-07-07",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.734927102565735,
-     "excluded": "window median HH 18.7 dB from the track median",
+     "observable_share": 0.5786021334182455,
+     "excluded": "window median HH 20.3 dB from the track median",
      "crid": "P05023"
     },
     {
      "date": "2026-07-12",
      "track": "055A",
-     "area_km2": 0.0488,
-     "observable_share": 0.7335264531737442,
+     "area_km2": 0.0481,
+     "observable_share": 0.5619805763413469,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-07-17",
      "track": "135D",
-     "area_km2": 0.0402,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.2775,
+     "observable_share": 0.5792071326221939,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-07-24",
      "track": "055A",
-     "area_km2": 0.0553,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.0863,
+     "observable_share": 0.5618213660245184,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-07-24",
      "track": "063D",
-     "area_km2": 0.0595,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.3117,
+     "observable_share": 0.5792071326221939,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-10",
      "track": "135D",
-     "area_km2": 0.0301,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.2744,
+     "observable_share": 0.5792071326221939,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-12",
      "track": "156A",
-     "area_km2": 0.1207,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.4438,
+     "observable_share": 0.5785702913548798,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-17",
      "track": "055A",
-     "area_km2": 0.0389,
-     "observable_share": 0.7334627872922901,
+     "area_km2": 0.0832,
+     "observable_share": 0.561757681897787,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-17",
      "track": "063D",
-     "area_km2": 0.0555,
-     "observable_share": 0.734927102565735,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-24",
-     "track": "156A",
-     "area_km2": 0.1602,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.318,
+     "observable_share": 0.5792071326221939,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-29",
      "track": "055A",
-     "area_km2": 0.0341,
-     "observable_share": 0.7337492837588336,
+     "area_km2": 0.0844,
+     "observable_share": 0.5619805763413469,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-03",
      "track": "135D",
-     "area_km2": 0.0497,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.2731,
+     "observable_share": 0.5792071326221939,
      "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-05",
-     "track": "156A",
-     "area_km2": null,
-     "observable_share": 0.734927102565735,
-     "excluded": "anomalous over Hunza lakes; spec \u00a75",
      "crid": "P05023"
     },
     {
      "date": "2026-09-10",
      "track": "055A",
-     "area_km2": 0.0356,
-     "observable_share": 0.7334946202330171,
+     "area_km2": 0.0778,
+     "observable_share": 0.5616939977710556,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-10",
      "track": "063D",
-     "area_km2": 0.0581,
-     "observable_share": 0.734927102565735,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-17",
-     "track": "156A",
-     "area_km2": 0.1636,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.3111,
+     "observable_share": 0.5792071326221939,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-22",
      "track": "055A",
-     "area_km2": 0.0324,
-     "observable_share": 0.7336537849366525,
+     "area_km2": 0.0778,
+     "observable_share": 0.5618532080878841,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-27",
      "track": "135D",
-     "area_km2": 0.0426,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.2776,
+     "observable_share": 0.5792071326221939,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-29",
      "track": "156A",
-     "area_km2": 0.127,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.4407,
+     "observable_share": 0.5786339754816112,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-04",
      "track": "055A",
-     "area_km2": 0.034,
-     "observable_share": 0.7334627872922901,
+     "area_km2": 0.0804,
+     "observable_share": 0.561757681897787,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-04",
      "track": "063D",
-     "area_km2": 0.052,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.3009,
+     "observable_share": 0.5792071326221939,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-11",
      "track": "156A",
-     "area_km2": 0.115,
-     "observable_share": 0.734927102565735,
+     "area_km2": 0.4248,
+     "observable_share": 0.5786339754816112,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-16",
      "track": "055A",
-     "area_km2": 0.0309,
-     "observable_share": 0.733430954351563,
+     "area_km2": 0.0784,
+     "observable_share": 0.5619168922146155,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-21",
      "track": "135D",
-     "area_km2": 0.0379,
-     "observable_share": 0.7127077099382441,
+     "area_km2": 0.2452,
+     "observable_share": 0.5608342620601815,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-28",
      "track": "055A",
-     "area_km2": 0.0358,
-     "observable_share": 0.733430954351563,
+     "area_km2": 0.0845,
+     "observable_share": 0.5619168922146155,
+     "excluded": null,
+     "crid": "P05036"
+    },
+    {
+     "date": "2026-10-28",
+     "track": "063D",
+     "area_km2": 0.2959,
+     "observable_share": 0.5792071326221939,
      "excluded": null,
      "crid": "P05036"
     }
@@ -1065,293 +993,33 @@
    "excluded": [
     {
      "pass": "2026-07-07_156A",
-     "reason": "window median HH 18.7 dB from the track median"
-    },
-    {
-     "pass": "2026-09-05_156A",
-     "reason": "anomalous over Hunza lakes; spec \u00a75"
+     "reason": "window median HH 20.3 dB from the track median"
     }
    ],
    "images": {
     "latest_hh": "lakes/khurdopin/latest_hh.webp",
-    "water": "lakes/khurdopin/water.webp",
+    "water": null,
     "date": "2026-10-28",
     "track": "055A"
    },
    "bounds": [
-    75.43622431926968,
-    36.31279037808142,
-    75.50385381024626,
-    36.36723598685558
-   ]
-  },
-  {
-   "id": "ghulkin",
-   "name": "Ghulkin / Yaz-Sam lakes",
-   "lon": 74.88,
-   "lat": 36.42,
-   "role": "watch",
-   "coord_source": "Shrestha et al. 2023, ESSD 15:3941, Table 3",
-   "outline_source": null,
-   "area_label": "water area in the search window",
-   "downstream": null,
-   "downstream_source": null,
-   "status": {
-    "status": "Stable",
-    "track": "156A",
-    "latest_date": "2026-11-04",
-    "looks": 7,
-    "change_km2": -0.005849999999999966,
-    "noise_km2": 0.04640537999999999,
-    "reason": "Track 156A: 0.473 km2 on 2026-11-04 vs median 0.479 of 6 earlier looks (noise 0.046 km2).",
-    "new_crid": null
-   },
-   "cloud_window_looks": 6,
-   "directions": [
-    "A",
-    "D"
-   ],
-   "limits": [
-    "Track 156A mixes NISAR processing versions P05023 (provisional) and P05036 (standard); a calibration change between them can shift areas."
-   ],
-   "series": [
-    {
-     "date": "2026-06-18",
-     "track": "055A",
-     "area_km2": 0.5383,
-     "observable_share": 0.8654127681242442,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-06-25",
-     "track": "156A",
-     "area_km2": 0.5207,
-     "observable_share": 0.910699509897524,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-06-30",
-     "track": "055A",
-     "area_km2": 0.54,
-     "observable_share": 0.8648080962383043,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-06-30",
-     "track": "063D",
-     "area_km2": 0.5453,
-     "observable_share": 0.9298580612309847,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-07",
-     "track": "156A",
-     "area_km2": null,
-     "observable_share": 0.9105403857170136,
-     "excluded": "window median HH 22.0 dB from the track median",
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-12",
-     "track": "055A",
-     "area_km2": null,
-     "observable_share": 0.8655400674686525,
-     "excluded": "window dark share 12.0% is an outlier on its track (robust z -5.2, limit 3.5)",
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-24",
-     "track": "055A",
-     "area_km2": 0.5352,
-     "observable_share": 0.8652218191076316,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-24",
-     "track": "063D",
-     "area_km2": 0.5368,
-     "observable_share": 0.9298580612309847,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-12",
-     "track": "156A",
-     "area_km2": 0.4872,
-     "observable_share": 0.9105722105531157,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-17",
-     "track": "055A",
-     "area_km2": 0.5316,
-     "observable_share": 0.8652536439437337,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-17",
-     "track": "063D",
-     "area_km2": 0.5375,
-     "observable_share": 0.9298580612309847,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-24",
-     "track": "156A",
-     "area_km2": 0.4802,
-     "observable_share": 0.9106676850614219,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-29",
-     "track": "055A",
-     "area_km2": 0.5308,
-     "observable_share": 0.8658583158296734,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-05",
-     "track": "156A",
-     "area_km2": null,
-     "observable_share": 0.9109859334224428,
-     "excluded": "anomalous over Hunza lakes; spec \u00a75",
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-10",
-     "track": "055A",
-     "area_km2": 0.527,
-     "observable_share": 0.8654764177964483,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-10",
-     "track": "063D",
-     "area_km2": 0.5266,
-     "observable_share": 0.9298580612309847,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-17",
-     "track": "156A",
-     "area_km2": 0.4489,
-     "observable_share": 0.9106040353892177,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-22",
-     "track": "055A",
-     "area_km2": 0.525,
-     "observable_share": 0.8658583158296734,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-29",
-     "track": "156A",
-     "area_km2": 0.4779,
-     "observable_share": 0.9102221373559927,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-04",
-     "track": "055A",
-     "area_km2": 0.522,
-     "observable_share": 0.8650626949271212,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-04",
-     "track": "063D",
-     "area_km2": 0.5123,
-     "observable_share": 0.9298580612309847,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-11",
-     "track": "156A",
-     "area_km2": 0.4403,
-     "observable_share": 0.9107631595697282,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-16",
-     "track": "055A",
-     "area_km2": 0.5218,
-     "observable_share": 0.8649353955827127,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-28",
-     "track": "055A",
-     "area_km2": 0.5093,
-     "observable_share": 0.865030870091019,
-     "excluded": null,
-     "crid": "P05036"
-    },
-    {
-     "date": "2026-11-04",
-     "track": "156A",
-     "area_km2": 0.4732,
-     "observable_share": 0.9109222837502386,
-     "excluded": null,
-     "crid": "P05036"
-    }
-   ],
-   "excluded": [
-    {
-     "pass": "2026-07-07_156A",
-     "reason": "window median HH 22.0 dB from the track median"
-    },
-    {
-     "pass": "2026-07-12_055A",
-     "reason": "window dark share 12.0% is an outlier on its track (robust z -5.2, limit 3.5)"
-    },
-    {
-     "pass": "2026-09-05_156A",
-     "reason": "anomalous over Hunza lakes; spec \u00a75"
-    }
-   ],
-   "images": {
-    "latest_hh": "lakes/ghulkin/latest_hh.webp",
-    "water": "lakes/ghulkin/water.webp",
-    "date": "2026-11-04",
-    "track": "156A"
-   },
-   "bounds": [
-    74.84645666739493,
-    36.39299763205538,
-    74.9135799477082,
-    36.446976414168745
+    75.44114945907863,
+    36.317006737441396,
+    75.50878599580174,
+    36.371455071535934
    ]
   },
   {
    "id": "karambar",
-   "name": "Karambar glacier-dammed lake",
-   "lon": 74.08,
-   "lat": 36.62,
+   "name": "Karambar glacier terminus pond (historic ice-dam site)",
+   "lon": 74.07906,
+   "lat": 36.6214,
    "role": "watch",
-   "coord_source": "Shrestha et al. 2023, ESSD 15:3941, Table 3",
+   "coord_source": "HMAGLOFDB v1.3.0 (CC0), lake GL074079E36622N; a terminus pond of about 0.05\u20130.08 km\u00b2 sits at this point in Sentinel-2, Jul\u2013Sep 2026",
    "outline_source": null,
-   "area_label": "water area in the search window",
+   "area_label": "water area in the search window (300 m circle)",
+   "lake_state": "lake",
+   "lake_state_source": null,
    "downstream": null,
    "downstream_source": null,
    "status": {
@@ -1359,9 +1027,9 @@
     "track": "156A",
     "latest_date": "2026-11-04",
     "looks": 7,
-    "change_km2": -0.0011500000000000121,
-    "noise_km2": 0.008450819999999973,
-    "reason": "Track 156A: 0.120 km2 on 2026-11-04 vs median 0.122 of 6 earlier looks (noise 0.008 km2).",
+    "change_km2": -0.0002500000000000002,
+    "noise_km2": 0.005,
+    "reason": "Track 156A: 0.040 km2 on 2026-11-04 vs median 0.041 of 6 earlier looks (noise 0.005 km2).",
     "new_crid": null
    },
    "cloud_window_looks": 3,
@@ -1376,16 +1044,16 @@
     {
      "date": "2026-06-25",
      "track": "156A",
-     "area_km2": 0.1407,
-     "observable_share": 0.8775347785948493,
+     "area_km2": 0.0399,
+     "observable_share": 0.8582537999293036,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-06-30",
      "track": "063D",
-     "area_km2": 0.1513,
-     "observable_share": 0.8891541718396843,
+     "area_km2": 0.0407,
+     "observable_share": 0.8582537999293036,
      "excluded": null,
      "crid": "P05023"
     },
@@ -1393,39 +1061,39 @@
      "date": "2026-07-07",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.8775029446407538,
+     "observable_share": 0.8582537999293036,
      "excluded": "window median HH 34.3 dB from the track median",
      "crid": "P05023"
     },
     {
      "date": "2026-07-24",
      "track": "063D",
-     "area_km2": 0.1497,
-     "observable_share": 0.8891541718396843,
+     "area_km2": 0.0449,
+     "observable_share": 0.8582537999293036,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-12",
      "track": "156A",
-     "area_km2": 0.135,
-     "observable_share": 0.8774074427784675,
+     "area_km2": 0.0396,
+     "observable_share": 0.8582537999293036,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-17",
      "track": "063D",
-     "area_km2": 0.1497,
-     "observable_share": 0.8891541718396843,
+     "area_km2": 0.0425,
+     "observable_share": 0.8582537999293036,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-24",
      "track": "156A",
-     "area_km2": 0.1154,
-     "observable_share": 0.8775666125489447,
+     "area_km2": 0.0404,
+     "observable_share": 0.8582537999293036,
      "excluded": null,
      "crid": "P05023"
     },
@@ -1433,55 +1101,63 @@
      "date": "2026-09-05",
      "track": "156A",
      "area_km2": null,
-     "observable_share": 0.8773437748702766,
-     "excluded": "window dark share 26.5% is an outlier on its track (robust z +16.0, limit 3.5)",
+     "observable_share": 0.8582537999293036,
+     "excluded": "window dark share 26.4% is an outlier on its track (robust z +15.9, limit 3.5)",
      "crid": "P05023"
     },
     {
      "date": "2026-09-10",
      "track": "063D",
-     "area_km2": 0.1314,
-     "observable_share": 0.8891541718396843,
+     "area_km2": 0.0411,
+     "observable_share": 0.8582537999293036,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-17",
      "track": "156A",
-     "area_km2": 0.1166,
-     "observable_share": 0.8773119409161813,
+     "area_km2": 0.0407,
+     "observable_share": 0.8582537999293036,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-29",
      "track": "156A",
-     "area_km2": 0.1241,
-     "observable_share": 0.8775347785948493,
+     "area_km2": 0.0408,
+     "observable_share": 0.8582537999293036,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-04",
      "track": "063D",
-     "area_km2": 0.1287,
-     "observable_share": 0.8891541718396843,
+     "area_km2": 0.0402,
+     "observable_share": 0.8582537999293036,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-11",
      "track": "156A",
-     "area_km2": 0.1192,
-     "observable_share": 0.8773119409161813,
+     "area_km2": 0.0424,
+     "observable_share": 0.8582537999293036,
      "excluded": null,
      "crid": "P05023"
     },
     {
+     "date": "2026-10-28",
+     "track": "063D",
+     "area_km2": 0.0394,
+     "observable_share": 0.8582537999293036,
+     "excluded": null,
+     "crid": "P05036"
+    },
+    {
      "date": "2026-11-04",
      "track": "156A",
-     "area_km2": 0.1205,
-     "observable_share": 0.877439276732563,
+     "area_km2": 0.0403,
+     "observable_share": 0.8582537999293036,
      "excluded": null,
      "crid": "P05036"
     }
@@ -1493,7 +1169,7 @@
     },
     {
      "pass": "2026-09-05_156A",
-     "reason": "window dark share 26.5% is an outlier on its track (robust z +16.0, limit 3.5)"
+     "reason": "window dark share 26.4% is an outlier on its track (robust z +15.9, limit 3.5)"
     }
    ],
    "images": {
@@ -1503,268 +1179,10 @@
     "track": "156A"
    },
    "bounds": [
-    74.04572223277867,
-    36.592573900665094,
-    74.11424365167329,
-    36.64745146156349
-   ]
-  },
-  {
-   "id": "batura",
-   "name": "Unnamed Batura-associated lake",
-   "lon": 74.85,
-   "lat": 36.51,
-   "role": "watch",
-   "coord_source": "Shrestha et al. 2023, ESSD 15:3941, Table 3",
-   "outline_source": null,
-   "area_label": "water area in the search window",
-   "downstream": null,
-   "downstream_source": null,
-   "status": {
-    "status": "Stable",
-    "track": "156A",
-    "latest_date": "2026-11-04",
-    "looks": 7,
-    "change_km2": -0.00655,
-    "noise_km2": 0.0053373599999999985,
-    "reason": "Track 156A: 0.017 km2 on 2026-11-04 vs median 0.024 of 6 earlier looks (noise 0.005 km2).",
-    "new_crid": null
-   },
-   "cloud_window_looks": 6,
-   "directions": [
-    "A",
-    "D"
-   ],
-   "limits": [
-    "Track 156A mixes NISAR processing versions P05023 (provisional) and P05036 (standard); a calibration change between them can shift areas."
-   ],
-   "series": [
-    {
-     "date": "2026-06-18",
-     "track": "055A",
-     "area_km2": 0.0244,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-06-25",
-     "track": "156A",
-     "area_km2": 0.0311,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-06-30",
-     "track": "055A",
-     "area_km2": 0.0247,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-06-30",
-     "track": "063D",
-     "area_km2": 0.0446,
-     "observable_share": 0.8571655898921103,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-07",
-     "track": "156A",
-     "area_km2": null,
-     "observable_share": 0.8632761528913784,
-     "excluded": "window median HH 16.7 dB from the track median",
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-12",
-     "track": "055A",
-     "area_km2": null,
-     "observable_share": 0.8632761528913784,
-     "excluded": "window dark share 9.8% is an outlier on its track (robust z -4.9, limit 3.5)",
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-24",
-     "track": "055A",
-     "area_km2": 0.0302,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-24",
-     "track": "063D",
-     "area_km2": 0.0118,
-     "observable_share": 0.8571019381942013,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-12",
-     "track": "156A",
-     "area_km2": 0.0251,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-17",
-     "track": "055A",
-     "area_km2": 0.0137,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-17",
-     "track": "063D",
-     "area_km2": 0.0278,
-     "observable_share": 0.8570382864962923,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-24",
-     "track": "156A",
-     "area_km2": 0.0252,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-29",
-     "track": "055A",
-     "area_km2": 0.0165,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-05",
-     "track": "156A",
-     "area_km2": null,
-     "observable_share": 0.8632761528913784,
-     "excluded": "anomalous over Hunza lakes; spec \u00a75",
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-10",
-     "track": "055A",
-     "area_km2": 0.0156,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-10",
-     "track": "063D",
-     "area_km2": 0.0207,
-     "observable_share": 0.8571337640431559,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-17",
-     "track": "156A",
-     "area_km2": 0.0219,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-22",
-     "track": "055A",
-     "area_km2": 0.0142,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-29",
-     "track": "156A",
-     "area_km2": 0.0183,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-04",
-     "track": "055A",
-     "area_km2": 0.0159,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-04",
-     "track": "063D",
-     "area_km2": 0.0257,
-     "observable_share": 0.857324719136883,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-11",
-     "track": "156A",
-     "area_km2": 0.0222,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-16",
-     "track": "055A",
-     "area_km2": 0.0089,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-28",
-     "track": "055A",
-     "area_km2": 0.0086,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05036"
-    },
-    {
-     "date": "2026-11-04",
-     "track": "156A",
-     "area_km2": 0.0171,
-     "observable_share": 0.8632761528913784,
-     "excluded": null,
-     "crid": "P05036"
-    }
-   ],
-   "excluded": [
-    {
-     "pass": "2026-07-07_156A",
-     "reason": "window median HH 16.7 dB from the track median"
-    },
-    {
-     "pass": "2026-07-12_055A",
-     "reason": "window dark share 9.8% is an outlier on its track (robust z -4.9, limit 3.5)"
-    },
-    {
-     "pass": "2026-09-05_156A",
-     "reason": "anomalous over Hunza lakes; spec \u00a75"
-    }
-   ],
-   "images": {
-    "latest_hh": "lakes/batura/latest_hh.webp",
-    "water": "lakes/batura/water.webp",
-    "date": "2026-11-04",
-    "track": "156A"
-   },
-   "bounds": [
-    74.81633904421516,
-    36.482927565333426,
-    74.88356105529157,
-    36.537012676535205
+    74.0448095491287,
+    36.593918811130216,
+    74.1132221286845,
+    36.64888618644667
    ]
   },
   {
@@ -1776,6 +1194,8 @@
    "coord_source": "HMAGLOFDB, lake coordinate, event 2020-07-13",
    "outline_source": null,
    "area_label": "water area in the search window",
+   "lake_state": "unconfirmed",
+   "lake_state_source": "the dark radar area is a narrow gully strip of ice and intermittent water; Sentinel-2 shows a 0.17 km\u00b2 water-like strip on 30 Aug 2026 and less water on other summer 2026 dates (median 0.05 km\u00b2)",
    "downstream": null,
    "downstream_source": null,
    "status": {
@@ -1794,6 +1214,7 @@
     "D"
    ],
    "limits": [
+    "Lake not confirmed in recent imagery: the dark radar area is a narrow gully strip of ice and intermittent water; Sentinel-2 shows a 0.17 km\u00b2 water-like strip on 30 Aug 2026 and less water on other summer 2026 dates (median 0.05 km\u00b2).",
     "Track 084A mixes NISAR processing versions P05023 (provisional) and P05036 (standard); a calibration change between them can shift areas."
    ],
    "series": [
@@ -1933,271 +1354,27 @@
    ]
   },
   {
-   "id": "yarkhun",
-   "name": "Yarkhun glacier lake (Chitral)",
-   "lon": 73.02295,
-   "lat": 36.85265,
-   "role": "watch",
-   "coord_source": "HMAGLOFDB, lake coordinate, event 2020-08-14",
-   "outline_source": null,
-   "area_label": "water area in the search window",
-   "downstream": null,
-   "downstream_source": null,
-   "status": {
-    "status": "Stable",
-    "track": "156A",
-    "latest_date": "2026-11-04",
-    "looks": 7,
-    "change_km2": 0.09749999999999998,
-    "noise_km2": 0.16101036,
-    "reason": "Track 156A: 0.251 km2 on 2026-11-04 vs median 0.154 of 6 earlier looks (noise 0.161 km2).",
-    "new_crid": null
-   },
-   "cloud_window_looks": 6,
-   "directions": [
-    "A",
-    "D"
-   ],
-   "limits": [
-    "Track 156A mixes NISAR processing versions P05023 (provisional) and P05036 (standard); a calibration change between them can shift areas."
-   ],
-   "series": [
-    {
-     "date": "2026-06-25",
-     "track": "156A",
-     "area_km2": 0.3758,
-     "observable_share": 0.846706967865097,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-06-25",
-     "track": "164D",
-     "area_km2": 0.3794,
-     "observable_share": 0.8501113585746103,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-02",
-     "track": "084A",
-     "area_km2": 0.0865,
-     "observable_share": 0.8536748329621381,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-07",
-     "track": "156A",
-     "area_km2": null,
-     "observable_share": 0.8468978682787146,
-     "excluded": "window median HH 4.6 dB from the track median",
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-14",
-     "track": "084A",
-     "area_km2": 0.3311,
-     "observable_share": 0.8535793827553293,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-19",
-     "track": "164D",
-     "area_km2": 0.2585,
-     "observable_share": 0.8501113585746103,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-26",
-     "track": "084A",
-     "area_km2": 0.2246,
-     "observable_share": 0.8537702831689469,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-12",
-     "track": "156A",
-     "area_km2": 0.1721,
-     "observable_share": 0.8468342348075087,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-12",
-     "track": "164D",
-     "area_km2": 0.2029,
-     "observable_share": 0.8502068087814191,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-19",
-     "track": "084A",
-     "area_km2": 0.1095,
-     "observable_share": 0.8536430162265352,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-24",
-     "track": "156A",
-     "area_km2": 0.1113,
-     "observable_share": 0.8468342348075087,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-31",
-     "track": "084A",
-     "area_km2": 0.2006,
-     "observable_share": 0.8536430162265352,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-05",
-     "track": "156A",
-     "area_km2": null,
-     "observable_share": 0.8468024180719058,
-     "excluded": "window dark share 24.1% is an outlier on its track (robust z +5.1, limit 3.5)",
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-05",
-     "track": "164D",
-     "area_km2": 0.2033,
-     "observable_share": 0.8501113585746103,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-12",
-     "track": "084A",
-     "area_km2": 0.113,
-     "observable_share": 0.8536111994909322,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-17",
-     "track": "156A",
-     "area_km2": 0.1211,
-     "observable_share": 0.8465160674514794,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-24",
-     "track": "084A",
-     "area_km2": 0.1337,
-     "observable_share": 0.8536748329621381,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-29",
-     "track": "156A",
-     "area_km2": 0.2437,
-     "observable_share": 0.8467706013363029,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-29",
-     "track": "164D",
-     "area_km2": 0.2799,
-     "observable_share": 0.8501113585746103,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-06",
-     "track": "084A",
-     "area_km2": 0.1499,
-     "observable_share": 0.8536748329621381,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-11",
-     "track": "156A",
-     "area_km2": 0.1351,
-     "observable_share": 0.8470569519567293,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-18",
-     "track": "084A",
-     "area_km2": 0.1359,
-     "observable_share": 0.8536111994909322,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-30",
-     "track": "084A",
-     "area_km2": 0.2263,
-     "observable_share": 0.8537702831689469,
-     "excluded": null,
-     "crid": "P05036"
-    },
-    {
-     "date": "2026-11-04",
-     "track": "156A",
-     "area_km2": 0.2511,
-     "observable_share": 0.8469615017499205,
-     "excluded": null,
-     "crid": "P05036"
-    }
-   ],
-   "excluded": [
-    {
-     "pass": "2026-07-07_156A",
-     "reason": "window median HH 4.6 dB from the track median"
-    },
-    {
-     "pass": "2026-09-05_156A",
-     "reason": "window dark share 24.1% is an outlier on its track (robust z +5.1, limit 3.5)"
-    }
-   ],
-   "images": {
-    "latest_hh": "lakes/yarkhun/latest_hh.webp",
-    "water": "lakes/yarkhun/water.webp",
-    "date": "2026-11-04",
-    "track": "156A"
-   },
-   "bounds": [
-    72.98791303839438,
-    36.824588718433795,
-    73.05793818604235,
-    36.88068680871501
-   ]
-  },
-  {
    "id": "shazore",
    "name": "Shazore moraine-dammed lake (KP)",
    "lon": 72.175989,
    "lat": 35.780972,
    "role": "watch",
    "coord_source": "HMAGLOFDB, lake coordinate, event 2024-08-30",
-   "outline_source": null,
-   "area_label": "water area in the search window",
+   "outline_source": "OpenStreetMap way 349316277 (natural=water, water=lake), fetched 10 Nov 2026",
+   "area_label": "water area in the lake outline (buffered 200 m)",
+   "lake_state": "lake",
+   "lake_state_source": null,
    "downstream": null,
    "downstream_source": null,
    "status": {
-    "status": "Change not confirmed yet",
+    "status": "Stable",
     "track": "084A",
     "latest_date": "2026-10-30",
     "looks": 9,
-    "change_km2": 0.06535000000000002,
-    "noise_km2": 0.015567300000000013,
-    "reason": "Track 084A: 0.225 km2 on 2026-10-30 vs median 0.160 of 8 earlier looks (noise 0.016 km2); this is the first pass on NISAR processing version P05036, so the change waits for a second pass on that version.",
-    "new_crid": "P05036"
+    "change_km2": 0.004949999999999996,
+    "noise_km2": 0.009933419999999997,
+    "reason": "Track 084A: 0.104 km2 on 2026-10-30 vs median 0.099 of 8 earlier looks (noise 0.010 km2).",
+    "new_crid": null
    },
    "cloud_window_looks": 4,
    "directions": [
@@ -2211,16 +1388,16 @@
     {
      "date": "2026-06-25",
      "track": "164D",
-     "area_km2": 0.1991,
-     "observable_share": 0.9023652627892911,
+     "area_km2": 0.066,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-07-02",
      "track": "084A",
-     "area_km2": 0.1328,
-     "observable_share": 0.9023652627892911,
+     "area_km2": 0.05,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05023"
     },
@@ -2228,103 +1405,103 @@
      "date": "2026-07-14",
      "track": "084A",
      "area_km2": null,
-     "observable_share": 0.9023015948811002,
+     "observable_share": 0.8951347797501643,
      "excluded": "window dark share 20.1% is an outlier on its track (robust z +4.3, limit 3.5)",
      "crid": "P05023"
     },
     {
      "date": "2026-07-19",
      "track": "164D",
-     "area_km2": 0.1696,
-     "observable_share": 0.9023652627892911,
+     "area_km2": 0.0936,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-07-26",
      "track": "084A",
-     "area_km2": 0.1542,
-     "observable_share": 0.9023015948811002,
+     "area_km2": 0.0915,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-12",
      "track": "164D",
-     "area_km2": 0.1643,
-     "observable_share": 0.9023652627892911,
+     "area_km2": 0.0995,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-19",
      "track": "084A",
-     "area_km2": 0.1573,
-     "observable_share": 0.9023652627892911,
+     "area_km2": 0.0981,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-08-31",
      "track": "084A",
-     "area_km2": 0.203,
-     "observable_share": 0.9023652627892911,
+     "area_km2": 0.1048,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-05",
      "track": "164D",
-     "area_km2": 0.1833,
-     "observable_share": 0.9023652627892911,
+     "area_km2": 0.0975,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-12",
      "track": "084A",
-     "area_km2": 0.1532,
-     "observable_share": 0.9023015948811002,
+     "area_km2": 0.0913,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-24",
      "track": "084A",
-     "area_km2": 0.1637,
-     "observable_share": 0.9023652627892911,
+     "area_km2": 0.1011,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-09-29",
      "track": "164D",
-     "area_km2": 0.1916,
-     "observable_share": 0.9023015948811002,
+     "area_km2": 0.1016,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-06",
      "track": "084A",
-     "area_km2": 0.1631,
-     "observable_share": 0.9023652627892911,
+     "area_km2": 0.1015,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-18",
      "track": "084A",
-     "area_km2": 0.1626,
-     "observable_share": 0.9023652627892911,
+     "area_km2": 0.1002,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05023"
     },
     {
      "date": "2026-10-30",
      "track": "084A",
-     "area_km2": 0.2253,
-     "observable_share": 0.9023652627892911,
+     "area_km2": 0.1041,
+     "observable_share": 0.8951347797501643,
      "excluded": null,
      "crid": "P05036"
     }
@@ -2347,171 +1524,6 @@
     72.21106526903961,
     35.80945847170154
    ]
-  },
-  {
-   "id": "bindo_gol",
-   "name": "Bindo Gol ephemeral impoundment (Chitral)",
-   "lon": 71.898,
-   "lat": 36.174,
-   "role": "watch",
-   "coord_source": "HMAGLOFDB, lake coordinate, event 2010-07-28",
-   "outline_source": null,
-   "area_label": "water area in the search window",
-   "downstream": null,
-   "downstream_source": null,
-   "status": {
-    "status": "Stable",
-    "track": "084A",
-    "latest_date": "2026-10-30",
-    "looks": 10,
-    "change_km2": 0.029700000000000004,
-    "noise_km2": 0.01490013,
-    "reason": "Track 084A: 0.071 km2 on 2026-10-30 vs median 0.041 of 9 earlier looks (noise 0.015 km2).",
-    "new_crid": null
-   },
-   "cloud_window_looks": 5,
-   "directions": [
-    "A",
-    "D"
-   ],
-   "limits": [
-    "Track 084A mixes NISAR processing versions P05023 (provisional) and P05036 (standard); a calibration change between them can shift areas."
-   ],
-   "series": [
-    {
-     "date": "2026-06-25",
-     "track": "164D",
-     "area_km2": 0.0775,
-     "observable_share": 0.9078583023011554,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-02",
-     "track": "084A",
-     "area_km2": 0.0508,
-     "observable_share": 0.9099907699162927,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-14",
-     "track": "084A",
-     "area_km2": 0.0432,
-     "observable_share": 0.9099907699162927,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-19",
-     "track": "164D",
-     "area_km2": 0.0433,
-     "observable_share": 0.9080174416754193,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-07-26",
-     "track": "084A",
-     "area_km2": 0.0284,
-     "observable_share": 0.9099907699162927,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-12",
-     "track": "164D",
-     "area_km2": 0.029,
-     "observable_share": 0.9078901301760082,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-19",
-     "track": "084A",
-     "area_km2": 0.0339,
-     "observable_share": 0.9099907699162927,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-08-31",
-     "track": "084A",
-     "area_km2": 0.0536,
-     "observable_share": 0.9099907699162927,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-05",
-     "track": "164D",
-     "area_km2": 0.0491,
-     "observable_share": 0.907921958050861,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-12",
-     "track": "084A",
-     "area_km2": 0.0411,
-     "observable_share": 0.9099907699162927,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-24",
-     "track": "084A",
-     "area_km2": 0.0393,
-     "observable_share": 0.9099907699162927,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-09-29",
-     "track": "164D",
-     "area_km2": 0.0407,
-     "observable_share": 0.9078901301760082,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-06",
-     "track": "084A",
-     "area_km2": 0.0401,
-     "observable_share": 0.9099907699162927,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-18",
-     "track": "084A",
-     "area_km2": 0.0603,
-     "observable_share": 0.9099907699162927,
-     "excluded": null,
-     "crid": "P05023"
-    },
-    {
-     "date": "2026-10-30",
-     "track": "084A",
-     "area_km2": 0.0708,
-     "observable_share": 0.9099907699162927,
-     "excluded": null,
-     "crid": "P05036"
-    }
-   ],
-   "excluded": [],
-   "images": {
-    "latest_hh": "lakes/bindo_gol/latest_hh.webp",
-    "water": "lakes/bindo_gol/water.webp",
-    "date": "2026-10-30",
-    "track": "084A"
-   },
-   "bounds": [
-    71.86249239010705,
-    36.14530203019612,
-    71.93352915382606,
-    36.20272241802079
-   ]
   }
  ],
  "checks": [
@@ -2524,34 +1536,15 @@
    "days_apart": 0,
    "s2_window_cloud_pct": 0.0,
    "scope": "zone",
-   "radar_km2": 2.65,
-   "optical_km2": 1.0229000000000001,
-   "area_error_pct": 159.06735751295332,
-   "iou": 0.0895903171259901,
+   "radar_km2": 2.7363,
+   "optical_km2": 4.585100000000001,
+   "area_error_pct": -40.321912281084394,
+   "iou": 0.4996722654649734,
    "zone_valid_share": 1.0,
-   "window_radar_km2": 3.0889,
-   "window_optical_km2": 2.5368,
-   "window_area_error_pct": 21.763639230526657,
-   "window_iou": 0.07113345138135223
-  },
-  {
-   "lake": "khurdopin",
-   "nisar_date": "2026-06-30",
-   "nisar_track": "055A",
-   "s2_date": "2026-06-30",
-   "s2_id": "S2B_43SEA_20260630_0_L2A",
-   "days_apart": 0,
-   "s2_window_cloud_pct": 0.0,
-   "scope": "zone",
-   "radar_km2": 0.0357,
-   "optical_km2": 0.8846,
-   "area_error_pct": -95.96427763961113,
-   "iou": 0.013434643761700253,
-   "zone_valid_share": 1.0,
-   "window_radar_km2": 1.4651,
-   "window_optical_km2": 7.3864,
-   "window_area_error_pct": -80.16489764973466,
-   "window_iou": 0.026534612128451644
+   "window_radar_km2": 3.1787,
+   "window_optical_km2": 4.6131,
+   "window_area_error_pct": -31.094058225488286,
+   "window_iou": 0.45592137224858925
   },
   {
    "lake": "passu",
@@ -2562,18 +1555,18 @@
    "days_apart": 0,
    "s2_window_cloud_pct": 0.0,
    "scope": "zone",
-   "radar_km2": 0.048,
-   "optical_km2": 0.23900000000000002,
-   "area_error_pct": -79.91631799163179,
-   "iou": 0.02536620221507681,
+   "radar_km2": 0.0149,
+   "optical_km2": 0.1736,
+   "area_error_pct": -91.41705069124424,
+   "iou": 0.07468643101482327,
    "zone_valid_share": 1.0,
-   "window_radar_km2": 3.5608,
-   "window_optical_km2": 4.9857000000000005,
-   "window_area_error_pct": -28.579738050825366,
-   "window_iou": 0.14244275421406516
+   "window_radar_km2": 3.5128000000000004,
+   "window_optical_km2": 6.0067,
+   "window_area_error_pct": -41.5186375214344,
+   "window_iou": 0.3592489469550939
   },
   {
-   "lake": "shisper",
+   "lake": "karambar",
    "nisar_date": "2026-08-17",
    "nisar_track": "063D",
    "s2_date": "2026-08-17",
@@ -2581,15 +1574,53 @@
    "days_apart": 0,
    "s2_window_cloud_pct": 0.0,
    "scope": "zone",
-   "radar_km2": 0.0874,
-   "optical_km2": 0.2884,
-   "area_error_pct": -69.69486823855756,
-   "iou": 0.01815226225955026,
-   "zone_valid_share": 0.9999045163754416,
-   "window_radar_km2": 1.096,
-   "window_optical_km2": 1.6364,
-   "window_area_error_pct": -33.02371058420924,
-   "window_iou": 0.02768166089965398
+   "radar_km2": 0.0425,
+   "optical_km2": 0.0824,
+   "area_error_pct": -48.422330097087375,
+   "iou": 0.39553072625698327,
+   "zone_valid_share": 1.0,
+   "window_radar_km2": 1.0101,
+   "window_optical_km2": 0.7289,
+   "window_area_error_pct": 38.578680203045685,
+   "window_iou": 0.06759162625084413
+  },
+  {
+   "lake": "rogheli",
+   "nisar_date": "2026-10-30",
+   "nisar_track": "084A",
+   "s2_date": "2026-10-29",
+   "s2_id": "S2C_42SYE_20261029_0_L2A",
+   "days_apart": 1,
+   "s2_window_cloud_pct": 0.2,
+   "scope": "zone",
+   "radar_km2": 0.10060000000000001,
+   "optical_km2": 0.4743,
+   "area_error_pct": -78.7897954880877,
+   "iou": 0.037351136773727894,
+   "zone_valid_share": 1.0,
+   "window_radar_km2": 1.8094000000000001,
+   "window_optical_km2": 10.8095,
+   "window_area_error_pct": -83.26102039872335,
+   "window_iou": 0.06495797184620059
+  },
+  {
+   "lake": "shazore",
+   "nisar_date": "2026-10-30",
+   "nisar_track": "084A",
+   "s2_date": "2026-10-29",
+   "s2_id": "S2C_42SYE_20261029_0_L2A",
+   "days_apart": 1,
+   "s2_window_cloud_pct": 11.9,
+   "scope": "zone",
+   "radar_km2": 0.1041,
+   "optical_km2": 0.0,
+   "area_error_pct": null,
+   "iou": 0.0,
+   "zone_valid_share": 1.0,
+   "window_radar_km2": 2.3496,
+   "window_optical_km2": 0.4927,
+   "window_area_error_pct": 376.88248427034705,
+   "window_iou": 0.03213741012419202
   }
  ]
 }
