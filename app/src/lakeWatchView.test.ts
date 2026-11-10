@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { findBannedClaims } from "./content";
 import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
 import { sortLakes, type Lake, type LakesFile } from "./lakes";
-import { createLakeWatchView, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
+import { checkLine, createLakeWatchView, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
 
 function setup(file: LakesFile | null = fixtureLakes, extra: Partial<Parameters<typeof createLakeWatchView>[1]> = {}) {
   const root = document.createElement("div");
@@ -289,5 +289,13 @@ describe("Lake Watch: a site with no lake now", () => {
     expect(detail.textContent).toContain("No water layer: there is no lake at this site now.");
     expect(detail.textContent).not.toContain("No radar picture yet for the water pixels");
     expect(findBannedClaims(detail.textContent ?? "")).toEqual([]);
+  });
+});
+
+describe("checkLine", () => {
+  const c = { lake: "x", nisar_date: "2026-08-17", nisar_track: "055A", s2_date: "2026-08-17", s2_id: "S2", days_apart: 0, s2_window_cloud_pct: 1, scope: "zone", radar_km2: 2.736, optical_km2: 4.585, area_error_pct: -40, iou: 0.5, zone_valid_share: 1, window_radar_km2: 3, window_optical_km2: 4, window_area_error_pct: null, window_iou: 0.4 };
+  test("names the open-water season the pair was chosen in, when the row has one", () => {
+    expect(checkLine({ ...c, season: "15 Jun–30 Sep" })).toMatch(/^One NISAR pass vs one Sentinel-2 scene \(open-water season 15 Jun–30 Sep\): NISAR 2\.736 km²/);
+    expect(checkLine(c)).toMatch(/^One NISAR pass vs one Sentinel-2 scene: NISAR/);
   });
 });

@@ -20,3 +20,7 @@ NOISE_FLOOR_KM2 = 0.005
 CHANGE_FACTOR = 2.0
 SPECKLE_BOX = 3  # boxcar width (pixels) applied to linear power before dB
 CLOUD_WINDOW = ("2026-06-17", "2026-08-04")  # inclusive; headline cloud count
+# Open-water season for the Sentinel-2 cross-check, as (month, day) pairs, inclusive, in any year. Outside it a lake
+# can be frozen or snow-covered (Shazore was open 26 Jun-9 Oct 2026 and frozen by 19 Oct; Rogheli had snow and ice
+# from early October), and optical MNDWI never counts snow or ice as water, so a pair then is no test of radar water.
+OPEN_WATER_SEASON = ((6, 15), (9, 30))

@@ -105,7 +105,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
 /** A single-pass comparison, so it carries its own dates instead of looks and noise. */
 export function checkLine(c: LakeCheck): string {
   const iou = c.iou === null ? "" : `, overlap (IoU) ${c.iou.toFixed(2)}`;
-  return `One NISAR pass vs one Sentinel-2 scene: NISAR ${c.radar_km2.toFixed(3)} km² on ${formatDate(c.nisar_date)} (${c.nisar_track}), Sentinel-2 ${c.optical_km2.toFixed(3)} km² on ${formatDate(c.s2_date)} (${c.days_apart} days apart, ${Math.round(c.s2_window_cloud_pct)}% cloud in the window)${iou}.`;
+  const season = c.season ? ` (open-water season ${c.season})` : "";
+  return `One NISAR pass vs one Sentinel-2 scene${season}: NISAR ${c.radar_km2.toFixed(3)} km² on ${formatDate(c.nisar_date)} (${c.nisar_track}), Sentinel-2 ${c.optical_km2.toFixed(3)} km² on ${formatDate(c.s2_date)} (${c.days_apart} days apart, ${Math.round(c.s2_window_cloud_pct)}% cloud in the window)${iou}.`;
 }
 
 export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): LakeWatchHandle {

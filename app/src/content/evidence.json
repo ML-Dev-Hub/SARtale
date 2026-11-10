@@ -34,7 +34,7 @@
       "id": "lake-checks",
       "title": "Sentinel-2 cross-check and what is not validated",
       "paragraphs": [
-        "Where a clear Sentinel-2 scene was close in time, we compared one NISAR pass with it inside each lake's zone (its outline where it has one, otherwise its search circle). Sites with no lake now are not compared. The rows below are copied from the data file."
+        "Where a clear Sentinel-2 scene was close in time, we compared one NISAR pass with it inside each lake's zone (its outline where it has one, otherwise its search circle). Sites with no lake now are not compared. Only pairs in the open-water season are used, the clearest one per lake, because a frozen or snow-covered lake has no open water for optical to see; each row names the season. The rows below are copied from the data file."
       ],
       "afterTable": [
         "Radar water {optical_overlap}. Radar under-reads small lakes and loses water marked shadow-prone, and optical water misses shaded or very dark lakes, so neither is a clean reference.",

@@ -48,11 +48,12 @@
     <tr><td><code>BRIGHT_PASS_DB</code></td><td>3.0 dB</td><td>Window-median HH distance from the track median that excludes a pass</td></tr>
     <tr><td><code>OUTLIER_Z</code></td><td>3.5</td><td>Robust z-score that excludes a pass</td></tr>
     <tr><td><code>CLOUD_WINDOW</code></td><td>17 Jun – 4 Aug 2026</td><td>The period counted in the headline count of valid looks</td></tr>
+    <tr><td><code>OPEN_WATER_SEASON</code></td><td>15 Jun – 30 Sep</td><td>The only dates the Sentinel-2 cross-check pairs are taken from</td></tr>
   </tbody>
 </table></div>
 
 <h2>Checking ourselves</h2>
-<p><code>lakes-check</code> compares radar water with Sentinel-2 water (MNDWI) on days when both saw a lake under a clear sky, at every lake that holds a lake now. Neither source is a clean reference: radar under-reads small lakes and loses water marked shadow-prone, and optical water misses shaded or very dark lakes. The app words the agreement from the IoU values of the current build, in How we know and in each lake's panel; the full numbers are in <code>lakes.json</code> under <code>checks</code>.</p>
+<p><code>lakes-check</code> compares radar water with Sentinel-2 water (MNDWI) on days when both saw a lake under a clear sky, at every lake that holds a lake now. It uses only pairs in the open-water season (<code>OPEN_WATER_SEASON</code> in <code>config.py</code>, 15 June to 30 September), the clearest one per lake: in October and November a lake can be frozen or under snow, which optical water never counts, so such a pair is no test of radar water. A lake with no clear in-season pair gets a note instead of a number. Neither source is a clean reference: radar under-reads small lakes and loses water marked shadow-prone, and optical water misses shaded or very dark lakes. The app words the agreement from the IoU values of the current build, in How we know and in each lake's panel; the full numbers are in <code>lakes.json</code> under <code>checks</code>.</p>
 <p>Earth Search marks Sentinel-2 scenes whose pixel values already have the bottom-of-atmosphere offset applied (<code>earthsearch:boa_offset_applied</code>). For those scenes <code>lakes-check</code> uses an offset of 0; applying the −0.1 offset a second time had pushed turbid lakes below the water threshold and made the earlier checks look far worse than they were.</p>
 
 <h2>Known limits</h2>

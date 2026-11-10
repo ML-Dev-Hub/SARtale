@@ -204,3 +204,44 @@ def test_reflectance_flag_false_keeps_the_offset():
          "assets": _band(-0.1)}
     scene = lakecheck._scene(f, lakecheck.Date(2026, 8, 17))
     assert lakecheck._reflectance(scene, "green", np.array([2000]))[0] == pytest.approx(0.1)
+
+
+def test_season_words_and_dates():
+    assert lakecheck.season_text() == "15 Jun–30 Sep"
+    assert lakecheck.in_season("2026-06-15") and lakecheck.in_season("2026-09-30")
+    assert not lakecheck.in_season("2026-06-14") and not lakecheck.in_season("2026-10-01")
+    assert lakecheck.in_season("2026-10-05", season=((6, 1), (10, 9)))
+
+
+def test_check_with_no_open_water_season_pass_is_a_note(monkeypatch):
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a, **k: pytest.fail("no in-season pass: must not search"))
+    series = [{"date": d, "track": "084A", "excluded": None, "area_km2": 0.1, "observable_share": 1.0}
+              for d in ("2026-06-01", "2026-10-18", "2026-10-30")]
+    row = lakecheck.check_lake(make_lake("x"), "unused", series, log=lambda *_: None)
+    assert row == {"lake": "x", "note": "no open-water-season pair (15 Jun–30 Sep)", "season": "15 Jun–30 Sep"}
+
+
+def test_check_picks_the_clearest_in_season_pair_and_says_which_season(tmp_path, monkeypatch):
+    lake = make_lake("lk")
+    cache = tmp_path / "cache"
+    days = ["2026-07-12", "2026-08-17", "2026-10-29"]
+    for d in days:
+        write_pass(cache, lake, d, "156A")
+        write_pass(cache, lake, d, "063D")
+    scenes = {"S2-jul": ("2026-07-12", 5.0), "S2-aug": ("2026-08-18", 1.0), "S2-oct": ("2026-10-29", 0.0)}
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a, **k: [
+        {"id": sid, "properties": {"datetime": f"{d}T05:00:00Z", "eo:cloud_cover": 1.0},
+         "assets": {"green": {}, "swir16": {}, "scl": {}}} for sid, (d, _) in scenes.items()])
+    seen = []
+
+    def optical(scene, x, y, epsg):
+        seen.append(scene["id"])
+        ones = np.ones((len(y), len(x)), bool)
+        return {"water": ones, "valid": ones, "window_cloud_share": scenes[scene["id"]][1] / 100, "invalid_share": 0.0}
+
+    monkeypatch.setattr(lakecheck, "optical_on_grid", optical)
+    series = [{"date": d, "track": "156A", "excluded": None, "area_km2": 0.1, "observable_share": 1.0} for d in days]
+    row = lakecheck.check_lake(lake, cache, series, log=lambda *_: None)
+    assert "S2-oct" not in seen  # an October pair is never read: the lake may be frozen
+    assert (row["s2_id"], row["nisar_date"], row["days_apart"]) == ("S2-aug", "2026-08-17", 1)  # clearest beats nearest
+    assert row["season"] == "15 Jun–30 Sep" and row["s2_window_cloud_pct"] == 1.0

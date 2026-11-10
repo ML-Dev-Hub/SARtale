@@ -22,6 +22,23 @@ MAX_CLOUD_PCT = 20.0
 SCL_BAD = (0, 1, 3, 8, 9, 10)
 SCL_SNOW = 11
 NO_SCENE = "no clear Sentinel-2 scene within 3 days"
+NO_SEASON_PAIR = "no open-water-season pair"
+_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def season_text(season=None) -> str:
+    """The open-water season in words, e.g. "15 Jun-30 Sep" (with an en dash)."""
+    from sartale.config import OPEN_WATER_SEASON
+    (m0, d0), (m1, d1) = season or OPEN_WATER_SEASON
+    return f"{d0} {_MONTHS[m0 - 1]}\u2013{d1} {_MONTHS[m1 - 1]}"
+
+
+def in_season(iso_date: str, season=None) -> bool:
+    """True when `iso_date` (YYYY-MM-DD) falls in the open-water season (inclusive), whatever the year."""
+    from sartale.config import OPEN_WATER_SEASON
+    (m0, d0), (m1, d1) = season or OPEN_WATER_SEASON
+    d = Date.fromisoformat(iso_date)
+    return (m0, d0) <= (d.month, d.day) <= (m1, d1)
 BOA_FLAG = "earthsearch:boa_offset_applied"  # item property: the DNs already have the BOA offset applied
 
 
@@ -172,11 +189,15 @@ def _pair(a: dict) -> dict:
 
 
 def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: float = MAX_CLOUD_PCT,
-               log=print) -> dict:
-    """One check row for a lake: the (valid NISAR pass, Sentinel-2 scene) pair closest in time whose
-    lake window is clear (SCL cloud share <= `max_cloud` percent), or a row saying there is none.
+               log=print, season=None) -> dict:
+    """One check row for a lake: among the (valid NISAR pass, Sentinel-2 scene) pairs within `days` of each other
+    whose NISAR pass falls in the open-water season (`config.OPEN_WATER_SEASON` unless `season` is given), the one
+    whose lake window is clearest (lowest SCL cloud share, then fewest days apart, then the latest), provided that
+    share is at most `max_cloud` percent. Outside the season a lake can be frozen or under snow, which optical water
+    never counts, so such a pair is no test of radar water. Without a valid in-season pass the row is a note
+    (NO_SEASON_PAIR); without a clear scene, NO_SCENE. Every row carries `season`, the season in words.
 
-    The headline numbers (`radar_km2`, `optical_km2`, `area_error_pct`, `iou`) are for the 1 km lake
+    The headline numbers (`radar_km2`, `optical_km2`, `area_error_pct`, `iou`) are for the lake
     zone, the area the app reports. `window_*` repeat them over the whole ~6 km window, where the radar
     side is every dark, non-shadow pixel and so includes non-lake dark ground.
     """
@@ -188,6 +209,10 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
     passes = sorted({(p["date"], p["track"]) for p in series if is_valid(p)})
     if not passes:
         return {"lake": lake.id, "note": "no valid NISAR pass"}
+    words = season_text(season)
+    passes = [(d, t) for d, t in passes if in_season(d, season)]
+    if not passes:
+        return {"lake": lake.id, "note": f"{NO_SEASON_PAIR} ({words})", "season": words}
     bbox = lake_bbox(lake)
     first = Date.fromisoformat(passes[0][0]) - timedelta(days=days)
     last = Date.fromisoformat(passes[-1][0]) + timedelta(days=days)
@@ -199,13 +224,16 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
             if s["days_apart"] <= days and "green" in s["assets"] and "scl" in s["assets"]:
                 cands.append((s["days_apart"], s["cloud"], d, track, s))
     cands.sort(key=lambda c: c[:4] + (c[4]["id"],))
-    tried = set()
+    tried, clear = set(), []
+    masks: dict[str, dict] = {}
     for apart, tile_cloud, d, track, scene in cands:
         pass_id = f"{d}_{track}"
         if (scene["id"], d) in tried:
             continue
         tried.add((scene["id"], d))
-        radar = radar_water_masks(lake, cache_dir, pass_id)
+        if pass_id not in masks:
+            masks[pass_id] = radar_water_masks(lake, cache_dir, pass_id)
+        radar = masks[pass_id]
         x, y, epsg = radar["x"], radar["y"], radar["epsg"]
         try:
             opt = optical_on_grid(scene, x, y, epsg)
@@ -214,15 +242,18 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
             continue
         pct = 100 * opt["window_cloud_share"]
         log(f"{lake.id} {pass_id} vs {scene['id']} ({apart} d apart): window cloud/no-data {pct:.1f}%")
-        if pct > max_cloud:
-            continue
+        if pct <= max_cloud:
+            clear.append((round(pct, 1), apart, -Date.fromisoformat(d).toordinal(), track, scene, radar, opt, d, pct))
+    if clear:
+        _, apart, _, track, scene, radar, opt, d, pct = min(clear, key=lambda c: c[:4] + (c[4]["id"],))
+        x = radar["x"]
         px = float(abs(x[1] - x[0]))
         zone = radar["zone"]  # the exact zone the radar side used (outline or circle)
         zone_cmp = compare_masks(radar["zone_mask"], opt["water"], px, valid=opt["valid"] & zone)
         win_cmp = compare_masks(radar["window"], opt["water"], px, valid=opt["valid"])
         return {"lake": lake.id, "nisar_date": d, "nisar_track": track, "s2_date": scene["date"],
                 "s2_id": scene["id"], "days_apart": apart, "s2_window_cloud_pct": round(pct, 1),
-                "scope": "zone", **_pair(zone_cmp),
+                "scope": "zone", "season": words, **_pair(zone_cmp),
                 "zone_valid_share": float(opt["valid"][zone].mean()),
                 **{f"window_{k}": v for k, v in _pair(win_cmp).items()}}
-    return {"lake": lake.id, "note": NO_SCENE}
+    return {"lake": lake.id, "note": f"{NO_SCENE} in the open-water season ({words})", "season": words}

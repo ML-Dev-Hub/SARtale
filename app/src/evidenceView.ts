@@ -83,7 +83,7 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
     if (!lakes?.checks.length) return null;
     const table = el("table", "evidence-table");
     table.dataset.role = "lake-checks-table";
-    table.append(el("caption", undefined, "One NISAR pass against one Sentinel-2 scene, inside each lake's zone (its outline or search circle)"));
+    table.append(el("caption", undefined, "One NISAR pass against one Sentinel-2 scene in the open-water season, inside each lake's zone (its outline or search circle)"));
     const thead = el("thead");
     const hr = el("tr");
     for (const h of ["Lake", "NISAR date and track", "Sentinel-2 date and scene", "Radar km²", "Optical km²", "Overlap (IoU)"]) {

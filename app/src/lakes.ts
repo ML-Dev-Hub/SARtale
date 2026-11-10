@@ -70,6 +70,8 @@ export interface LakeCheck {
   days_apart: number;
   s2_window_cloud_pct: number;
   scope: string;
+  /** The open-water season the pair was chosen in, e.g. "15 Jun–30 Sep" (absent in older builds). */
+  season?: string;
   radar_km2: number;
   optical_km2: number;
   area_error_pct: number | null;
