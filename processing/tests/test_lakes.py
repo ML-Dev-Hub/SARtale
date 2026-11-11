@@ -105,7 +105,7 @@ def check_register(path):
     lat_min, lat_max, lon_min, lon_max = BOUNDS  # the same box a lake request must fall in
     assert all(lon_min <= l.lon <= lon_max and lat_min <= l.lat <= lat_max for l in lakes)
     shisper = next(l for l in lakes if l.id == "shisper")
-    assert shisper.downstream_source == "Radio Pakistan, 7 May 2022"
+    assert shisper.downstream_source.startswith("Dawn, 7 May 2022, https://www.dawn.com/news/1688466")
     assert all(l.downstream_source for l in lakes if l.downstream)
     return lakes
 

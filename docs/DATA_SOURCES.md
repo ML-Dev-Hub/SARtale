@@ -1,6 +1,6 @@
 # Data sources and licences
 
-Updated 10 Nov 2026. Space Apps rules say we must confirm that non-NASA data and code are freely and publicly available or open source, and name their licences. Where a licence has not been checked, this file says "terms not confirmed" and does not guess.
+Updated 11 Nov 2026. Space Apps rules say we must confirm that non-NASA data and code are freely and publicly available or open source, and name their licences. Where a licence has not been checked, this file says "terms not confirmed" and does not guess.
 
 ## Status in one paragraph
 
@@ -18,23 +18,56 @@ Lake Watch shows NISAR radar data labelled **Provisional**. `app/public/data/lak
 A location check on 10 Nov 2026 compared every register point with Sentinel-2 imagery of summer 2026, OpenStreetMap
 and HMAGLOFDB. Ghulkin (the zone measured the Hunza River), Batura (no lake), Yarkhun (wet snow and glacier ice) and
 Bindo Gol (no lake at the point) were dropped from the register. Shisper and Khurdopin are kept as sites with no lake
-now; Rogheli is kept as a lake not confirmed in 2026 imagery.
+now. A links and coordinates audit on 11 Nov 2026 then moved three points:
+
+- **Passu** to 74.8810 E, 36.4580 N. The old point (the HMAGLOFDB point rounded to 3 decimals) sat on a dark patch
+  inside the outline, not on water; the new one is open water 50-67 m from shore in Sentinel-2 on 10 Jul and 18 Sep
+  2026. The OpenStreetMap outline is still the zone, so the area does not depend on the point.
+- **Shazore** to 72.1741 E, 35.7794 N, on the 2026 remnant lake. The lake partly drained in the GLOF of 30 Aug 2024
+  (HMAGLOFDB GF 734); the HMAGLOFDB point now lies on the exposed lake bed. The outline is the 2026 remnant lake from
+  Sentinel-2 (below), not the pre-2024 OpenStreetMap lake, of which only 26% was water in 2026.
+- **Rogheli** to 71.9677 E, 35.8539 N, the centre of the supraglacial pond seen in Sentinel-2 on 28 Jun 2019
+  (0.031 km²) and 27 Jun 2020 (0.036 km²), before the Golain GLOFs of 7 Jul 2019 and 13 Jul 2020 (HMAGLOFDB GF 498,
+  504). It is now a site with **no lake now**: no water on any clear scene of 23 Jun-11 Sep 2026. Its zone is a 150 m
+  circle round the pond. The earlier 1 km circle took in the clean-ice tongue of Rogheli glacier 600-700 m south,
+  whose MNDWI passes for water and whose radar is dark, and a 0.001-0.002 km² pond 150 m north-east. A 150 m circle
+  holds the whole pond (radius about 100 m) and leaves both out.
 
 | Item | Use | Licence or terms | Access date |
 |---|---|---|---|
 | OpenStreetMap way 60065056, "Attabad lake" (`processing/outlines/attabad_osm.geojson`) | Attabad's lake outline, buffered 200 m. 7.2 km² in total; only the part inside the 6 km radar window is counted. Attabad's register point is a point inside this outline | © OpenStreetMap contributors, ODbL 1.0 | 2026-11-04 (outline), 2026-11-10 (point) |
 | OpenStreetMap way 360957778, "Passu lake" (`processing/outlines/passu_osm.geojson`) | Passu's lake outline, buffered 200 m | © OpenStreetMap contributors, ODbL 1.0 | 2026-11-10 |
-| OpenStreetMap way 349316277, an unnamed lake at Shazore (`processing/outlines/shazore_osm.geojson`) | Shazore's lake outline, buffered 200 m | © OpenStreetMap contributors, ODbL 1.0 | 2026-11-10 |
-| HMAGLOFDB v1.3.0 (Zenodo 18257243; https://github.com/fidelsteiner/HMAGLOFDB), the dataset of Shrestha et al. 2023, ESSD 15:3941 | Coordinates of Khurdopin (lake point), Karambar (lake GL074079E36622N, with a 300 m search circle on the terminus pond), Rogheli and Shazore, and the Shisper lake point cited beside the Sentinel-2 position | CC0 1.0 Universal (read from the repository's `LICENSE` file) | 2026-11-02, 2026-11-10 |
-| Sentinel-2 L2A, via Earth Search (Element 84) | The Shisper basin position (water centroids on 25 May 2020 and 5 Apr 2022), and the no-lake and not-confirmed notes for Shisper, Khurdopin and Rogheli (scenes of Jul to Sep 2026) | Copernicus Sentinel data terms, as above | 2026-11-10 |
-| Passu event table, doi 10.1016/j.rcar.2025.03.005 | Coordinate for Passu lake (within 50 m of the HMAGLOFDB point) | Journal licence: terms not confirmed. Cited, not redistributed | 2026-11-02 |
+| Shazore 2026 outline (`processing/outlines/shazore_s2_2026.geojson`), made by SARtale from Sentinel-2 L2A | Shazore's lake outline, buffered 200 m (0.117 km²). Method: on a 10 m UTM grid (EPSG:32643), water is MNDWI > 0 with the scene classification not cloud, shadow, no data or snow (the BOA offset applied once); the 9 scenes of 1 Aug-30 Sep 2026 whose lake area (600 m round the point) was at least 95% clear were stacked; the outline is the pixels that are water on at least half of them, the connected water at the register point. Scenes: S2B_42SYE_20260805_0_L2A, S2C_42SYE_20260820_0_L2A, S2B_42SYE_20260825_0_L2A, S2C_42SYE_20260830_0_L2A, S2C_42SYE_20260909_0_L2A, S2A_42SYE_20260911_1_L2A, S2C_42SYE_20260919_0_L2A, S2B_42SYE_20260924_0_L2A, S2C_42SYE_20260929_0_L2A. The method and scene ids are also in the file's `source` | Derived from Copernicus Sentinel data (terms as above) | 2026-11-11 |
+| OpenStreetMap way 349316277, an unnamed lake at Shazore | The pre-2024 lake (0.150 km²). No longer the zone: it is the lake before the 30 Aug 2024 partial drainage | © OpenStreetMap contributors, ODbL 1.0 | 2026-11-10 |
+| HMAGLOFDB v1.3.0 (Zenodo 18257243; https://github.com/fidelsteiner/HMAGLOFDB), the dataset of Shrestha et al. 2023, ESSD 15:3941 | Coordinates of Khurdopin (lake point) and Karambar (lake GL074079E36622N, with a 300 m search circle on the terminus pond); the primary source of Passu (GF 429, 74.879432 E, 36.457073 N, moved onto open water), Rogheli (GF 498, 504) and Shazore (GF 734), and the 30 Aug 2024 Shazore drainage; the Shisper lake point cited beside the Sentinel-2 position | CC0 1.0 Universal (read from the repository's `LICENSE` file) | 2026-11-02, 2026-11-10, 2026-11-11 |
+| Sentinel-2 L2A, via Earth Search (Element 84) | The Shisper basin position (water centroids on 25 May 2020 and 5 Apr 2022); the Rogheli pond (28 Jun 2019, 27 Jun 2020); the Passu and Shazore points (Jul to Sep 2026); the no-lake notes for Shisper, Khurdopin and Rogheli; and the dated absence checks (`absence_checked`, below) | Copernicus Sentinel data terms, as above | 2026-11-10, 2026-11-11 |
+| Tian et al. 2026, "Are area changes the primary indicator for predicting glacial lake outburst Risks?", RCAR 18, 120-129, doi 10.1016/j.rcar.2025.03.005 | Formerly cited for the Passu coordinate. Its event table could not be read on 11 Nov 2026, so Passu now rests on HMAGLOFDB; kept here only as a secondary reference | CC BY 4.0 (Crossref licence record) | 2026-11-11 |
+
+### No lake now: dated checks and when a lake may be forming
+
+A site the register holds as having no lake now (Shisper, Khurdopin, Rogheli) carries `absence_checked` in
+`lakes.json`: the Sentinel-2 scene id and date, and the share of the lake zone's clear pixels that held water
+(MNDWI > 0, as in the cross-check). `lakes-absence` runs on every refresh. In the open-water season (15 Jun-30 Sep) it
+takes the newest scene of the season so far whose lake zone is at least 80% clear; outside the season it keeps the
+last check, and the app shows its date ("Last checked ..."). Water above the site's threshold turns the site into
+**Lake may be forming**: no growing or shrinking verdict, and SARtale measures it from the next NISAR pass. The
+thresholds come from a survey of every clear scene of 15 Jun-30 Sep 2026 and of dates when the lakes were there
+(11 Nov 2026):
+
+| Site and zone | Empty zone, 2026 | When the lake was there | Threshold |
+|---|---|---|---|
+| Shisper, 1 km circle | 0.6-1.6% (9 scenes; stream threads) | 6.8% (26 Mar 2022), 8.7% (5 Apr 2022), 11.6% (20 May 2020), 12.6% (25 May 2020) | 4% (the default, `FORMING_WATER_SHARE`) |
+| Khurdopin, 1 km circle | 7.8-13.3% (14 scenes; the Shimshal River) | No Sentinel-2 L2A scene of the 2017 lake in the archive | 16%: a new lake must add about 0.08 km² over the river's highest. A lake as small as 2017's (0.043 km²) would not show; the site carries this as a limit |
+| Rogheli, 150 m circle | 0-5.4% (13 scenes; wet snow and single pixels) | 40% (28 Jun 2019), 43% (27 Jun 2020), 17% (2 Jul 2020, draining) | 10% |
 
 ## Context and quotes
 
 | Item | Use | Licence or terms | Access date |
 |---|---|---|---|
-| SUPARCO, GLOF status updates of 2 Jul and 5 Aug 2026 (space4climate.gov.pk) | The cloud window and one quoted sentence. Nothing else is copied | Terms not confirmed. Quoted text only, with the source named | 2026-11-02 |
-| Radio Pakistan, 7 May 2022 | The Shisper outburst and the Hassanabad bridge, as context in the demo video | Terms not confirmed. Cited only | 2026-11-02 |
+| SUPARCO, GLOF status updates of 2 Jul (https://space4climate.gov.pk/glof-status-update/) and 5 Aug 2026 (space4climate.gov.pk) | The cloud window and one quoted sentence. Nothing else is copied | Terms not confirmed. Quoted text only, with the source named | 2026-11-02 |
+| Dawn, 7 May 2022, https://www.dawn.com/news/1688466 ("Hunza's Hassanabad bridge on the Karakoram Highway was on Saturday destroyed and swept away") and 8 May 2022, https://www.dawn.com/news/1688567 ("The outburst of the ice-dammed lake formed by the surging Shisper glacier"; flooding "disconnected road access between central and upper Hunza") | The Shisper outburst and the Hassanabad bridge (story 01, the Shisper `downstream_source`, the demo video) | Terms not confirmed. Cited only | 2026-11-11 |
+| Radio Pakistan, 9 May 2022, https://radio.gov.pk/09-05-2022/all-resources-to-be-utilized-for-rehabilitation-of-shishper-glacier-affectees-cm-gb | A steel bridge to replace the collapsed Hassanabad bridge on the Karakoram Highway. Replaces the earlier citation "Radio Pakistan, 7 May 2022", which could not be found | Terms not confirmed. Cited only | 2026-11-11 |
+| SUPARCO, GLOF monitoring status of 5 Aug 2026 (posted 20 Aug), https://space4climate.gov.pk/glof-monitoring-status-05-august-2026/ | The end of the cloud window | Terms not confirmed. Cited only | 2026-11-11 |
 
 SUPARCO quote, verbatim: "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days." (space4climate.gov.pk, GLOF Status Update, 2 Jul 2026.)
 
@@ -55,8 +88,8 @@ Sentinel-2 cross-check result (`lakes.json`, `checks`): one NISAR pass against o
 |---|---|---|
 | NISAR GCOV, Attabad window, every pass 25 Jun to 23 Oct 2026 | The radar image, dark-pixel, shadow and water maps, and the pass chart. Made by the pipeline from the data in this repository | NASA data, as above |
 | NASA MODIS Terra true colour (`app/public/story/north_map.jpg`) | Background map | As below |
-| UNDP GLOF-II (more than 3,000 glacial lakes in Gilgit-Baltistan and Khyber Pakhtunkhwa) | One spoken and shown figure | Cited only |
-| SUPARCO, Radio Pakistan | As above: the quote and the 2022 Shisper outburst | Cited only |
+| UNDP GLOF-II Project Brief 2023, https://www.undp.org/sites/g/files/zskgke326/files/2023-04/GLOF%20II%20Project%20%28Dec%202022%29_Project%20Brief_2023.pdf ("Over 3,000 glacial lakes have developed in Gilgit-Baltistan and Khyber Pakhtunkhwa regions") | One spoken and shown figure | Cited only |
+| SUPARCO; Dawn, 7 May 2022 | As above: the quote and the 2022 Shisper outburst (the video's narration names Radio Pakistan; the videos are re-made in a later step) | Cited only |
 | Sentinel-2 scene count over Attabad, 17 Jun to 4 Aug 2026 (13 scenes, 5 mostly cloud) | One spoken figure | Copernicus Sentinel data terms, as above |
 | Narration and music | Generated with ElevenLabs (paid account) | ElevenLabs terms for paid plans: terms not confirmed for this use |
 
@@ -68,8 +101,8 @@ Sentinel-2 cross-check result (`lakes.json`, `checks`): one NISAR pass against o
 | `attabad_cloud.jpg`: Sentinel-2 L2A true colour, Attabad, 3 Jul 2026, 70% cloud over the 6 km window | Optical side of the cloud-versus-radar pair | Copernicus Sentinel data terms, as above |
 | `attabad_radar_0630.jpg`: NISAR GCOV L-band HH, 30 Jun 2026, track 055A | Radar side of the same pair | NASA data, as above |
 | `north_map.jpg`: NASA MODIS Terra true colour, 5 Oct 2026, 70.8-76.6 E, 34.4-37.6 N | Base map for the lake pins | NASA EOSDIS data, openly available. Exact citation wording: terms not confirmed |
-| Radio Pakistan, 7 May 2022 | The Shisper outburst and the destroyed Karakoram Highway bridge (story 01) | Terms not confirmed. Cited only |
-| OpenStreetMap way 651792498 | The 6.6 km straight line from the Shisper register point (the lake basin) to the Hassanabad bridge (story 01) | © OpenStreetMap contributors, ODbL 1.0 |
+| Dawn, 7 May 2022 (above) | The Shisper outburst and the destroyed Karakoram Highway bridge (story 01) | Terms not confirmed. Cited only |
+| OpenStreetMap way 651792498 | The 6.6 km straight line (6,612 m geodesic) from the Shisper register point (the lake basin) to the Hassanabad bridge (story 01). A straight-line distance, not the flood's path down the gorge | © OpenStreetMap contributors, ODbL 1.0 |
 | NASA CMR granule search (`cmr.earthdata.nasa.gov/search/granules.umm_json`) | Lists the NISAR passes over a requested lake's point, to say whether radar covers it. Catalogue entries only; no NISAR data is downloaded for a request | Public, no login. Exact citation wording: terms not confirmed |
 
 ## App dependencies (npm)
