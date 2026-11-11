@@ -102,8 +102,8 @@ describe("renderStoryPage", () => {
     expect(view.querySelector(".sp-shadow")?.textContent).toContain("Mountains cast shadows too");
     expect([...view.querySelectorAll(".sp-shadow a")].map((a) => a.getAttribute("href"))).toEqual([
       "https://arxiv.org/abs/2512.24117",
-      "https://www.cambridge.org/core/product/DCA97C3F4AF86441028995F9A1656879/core-reader",
-      "https://informahealthcare.com/doi/full/10.1080/01431161.2018.1516314",
+      "https://doi.org/10.1017/jog.2026.10131",
+      "https://doi.org/10.1080/01431161.2018.1516314",
     ]);
   });
 
