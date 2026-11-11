@@ -52,6 +52,11 @@ export interface LakeSeriesPoint {
   excluded: string | null;
   /** NISAR processing version (composite release ID) of the pass, e.g. "P05036" (absent in older builds). */
   crid?: string;
+  /**
+   * For a pass left out of the trend: the area it read, so the chart can mark it (area_km2 is null for such a pass).
+   * Null when the pass had no valid pixel in the zone; absent on passes that were used and in older builds.
+   */
+  diagnostic_km2?: number | null;
 }
 
 export interface Lake {

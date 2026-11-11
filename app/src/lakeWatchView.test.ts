@@ -118,7 +118,8 @@ describe("Lake Watch", () => {
     const pt = (date: string, track: string, area: number | null, excluded: string | null) => ({ date, track, area_km2: area, observable_share: 1, excluded });
     const lake: Lake = {
       ...fixtureLakes.lakes[2],
-      series: [pt("2026-07-01", "156A", 1.0, null), pt("2026-07-02", "64D", 2.0, null), pt("2026-07-13", "156A", 9.0, "bright"), pt("2026-07-25", "156A", 1.1, null)],
+      // the producer's shape: an excluded pass has area_km2 null and keeps what it read as diagnostic_km2
+      series: [pt("2026-07-01", "156A", 1.0, null), pt("2026-07-02", "64D", 2.0, null), { ...pt("2026-07-13", "156A", null, "bright"), diagnostic_km2: 9.0 }, pt("2026-07-25", "156A", 1.1, null), { ...pt("2026-07-30", "156A", null, "window has no valid HH pixels"), diagnostic_km2: null }],
     };
     const d = lakeChartData(lake);
     expect(d.series.filter((s) => !s.excluded).map((s) => s.label)).toEqual(["156A", "64D"]);
@@ -289,6 +290,18 @@ describe("Lake Watch: a site with no lake now", () => {
     expect(detail.textContent).toContain("No water layer: there is no lake at this site now.");
     expect(detail.textContent).not.toContain("No radar picture yet for the water pixels");
     expect(findBannedClaims(detail.textContent ?? "")).toEqual([]);
+  });
+
+  test("C06: its table calls the dark pixels dark area, not water, and never says a pass was used", () => {
+    const { root, view } = setup(file);
+    view.select("basin");
+    const table = root.querySelector('[data-role="lw-readings"] table')!;
+    expect(table.querySelector("caption")?.textContent).toContain("dark radar area by date and track");
+    expect(table.querySelector("caption")?.textContent).not.toContain("water area");
+    expect([...table.querySelectorAll("th")].map((th) => th.textContent)).toContain("Dark area (km²)");
+    const used = [...table.querySelectorAll("tbody tr")].map((tr) => tr.children[4].textContent);
+    expect(used).toEqual(["No: not lake water", "No: not lake water", "No: not lake water"]);
+    expect(used).not.toContain("Yes");
   });
 });
 

@@ -73,8 +73,13 @@ export function lakeChartData(lake: Lake, minObservable = 0): LakeChartData {
     }
     if (values.some((v) => v !== null)) series.push({ label: track, values, excluded: false });
   }
+  // The pipeline nulls area_km2 on a left-out pass and keeps what it read as diagnostic_km2 (older builds kept area_km2).
   const out = blank();
-  for (const p of lake.series) if (p.excluded !== null && p.area_km2 !== null) out[index.get(p.date)!] = p.area_km2;
+  for (const p of lake.series) {
+    if (p.excluded === null) continue;
+    const v = p.diagnostic_km2 ?? p.area_km2;
+    if (v !== null && v !== undefined) out[index.get(p.date)!] = v;
+  }
   if (out.some((v) => v !== null)) series.push({ label: "Excluded passes", values: out, excluded: true });
   return { x: dates.map(utcSeconds), series };
 }
@@ -216,15 +221,19 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
 
   /** Every pass as a table, folded: the chart's values for keyboard and screen-reader use, plus the passes it leaves out. */
   function readingsTable(lake: Lake, minObs: number): HTMLElement {
+    // At a site with no lake now the dark pixels are not lake water, and no pass enters a trend.
+    const lakeNow = hasLakeNow(lake);
     const box = el("details", "lw-readings");
     box.dataset.role = "lw-readings";
     box.append(el("summary", undefined, `Every pass as a table (${lake.series.length})`));
     const wrap = el("div", "lw-table-wrap");
     const t = el("table", "lw-table");
-    t.append(el("caption", undefined, `NISAR passes over ${lake.name}: water area by date and track`));
+    t.append(el("caption", undefined, lakeNow
+      ? `NISAR passes over ${lake.name}: water area by date and track`
+      : `NISAR passes over ${lake.name}: dark radar area by date and track. There is no lake here now, so this is not lake water and no pass enters a trend.`));
     const thead = el("thead");
     const head = el("tr");
-    for (const h of ["Date", "Track", "Area (km²)", "Zone seen", "Used", "Version"]) {
+    for (const h of ["Date", "Track", lakeNow ? "Area (km²)" : "Dark area (km²)", "Zone seen", lakeNow ? "Used" : "In a trend", "Version"]) {
       const th = el("th", undefined, h);
       th.scope = "col";
       head.append(th);
@@ -234,6 +243,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     const order = [...lake.series].sort((a, b) => a.date.localeCompare(b.date) || a.track.localeCompare(b.track));
     for (const p of order) {
       const used = p.excluded !== null ? `Left out: ${p.excluded}`
+        : !lakeNow ? "No: not lake water"
         : p.area_km2 === null ? "No reading"
         : p.observable_share === null ? "Zone share unknown"
         : isTrendPass(p, minObs) ? "Yes" : "Too little of the zone seen";
@@ -289,7 +299,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
       chartSec.append(el("p", "lw-none", "No area curve yet"));
     } else if (opts.createChart) {
       const host = el("div", "lw-chart");
-      chartSec.append(host, el("p", "lw-note", `One line per track. Hollow markers are passes left out of the trend; passes that saw less than ${Math.round(minObs * 100)}% of the lake zone are not drawn. The table lists every pass.`));
+      chartSec.append(host, el("p", "lw-note", `One line per track. Hollow markers are passes left out of the trend, at the area they read; a left-out pass with no reading, and passes that saw less than ${Math.round(minObs * 100)}% of the lake zone, are not drawn. The table lists every pass.`));
       chart = opts.createChart(host, data);
     }
     if (lake.series.length) chartSec.append(readingsTable(lake, minObs));

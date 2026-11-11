@@ -278,6 +278,8 @@ body > #app > .maturity { margin: 24px 40px 0; display: inline-block; }
 
 /* ---- Lake brief: hidden on screen, the only thing shown when printing (light, plain, black on white). --------- */
 .lake-brief { display: none; }
+/* Shown on screen instead of a brief when the newest data no longer list the lake. */
+.lake-brief-notice { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: min(560px, calc(100vw - 32px)); margin: 0; padding: 12px 16px; border: 1px solid var(--warm); border-radius: 10px; background: var(--panel-2); color: var(--text, #fff); z-index: 50; }
 @media print {
   @page { size: A4; margin: 15mm; }
   html, body { background: #fff !important; color: #000; min-height: 0 !important; height: auto !important; margin: 0; padding: 0; }
@@ -288,6 +290,7 @@ body > #app > .maturity { margin: 24px 40px 0; display: inline-block; }
   .lake-brief p, .lake-brief ul { margin: 0 0 4pt; }
   .lake-brief ul { padding-left: 16pt; }
   .lake-brief-meta { color: #333; font-size: 9.5pt; }
+  .lake-brief-offline { font-weight: 700; border: 1pt solid #000; padding: 3pt 5pt; }
   .lake-brief-status { font-size: 11.5pt; }
   .lake-brief-passes { width: 100%; border-collapse: collapse; margin-bottom: 4pt; }
   .lake-brief-passes th, .lake-brief-passes td { border: 0.5pt solid #888; padding: 2pt 5pt; text-align: left; }

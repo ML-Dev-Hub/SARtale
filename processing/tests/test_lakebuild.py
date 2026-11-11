@@ -96,6 +96,10 @@ def test_build_lists_excluded_passes_with_reason(built):
     assert [e["pass"] for e in beta["excluded"]] == ["2026-07-12_055A"]
     assert "dB" in beta["excluded"][0]["reason"]
     assert any(p["excluded"] and p["area_km2"] is None for p in beta["series"])
+    # C07: the left-out pass keeps what it read for the chart marker; used passes carry no diagnostic value
+    out = next(p for p in beta["series"] if p["excluded"])
+    assert isinstance(out["diagnostic_km2"], float) and out["diagnostic_km2"] >= 0
+    assert all("diagnostic_km2" not in p for p in beta["series"] if not p["excluded"])
     assert "single viewing direction" in beta["limits"]
 
 

@@ -190,14 +190,23 @@ describe("brief freshness", () => {
     expect(document.querySelector(".lake-brief")?.textContent).toContain("9.999");
   });
 
-  test("falls back to the loaded data when the server cannot be reached or lacks the lake", async () => {
+  test("prints the loaded data marked as an offline copy when the server cannot be reached", async () => {
     const win = { document, print: vi.fn() } as unknown as Window;
     const old = lakeOf();
-    await printLatestBrief(old, fixtureLakes, async () => null, win);
+    expect(await printLatestBrief(old, fixtureLakes, async () => null, win)).toBe("offline");
     expect(document.querySelector(".lake-brief h1")?.textContent).toBe(old.name);
-    await printLatestBrief(old, fixtureLakes, async () => ({ ...fixtureLakes, lakes: [] }) as LakesFile, win);
-    expect(document.querySelectorAll(".lake-brief").length).toBe(1);
-    expect(win.print).toHaveBeenCalledTimes(2);
+    expect(document.querySelector(".lake-brief-offline")?.textContent).toContain("Offline copy");
+    expect(win.print).toHaveBeenCalledOnce();
+  });
+
+  test("C08: never prints a lake the fresh data removed; says so instead", async () => {
+    const win = { document, print: vi.fn() } as unknown as Window;
+    const old = lakeOf({ name: "Ghulkin / Yaz-Sam lakes" });
+    const fresh = { ...fixtureLakes, built: "2026-11-10T00:26:40Z", lakes: fixtureLakes.lakes.filter((l) => l.id !== old.id) } as LakesFile;
+    expect(await printLatestBrief(old, fixtureLakes, async () => fresh, win)).toBe("removed");
+    expect(win.print).not.toHaveBeenCalled();
+    expect(document.querySelector(".lake-brief")).toBeNull();
+    expect(document.querySelector(".lake-brief-notice")?.textContent).toContain("Ghulkin / Yaz-Sam lakes is not in SARtale's data built 10 Nov 2026");
   });
 });
 

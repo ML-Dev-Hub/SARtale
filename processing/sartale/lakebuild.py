@@ -441,9 +441,12 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
     for p in sorted(passes, key=lambda q: (q["date"], q["key"])):
         w = pass_water(p["hh_db"], p["hv_db"], zone, shadow, px)
         reason = excluded.get(p["id"])
-        series.append({"date": p["date"], "track": p["key"],
-                       "area_km2": None if reason else w["area_km2"],
-                       "observable_share": w["observable_share"], "excluded": reason, "crid": p["crid"]})
+        point = {"date": p["date"], "track": p["key"], "area_km2": None if reason else w["area_km2"],
+                 "observable_share": w["observable_share"], "excluded": reason, "crid": p["crid"]}
+        if reason:
+            # What the left-out pass read, so the chart can mark it; never used by the status (area_km2 is null).
+            point["diagnostic_km2"] = w["area_km2"] if w["valid"] else None
+        series.append(point)
 
     latest_expected: dict[str, str] = {}  # R-P2: newest cached pass per track, excluded or not
     for p in passes:
