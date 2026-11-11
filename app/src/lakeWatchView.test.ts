@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { findBannedClaims } from "./content";
 import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
 import { sortLakes, type Lake, type LakesFile } from "./lakes";
-import { createLakeWatchView, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
+import { checkLine, createLakeWatchView, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
 
 function setup(file: LakesFile | null = fixtureLakes, extra: Partial<Parameters<typeof createLakeWatchView>[1]> = {}) {
   const root = document.createElement("div");
@@ -253,5 +253,49 @@ describe("Change not confirmed yet", () => {
     const mk = (id: string, status: Lake["status"]["status"]) => ({ ...fixtureLakes.lakes[2], id, status: { ...fixtureLakes.lakes[2].status, status } });
     const ids = sortLakes([mk("seen", "Not seen this pass"), mk("pending", "Change not confirmed yet"), mk("grow", "Growing")]).map((l) => l.id);
     expect(ids).toEqual(["grow", "pending", "seen"]);
+  });
+});
+
+describe("Lake Watch: a site with no lake now", () => {
+  const series = [
+    { date: "2026-07-01", track: "156A", area_km2: 0.9, observable_share: 1, excluded: null },
+    { date: "2026-07-13", track: "156A", area_km2: 0.95, observable_share: 1, excluded: null },
+    { date: "2026-07-25", track: "156A", area_km2: 0.97, observable_share: 1, excluded: null },
+  ];
+  const basin: Lake = {
+    ...fixtureLakes.lakes[2],
+    id: "basin",
+    name: "Empty basin",
+    lake_state: "no_lake",
+    lake_state_source: "a dry basin",
+    series,
+    images: { latest_hh: "lakes/basin/latest_hh.webp", water: null, date: "2026-07-25", track: "156A" },
+    status: { status: "No lake now", track: "156A", latest_date: "2026-07-25", looks: 3, change_km2: null, noise_km2: null, reason: "No lake in recent imagery: a dry basin. SARtale keeps the site to watch for a lake forming." },
+  };
+  const file: LakesFile = { ...fixtureLakes, lakes: [...fixtureLakes.lakes, basin] };
+
+  test("is never the lake the view opens on, even with the most dark area", () => {
+    expect(openingLake(file.lakes).id).not.toBe("basin");
+  });
+
+  test("shows its reason instead of an area chart, and says why there is no water layer", () => {
+    const { root, view, charts } = setup(file);
+    const before = charts.length;
+    view.select("basin");
+    expect(charts.length).toBe(before);
+    const detail = root.querySelector('[data-role="lw-detail"]')!;
+    expect(detail.querySelector(".lw-chip")?.className).toContain("lw-status-no-lake-now");
+    expect(detail.textContent).toContain("SARtale keeps the site to watch for a lake forming.");
+    expect(detail.textContent).toContain("No water layer: there is no lake at this site now.");
+    expect(detail.textContent).not.toContain("No radar picture yet for the water pixels");
+    expect(findBannedClaims(detail.textContent ?? "")).toEqual([]);
+  });
+});
+
+describe("checkLine", () => {
+  const c = { lake: "x", nisar_date: "2026-08-17", nisar_track: "055A", s2_date: "2026-08-17", s2_id: "S2", days_apart: 0, s2_window_cloud_pct: 1, scope: "zone", radar_km2: 2.736, optical_km2: 4.585, area_error_pct: -40, iou: 0.5, zone_valid_share: 1, window_radar_km2: 3, window_optical_km2: 4, window_area_error_pct: null, window_iou: 0.4 };
+  test("names the open-water season the pair was chosen in, when the row has one", () => {
+    expect(checkLine({ ...c, season: "15 Jun–30 Sep" })).toMatch(/^One NISAR pass vs one Sentinel-2 scene \(open-water season 15 Jun–30 Sep\): NISAR 2\.736 km²/);
+    expect(checkLine(c)).toMatch(/^One NISAR pass vs one Sentinel-2 scene: NISAR/);
   });
 });

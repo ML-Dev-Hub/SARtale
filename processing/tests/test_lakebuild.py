@@ -76,7 +76,7 @@ def test_build_writes_schema_keys(built):
 
 def test_build_has_notes_field(built):
     doc, _ = built
-    assert "north up; they are pictures, not map overlays" in doc["notes"] and "1 km search circle" in doc["notes"]
+    assert "north up; they are pictures, not map overlays" in doc["notes"] and "search circle (1 km unless" in doc["notes"]
 
 
 def test_build_json_has_no_nan(built):
@@ -310,3 +310,62 @@ def test_a_first_pass_on_a_new_processing_version_does_not_confirm_a_change(tmp_
     st = lk["status"]
     assert st["status"] == "Change not confirmed yet" and st["change_km2"] > 0 and st["new_crid"] == "P05036"
     assert "first pass on NISAR processing version P05036" in st["reason"]
+
+
+def test_a_no_lake_site_keeps_its_passes_but_gets_no_verdict_and_no_water_layer(tmp_path):
+    from dataclasses import replace
+
+    from sartale.lakebuild import NO_LAKE_LABEL
+    from sartale.lakestatus import NO_LAKE, STATUS_NAMES
+
+    cache, out = tmp_path / "cache", tmp_path / "out"
+    base = make_lake("basin")
+    days = ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24"]
+    for d in days:
+        write_pass(cache, base, d, "156A")
+    src = "Sentinel-2 shows a dry basin on 17 Aug 2026"
+    gone = replace(base, lake_state="no_lake", lake_state_source=src)
+    lk = build_lakes([gone], cache, out, "2026-11-10T00:00:00Z")["lakes"][0]
+    st = lk["status"]
+    assert NO_LAKE in STATUS_NAMES and st["status"] == NO_LAKE
+    assert (st["change_km2"], st["noise_km2"]) == (None, None)
+    assert (st["track"], st["latest_date"], st["looks"]) == ("156A", "2026-07-24", 4)
+    assert st["reason"] == ("No lake in recent imagery: Sentinel-2 shows a dry basin on 17 Aug 2026. "
+                            "SARtale keeps the site to watch for a lake forming.")
+    assert lk["lake_state"] == "no_lake" and lk["lake_state_source"] == src
+    assert lk["area_label"] == NO_LAKE_LABEL
+    assert len(lk["series"]) == 4 and lk["cloud_window_looks"] == 4  # passes are still read and counted
+    assert lk["images"]["latest_hh"] and lk["images"]["water"] is None
+    assert not (out / "lakes" / "basin" / "water.webp").exists()
+    # with no fetched window the site still says it has no lake
+    empty = build_lakes([replace(gone, id="other")], cache, out, "2026-11-10T00:00:00Z")["lakes"][0]
+    assert empty["status"]["status"] == NO_LAKE and empty["status"]["looks"] == 0
+
+
+def test_an_unconfirmed_lake_keeps_its_status_and_carries_a_limit(tmp_path):
+    from dataclasses import replace
+
+    cache, out = tmp_path / "cache", tmp_path / "out"
+    base = make_lake("strip")
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12"]:
+        write_pass(cache, base, d, "156A")
+    lk = build_lakes([replace(base, lake_state="unconfirmed", lake_state_source="narrow ice and water strip.")],
+                     cache, out, "2026-11-10T00:00:00Z")["lakes"][0]
+    assert lk["status"]["status"] == "Stable" and lk["lake_state"] == "unconfirmed"
+    assert lk["limits"][0] == "Lake not confirmed in recent imagery: narrow ice and water strip."
+    assert lk["images"]["water"]
+
+
+def test_a_smaller_zone_radius_measures_a_smaller_circle(tmp_path):
+    from dataclasses import replace
+
+    cache, out = tmp_path / "cache", tmp_path / "out"
+    wide, small = make_lake("pond"), replace(make_lake("pond300"), zone_radius_km=0.3)
+    for lk in (wide, small):
+        for d in ["2026-06-18", "2026-06-30", "2026-07-12"]:
+            write_pass(cache, lk, d, "156A", water_m=900.0)
+    a, b = build_lakes([wide, small], cache, out, "2026-11-10T00:00:00Z")["lakes"]
+    assert a["area_label"] == POINT_LABEL and b["area_label"] == f"{POINT_LABEL} (300 m circle)"
+    # the 900 m water disc fills the whole 300 m circle: about pi * 0.3^2 km2
+    assert b["series"][0]["area_km2"] == pytest.approx(3.14159 * 0.09, rel=0.1)
+    assert 2.0 < a["series"][0]["area_km2"] < 2.8  # the 900 m disc inside the 1 km circle

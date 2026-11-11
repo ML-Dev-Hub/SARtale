@@ -4,13 +4,16 @@ import "./storyPage.css";
 import copyJson from "./content/storyPage.json";
 import { dataUrl, formatDate } from "./format";
 import { mountAddLake, requestLine, shownRequests, type LakeRequest } from "./lakeRequests";
-import { iouRange, opticalOverlapPhrase, type Lake, type LakesFile } from "./lakes";
+import { cloudLooks, hasLakeNow, iouRange, lakesNow, opticalOverlapPhrase, type Lake, type LakesFile } from "./lakes";
 
 const copy = copyJson;
 const DASH = "—";
 
 export interface StoryNumbers {
+  /** Sites that hold a lake now. */
   lakes: string;
+  /** Every site on the list, including those with no lake now. */
+  sites: string;
   cloudLooks: string;
   passes: string;
   attabadArea: string;
@@ -38,8 +41,9 @@ export interface StoryPage {
   setRequests(requests: LakeRequest[]): void;
 }
 
-/** The pictured pass's area: the series point on the status track's latest date. */
+/** The pictured pass's area: the series point on the status track's latest date. None for a site with no lake now. */
 function latestArea(lake: Lake): number | null {
+  if (!hasLakeNow(lake)) return null;
   const s = lake.status;
   const p = lake.series.find((x) => x.date === s.latest_date && x.track === s.track);
   return p && p.area_km2 !== null ? p.area_km2 : null;
@@ -57,15 +61,16 @@ function attabad(file: LakesFile | null): Lake | null {
 /** Every number on the page, read from lakes.json. "—" for anything missing. */
 export function storyNumbers(file: LakesFile | null): StoryNumbers {
   if (!file) {
-    return { lakes: DASH, cloudLooks: DASH, passes: DASH, attabadArea: DASH, attabadNoise: DASH, attabadLooks: DASH, attabadTrack: DASH, iou: DASH, latest: DASH };
+    return { lakes: DASH, sites: DASH, cloudLooks: DASH, passes: DASH, attabadArea: DASH, attabadNoise: DASH, attabadLooks: DASH, attabadTrack: DASH, iou: DASH, latest: DASH };
   }
   const a = attabad(file);
   const dates = file.lakes.map((l) => l.status.latest_date).filter((d): d is string => !!d);
   const latest = dates.length ? dates.reduce((x, y) => (x > y ? x : y)) : null;
   const noise = a?.status.noise_km2;
   return {
-    lakes: String(file.lakes.length),
-    cloudLooks: String(file.lakes.reduce((n, l) => n + l.cloud_window_looks, 0)),
+    lakes: String(lakesNow(file).length),
+    sites: String(file.lakes.length),
+    cloudLooks: String(cloudLooks(file)),
     passes: String(file.lakes.reduce((n, l) => n + l.series.length, 0)),
     attabadArea: a ? areaText(latestArea(a)) : DASH,
     attabadNoise: noise === null || noise === undefined ? DASH : `±${noise.toFixed(2)}`,
@@ -276,10 +281,10 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   for (const l of lakes) {
     const pos = mapPin(l.lon, l.lat);
     if (pos) {
-      const pin = el("span", "sp-pin");
+      const pin = el("span", hasLakeNow(l) ? "sp-pin" : "sp-pin sp-pin-nolake");
       pin.style.left = pos.left;
       pin.style.top = pos.top;
-      pin.title = l.name;
+      pin.title = hasLakeNow(l) ? l.name : `${l.name}: ${l.status.status}`;
       mapEl.append(pin);
     }
     const meta = [l.status.track, l.status.latest_date ? formatDate(l.status.latest_date) : null].filter(Boolean).join(" · ");
@@ -293,7 +298,9 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
     );
   }
   const mapCredit = text("figcaption", "sp-map-credit", w.mapCredit);
-  const mapKey = el("figcaption", "sp-map-key", el("span", "sp-key-pin"), ` ${w.keyWatched} `, el("span", "sp-key-pin sp-key-request"), ` ${w.keyRequested}`);
+  const mapKey = el("figcaption", "sp-map-key", el("span", "sp-key-pin"), ` ${w.keyWatched} `);
+  if (file?.lakes.some((l) => !hasLakeNow(l))) mapKey.append(el("span", "sp-key-pin sp-key-nolake"), ` ${w.keyNoLake} `);
+  mapKey.append(el("span", "sp-key-pin sp-key-request"), ` ${w.keyRequested}`);
   mapEl.append(mapKey, mapCredit);
   const requestEls: HTMLElement[] = [];
   const setRequests = (list: LakeRequest[]): void => {

@@ -161,6 +161,14 @@ def cmd_lakes_build(args) -> None:
             sys.exit(1)
 
 
+def check_ids(lakes, chosen: str | None) -> list[str]:
+    """The lake ids to check: the comma-separated `chosen`, or by default every register lake that holds a lake now
+    (a site with lake_state "no_lake" has no lake to compare)."""
+    if chosen:
+        return [x.strip() for x in chosen.split(",") if x.strip()]
+    return [lk.id for lk in lakes if lk.lake_state != "no_lake"]
+
+
 def cmd_lakes_check(args) -> None:
     """Compare the radar water of chosen lakes with Sentinel-2 MNDWI water; write the rows and merge
     them into lakes.json (the lakes themselves are not rebuilt)."""
@@ -168,7 +176,7 @@ def cmd_lakes_check(args) -> None:
     path = Path(args.out) / "lakes.json"
     doc = _read_json(path)
     rows = []
-    for lid in [x.strip() for x in args.lakes.split(",") if x.strip()]:
+    for lid in check_ids(list(lakes.values()), args.lakes):
         series = next(lk["series"] for lk in doc["lakes"] if lk["id"] == lid)
         row = check_lake(lakes[lid], Path(args.cache), series)
         rows.append(row)
@@ -297,7 +305,8 @@ def build_parser() -> argparse.ArgumentParser:
     lc.add_argument("--cache", default=str(REPO_ROOT / "data" / "lakes"))
     lc.add_argument("--out", default=str(REPO_ROOT / "app" / "public" / "data"), help="folder holding lakes.json")
     lc.add_argument("--checks", default=str(REPO_ROOT / "processing" / "lake_checks.json"))
-    lc.add_argument("--lakes", default="attabad,khurdopin,passu,shisper", help="comma-separated lake ids")
+    lc.add_argument("--lakes", default=None,
+                    help="comma-separated lake ids (default: every register lake except those with no lake now)")
     lc.set_defaults(func=cmd_lakes_check)
 
     ld = sub.add_parser("lakes-diff", help="compare a previous lakes.json with the new one, pass by pass")

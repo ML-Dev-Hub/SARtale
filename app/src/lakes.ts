@@ -7,7 +7,11 @@ export type LakeStatusName =
   | "Change not confirmed yet"
   | "Not seen this pass"
   | "Not observable"
-  | "Not enough NISAR looks yet";
+  | "Not enough NISAR looks yet"
+  | "No lake now";
+
+/** What recent imagery shows at a site: a lake, a dark area not confirmed as a lake, or no lake now (absent in older builds: a lake). */
+export type LakeState = "lake" | "unconfirmed" | "no_lake";
 
 export interface LakeStatus {
   status: LakeStatusName;
@@ -40,6 +44,10 @@ export interface Lake {
   coord_source: string;
   outline_source: string | null;
   area_label: string;
+  /** Absent in older builds, where every site is a lake. */
+  lake_state?: LakeState;
+  /** What shows the lake state and when; set unless lake_state is "lake". */
+  lake_state_source?: string | null;
   downstream: string | null;
   downstream_source: string | null;
   status: LakeStatus;
@@ -62,6 +70,8 @@ export interface LakeCheck {
   days_apart: number;
   s2_window_cloud_pct: number;
   scope: string;
+  /** The open-water season the pair was chosen in, e.g. "15 Jun–30 Sep" (absent in older builds). */
+  season?: string;
   radar_km2: number;
   optical_km2: number;
   area_error_pct: number | null;
@@ -137,7 +147,41 @@ export const STATUS_ORDER: LakeStatusName[] = [
   "Stable",
   "Not enough NISAR looks yet",
   "Not observable",
+  "No lake now",
 ];
+
+/** The site's lake state, "lake" for builds made before the field existed. */
+export function lakeState(l: Lake): LakeState {
+  return l.lake_state ?? "lake";
+}
+
+/** True unless recent imagery shows no lake at the site (an empty ice-dammed basin kept to watch for a lake forming). */
+export function hasLakeNow(l: Lake): boolean {
+  return lakeState(l) !== "no_lake";
+}
+
+/** The sites that hold a lake now: what the lake counts and the cloud-window looks are made of. */
+export function lakesNow(file: LakesFile): Lake[] {
+  return file.lakes.filter(hasLakeNow);
+}
+
+/** Valid looks in the cloud window at the sites that hold a lake now. */
+export function cloudLooks(file: LakesFile): number {
+  return lakesNow(file).reduce((n, l) => n + l.cloud_window_looks, 0);
+}
+
+/** How many sites that hold a lake now had at least one valid look in the cloud window. */
+export function cloudLakes(file: LakesFile): number {
+  return lakesNow(file).filter((l) => l.cloud_window_looks > 0).length;
+}
+
+/** "7 lakes", or "5 lakes and 2 sites with no lake now" when the list keeps empty basins. */
+export function watchList(file: LakesFile): string {
+  const lakes = lakesNow(file).length;
+  const empty = file.lakes.length - lakes;
+  const head = `${lakes} ${lakes === 1 ? "lake" : "lakes"}`;
+  return empty ? `${head} and ${empty} ${empty === 1 ? "site" : "sites"} with no lake now` : head;
+}
 
 function isLakesFile(v: unknown): v is LakesFile {
   const f = v as LakesFile;
@@ -201,13 +245,14 @@ export function statusSentence(lake: Lake, changeFactor: number): string {
 }
 
 /**
- * The lake the story shows in depth: among role "watch" lakes, the one with the most valid looks, ties going to the
- * newest latest look, and after that to file order. Chosen at runtime from the data, never named in the copy.
+ * The lake the story shows in depth: among role "watch" lakes that recent imagery confirms (not "no lake now", not
+ * "unconfirmed"), the one with the most valid looks, ties going to the newest latest look, and after that to file
+ * order. Chosen at runtime from the data, never named in the copy.
  */
 export function featuredLake(file: LakesFile | null | undefined): Lake | null {
   let best: Lake | null = null;
   for (const l of file?.lakes ?? []) {
-    if (l.role !== "watch") continue;
+    if (l.role !== "watch" || lakeState(l) !== "lake") continue;
     if (!best) {
       best = l;
       continue;
@@ -233,8 +278,8 @@ export function dayMonth(iso: string): string {
  * headline must not imply SUPARCO had no images in between.
  */
 export function cloudHeadline(file: LakesFile): string {
-  const looks = file.lakes.reduce((n, l) => n + l.cloud_window_looks, 0);
-  const watched = file.lakes.filter((l) => l.cloud_window_looks > 0).length;
+  const looks = cloudLooks(file);
+  const watched = cloudLakes(file);
   return `From ${dayMonth(file.cloud_window[0])} to ${dayMonth(file.cloud_window[1])}, while SUPARCO's updates reported cloud limiting optical imagery, NISAR made ${looks} valid looks across ${watched} lakes.`;
 }
 
@@ -258,7 +303,10 @@ export function opticalOverlapPhrase(checks: LakeCheck[]): string | null {
   if (!rows.length) return null;
   const hi = Math.max(...rows.map((c) => c.iou as number));
   const range = iouRange(rows)!;
-  return hi < 0.5 ? `overlapped optical water poorly at every lake checked (${range})` : `overlapped optical water with ${range} across the ${rows.length} lakes checked`;
+  const lo = Math.min(...rows.map((c) => c.iou as number));
+  if (hi < 0.5) return `overlapped optical water poorly at every lake checked (${range})`;
+  if (lo < 0.5) return `overlapped optical water unevenly across the ${rows.length} lakes checked (${range})`;
+  return `overlapped optical water with ${range} across the ${rows.length} lakes checked`;
 }
 
 /** One plain sentence on the Sentinel-2 cross-check, built from the `checks` rows; null when there are none with an IoU. */
@@ -302,12 +350,15 @@ export function lakeTokens(file: LakesFile): Record<string, string> {
     change_factor: String(c.change_factor),
     cloud_start: formatDate(file.cloud_window[0]),
     cloud_end: formatDate(file.cloud_window[1]),
-    cloud_looks: String(file.lakes.reduce((n, l) => n + l.cloud_window_looks, 0)),
-    cloud_lakes: String(file.lakes.filter((l) => l.cloud_window_looks > 0).length),
-    lake_count: String(file.lakes.length),
+    cloud_looks: String(cloudLooks(file)),
+    cloud_lakes: String(cloudLakes(file)),
+    lake_count: String(lakesNow(file).length),
+    site_count: String(file.lakes.length),
+    watch_list: watchList(file),
     crid: file.crid,
     processing_versions: processingVersions(file.crid),
     notes: file.notes,
     iou_range: iouRange(file.checks) ?? "no IoU yet",
+    optical_overlap: opticalOverlapPhrase(file.checks) ?? "has not been compared with optical water in this build",
   };
 }

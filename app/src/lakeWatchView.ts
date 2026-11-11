@@ -1,4 +1,4 @@
-import { cloudHeadline, isTrendPass, methodLimits, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
+import { cloudHeadline, hasLakeNow, isTrendPass, methodLimits, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
 import { dataUrl, formatDate } from "./format";
 import { statusSlug } from "./lakeLocator";
 
@@ -81,9 +81,13 @@ export function lakeChartData(lake: Lake, minObservable = 0): LakeChartData {
 
 const slug = statusSlug;
 
-/** The lake to open on: the one with the most water in its latest trend pass (clearest picture), else the first in list order. */
+/**
+ * The lake to open on: the one with the most water in its latest trend pass (clearest picture), else the first in list
+ * order. A site with no lake now is never picked over a lake: its dark area is not lake water.
+ */
 export function openingLake(lakes: Lake[], minObservable = 0): Lake {
   const latest = (l: Lake): number => {
+    if (!hasLakeNow(l)) return -2;
     const valid = l.series.filter((p) => isTrendPass(p, minObservable)).sort((a, b) => a.date.localeCompare(b.date));
     return valid.length ? valid[valid.length - 1].area_km2! : -1;
   };
@@ -101,7 +105,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
 /** A single-pass comparison, so it carries its own dates instead of looks and noise. */
 export function checkLine(c: LakeCheck): string {
   const iou = c.iou === null ? "" : `, overlap (IoU) ${c.iou.toFixed(2)}`;
-  return `One NISAR pass vs one Sentinel-2 scene: NISAR ${c.radar_km2.toFixed(3)} km² on ${formatDate(c.nisar_date)} (${c.nisar_track}), Sentinel-2 ${c.optical_km2.toFixed(3)} km² on ${formatDate(c.s2_date)} (${c.days_apart} days apart, ${Math.round(c.s2_window_cloud_pct)}% cloud in the window)${iou}.`;
+  const season = c.season ? ` (open-water season ${c.season})` : "";
+  return `One NISAR pass vs one Sentinel-2 scene${season}: NISAR ${c.radar_km2.toFixed(3)} km² on ${formatDate(c.nisar_date)} (${c.nisar_track}), Sentinel-2 ${c.optical_km2.toFixed(3)} km² on ${formatDate(c.s2_date)} (${c.days_apart} days apart, ${Math.round(c.s2_window_cloud_pct)}% cloud in the window)${iou}.`;
 }
 
 export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): LakeWatchHandle {
@@ -202,7 +207,8 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
       wrap.append(label);
     }
     if (!hh) wrap.append(el("p", "lw-none", "No radar picture yet for the latest HH image"));
-    if (!water) wrap.append(el("p", "lw-none", "No radar picture yet for the water pixels"));
+    if (!water && hasLakeNow(lake)) wrap.append(el("p", "lw-none", "No radar picture yet for the water pixels"));
+    if (!water && !hasLakeNow(lake)) wrap.append(el("p", "lw-note", "No water layer: there is no lake at this site now."));
     wrap.append(el("p", "lw-note", "NISAR GCOV crop on the UTM grid, north up, about 6 km across. A picture, not an interactive map."));
     return wrap;
   }
@@ -270,7 +276,8 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     );
 
     // With too few looks or no observable zone the earlier points are not a trend: show the reason, not a chart.
-    const noTrend = lake.status.status === "Not observable" || lake.status.status === "Not enough NISAR looks yet";
+    // A site with no lake now has no area curve: its dark radar area is not lake water.
+    const noTrend = lake.status.status === "Not observable" || lake.status.status === "Not enough NISAR looks yet" || !hasLakeNow(lake);
     const minObs = file!.constants.min_observable;
     const data = lakeChartData(lake, minObs);
     const chartSec = el("section", "lw-section");

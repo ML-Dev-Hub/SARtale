@@ -39,6 +39,28 @@ def test_load_lakes_defaults_optional_fields_to_none(tmp_path):
     assert (lake.outline, lake.downstream, lake.downstream_source) == (None, None, None)
 
 
+def test_load_lakes_zone_radius_defaults_to_1_km_and_is_validated(tmp_path):
+    (lake,) = load_lakes(write(tmp_path, [ROW]))
+    assert lake.zone_radius_km == 1.0
+    (small,) = load_lakes(write(tmp_path, [{**ROW, "zone_radius_km": 0.3}]))
+    assert small.zone_radius_km == 0.3
+    for bad in (0, -1, 2.6, "0.3", True, None):
+        with pytest.raises(ValueError, match="zone_radius_km"):
+            load_lakes(write(tmp_path, [{**ROW, "zone_radius_km": bad}]))
+
+
+def test_load_lakes_lake_state_defaults_to_lake_and_needs_a_source_otherwise(tmp_path):
+    (lake,) = load_lakes(write(tmp_path, [ROW]))
+    assert (lake.lake_state, lake.lake_state_source) == ("lake", None)
+    for state in ("no_lake", "unconfirmed"):
+        with pytest.raises(ValueError, match="lake_state_source"):
+            load_lakes(write(tmp_path, [{**ROW, "lake_state": state}]))
+        (x,) = load_lakes(write(tmp_path, [{**ROW, "lake_state": state, "lake_state_source": "Sentinel-2, 2026"}]))
+        assert (x.lake_state, x.lake_state_source) == (state, "Sentinel-2, 2026")
+    with pytest.raises(ValueError, match="lake_state"):
+        load_lakes(write(tmp_path, [{**ROW, "lake_state": "maybe", "lake_state_source": "s"}]))
+
+
 def test_lake_bbox_is_centred_and_sized():
     lake = Lake(id="a", name="A", lon=74.86, lat=36.33, coord_source="s", outline=None, role="watch",
                 downstream=None, downstream_source=None)

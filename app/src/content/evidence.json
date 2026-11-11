@@ -7,7 +7,7 @@
     "Passes that look wrong for their track (too bright, too dark, or outliers) are left out and listed with their reason, never read as growth or shrinkage."
   ],
   "cannot": [
-    "Map a lake's exact shoreline. Radar water and Sentinel-2 water overlapped poorly at every lake checked ({iou_range}).",
+    "Map a lake's exact shoreline. Against Sentinel-2, radar water {optical_overlap}, one date per lake.",
     "See water hidden in radar shadow, frozen lakes, lakes under 0.05 km² or wind-roughened water reliably.",
     "Say when or whether a lake will burst, or warn anyone. Lake Watch is indicative screening on provisional data, not an official warning service."
   ],
@@ -19,7 +19,7 @@
         "Lake Watch reads NISAR GCOV passes, HH and HV, from {cloud_start} on: NASA's provisional release (P05023) for passes up to 21 Oct 2026 and NASA's standard GCOV product (P05036) for later ones; this build uses {processing_versions}. Calibrated passes only, and one viewing track is never mixed with another. The cloud window for the headline count is {cloud_start} to {cloud_end}, while SUPARCO's 2 Jul and 5 Aug updates reported cloud limiting optical imagery. SUPARCO's 2 Jul update rests on one 16 Jun image; its 5 Aug update used images from 6 Jul to 5 Aug and reports 105 lakes unfrozen, up from 40 (space4climate.gov.pk, GLOF monitoring status 5 August 2026).",
         "Water rule. A pixel is dark when both HH and HV are at least {drop_db} dB below the median of the search window in that pass. Each pass is first averaged over a {speckle_box} by {speckle_box} pixel box to calm speckle.",
         "Two-view rule. A pixel is shadow-prone when it is dark in one viewing direction's season median image (ascending or descending) but not in the other's: that is radar shadow, not water. A single pass is then read as water when it is dark in that pass, inside the lake zone, not shadow-prone, and valid.",
-        "Each area is the water inside the lake's outline, buffered by 200 m, where it has one (Attabad, from OpenStreetMap), and otherwise inside a 1 km search circle around its coordinates. A lake larger than its zone or its 6 km radar window is only partly counted, and lakes whose shores sit in radar shadow are underestimated. The data file's own note reads: \"{notes}\""
+        "Each area is the water inside the lake's outline, buffered by 200 m, where it has one (from OpenStreetMap), and otherwise inside a search circle around its coordinates, 1 km unless the lake sets a smaller one for a small pond. A lake larger than its zone or its 6 km radar window is only partly counted, and lakes whose shores sit in radar shadow are underestimated. The data file's own note reads: \"{notes}\""
       ],
       "list": [
         "A pass whose window brightness is far from its own track's median is left out, listed on the lake with its reason, and never read as growth or shrinkage.",
@@ -34,11 +34,11 @@
       "id": "lake-checks",
       "title": "Sentinel-2 cross-check and what is not validated",
       "paragraphs": [
-        "Where a clear Sentinel-2 scene was close in time, we compared one NISAR pass with it inside each lake's zone (its outline where it has one, otherwise the 1 km circle). The rows below are copied from the data file."
+        "Where a clear Sentinel-2 scene was close in time, we compared one NISAR pass with it inside each lake's zone (its outline where it has one, otherwise its search circle). Sites with no lake now are not compared. Only pairs in the open-water season are used, the clearest one per lake, because a frozen or snow-covered lake has no open water for optical to see; each row names the season. The rows below are copied from the data file."
       ],
       "afterTable": [
-        "Radar and optical water overlapped poorly at every lake checked ({iou_range}), and their areas disagreed widely. Sentinel-2 optical water (MNDWI) also flags water at the Shisper site, where there is no lake, probably ice or shadow. So neither is a clean reference.",
-        "This 1 km zone comparison is not a validation of lake extent. It compares two rough water maps of the same small circle, on one date each.",
+        "Radar water {optical_overlap}. Radar under-reads small lakes and loses water marked shadow-prone, and optical water misses shaded or very dark lakes, so neither is a clean reference.",
+        "This zone comparison is not a validation of lake extent. It compares two rough water maps of the same zone, on one date each.",
         "The SUPARCO area comparison was skipped because no SUPARCO lake IDs or locations have been supplied.",
         "Not validated: frozen lakes, lakes under 0.05 km², and wind-roughened water."
       ]
@@ -74,7 +74,7 @@
           [
             "Lake coordinates",
             "Where each lake's search zone sits.",
-            "From published inventories and papers, each named on its lake card."
+            "From published inventories, papers, OpenStreetMap and Sentinel-2 imagery, each named on its lake card. A location check against 2026 imagery removed points that were not lakes."
           ]
         ]
       }

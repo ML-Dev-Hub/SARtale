@@ -1,4 +1,4 @@
-import { isTrendPass, loadLakes, methodLimits, processingVersions, statusSentence, type Lake, type LakesFile } from "./lakes";
+import { hasLakeNow, isTrendPass, loadLakes, methodLimits, processingVersions, statusSentence, type Lake, type LakesFile } from "./lakes";
 import { checkLine } from "./lakeWatchView";
 import { formatDate } from "./format";
 
@@ -29,8 +29,9 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): strin
   const minShare = file.constants.min_observable;
   const track = lake.status.track;
   // Only the status track's passes: the status sentence compares these and nothing else.
+  // A site with no lake now lists no areas: its dark radar area is not lake area; the status says why.
   const valid = lake.series
-    .filter((p) => p.track === track && isTrendPass(p, minShare))
+    .filter((p) => hasLakeNow(lake) && p.track === track && isTrendPass(p, minShare))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     .slice(0, PASS_ROWS);
   const passesHead = track ? `Latest valid passes on track ${esc(track)} (the status compares only these)` : "Latest valid passes";

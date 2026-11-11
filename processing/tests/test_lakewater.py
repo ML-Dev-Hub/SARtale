@@ -134,3 +134,15 @@ def test_despeckle_all_nan_neighbourhood_stays_nan():
     p = np.full((9, 9), 0.2)
     p[2:7, 2:7] = np.nan
     assert np.isnan(despeckle(p)[4, 4])
+
+
+
+def test_lake_zone_circle_uses_the_lakes_own_radius():
+    from dataclasses import replace
+
+    lake = centre_lake()  # 1 km by default: wider than the 1 km-across test grid, so every pixel
+    assert lake_zone((100, 100), X, Y, EPSG, lake).all()
+    small = replace(lake, zone_radius_km=0.3)  # 300 m: about pi * 30^2 pixels of 10 m
+    zone = lake_zone((100, 100), X, Y, EPSG, small)
+    assert zone[50, 50] and not zone[50, 85] and zone.sum() == pytest.approx(np.pi * 30 ** 2, rel=0.03)
+    assert lake_zone((100, 100), X, Y, EPSG, small, half_km=0.1).sum() == pytest.approx(np.pi * 10 ** 2, rel=0.08)

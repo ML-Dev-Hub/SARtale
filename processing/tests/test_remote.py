@@ -189,3 +189,38 @@ def test_fetch_skips_pass_outside_grid(tmp_path, fixture_h5, capsys):
 def _mk_lake(lon=71.75, lat=34.15):
     return Lake(id="lk", name="Lk", lon=lon, lat=lat, coord_source="test", outline=None, role="watch",
                 downstream=None, downstream_source=None)
+
+
+def test_fetch_saves_the_search_box_and_refetches_when_the_lake_moves(tmp_path, fixture_h5, capsys):
+    from dataclasses import replace
+
+    from sartale.lakes import lake_bbox
+
+    cache = tmp_path / "cache"
+    lake = _mk_lake()
+    (path,) = remote.fetch_lake_passes(lake, [_pass()], cache, FakeSession(fixture_h5))
+    with np.load(path) as z:
+        assert np.allclose(z["bbox"], lake_bbox(lake))
+    assert remote.cached_window_fits(path, lake)
+    moved = replace(lake, lon=lake.lon + 0.01)  # about 0.9 km east
+    assert not remote.cached_window_fits(path, moved)
+    s = FakeSession(fixture_h5)
+    assert remote.fetch_lake_passes(moved, [_pass()], cache, s) == [path]
+    assert s.calls > 0 and "refetch lk" in capsys.readouterr().out
+    with np.load(path) as z:
+        assert np.allclose(z["bbox"], lake_bbox(moved))
+
+
+def test_an_older_window_without_a_box_fits_only_inside_the_current_box(tmp_path, fixture_h5):
+    from dataclasses import replace
+
+    cache = tmp_path / "cache"
+    lake = _mk_lake()
+    (path,) = remote.fetch_lake_passes(lake, [_pass()], cache, FakeSession(fixture_h5))
+    with np.load(path) as z:
+        arrays = {k: z[k] for k in z.files if k != "bbox"}
+    np.savez_compressed(path, **arrays)  # as lakes-fetch wrote windows before the box was saved
+    assert remote.cached_window_fits(path, lake)
+    assert not remote.cached_window_fits(path, replace(lake, lat=lake.lat + 0.01))
+    path.write_bytes(b"not a zip")
+    assert not remote.cached_window_fits(path, lake)

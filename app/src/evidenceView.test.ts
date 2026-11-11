@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import lakesJson from "../public/data/lakes.json";
 import { findBannedClaims } from "./content";
 import { createEvidenceView } from "./evidenceView";
-import { iouRange, lakeTokens, type LakesFile } from "./lakes";
+import { iouRange, lakeTokens, opticalOverlapPhrase, type LakesFile } from "./lakes";
 
 const realLakes = lakesJson as unknown as LakesFile;
 
@@ -88,7 +88,7 @@ describe("How we know", () => {
     expect(text).toContain("inside the lake zone, not shadow-prone, and valid");
     expect(text).toMatch(/robust z-score above 3\.5/);
     expect(text).toMatch(/that is radar shadow, not water/);
-    expect(text).toContain("1 km search circle");
+    expect(text).toContain("search circle around its coordinates, 1 km unless the lake sets a smaller one");
     expect(text).toContain("underestimate lakes whose shores sit in radar shadow");
     expect(text).toContain(realLakes.notes);
     expect(text).toMatch(/only with its own earlier passes from the same track/);
@@ -111,11 +111,11 @@ describe("How we know", () => {
     });
   });
 
-  test("says agreement is poor at every lake, with the range from the data, that neither source is a clean reference, and that this is not a validation", () => {
+  test("words the agreement from the data, with its range, says neither source is a clean reference, and that this is not a validation", () => {
     const { text } = withLakes();
-    expect(text).toContain(`overlapped poorly at every lake checked (${iouRange(realLakes.checks)}), and their areas disagreed widely`);
-    expect(text).toMatch(/Shisper/);
-    expect(text).toMatch(/ice or shadow/);
+    expect(text).toContain(`Radar water ${opticalOverlapPhrase(realLakes.checks)}.`);
+    expect(text).toContain(iouRange(realLakes.checks)!);
+    expect(text).not.toMatch(/\{\w+\}/);
     expect(text).toMatch(/neither is a clean reference/);
     expect(text).toMatch(/not a validation of lake extent/);
   });

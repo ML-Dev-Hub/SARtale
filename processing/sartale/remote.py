@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import requests
+from pyproj import Transformer
 
 from sartale.gcov import read_layer
 from sartale.lake_catalog import Pass
@@ -111,25 +112,54 @@ def cache_path(cache_dir: Path, lake_id: str, p: Pass) -> Path:
     return Path(cache_dir) / lake_id / f"{p.date}_{p.key}_{p.crid}.npz"
 
 
+def cached_window_fits(path: Path, lake: Lake) -> bool:
+    """True when the cached window at `path` was read for the lake's current search box.
+
+    A window saved with its `bbox` must match the current box. An older window without one must lie inside the
+    box's UTM extent, with one pixel of slack: the read keeps only pixels inside it, so a window read around an
+    earlier point of a lake that has since moved sticks out and is fetched again. An unreadable file does not fit.
+    """
+    bbox = lake_bbox(lake)
+    try:
+        with np.load(path) as z:
+            if "bbox" in z.files:
+                return bool(np.allclose(np.asarray(z["bbox"], float), bbox, rtol=0, atol=1e-9))
+            x, y, epsg = np.asarray(z["x"], float), np.asarray(z["y"], float), int(z["epsg"])
+    except (OSError, ValueError, KeyError):
+        return False
+    if not len(x) or not len(y):
+        return False
+    lon0, lat0, lon1, lat1 = bbox
+    xs, ys = Transformer.from_crs(4326, epsg, always_xy=True).transform([lon0, lon0, lon1, lon1], [lat0, lat1, lat0, lat1])
+    px = abs(float(x[1] - x[0])) if len(x) > 1 else 0.0
+    py = abs(float(y[1] - y[0])) if len(y) > 1 else 0.0
+    return bool(x.min() >= min(xs) - px and x.max() <= max(xs) + px and y.min() >= min(ys) - py
+                and y.max() <= max(ys) + py)
+
+
 def fetch_lake_passes(lake: Lake, passes: list[Pass], cache_dir: Path, session=None, stats: dict | None = None) -> list[Path]:
-    """Cache one window per pass. Passes already cached are skipped; a pass whose window lies outside
-    the grid is skipped with a note. Each file is written as .npz.part and renamed when complete.
-    `stats` (if given) accumulates 'fetched' bytes and 'requests'."""
+    """Cache one window per pass. Passes already cached for the lake's current search box are skipped; a window
+    cached for an earlier position of the lake is fetched again (`cached_window_fits`). A pass whose window lies
+    outside the grid is skipped with a note. Each file is written as .npz.part and renamed when complete, with the
+    search box it was read for. `stats` (if given) accumulates 'fetched' bytes and 'requests'."""
     session = session or requests.Session()
     bbox = lake_bbox(lake)
     out = []
     for p in passes:
         path = cache_path(cache_dir, lake.id, p)
-        if path.exists():
+        if path.exists() and cached_window_fits(path, lake):
             out.append(path)
             continue
+        if path.exists():
+            print(f"refetch {lake.id} {p.date} {p.key}: the cached window was read for an earlier lake position",
+                  flush=True)
         path.parent.mkdir(parents=True, exist_ok=True)
         part = path.with_name(path.name + ".part")
         holder: list = []
         try:
             win = read_window(session, p.url, bbox, holder)
             with open(part, "wb") as fh:
-                np.savez_compressed(fh, **win)
+                np.savez_compressed(fh, **win, bbox=np.asarray(bbox, float))
             part.replace(path)
         except ValueError as e:
             part.unlink(missing_ok=True)

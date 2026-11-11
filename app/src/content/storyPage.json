@@ -7,7 +7,7 @@
     "videosLabel": "Watch the videos",
     "openLabel": "Open Lake Watch",
     "stats": [
-      { "value": "{lakes}", "label": "glacial lakes watched" },
+      { "value": "{lakes}", "label": "lakes watched" },
       { "value": "{cloudLooks}", "label": "radar looks through the cloud gap" },
       { "value": "{passes}", "label": "NISAR passes read" }
     ],
@@ -18,8 +18,8 @@
   "risk": {
     "label": "01 · THE RISK",
     "title": "One lake, one bridge, one morning",
-    "body": "On 7 May 2022 the ice-dammed lake below Shisper glacier burst. Its flood ran 6.4 km down the Hassanabad gorge and destroyed the Karakoram Highway bridge, Hunza's link to the rest of the country.",
-    "source": "Sources: Radio Pakistan, 7 May 2022. The 6.4 km is the straight line from the register point to OpenStreetMap way 651792498.",
+    "body": "On 7 May 2022 the ice-dammed lake below Shisper glacier burst. Its flood ran 6.6 km down the Hassanabad gorge and destroyed the Karakoram Highway bridge, Hunza's link to the rest of the country.",
+    "source": "Sources: Radio Pakistan, 7 May 2022. The 6.6 km is the straight line from the register point at the lake basin to OpenStreetMap way 651792498.",
     "facts": [
       { "value": "131", "label": "potentially dangerous lakes on SUPARCO's watch", "source": "SUPARCO, GLOF Status Update, 2 July 2026" },
       { "value": "16 Jun", "label": "the last image SUPARCO's 2 Jul update could use", "source": "SUPARCO, GLOF Status Update, 2 July 2026" }
@@ -85,14 +85,15 @@
   },
   "watch": {
     "label": "05 · THE WATCH",
-    "title": "{lakes} lakes, one plain status each",
-    "noDataTitle": "Lakes, one plain status each",
-    "lede": "Latest pass {latest}. Each status compares a lake with its own earlier passes and its own noise.",
+    "title": "{sites} sites, one plain status each",
+    "noDataTitle": "Sites, one plain status each",
+    "lede": "Latest pass {latest}. Each status compares a lake with its own earlier passes and its own noise. A site with no lake now is kept to watch for a lake forming.",
     "noDataLede": "No lake data in this build.",
     "mapAlt": "Satellite map of northern Pakistan with the watched lakes marked",
     "mapImage": "story/north_map.jpg",
     "mapCredit": "Base map: NASA MODIS Terra, 5 Oct 2026",
     "keyWatched": "Watched lake",
+    "keyNoLake": "No lake now",
     "keyRequested": "Requested lake"
   },
   "add": {

@@ -10,7 +10,8 @@ from pyproj import Transformer
 from sartale import config
 from sartale.catalog import PROVISIONAL, STANDARD
 from sartale.lakes import Lake
-from sartale.lakestatus import SeriesPoint, cloud_window_looks, is_valid, lake_status
+from sartale.lakes import DEFAULT_ZONE_KM
+from sartale.lakestatus import SeriesPoint, cloud_window_looks, is_valid, lake_status, no_lake_status
 from sartale.lakewater import (
     dark_mask,
     despeckle,
@@ -27,10 +28,12 @@ from sartale.radiometry import to_db
 
 POINT_LABEL = "water area in the search window"
 OUTLINE_LABEL = "water area in the lake outline (buffered 200 m)"
+NO_LAKE_LABEL = "dark radar area in the search circle; there is no lake here now, so it is not lake area"
 WATER_RGBA = (0x2b, 0x8c, 0xff, 200)
 SHADOW_RGBA = (128, 128, 128, 120)
-NOTES = ("Areas are water within a 1 km search circle (or outline) and underestimate lakes whose shores sit "
-         "in radar shadow; images are crops on the UTM grid, north up; they are pictures, not map overlays.")
+NOTES = ("Areas are water within a lake's outline (buffered 200 m) or, without one, a search circle (1 km unless "
+         "the lake sets a smaller one), and underestimate lakes whose shores sit in radar shadow; images are crops "
+         "on the UTM grid, north up; they are pictures, not map overlays.")
 NO_LOOKS_REASON = "No valid NISAR pass yet."
 OUTLINE_ROOT = Path(__file__).resolve().parents[1]  # processing/
 
@@ -312,13 +315,36 @@ def pictured_pass(series: list[SeriesPoint], track: str | None) -> str | None:
     return f"{p['date']}_{p['track']}"
 
 
+def area_label(lake: Lake, has_outline: bool) -> str:
+    """What a lake's area measures, in words the app shows."""
+    if lake.lake_state == "no_lake":
+        return NO_LAKE_LABEL
+    if has_outline:
+        return OUTLINE_LABEL
+    r = lake.zone_radius_km
+    if r == DEFAULT_ZONE_KM:
+        return POINT_LABEL
+    size = f"{round(r * 1000)} m" if r < 1 else f"{r:g} km"
+    return f"{POINT_LABEL} ({size} circle)"
+
+
+def state_limits(lake: Lake) -> list[str]:
+    """The limit an unconfirmed lake carries (its status is still computed)."""
+    if lake.lake_state == "unconfirmed":
+        return [f"Lake not confirmed in recent imagery: {(lake.lake_state_source or '').rstrip('.')}."]
+    return []
+
+
 def _no_looks() -> dict:
     return {"status": "Not enough NISAR looks yet", "track": None, "latest_date": None, "looks": 0,
             "change_km2": None, "noise_km2": None, "reason": NO_LOOKS_REASON, "new_crid": None}
 
 
-def _empty(entry: dict, limits: list[str]) -> dict:
-    return {**entry, "status": _no_looks(), "cloud_window_looks": 0, "directions": [], "limits": limits,
+def _empty(entry: dict, limits: list[str], lake: Lake) -> dict:
+    status = _no_looks()
+    if lake.lake_state == "no_lake":
+        status = no_lake_status(status, lake.lake_state_source)
+    return {**entry, "status": status, "cloud_window_looks": 0, "directions": [], "limits": limits,
             "series": [], "excluded": [], "images": {"latest_hh": None, "water": None, "date": None, "track": None},
             "bounds": None}
 
@@ -326,7 +352,7 @@ def _empty(entry: dict, limits: list[str]) -> dict:
 def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str, str] | None = None,
                listed: set[tuple[str, str, str]] | None = None) -> dict:
     """`listed`: the (date, key, CRID) of the passes lakes-search listed for this lake; None reads every window."""
-    limits: list[str] = []
+    limits: list[str] = state_limits(lake)
     feature = _outline_feature(lake)
     outline = feature["geometry"] if feature else None
     if lake.outline and outline is None:
@@ -335,16 +361,17 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         "id": lake.id, "name": lake.name, "lon": lake.lon, "lat": lake.lat, "role": lake.role,
         "coord_source": lake.coord_source,
         "outline_source": (feature["properties"].get("source") or lake.outline) if feature else None,
-        "area_label": OUTLINE_LABEL if outline else POINT_LABEL,
+        "area_label": area_label(lake, outline is not None),
+        "lake_state": lake.lake_state, "lake_state_source": lake.lake_state_source,
         "downstream": lake.downstream, "downstream_source": lake.downstream_source,
     }
     lake_dir = Path(cache_dir) / lake.id
     if not lake_dir.is_dir():
-        return _empty(entry, limits + ["no NISAR windows fetched yet"])
+        return _empty(entry, limits + ["no NISAR windows fetched yet"], lake)
     raw = _read_cache(lake_dir, limits, listed)
     passes, xs, ys = _align(raw, limits, lake) if raw else ([], None, None)
     if not passes:
-        return _empty(entry, limits + ["no usable NISAR window"])
+        return _empty(entry, limits + ["no usable NISAR window"], lake)
 
     epsg, px, by_track, excluded, directions, shadow = _analyse(passes, xs, ys, limits)
     zone = lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline)
@@ -377,6 +404,12 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         latest = next(p for p in good if p["id"] == pictured)
         images = {**_write_images(Path(out_dir) / "lakes" / lake.id, good, latest, zone, shadow, ys),
                   "date": latest["date"], "track": latest["key"]}
+    if lake.lake_state == "no_lake":
+        # No verdict, and no blue "water" layer: the dark pixels at an empty basin are not a lake.
+        status = no_lake_status(status, lake.lake_state_source)
+        if images["water"]:
+            (Path(out_dir) / images["water"]).unlink(missing_ok=True)
+            images = {**images, "water": None}
     return {**entry, "status": status,
             "cloud_window_looks": cloud_window_looks(series),
             "directions": sorted(set(directions.values())), "limits": limits, "series": series,
