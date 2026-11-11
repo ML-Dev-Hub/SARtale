@@ -119,6 +119,12 @@ def test_screen_passes_drops_bright_outlier():
     assert list(ex) == ["c"] and "dB" in ex["c"]
 
 
+def test_screen_passes_excludes_every_pass_of_a_track_with_no_valid_pixel():
+    """C01 follow-up: a track whose every window lies in invalid coverage is excluded, never read as 0 km2."""
+    nan = np.full((20, 20), np.nan)
+    assert screen_passes({"a": nan, "b": nan}) == {"a": "window has no valid HH pixels", "b": "window has no valid HH pixels"}
+
+
 def test_screen_passes_ignores_nan_pixels():
     land = np.full((20, 20), -7.0)
     nanny = land.copy()

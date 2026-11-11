@@ -49,8 +49,8 @@ def screen_passes(hh_db_by_pass: dict[str, np.ndarray]) -> dict[str, str]:
         warnings.simplefilter("ignore", RuntimeWarning)  # a window with no valid pixel has a NaN median
         medians = {k: float(np.nanmedian(v)) for k, v in hh_db_by_pass.items()}
     finite = [m for m in medians.values() if np.isfinite(m)]
-    if not finite:
-        return {}
+    if not finite:  # no pass of the track has a valid pixel (e.g. the window lies in mask-0 coverage)
+        return {k: "window has no valid HH pixels" for k in medians}
     track_median = float(np.median(finite))
     excluded = {}
     for k, m in medians.items():
