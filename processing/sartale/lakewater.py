@@ -4,6 +4,8 @@ Per-pass water (ruling R2) is: dark in this pass, inside the lake zone, not shad
 Shadow-prone pixels come from each track's season-median image: dark in one viewing direction
 but not in the opposite one (radar shadow, not water).
 """
+import warnings
+
 import numpy as np
 from pyproj import Transformer
 from rasterio.features import geometry_mask
@@ -43,7 +45,9 @@ def screen_passes(hh_db_by_pass: dict[str, np.ndarray]) -> dict[str, str]:
 
     Returns excluded pass id -> reason. A badly calibrated pass (e.g. +25 dB) is never read as change.
     """
-    medians = {k: float(np.nanmedian(v)) for k, v in hh_db_by_pass.items()}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)  # a window with no valid pixel has a NaN median
+        medians = {k: float(np.nanmedian(v)) for k, v in hh_db_by_pass.items()}
     finite = [m for m in medians.values() if np.isfinite(m)]
     if not finite:
         return {}

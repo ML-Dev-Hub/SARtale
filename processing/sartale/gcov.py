@@ -26,6 +26,26 @@ RELEASE_ID = "compositeReleaseId"  # the CRID, e.g. P05023 (D00404 in the 2008 s
 # samples; 0 means partially focused or invalid; 255 is fill.
 MASK_FILL = 255
 MASK_INVALID = 0
+# The pre-launch simulated samples (CRID D00404, 2008) carry a mask of only 0 and 255 across the whole file, with 0
+# on every real sample. Only products whose CRID starts with this letter keep their zeros. Every other product (the
+# P05023 and P05036 releases, or a file without a CRID) follows the mask's own description: 0 is invalid.
+LEGACY_ZERO_VALID_CRID_PREFIX = "D"
+
+
+def zero_is_valid(crid: str | None) -> bool:
+    """True only for the pre-launch sample convention (CRID D...), where mask 0 marks the real samples."""
+    return bool(crid) and str(crid).startswith(LEGACY_ZERO_VALID_CRID_PREFIX)
+
+
+def invalid_samples(mask: np.ndarray, crid: str | None = None) -> np.ndarray:
+    """Boolean grid of the samples that are not valid: fill (255) always, and 0 (partially focused or invalid)
+    unless the product is a pre-launch sample (`zero_is_valid`). The rule is per sample and never depends on what
+    else the clip holds, so a pixel is valid or invalid whatever window it is read in."""
+    mask = np.asarray(mask)
+    bad = mask == MASK_FILL
+    if not zero_is_valid(crid):
+        bad |= mask == MASK_INVALID
+    return bad
 
 
 @dataclass
@@ -69,12 +89,10 @@ def mask_histogram(mask: np.ndarray | None) -> dict[int, int]:
     return {int(v): int(c) for v, c in zip(values, counts)}
 
 
-def apply_mask(power: np.ndarray, mask: np.ndarray | None) -> np.ndarray:
-    """Set invalid GCOV samples to NaN, using the mask clipped to the same window as `power`.
+def apply_mask(power: np.ndarray, mask: np.ndarray | None, crid: str | None = None) -> np.ndarray:
+    """Set invalid GCOV samples (`invalid_samples`) to NaN, using the mask clipped to the same window as `power`.
 
-    Fill (255) is always NaN. Zero (partially focused or invalid) is NaN only when the clip also holds
-    real subswath numbers (1 to 254); a product whose mask holds only 0 and 255, like the 2008 samples,
-    keeps its zeros.
+    `crid` is the file's composite release ID; only a pre-launch sample (D...) keeps its mask-0 samples.
     """
     if mask is None:
         return power
@@ -82,11 +100,16 @@ def apply_mask(power: np.ndarray, mask: np.ndarray | None) -> np.ndarray:
     if mask.shape != power.shape:
         raise ValueError(f"mask shape {mask.shape} does not match power shape {power.shape}")
     out = np.array(power, dtype=np.float64, copy=True)
-    bad = mask == MASK_FILL
-    if ((mask >= 1) & (mask < MASK_FILL)).any():
-        bad |= mask == MASK_INVALID
-    out[bad] = np.nan
+    out[invalid_samples(mask, crid)] = np.nan
     return out
+
+
+def read_release(f) -> str | None:
+    """The open file's compositeReleaseId, or None when the file has no such field."""
+    ident = f[IDENTIFICATION_GROUP] if IDENTIFICATION_GROUP in f else None
+    if ident is None or RELEASE_ID not in ident:
+        return None
+    return _text(ident[RELEASE_ID][()])
 
 
 def _span(coords: np.ndarray, lo: float, hi: float) -> slice | None:
@@ -114,5 +137,5 @@ def read_layer(path: Path, term: str, bbox_lonlat: tuple[float, float, float, fl
         sl = (ys_sl, xs_sl)
         looks = g[LOOKS][sl] if LOOKS in g else None
         mask = g[MASK][sl] if MASK in g else None
-        power = apply_mask(mask_power(g[term][sl]), mask)
+        power = apply_mask(mask_power(g[term][sl]), mask, read_release(f))
         return Layer(power, x_all[xs_sl], y_all[ys_sl], epsg, looks, mask)

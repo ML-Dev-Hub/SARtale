@@ -76,26 +76,50 @@ def test_read_layer_masks_zero_when_real_subswaths_are_present(tmp_path):
     assert np.isfinite(layer.power[9]).all()
 
 
-def test_read_layer_keeps_zero_when_mask_holds_only_0_and_255(tmp_path):
-    """Like the 2008 samples: {0, 255} only. Zero is then the valid value, so it must stay usable."""
+def test_production_zero_is_invalid_even_when_the_clip_holds_no_subswath_number(tmp_path):
+    """C01: a production crop that lies wholly in mask-0 (partially focused) coverage has no valid sample."""
     mask = np.zeros((N, N), "u1")
     mask[10] = 255
-    path = write_gcov(tmp_path / "g.h5", mask=mask)
+    path = write_gcov(tmp_path / "g.h5", mask=mask, release_id="P05023")
+    layer = read_layer(path, "HHHH", FULL_BBOX)
+    assert np.isnan(layer.power).all()
+
+
+def test_zero_rule_is_per_sample_whatever_the_clip(tmp_path):
+    """The same mask-0 pixel is invalid in the whole file and in a clip that holds only zeros."""
+    mask = np.zeros((N, N), "u1")
+    mask[:10] = 3  # subswath numbers only in the far rows of the file
+    path = write_gcov(tmp_path / "g.h5", mask=mask, release_id="P05036")
+    full = read_layer(path, "HHHH", FULL_BBOX)
+    assert np.isnan(full.power[50]).all()
+    assert np.isfinite(full.power[5, 1:]).all()  # subswath 3 stays valid
+    clip = read_layer(path, "HHHH", BBOX_INSIDE_FIXTURE)
+    assert clip.mask.max() == 0
+    assert np.isnan(clip.power).all()
+
+
+def test_a_file_without_a_release_id_follows_the_production_rule(tmp_path):
+    path = write_gcov(tmp_path / "g.h5", mask=np.zeros((N, N), "u1"))
+    assert np.isnan(read_layer(path, "HHHH", FULL_BBOX).power).all()
+
+
+def test_only_the_pre_launch_sample_convention_keeps_zero(tmp_path):
+    """The 2008 samples (CRID D00404) hold only {0, 255} across the whole file, with 0 on every real sample."""
+    mask = np.zeros((N, N), "u1")
+    mask[10] = 255
+    path = write_gcov(tmp_path / "g.h5", mask=mask, release_id="D00404")
     layer = read_layer(path, "HHHH", FULL_BBOX)
     assert np.isnan(layer.power[10]).all()
     assert np.isfinite(layer.power[11]).all()
     assert np.isfinite(layer.power[50]).all()
 
 
-def test_zero_rule_looks_at_the_clip_not_the_whole_file(tmp_path):
-    mask = np.zeros((N, N), "u1")
-    mask[:10] = 3  # subswath numbers only in the far rows of the file
-    path = write_gcov(tmp_path / "g.h5", mask=mask)
-    full = read_layer(path, "HHHH", FULL_BBOX)
-    assert np.isnan(full.power[50]).all()  # clip holds 3s, so zeros are invalid
-    clip = read_layer(path, "HHHH", BBOX_INSIDE_FIXTURE)
-    assert clip.mask.max() == 0
-    assert np.isfinite(clip.power[1:, 1:]).all()  # clip holds zeros only, so they stay usable
+def test_apply_mask_rule_by_crid():
+    power = np.ones((3, 3))
+    zeros = np.zeros((3, 3), "u1")
+    assert np.isnan(apply_mask(power, zeros)).all()
+    assert np.isnan(apply_mask(power, zeros, "P05023")).all()
+    assert np.isfinite(apply_mask(power, zeros, "D00404")).all()
 
 
 def test_layer_keeps_the_raw_mask_for_the_histogram(tmp_path):

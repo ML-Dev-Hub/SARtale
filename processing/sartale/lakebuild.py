@@ -9,6 +9,7 @@ from pyproj import Transformer
 
 from sartale import config
 from sartale.catalog import PROVISIONAL, STANDARD
+from sartale.gcov import apply_mask
 from sartale.lakes import Lake
 from sartale.lakes import DEFAULT_ZONE_KM
 from sartale.lakestatus import SeriesPoint, cloud_window_looks, is_valid, lake_status, no_lake_status
@@ -119,10 +120,24 @@ def _read_cache(lake_dir: Path, limits: list[str], listed: set[tuple[str, str, s
         for other in sorted(set(by_crid) - {crid}):
             limits.append(f"ignored {by_crid[other].name}: the same pass is cached as {crid}")
         with np.load(by_crid[crid]) as z:
+            hh, hv = remask(z, crid)
             passes.append({"date": date, "key": key, "id": f"{date}_{key}", "crid": crid,
-                           "hh": z["hh"], "hv": z["hv"], "x": np.asarray(z["x"], float),
+                           "hh": hh, "hv": hv, "x": np.asarray(z["x"], float),
                            "y": np.asarray(z["y"], float), "epsg": int(z["epsg"])})
     return passes
+
+
+def remask(z, crid: str) -> tuple[np.ndarray, np.ndarray]:
+    """HH and HV of a cached window with the GCOV validity rule applied again from the raw mask it stores.
+
+    Windows cached before the rule was fixed kept mask-0 samples when the clip held no subswath number; applying
+    `gcov.apply_mask` again (by the pass's own CRID) makes them invalid, so the build never depends on the rule
+    in force when a window was fetched."""
+    hh, hv = np.asarray(z["hh"], float), np.asarray(z["hv"], float)
+    if "mask" not in z.files or z["mask"].shape != hh.shape:
+        return hh, hv
+    mask = np.asarray(z["mask"])
+    return apply_mask(hh, mask, crid), apply_mask(hv, mask, crid)
 
 
 def read_collections(passes_json: Path) -> dict[str, str]:

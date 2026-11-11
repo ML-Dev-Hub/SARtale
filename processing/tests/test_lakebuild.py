@@ -21,7 +21,7 @@ def make_lake(lid, lon=74.86, lat=36.33, role="watch"):
                 role=role, downstream=None, downstream_source=None)
 
 
-def write_pass(cache, lake, date, key, bright_db=0.0, dx=0, dy=0, crid="P05023", water_m=500.0):
+def write_pass(cache, lake, date, key, bright_db=0.0, dx=0, dy=0, crid="P05023", water_m=500.0, mask=None):
     """A window with a dark disc (water, radius `water_m`) at the lake point; dx/dy shift the window in pixels."""
     cx, cy = Transformer.from_crs(4326, EPSG, always_xy=True).transform(lake.lon, lake.lat)
     x = cx - (N // 2) * PX + (np.arange(N) + dx) * PX
@@ -34,7 +34,7 @@ def write_pass(cache, lake, date, key, bright_db=0.0, dx=0, dy=0, crid="P05023",
     d = Path(cache) / lake.id
     d.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(d / f"{date}_{key}_{crid}.npz", hh=hh, hv=hv, looks=np.ones((N, N)),
-                        mask=np.ones((N, N), np.uint8), x=x, y=y, epsg=EPSG)
+                        mask=np.ones((N, N), np.uint8) if mask is None else mask, x=x, y=y, epsg=EPSG)
 
 
 @pytest.fixture
@@ -369,3 +369,18 @@ def test_a_smaller_zone_radius_measures_a_smaller_circle(tmp_path):
     # the 900 m water disc fills the whole 300 m circle: about pi * 0.3^2 km2
     assert b["series"][0]["area_km2"] == pytest.approx(3.14159 * 0.09, rel=0.1)
     assert 2.0 < a["series"][0]["area_km2"] < 2.8  # the 900 m disc inside the 1 km circle
+
+
+def test_a_window_cached_under_the_old_mask_rule_is_masked_again(tmp_path):
+    """C01: a cached production window whose clip holds only mask 0 (the old rule kept those samples finite) is
+    read as having no valid sample, so the pass is excluded and counts no area."""
+    cache, out = tmp_path / "cache", tmp_path / "out"
+    a = make_lake("alpha")
+    dates = ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24"]
+    for d in dates:
+        write_pass(cache, a, d, "156A")
+    write_pass(cache, a, "2026-08-05", "156A", mask=np.zeros((N, N), np.uint8))
+    doc = build_lakes([a], cache, out, "2026-11-02T00:00:00Z")
+    row = next(p for p in lake(doc, "alpha")["series"] if p["date"] == "2026-08-05")
+    assert row["area_km2"] is None and row["observable_share"] == 0.0
+    assert row["excluded"] == "window has no valid HH pixels"
