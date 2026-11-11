@@ -22,7 +22,7 @@ function render(file: LakesFile | null) {
 }
 
 describe("storyNumbers", () => {
-  it("reads every number from the frozen 11-lake file of 23 Oct 2026 (a dated historical fixture)", () => {
+  it("reads every number from the frozen 11-lake file (historical fixture, latest pass 23 Oct 2026)", () => {
     const n = storyNumbers(frozen);
     expect(n.lakes).toBe("11");
     expect(n.cloudLooks).toBe("60");
