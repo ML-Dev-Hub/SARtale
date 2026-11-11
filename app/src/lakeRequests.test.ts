@@ -205,3 +205,13 @@ describe("requests on the story page", () => {
     expect(raw).not.toMatch(/detect/i);
   });
 });
+
+
+describe("loadRequests timeout", () => {
+  it("R01: a stalled requests.json becomes an empty list instead of a wait", async () => {
+    const stall = ((_url: string, init?: RequestInit) => new Promise<Response>((_, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    })) as unknown as typeof fetch;
+    expect(await loadRequests("data/requests.json", stall, 20)).toEqual([]);
+  });
+});

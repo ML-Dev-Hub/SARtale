@@ -82,7 +82,18 @@ const TEMPLATE = `
 </div>`;
 
 export interface AppHandle {
+  /** Show the lake requests once data/requests.json has loaded (the app starts without waiting for it). */
+  setRequests(requests: LakeRequest[]): void;
   destroy(): void;
+}
+
+/** The element id a URL fragment names, or null when the fragment is not valid percent-encoding (e.g. "#%"). */
+export function fragmentId(hash: string): string | null {
+  try {
+    return decodeURIComponent(hash.slice(1));
+  } catch {
+    return null;
+  }
 }
 
 export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
@@ -195,10 +206,12 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
   showView(first.view, false, false);
   if (first.lake) lakeView.select(first.lake);
   // A link to a story section, such as #videos, arrives before the page is drawn, so scroll to it now.
-  const anchor = routeFromHash(window.location.hash) ? null : document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+  const id = routeFromHash(window.location.hash) ? null : fragmentId(window.location.hash);
+  const anchor = id ? document.getElementById(id) : null;
   anchor?.scrollIntoView?.();
 
   return {
+    setRequests: (list) => storyPage.setRequests(list),
     destroy: () => {
       narrow?.removeEventListener?.("change", syncFolds);
       window.removeEventListener("hashchange", followHash);

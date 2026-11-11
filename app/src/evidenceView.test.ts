@@ -49,6 +49,12 @@ describe("How we know", () => {
     expect(root.querySelector(".evidence-title")!.textContent).toBe("How we know");
   });
 
+  test("C10: without lake data no raw {token} is shown, and the page says why figures are missing", () => {
+    const { root } = open(null);
+    expect(root.textContent).not.toMatch(/\{\w+\}/);
+    expect(root.querySelector('[data-role="evidence-nodata"]')?.textContent).toContain("No lake data in this build");
+  });
+
   test("a build with two processing versions names both, and says which part is provisional", () => {
     const text = open({ ...realLakes, crid: "P05023, P05036" }).text;
     expect(text).toContain("this build uses processing versions P05023 and P05036");

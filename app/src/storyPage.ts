@@ -304,7 +304,10 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   mapKey.append(el("span", "sp-key-pin sp-key-request"), ` ${w.keyRequested}`);
   mapEl.append(mapKey, mapCredit);
   const requestEls: HTMLElement[] = [];
+  // Shared with the add-a-lake form, so a refreshed list is what the form checks a new request against.
+  const addDeps = { watched: file?.lakes ?? [], requests: [] as LakeRequest[] };
   const setRequests = (list: LakeRequest[]): void => {
+    addDeps.requests = list;
     for (const e of requestEls) e.remove();
     requestEls.length = 0;
     for (const r of shownRequests(list, file?.lakes ?? [])) {
@@ -386,9 +389,8 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const ft = copy.footer;
   const footer = el("footer", "sp-footer", text("span", undefined, ft.team), text("span", undefined, ft.event), el("span", "sp-grow"), text("span", undefined, ft.data));
 
-  const requests = opts.requests ?? [];
-  setRequests(requests);
-  const addLake = mountAddLake(addLakeEl, { watched: file?.lakes ?? [], requests });
+  setRequests(opts.requests ?? []);
+  const addLake = mountAddLake(addLakeEl, addDeps);
 
   page.append(cover, risk, gap, view, measure, watch, add, videos, closing, footer);
   root.replaceChildren(page);

@@ -8,15 +8,22 @@ import { mountOrShowError } from "./startup";
 
 const root = document.getElementById("app")!;
 
-// Without lakes.json the views still mount and each says that the lake data is missing.
-void Promise.all([loadLakes("data/lakes.json"), loadRequests()]).then(([lakes, requests]) =>
-  mountOrShowError(root, {
+// Say something at once, so a slow connection never shows a blank page.
+root.textContent = "Loading SARtale…";
+
+// The app waits only for lakes.json (bounded by a timeout); without it the views still mount and each says that the
+// lake data is missing. The lake requests are fetched alongside and shown when they arrive: a slow or failed
+// requests.json never holds up the page.
+const requests = loadRequests();
+void loadLakes("data/lakes.json").then((lakes) => {
+  const app = mountOrShowError(root, {
     lakes,
     createLakeChart: createUplotLakeChart,
     createLakeLocator,
-    requests,
+    requests: [],
     onLakeBrief: (lake) => {
       if (lakes) void printLatestBrief(lake, lakes);
     },
-  }),
-);
+  });
+  if (app) void requests.then((list) => app.setRequests(list));
+});

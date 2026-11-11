@@ -235,24 +235,70 @@ export function watchList(file: LakesFile): string {
   return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
 
-function isLakesFile(v: unknown): v is LakesFile {
-  const f = v as LakesFile;
-  return !!f && Array.isArray(f.lakes) && Array.isArray(f.checks) && f.lakes.every((l) => !!l && typeof l.id === "string" && !!l.status);
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const isStr = (v: unknown): v is string => typeof v === "string";
+const isNumOrNull = (v: unknown): boolean => v === null || isNum(v);
+const isStrOrNull = (v: unknown): boolean => v === null || isStr(v);
+const isIso = (v: unknown): boolean => isStr(v) && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
+function isPoint(p: unknown): boolean {
+  return isObj(p) && isIso(p.date) && isStr(p.track) && isNumOrNull(p.area_km2)
+    && (p.observable_share === null || isNum(p.observable_share)) && isStrOrNull(p.excluded)
+    && (p.diagnostic_km2 === undefined || isNumOrNull(p.diagnostic_km2));
+}
+
+function isStatus(s: unknown): boolean {
+  return isObj(s) && STATUS_ORDER.includes(s.status as LakeStatusName) && isStrOrNull(s.track)
+    && (s.latest_date === null || isIso(s.latest_date)) && isNum(s.looks) && isNumOrNull(s.change_km2)
+    && isNumOrNull(s.noise_km2) && isStr(s.reason);
+}
+
+function isLake(l: unknown): boolean {
+  if (!isObj(l)) return false;
+  const images = l.images;
+  const bounds = l.bounds;
+  return isStr(l.id) && isStr(l.name) && isNum(l.lon) && isNum(l.lat) && ["watch", "control", "story"].includes(l.role as string)
+    && isStr(l.coord_source) && isStr(l.area_label) && isStatus(l.status) && isNum(l.cloud_window_looks)
+    && Array.isArray(l.directions) && Array.isArray(l.limits) && l.limits.every(isStr)
+    && Array.isArray(l.series) && l.series.every(isPoint)
+    && Array.isArray(l.excluded) && l.excluded.every((x) => isObj(x) && isStr(x.pass) && isStr(x.reason))
+    && (images === null || (isObj(images) && isStrOrNull(images.latest_hh ?? null) && isStrOrNull(images.water ?? null)))
+    && (bounds === null || (Array.isArray(bounds) && bounds.length === 4 && bounds.every(isNum)));
 }
 
 /**
- * Loads data/lakes.json. Returns null if it is absent or unusable; Lake Watch then says "No lake data in this build".
- * `no-cache` makes the browser check with the server every time (a cheap ETag check), so a weekly data update shows
- * up on the next load instead of after the browser's cache runs out.
+ * True when `v` has every part of lakes.json the views read, with finite numbers where they compute: version, build
+ * time, notes, processing versions, cloud window, the method constants, and each lake's place, status and passes.
+ * Anything less takes the "no lake data" path instead of breaking the whole page while it draws.
  */
-export async function loadLakes(url: string, fetchFn: typeof fetch = (...a) => fetch(...a)): Promise<LakesFile | null> {
+export function isLakesFile(v: unknown): v is LakesFile {
+  if (!isObj(v)) return false;
+  const c = v.constants;
+  const w = v.cloud_window;
+  return isNum(v.version) && isStr(v.built) && isStr(v.notes) && isStr(v.crid)
+    && Array.isArray(w) && w.length === 2 && w.every(isIso)
+    && isObj(c) && ["drop_db", "min_looks", "min_observable", "noise_floor_km2", "change_factor", "speckle_box"].every((k) => isNum(c[k]))
+    && Array.isArray(v.lakes) && v.lakes.every(isLake) && Array.isArray(v.checks);
+}
+
+/**
+ * Loads data/lakes.json. Returns null if it is absent, unusable or slower than `timeoutMs`; Lake Watch then says "No
+ * lake data in this build". `no-cache` makes the browser check with the server every time (a cheap ETag check), so a
+ * weekly data update shows up on the next load instead of after the browser's cache runs out.
+ */
+export async function loadLakes(url: string, fetchFn: typeof fetch = (...a) => fetch(...a), timeoutMs = 20_000): Promise<LakesFile | null> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const res = await fetchFn(url, { cache: "no-cache" });
+    const res = await fetchFn(url, { cache: "no-cache", signal: ctl.signal });
     if (!res.ok) return null;
     const json: unknown = await res.json();
     return isLakesFile(json) ? splitChecks(json) : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

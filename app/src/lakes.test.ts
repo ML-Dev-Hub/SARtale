@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { fixtureLakes } from "./fixtures";
+import realLakes from "../public/data/lakes.json";
+import frozenLakes from "./frozen/lakes.json";
+import { isLakesFile } from "./lakes";
 import { absenceLine, cloudHeadline, hasLakeNow, lakeTokens, mayBeForming, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -20,7 +23,34 @@ describe("loadLakes", () => {
   test("asks the server each time, so a weekly update shows on the next load", async () => {
     const fetchFn = vi.fn(async () => new Response(JSON.stringify(fixtureLakes))) as unknown as typeof fetch;
     await loadLakes("data/lakes.json", fetchFn);
-    expect(fetchFn).toHaveBeenCalledWith("data/lakes.json", { cache: "no-cache" });
+    expect(fetchFn).toHaveBeenCalledWith("data/lakes.json", expect.objectContaining({ cache: "no-cache" }));
+  });
+
+  test("R01: gives up after the timeout instead of waiting forever", async () => {
+    const stall = vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((_, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    })) as unknown as typeof fetch;
+    expect(await loadLakes("data/lakes.json", stall, 20)).toBeNull();
+  });
+
+  test("C09: a file the views cannot draw takes the no-data path", async () => {
+    const bad = [
+      { lakes: [{ id: "x", status: {} }], checks: [] },
+      { ...fixtureLakes, constants: { ...fixtureLakes.constants, change_factor: "2" } },
+      { ...fixtureLakes, lakes: [{ ...fixtureLakes.lakes[0], lon: null }] },
+      { ...fixtureLakes, lakes: [{ ...fixtureLakes.lakes[0], status: { ...fixtureLakes.lakes[0].status, status: "Danger" } }] },
+      { ...fixtureLakes, lakes: [{ ...fixtureLakes.lakes[0], series: [{ date: "x", track: "1A" }] }] },
+      { ...fixtureLakes, cloud_window: ["2026-06-17"] },
+    ];
+    for (const b of bad) {
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => b })));
+      expect(await loadLakes("data/lakes.json"), JSON.stringify(b).slice(0, 80)).toBeNull();
+    }
+  });
+
+  test("C09: the shipped and the frozen lakes.json pass the check", () => {
+    expect(isLakesFile(realLakes)).toBe(true);
+    expect(isLakesFile(frozenLakes)).toBe(true);
   });
 
   test("test_loadLakes_returns_null_on_404", async () => {
