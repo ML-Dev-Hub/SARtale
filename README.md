@@ -48,7 +48,7 @@ Radar sees through cloud, day or night. From 17 June to 4 August 2026, while clo
 For every lake and every NISAR pass, SARtale reads a 6 km window straight from NASA's archive. It marks pixels at least 3 dB darker than the window in both HH and HV, removes radar shadow by comparing the two viewing directions, and measures water inside the lake's zone. It then compares the result only with that lake's earlier passes on the same track: a change counts only if it beats twice the lake's own noise.
 
 <!-- worked-example:start -->
-For example, Attabad on 4 November 2026 held 2.13 km² on track 156A, a change of +0.23 km² against a noise of 0.46 km², so it reads **Stable** (from the lake data built 10 Nov 2026; the app shows the current numbers).
+For example, Attabad on 9 November 2026 held 2.64 km² on track 055A, a change of -0.09 km² against a noise of 0.12 km², so it reads **Stable** (from the lake data built 11 Nov 2026; the app shows the current numbers).
 <!-- worked-example:end -->
 
 The full method, with every constant, is in the [guide](docs/guide/method.html).
