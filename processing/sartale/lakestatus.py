@@ -17,8 +17,12 @@ UNCONFIRMED = "Change not confirmed yet"
 # A site the register marks lake_state "no_lake": recent imagery shows no lake there (an ice-dammed lake's empty
 # basin, say). It gets no growing/shrinking verdict and its dark radar area is not lake area.
 NO_LAKE = "No lake now"
+# A "no lake now" site where the latest Sentinel-2 absence check found water on more than config.FORMING_WATER_SHARE
+# of the lake zone: a lake may be forming. No verdict; SARtale measures it as a lake from the next NISAR pass.
+LAKE_FORMING = "Lake may be forming"
 # Every status a lake can have, in the order the app lists them (app/src/lakes.ts STATUS_ORDER).
 STATUS_NAMES = (
+    LAKE_FORMING,
     "Growing",
     "Shrinking",
     UNCONFIRMED,
@@ -164,9 +168,46 @@ def cloud_window_looks(
     return sum(1 for p in series if is_valid(p) and start <= p["date"] <= end)
 
 
-def no_lake_status(computed: dict, source: str | None) -> dict:
+_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def day_text(iso: str) -> str:
+    """"2026-08-17" -> "17 Aug 2026" (the app's date style)."""
+    y, m, d = (int(v) for v in iso.split("-"))
+    return f"{d} {_MONTHS[m - 1]} {y}"
+
+
+def share_text(share: float) -> str:
+    """0.0004 -> "0.04%", 0.0123 -> "1.2%", 0 -> "0%"."""
+    pct = 100 * share
+    if pct == 0:
+        return "0%"
+    return f"{pct:.2f}%" if pct < 1 else f"{pct:.1f}%"
+
+
+def absence_sentence(absence: dict | None) -> str:
+    """The dated evidence of an absence check in words, or "" when there is none."""
+    if not absence:
+        return ""
+    return (f"Last checked {day_text(absence['date'])} with Sentinel-2 ({absence['s2_id']}): water on "
+            f"{share_text(absence['water_share'])} of the lake zone.")
+
+
+def no_lake_status(computed: dict, source: str | None, absence: dict | None = None) -> dict:
     """The status of a site with no lake now: keeps the track, latest date and looks the passes give (so the site's
-    picture and pass count still show), drops any change and noise, and says why."""
+    picture and pass count still show), drops any change and noise, and says why, with the date of the last
+    Sentinel-2 absence check when there is one."""
     why = f"No lake in recent imagery: {source.rstrip('.')}." if source else "No lake in recent imagery."
-    return _result(NO_LAKE, computed["track"], computed["latest_date"], computed["looks"],
-                   reason=f"{why} SARtale keeps the site to watch for a lake forming.")
+    checked = absence_sentence(absence)
+    tail = "SARtale re-checks the site with Sentinel-2 in each open-water season for a lake forming."
+    reason = " ".join(t for t in (why, checked, tail) if t)
+    return _result(NO_LAKE, computed["track"], computed["latest_date"], computed["looks"], reason=reason)
+
+
+def forming_status(computed: dict, absence: dict) -> dict:
+    """The status of a "no lake now" site where Sentinel-2 found water: a lake may be forming. No growing or
+    shrinking verdict; the track, latest date and looks are those the passes give."""
+    reason = (f"Sentinel-2 on {day_text(absence['date'])} ({absence['s2_id']}) shows water on "
+              f"{share_text(absence['water_share'])} of the lake zone ({absence['water_km2']:.3f} km2), where recent "
+              "imagery had no lake. A lake may be forming; SARtale measures it from the next NISAR pass.")
+    return _result(LAKE_FORMING, computed["track"], computed["latest_date"], computed["looks"], reason=reason)

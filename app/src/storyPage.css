@@ -116,6 +116,7 @@
 .sp-map-key { position: absolute; left: 12px; top: 10px; padding: 4px 10px; border-radius: 6px; background: rgba(5,13,22,0.8); font-size: 12px; color: #c6d5de; }
 .sp-key-pin { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--sp-accent); vertical-align: baseline; }
 .sp-key-request { background: transparent; border: 2px dashed var(--sp-warm); width: 6px; height: 6px; }
+.sp-pin-forming, .sp-key-forming { border-color: var(--sp-warm, #f0a64a); }
 .sp-key-nolake { background: transparent; border: 2px solid var(--sp-muted); width: 6px; height: 6px; }
 .sp-lake.sp-request { border: 1px dashed var(--sp-warm); flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; }
 .sp-request .sp-lake-right { text-align: left; }

@@ -270,3 +270,101 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
                 "zone_valid_share": zone_valid_share(opt["valid"], zone),
                 **{f"window_{k}": v for k, v in _pair(win_cmp).items()}}
     return {"lake": lake.id, "note": f"{NO_SCENE} in the open-water season ({words})", "season": words}
+
+
+# --- absence check: is a site with no lake still empty? ------------------------------------------------------------
+
+ABSENCE_MAX_SCENES = 12  # newest scenes tried per check; the first whose lake zone is clear enough is used
+ABSENCE_MAX_TILE_CLOUD = 60.0  # tile cloud cover a scene may have and still be tried (the zone is checked itself)
+ABSENCE_PIXEL_M = 10.0
+ABSENCE_SOURCE = "Sentinel-2 L2A (Earth Search), MNDWI water in the lake zone"
+
+
+def season_bounds(today: str, season=None) -> tuple[str, str] | None:
+    """(first day of this year's season, today) when `today` is in the open-water season, else None (outside the
+    season the last evidence stands)."""
+    from sartale.config import OPEN_WATER_SEASON
+    (m0, d0), _ = season or OPEN_WATER_SEASON
+    if not in_season(today, season):
+        return None
+    t = Date.fromisoformat(today)
+    return Date(t.year, m0, d0).isoformat(), t.isoformat()
+
+
+def last_season_bounds(today: str, season=None) -> tuple[str, str]:
+    """The most recent open-water season that has started by `today`, up to today: this year's when it has begun,
+    else last year's. Used once, to give a site its first dated evidence."""
+    from sartale.config import OPEN_WATER_SEASON
+    (m0, d0), (m1, d1) = season or OPEN_WATER_SEASON
+    t = Date.fromisoformat(today)
+    year = t.year if (t.month, t.day) >= (m0, d0) else t.year - 1
+    end = min(Date(year, m1, d1), t)
+    return Date(year, m0, d0).isoformat(), end.isoformat()
+
+
+def absence_grid(lake, pixel_m: float = ABSENCE_PIXEL_M):
+    """A UTM grid (x, y, epsg) of `pixel_m` pixels over the lake's 6 km search box, north up."""
+    from pyproj import Transformer
+    from sartale.lakes import lake_bbox
+    zone = int((lake.lon + 180) // 6) + 1
+    epsg = (32600 if lake.lat >= 0 else 32700) + zone
+    lon0, lat0, lon1, lat1 = lake_bbox(lake)
+    tr = Transformer.from_crs(4326, epsg, always_xy=True)
+    xs, ys = tr.transform([lon0, lon0, lon1, lon1], [lat0, lat1, lat0, lat1])
+    x = np.arange(np.floor(min(xs) / pixel_m) * pixel_m + pixel_m / 2, max(xs), pixel_m)
+    y = np.arange(np.ceil(max(ys) / pixel_m) * pixel_m - pixel_m / 2, min(ys), -pixel_m)
+    return x, y, epsg
+
+
+def zone_water(lake, opt: dict, x, y, epsg) -> dict:
+    """Water share and area of the lake zone in one optical reading, over the zone pixels seen clear."""
+    from sartale.lakebuild import _load_outline
+    from sartale.lakewater import lake_zone
+    zone = lake_zone((len(y), len(x)), x, y, epsg, lake, outline_polygon=_load_outline(lake))
+    px = float(abs(x[1] - x[0]))
+    seen = zone & opt["valid"]
+    n_seen = int(seen.sum())
+    water = int((opt["water"] & seen).sum())
+    return {"zone_valid_share": zone_valid_share(opt["valid"], zone),
+            "water_share": (water / n_seen) if n_seen else 0.0,
+            "water_km2": water * px ** 2 / 1e6}
+
+
+def absence_check(lake, today: str, prior: dict | None = None, log=print, season=None, bootstrap: bool = True,
+                  max_scenes: int = ABSENCE_MAX_SCENES) -> dict | None:
+    """Dated evidence on whether a site with no lake now is still empty: the newest Sentinel-2 scene of the
+    open-water season whose lake zone is at least MIN_ZONE_VALID clear, with the water share of the zone.
+
+    In the season, the season so far is searched on every run. Outside it, `prior` (the last evidence) is kept
+    unchanged; only a site without any evidence yet (`bootstrap`) is checked against the last season. When no
+    scene qualifies, `prior` is kept. Returns {"date", "s2_id", "water_share", "water_km2", "zone_valid_share",
+    "checked", "season", "source"}, or None when there is no evidence at all.
+    """
+    from sartale.lakes import lake_bbox
+    words = season_text(season)
+    span = season_bounds(today, season)
+    if span is None:
+        if prior is not None or not bootstrap:
+            return prior
+        span = last_season_bounds(today, season)
+    x, y, epsg = absence_grid(lake)
+    scenes = [_scene(f, Date.fromisoformat(span[1])) for f in search_scenes(lake_bbox(lake), *span)]
+    scenes = [s for s in scenes if s["cloud"] <= ABSENCE_MAX_TILE_CLOUD
+              and all(k in s["assets"] for k in ("green", "swir16", "scl"))]
+    scenes.sort(key=lambda s: (s["date"], -s["cloud"], s["id"]), reverse=True)
+    for scene in scenes[:max_scenes]:
+        try:
+            opt = optical_on_grid(scene, x, y, epsg)
+        except Exception as e:  # noqa: BLE001 - an unreadable scene is skipped, and said so
+            log(f"{lake.id} absence vs {scene['id']}: unreadable ({type(e).__name__})")
+            continue
+        w = zone_water(lake, opt, x, y, epsg)
+        log(f"{lake.id} absence vs {scene['id']} ({scene['date']}): zone seen clear "
+            f"{100 * w['zone_valid_share']:.1f}%, water {100 * w['water_share']:.2f}% of the zone "
+            f"({w['water_km2']:.4f} km2)")
+        if w["zone_valid_share"] >= MIN_ZONE_VALID:
+            return {"date": scene["date"], "s2_id": scene["id"], "water_share": round(w["water_share"], 4),
+                    "water_km2": round(w["water_km2"], 4), "zone_valid_share": round(w["zone_valid_share"], 3),
+                    "checked": today, "season": words, "source": ABSENCE_SOURCE}
+    log(f"{lake.id} absence: no scene with the lake zone clear in {span[0]}..{span[1]}; the last evidence stands")
+    return prior

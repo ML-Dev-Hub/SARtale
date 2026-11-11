@@ -12,7 +12,14 @@ from sartale.catalog import PROVISIONAL, STANDARD
 from sartale.gcov import apply_mask
 from sartale.lakes import Lake
 from sartale.lakes import DEFAULT_ZONE_KM
-from sartale.lakestatus import SeriesPoint, cloud_window_looks, is_valid, lake_status, no_lake_status
+from sartale.lakestatus import (
+    SeriesPoint,
+    cloud_window_looks,
+    forming_status,
+    is_valid,
+    lake_status,
+    no_lake_status,
+)
 from sartale.lakewater import (
     dark_mask,
     despeckle,
@@ -30,6 +37,9 @@ from sartale.radiometry import to_db
 POINT_LABEL = "water area in the search window"
 OUTLINE_LABEL = "water area in the lake outline (buffered 200 m)"
 NO_LAKE_LABEL = "dark radar area in the search circle; there is no lake here now, so it is not lake area"
+FORMING_LABEL = ("dark radar area in the search circle; Sentinel-2 shows water where there was no lake, so a lake may "
+                 "be forming; this is not yet measured as lake area")
+FORMING_STATE = "lake_forming_check"  # lakes.json lake_state of a no-lake site where the absence check found water
 WATER_RGBA = (0x2b, 0x8c, 0xff, 200)
 SHADOW_RGBA = (128, 128, 128, 120)
 NOTES = ("Areas are water within a lake's outline (buffered 200 m) or, without one, a search circle (1 km unless "
@@ -332,6 +342,35 @@ def pictured_pass(series: list[SeriesPoint], track: str | None) -> str | None:
     return f"{p['date']}_{p['track']}"
 
 
+def forming_share(lake: Lake) -> float | None:
+    """The water share of the zone above which a no-lake site may be forming a lake; None for other sites."""
+    if lake.lake_state != "no_lake":
+        return None
+    return lake.forming_share if lake.forming_share is not None else config.FORMING_WATER_SHARE
+
+
+def is_forming(absence: dict | None, threshold: float | None = None) -> bool:
+    """True when the absence check found water on more than `threshold` (default config.FORMING_WATER_SHARE) of
+    the lake zone."""
+    limit = config.FORMING_WATER_SHARE if threshold is None else threshold
+    return bool(absence) and float(absence.get("water_share") or 0.0) > limit
+
+
+def apply_absence(entry: dict, absence: dict | None) -> dict:
+    """A built lakes.json entry of a site the register holds as "no lake now", with its absence evidence applied:
+    `absence_checked` set, and the state, status and area label of "no lake now" or, when Sentinel-2 found water,
+    "lake may be forming" (FORMING_STATE). Other entries are returned unchanged. The radar water layer is not
+    restored here; the next lakes-build draws it."""
+    if entry.get("lake_state") not in ("no_lake", FORMING_STATE):
+        return entry
+    st = entry["status"]
+    if is_forming(absence, entry.get("forming_share")):
+        return {**entry, "lake_state": FORMING_STATE, "absence_checked": absence, "area_label": FORMING_LABEL,
+                "status": forming_status(st, absence)}
+    return {**entry, "lake_state": "no_lake", "absence_checked": absence, "area_label": NO_LAKE_LABEL,
+            "status": no_lake_status(st, entry.get("lake_state_source"), absence)}
+
+
 def area_label(lake: Lake, has_outline: bool) -> str:
     """What a lake's area measures, in words the app shows."""
     if lake.lake_state == "no_lake":
@@ -357,19 +396,18 @@ def _no_looks() -> dict:
             "change_km2": None, "noise_km2": None, "reason": NO_LOOKS_REASON, "new_crid": None}
 
 
-def _empty(entry: dict, limits: list[str], lake: Lake) -> dict:
-    status = _no_looks()
-    if lake.lake_state == "no_lake":
-        status = no_lake_status(status, lake.lake_state_source)
-    return {**entry, "status": status, "cloud_window_looks": 0, "directions": [], "limits": limits,
-            "series": [], "excluded": [], "images": {"latest_hh": None, "water": None, "date": None, "track": None},
-            "bounds": None}
+def _empty(entry: dict, limits: list[str], lake: Lake, absence: dict | None = None) -> dict:
+    out = {**entry, "status": _no_looks(), "cloud_window_looks": 0, "directions": [], "limits": limits,
+           "series": [], "excluded": [], "images": {"latest_hh": None, "water": None, "date": None, "track": None},
+           "bounds": None}
+    return apply_absence(out, absence)
 
 
 def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str, str] | None = None,
-               listed: set[tuple[str, str, str]] | None = None) -> dict:
-    """`listed`: the (date, key, CRID) of the passes lakes-search listed for this lake; None reads every window."""
-    limits: list[str] = state_limits(lake)
+               listed: set[tuple[str, str, str]] | None = None, absence: dict | None = None) -> dict:
+    """`listed`: the (date, key, CRID) of the passes lakes-search listed for this lake; None reads every window.
+    `absence`: the last Sentinel-2 absence check of a site with no lake now (`lakecheck.absence_check`)."""
+    limits: list[str] = state_limits(lake) + list(lake.limits)
     feature = _outline_feature(lake)
     outline = feature["geometry"] if feature else None
     if lake.outline and outline is None:
@@ -379,16 +417,18 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         "coord_source": lake.coord_source,
         "outline_source": (feature["properties"].get("source") or lake.outline) if feature else None,
         "area_label": area_label(lake, outline is not None),
+        "zone_radius_km": None if outline is not None else lake.zone_radius_km,
+        "forming_share": forming_share(lake), "forming_share_source": lake.forming_share_source,
         "lake_state": lake.lake_state, "lake_state_source": lake.lake_state_source,
         "downstream": lake.downstream, "downstream_source": lake.downstream_source,
     }
     lake_dir = Path(cache_dir) / lake.id
     if not lake_dir.is_dir():
-        return _empty(entry, limits + ["no NISAR windows fetched yet"], lake)
+        return _empty(entry, limits + ["no NISAR windows fetched yet"], lake, absence)
     raw = _read_cache(lake_dir, limits, listed)
     passes, xs, ys = _align(raw, limits, lake) if raw else ([], None, None)
     if not passes:
-        return _empty(entry, limits + ["no usable NISAR window"], lake)
+        return _empty(entry, limits + ["no usable NISAR window"], lake, absence)
 
     epsg, px, by_track, excluded, directions, shadow = _analyse(passes, xs, ys, limits)
     zone = lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline)
@@ -422,16 +462,19 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         images = {**_write_images(Path(out_dir) / "lakes" / lake.id, good, latest, zone, shadow, ys),
                   "date": latest["date"], "track": latest["key"]}
     if lake.lake_state == "no_lake":
-        # No verdict, and no blue "water" layer: the dark pixels at an empty basin are not a lake.
-        status = no_lake_status(status, lake.lake_state_source)
-        if images["water"]:
+        # No verdict, and no blue "water" layer: the dark pixels at an empty basin are not a lake. Where Sentinel-2
+        # has since found water (a lake may be forming), the layer stays once the pictured pass is no older than
+        # that scene.
+        keep = is_forming(absence, forming_share(lake)) and images["date"] is not None and images["date"] >= absence["date"]
+        if images["water"] and not keep:
             (Path(out_dir) / images["water"]).unlink(missing_ok=True)
             images = {**images, "water": None}
-    return {**entry, "status": status,
-            "cloud_window_looks": cloud_window_looks(series),
-            "directions": sorted(set(directions.values())), "limits": limits, "series": series,
-            "excluded": [{"pass": k, "reason": v} for k, v in sorted(excluded.items())],
-            "images": images, "bounds": _bounds(xs, ys, epsg, px)}
+    out = {**entry, "status": status,
+           "cloud_window_looks": cloud_window_looks(series),
+           "directions": sorted(set(directions.values())), "limits": limits, "series": series,
+           "excluded": [{"pass": k, "reason": v} for k, v in sorted(excluded.items())],
+           "images": images, "bounds": _bounds(xs, ys, epsg, px)}
+    return apply_absence(out, absence)
 
 
 def _track_medians(lk: dict) -> dict[str, float]:
@@ -462,16 +505,31 @@ def attabad_gate(doc: dict) -> dict:
             "attabad_cloud_window_looks": cw, "pass": ok}
 
 
+def carried_absence(previous: dict | None, lake: Lake) -> dict | None:
+    """The last absence check of `lake` in a previously published lakes.json, if that entry was for the same
+    point and zone (a moved site or a changed zone starts again with no evidence)."""
+    if lake.lake_state != "no_lake" or not previous:
+        return None
+    old = next((lk for lk in previous.get("lakes", []) if lk.get("id") == lake.id), None)
+    if not old or not isinstance(old.get("absence_checked"), dict):
+        return None
+    if (old.get("lon"), old.get("lat")) != (lake.lon, lake.lat) or old.get("zone_radius_km") != lake.zone_radius_km:
+        return None
+    return old["absence_checked"]
+
+
 def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, checks: list[dict] | None = None,
-                collections: dict[str, str] | None = None) -> dict:
+                collections: dict[str, str] | None = None, previous: dict | None = None) -> dict:
     """`checks` are the Sentinel-2 cross-check rows from `lakes-check`, merged in as the `checks` block.
     `collections` maps CRID -> CMR short name (default: read from `cache_dir`/passes.json). Only the passes that
-    `cache_dir`/passes.json lists are built; without that file every cached window is read."""
+    `cache_dir`/passes.json lists are built; without that file every cached window is read. `previous` is the
+    lakes.json this build replaces: each no-lake site keeps its last Sentinel-2 absence check from it."""
     if collections is None:
         collections = read_collections(Path(cache_dir) / PASSES_JSON)
     listed = read_listed(Path(cache_dir) / PASSES_JSON)
     built_lakes = [build_lake(lake, Path(cache_dir), Path(out_dir), collections,
-                              None if listed is None else listed.get(lake.id, set())) for lake in lakes]
+                              None if listed is None else listed.get(lake.id, set()),
+                              carried_absence(previous, lake)) for lake in lakes]
     crids = sorted({p["crid"] for lk in built_lakes for p in lk["series"]})
     return {
         "version": 1, "built": built, "notes": NOTES,

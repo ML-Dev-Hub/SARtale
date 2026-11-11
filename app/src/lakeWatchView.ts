@@ -1,4 +1,4 @@
-import { cloudHeadline, hasLakeNow, isTrendPass, methodLimits, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
+import { cloudHeadline, hasLakeNow, isTrendPass, mayBeForming, methodLimits, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
 import { dataUrl, formatDate } from "./format";
 import { statusSlug } from "./lakeLocator";
 
@@ -208,7 +208,8 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     }
     if (!hh) wrap.append(el("p", "lw-none", "No radar picture yet for the latest HH image"));
     if (!water && hasLakeNow(lake)) wrap.append(el("p", "lw-none", "No radar picture yet for the water pixels"));
-    if (!water && !hasLakeNow(lake)) wrap.append(el("p", "lw-note", "No water layer: there is no lake at this site now."));
+    if (!water && mayBeForming(lake)) wrap.append(el("p", "lw-note", "No water layer yet: Sentinel-2 shows water here, and SARtale measures it from the next NISAR pass."));
+    else if (!water && !hasLakeNow(lake)) wrap.append(el("p", "lw-note", "No water layer: there is no lake at this site now."));
     wrap.append(el("p", "lw-note", "NISAR GCOV crop on the UTM grid, north up, about 6 km across. A picture, not an interactive map."));
     return wrap;
   }

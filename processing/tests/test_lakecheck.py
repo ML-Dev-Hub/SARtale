@@ -278,3 +278,74 @@ def test_zone_valid_share():
     valid[0] = False
     assert lakecheck.zone_valid_share(valid, zone) == 0.5
     assert lakecheck.zone_valid_share(valid, np.zeros((4, 4), bool)) == 0.0
+
+
+# --- absence check -------------------------------------------------------------------------------------------------
+
+def _absent_lake():
+    from dataclasses import replace
+    return replace(make_lake("basin"), lake_state="no_lake", lake_state_source="dry")
+
+
+def _scenes(*rows):
+    return [{"id": sid, "properties": {"datetime": f"{d}T05:00:00Z", "eo:cloud_cover": c},
+             "assets": {"green": {}, "swir16": {}, "scl": {}}} for sid, d, c in rows]
+
+
+def test_absence_check_outside_the_season_keeps_the_last_evidence(monkeypatch):
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a, **k: pytest.fail("outside the season: no search"))
+    prior = {"date": "2026-08-17", "s2_id": "S2_OLD", "water_share": 0.0}
+    assert lakecheck.absence_check(_absent_lake(), "2026-11-11", prior, log=lambda *_: None) is prior
+
+
+def test_absence_check_without_evidence_bootstraps_from_the_last_season(monkeypatch):
+    spans = []
+
+    def search(bbox, a, b):
+        spans.append((a, b))
+        return _scenes(("S2_A", "2026-09-20", 5.0), ("S2_B", "2026-08-17", 1.0))
+
+    def optical(scene, x, y, epsg):
+        shape = (len(y), len(x))
+        return {"water": np.zeros(shape, bool), "valid": np.ones(shape, bool), "window_cloud_share": 0.0,
+                "invalid_share": 0.0}
+
+    monkeypatch.setattr(lakecheck, "search_scenes", search)
+    monkeypatch.setattr(lakecheck, "optical_on_grid", optical)
+    row = lakecheck.absence_check(_absent_lake(), "2026-11-11", None, log=lambda *_: None)
+    assert spans == [("2026-06-15", "2026-09-30")]
+    assert (row["date"], row["s2_id"], row["water_share"], row["checked"]) == ("2026-09-20", "S2_A", 0.0, "2026-11-11")
+    assert row["zone_valid_share"] == 1.0 and row["season"] == "15 Jun–30 Sep"
+
+
+def test_absence_check_in_season_takes_the_newest_scene_whose_zone_is_clear(monkeypatch):
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda bbox, a, b: _scenes(
+        ("S2_NEW_CLOUDY", "2026-08-20", 10.0), ("S2_CLEAR", "2026-08-10", 10.0)))
+
+    def optical(scene, x, y, epsg):
+        shape = (len(y), len(x))
+        valid = np.ones(shape, bool) if scene["id"] == "S2_CLEAR" else np.zeros(shape, bool)
+        water = np.zeros(shape, bool)
+        water[: shape[0] // 2] = True  # half the grid is water
+        return {"water": water & valid, "valid": valid, "window_cloud_share": 0.0, "invalid_share": 0.0}
+
+    monkeypatch.setattr(lakecheck, "optical_on_grid", optical)
+    prior = {"date": "2026-07-01", "s2_id": "S2_OLD", "water_share": 0.0}
+    row = lakecheck.absence_check(_absent_lake(), "2026-08-25", prior, log=lambda *_: None)
+    assert row["s2_id"] == "S2_CLEAR" and 0.3 < row["water_share"] < 0.7
+
+
+def test_absence_check_with_no_clear_scene_keeps_the_prior(monkeypatch):
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a: _scenes(("S2_C", "2026-08-20", 10.0)))
+    monkeypatch.setattr(lakecheck, "optical_on_grid", lambda scene, x, y, epsg: {
+        "water": np.zeros((len(y), len(x)), bool), "valid": np.zeros((len(y), len(x)), bool),
+        "window_cloud_share": 1.0, "invalid_share": 1.0})
+    prior = {"date": "2026-07-01", "s2_id": "S2_OLD", "water_share": 0.0}
+    assert lakecheck.absence_check(_absent_lake(), "2026-08-25", prior, log=lambda *_: None) is prior
+
+
+def test_season_bounds():
+    assert lakecheck.season_bounds("2026-11-11") is None
+    assert lakecheck.season_bounds("2026-07-02") == ("2026-06-15", "2026-07-02")
+    assert lakecheck.last_season_bounds("2026-03-01") == ("2025-06-15", "2025-09-30")
+    assert lakecheck.last_season_bounds("2026-07-02") == ("2026-06-15", "2026-07-02")

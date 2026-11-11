@@ -8,10 +8,29 @@ export type LakeStatusName =
   | "Not seen this pass"
   | "Not observable"
   | "Not enough NISAR looks yet"
-  | "No lake now";
+  | "No lake now"
+  | "Lake may be forming";
 
-/** What recent imagery shows at a site: a lake, a dark area not confirmed as a lake, or no lake now (absent in older builds: a lake). */
-export type LakeState = "lake" | "unconfirmed" | "no_lake";
+/**
+ * What recent imagery shows at a site: a lake, a dark area not confirmed as a lake, no lake now, or (at a site with no
+ * lake) water in the latest Sentinel-2 check, so a lake may be forming. Absent in older builds: a lake.
+ */
+export type LakeState = "lake" | "unconfirmed" | "no_lake" | "lake_forming_check";
+
+/** The dated Sentinel-2 check of a site with no lake now: the scene, and how much of the lake zone held water. */
+export interface AbsenceCheck {
+  /** Date of the Sentinel-2 scene. */
+  date: string;
+  s2_id: string;
+  /** Share of the lake zone's clear pixels that were water, 0 to 1. */
+  water_share: number;
+  water_km2: number;
+  zone_valid_share: number;
+  /** When SARtale ran the check. */
+  checked: string;
+  season?: string;
+  source?: string;
+}
 
 export interface LakeStatus {
   status: LakeStatusName;
@@ -48,6 +67,8 @@ export interface Lake {
   lake_state?: LakeState;
   /** What shows the lake state and when; set unless lake_state is "lake". */
   lake_state_source?: string | null;
+  /** For a site with no lake now: the last Sentinel-2 check (absent in older builds; null before the first check). */
+  absence_checked?: AbsenceCheck | null;
   downstream: string | null;
   downstream_source: string | null;
   status: LakeStatus;
@@ -140,6 +161,7 @@ export interface LakesFile {
 }
 
 export const STATUS_ORDER: LakeStatusName[] = [
+  "Lake may be forming",
   "Growing",
   "Shrinking",
   "Change not confirmed yet",
@@ -155,9 +177,27 @@ export function lakeState(l: Lake): LakeState {
   return l.lake_state ?? "lake";
 }
 
-/** True unless recent imagery shows no lake at the site (an empty ice-dammed basin kept to watch for a lake forming). */
+/**
+ * True for a site that holds a lake now (confirmed or not). False for an empty basin kept to watch for a lake forming,
+ * and for one where Sentinel-2 has just shown water: that may be a lake forming, but SARtale has not measured it yet.
+ */
 export function hasLakeNow(l: Lake): boolean {
-  return lakeState(l) !== "no_lake";
+  const s = lakeState(l);
+  return s !== "no_lake" && s !== "lake_forming_check";
+}
+
+/** True for a site with no lake now where the latest Sentinel-2 check found water. */
+export function mayBeForming(l: Lake): boolean {
+  return lakeState(l) === "lake_forming_check";
+}
+
+/** "Last checked 17 Aug 2026 with Sentinel-2 (scene): water on 0.04% of the lake zone.", or null without a check. */
+export function absenceLine(l: Lake): string | null {
+  const a = l.absence_checked;
+  if (!a) return null;
+  const pct = a.water_share * 100;
+  const shown = pct === 0 ? "0%" : pct < 1 ? `${pct.toFixed(2)}%` : `${pct.toFixed(1)}%`;
+  return `Last checked ${formatDate(a.date)} with Sentinel-2 (${a.s2_id}): water on ${shown} of the lake zone.`;
 }
 
 /** The sites that hold a lake now: what the lake counts and the cloud-window looks are made of. */
@@ -175,12 +215,19 @@ export function cloudLakes(file: LakesFile): number {
   return lakesNow(file).filter((l) => l.cloud_window_looks > 0).length;
 }
 
-/** "7 lakes", or "5 lakes and 2 sites with no lake now" when the list keeps empty basins. */
+/**
+ * "7 lakes", or "5 lakes and 2 sites with no lake now" when the list keeps empty basins, with "1 site where a lake may
+ * be forming" when a check found water at one.
+ */
 export function watchList(file: LakesFile): string {
   const lakes = lakesNow(file).length;
-  const empty = file.lakes.length - lakes;
-  const head = `${lakes} ${lakes === 1 ? "lake" : "lakes"}`;
-  return empty ? `${head} and ${empty} ${empty === 1 ? "site" : "sites"} with no lake now` : head;
+  const forming = file.lakes.filter(mayBeForming).length;
+  const empty = file.lakes.length - lakes - forming;
+  const sites = (n: number) => `${n} ${n === 1 ? "site" : "sites"}`;
+  const parts = [`${lakes} ${lakes === 1 ? "lake" : "lakes"}`];
+  if (empty) parts.push(`${sites(empty)} with no lake now`);
+  if (forming) parts.push(`${sites(forming)} where a lake may be forming`);
+  return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
 
 function isLakesFile(v: unknown): v is LakesFile {

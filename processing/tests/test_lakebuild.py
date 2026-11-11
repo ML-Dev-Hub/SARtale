@@ -331,7 +331,8 @@ def test_a_no_lake_site_keeps_its_passes_but_gets_no_verdict_and_no_water_layer(
     assert (st["change_km2"], st["noise_km2"]) == (None, None)
     assert (st["track"], st["latest_date"], st["looks"]) == ("156A", "2026-07-24", 4)
     assert st["reason"] == ("No lake in recent imagery: Sentinel-2 shows a dry basin on 17 Aug 2026. "
-                            "SARtale keeps the site to watch for a lake forming.")
+                            "SARtale re-checks the site with Sentinel-2 in each open-water season for a lake forming.")
+    assert lk["absence_checked"] is None
     assert lk["lake_state"] == "no_lake" and lk["lake_state_source"] == src
     assert lk["area_label"] == NO_LAKE_LABEL
     assert len(lk["series"]) == 4 and lk["cloud_window_looks"] == 4  # passes are still read and counted
@@ -384,3 +385,57 @@ def test_a_window_cached_under_the_old_mask_rule_is_masked_again(tmp_path):
     row = next(p for p in lake(doc, "alpha")["series"] if p["date"] == "2026-08-05")
     assert row["area_km2"] is None and row["observable_share"] == 0.0
     assert row["excluded"] == "window has no valid HH pixels"
+
+
+def _no_lake_site(tmp_path):
+    from dataclasses import replace
+    cache = tmp_path / "cache"
+    base = make_lake("basin")
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24", "2026-09-04"]:
+        write_pass(cache, base, d, "156A")
+    return cache, replace(base, lake_state="no_lake", lake_state_source="a dry basin")
+
+
+EV_DRY = {"date": "2026-08-17", "s2_id": "S2_DRY", "water_share": 0.002, "water_km2": 0.006, "zone_valid_share": 1.0,
+          "checked": "2026-08-20", "season": "15 Jun–30 Sep", "source": "Sentinel-2"}
+EV_WET = {**EV_DRY, "date": "2026-09-01", "s2_id": "S2_WET", "water_share": 0.05, "water_km2": 0.157}
+
+
+def test_a_no_lake_site_carries_its_last_absence_check_from_the_previous_build(tmp_path):
+    from sartale.lakestatus import NO_LAKE
+    cache, gone = _no_lake_site(tmp_path)
+    first = build_lakes([gone], cache, tmp_path / "out", "t")
+    first["lakes"][0]["absence_checked"] = EV_DRY
+    again = build_lakes([gone], cache, tmp_path / "out", "t", previous=first)["lakes"][0]
+    assert again["absence_checked"] == EV_DRY and again["status"]["status"] == NO_LAKE
+    assert "Last checked 17 Aug 2026" in again["status"]["reason"]
+    # a moved point starts again with no evidence
+    from dataclasses import replace
+    moved = build_lakes([replace(gone, lon=gone.lon + 0.001)], cache, tmp_path / "out", "t", previous=first)
+    assert moved["lakes"][0]["absence_checked"] is None
+
+
+def test_water_in_the_absence_check_turns_no_lake_now_into_lake_may_be_forming(tmp_path):
+    from sartale.lakebuild import FORMING_LABEL, FORMING_STATE, apply_absence
+    from sartale.lakestatus import LAKE_FORMING, NO_LAKE
+    cache, gone = _no_lake_site(tmp_path)
+    out = tmp_path / "out"
+    doc = build_lakes([gone], cache, out, "t")
+    entry = apply_absence(doc["lakes"][0], EV_WET)
+    assert entry["lake_state"] == FORMING_STATE and entry["status"]["status"] == LAKE_FORMING
+    assert entry["area_label"] == FORMING_LABEL and entry["absence_checked"] == EV_WET
+    assert entry["status"]["change_km2"] is None
+    # the next build keeps the water layer once the pictured pass is no older than the wet scene
+    doc["lakes"][0] = entry
+    rebuilt = build_lakes([gone], cache, out, "t", previous=doc)["lakes"][0]
+    assert rebuilt["status"]["status"] == LAKE_FORMING and rebuilt["images"]["water"]
+    # water gone again: back to no lake now
+    back = apply_absence(rebuilt, EV_DRY)
+    assert back["lake_state"] == "no_lake" and back["status"]["status"] == NO_LAKE
+
+
+def test_apply_absence_leaves_lakes_alone(built):
+    from sartale.lakebuild import apply_absence
+    doc, _ = built
+    lk = doc["lakes"][0]
+    assert apply_absence(lk, EV_WET) is lk

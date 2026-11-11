@@ -24,3 +24,10 @@ CLOUD_WINDOW = ("2026-06-17", "2026-08-04")  # inclusive; headline cloud count
 # can be frozen or snow-covered (Shazore was open 26 Jun-9 Oct 2026 and frozen by 19 Oct; Rogheli had snow and ice
 # from early October), and optical MNDWI never counts snow or ice as water, so a pair then is no test of radar water.
 OPEN_WATER_SEASON = ((6, 15), (9, 30))
+# A site the register holds as "no lake now" is re-checked with Sentinel-2 in each open-water season (lakes-absence).
+# Water on more than this share of the lake zone's clear pixels turns it into "Lake may be forming". A site sets its
+# own `forming_share` in lakes_in.json when its empty zone holds other water (a river, a pond nearby); this is the
+# default. It comes from Shisper, the reference empty basin (docs/DATA_SOURCES.md, "No lake now"): in the 1 km circle
+# the empty basin read 0.6-1.6% water on every clear scene of 15 Jun-30 Sep 2026 (stream threads), while the lake
+# filled 6.8-12.6% (26 Mar and 5 Apr 2022, 20 and 25 May 2020). 4% sits clear of both.
+FORMING_WATER_SHARE = 0.04

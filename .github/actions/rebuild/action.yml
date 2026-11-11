@@ -82,6 +82,15 @@ runs:
         unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
         python -m sartale.run_pipeline lakes-build
 
+    - name: Re-check the sites with no lake now (Sentinel-2, open-water season)
+      # Searches only in the open-water season; outside it the last dated evidence is kept. A failed search keeps
+      # the last evidence too, and the site shows its date.
+      shell: bash -el {0}
+      working-directory: processing
+      run: |
+        unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
+        python -m sartale.run_pipeline lakes-absence
+
     - name: Compare with the published passes (fails when too many would be dropped)
       shell: bash -el {0}
       working-directory: processing

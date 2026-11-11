@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { fixtureLakes } from "./fixtures";
-import { cloudHeadline, lakeTokens, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
+import { absenceLine, cloudHeadline, hasLakeNow, lakeTokens, mayBeForming, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -55,7 +55,7 @@ describe("sortLakes", () => {
   });
   test("status order is the documented one", () => {
     expect(STATUS_ORDER).toEqual([
-      "Growing", "Shrinking", "Change not confirmed yet", "Not seen this pass", "Stable", "Not enough NISAR looks yet", "Not observable", "No lake now",
+      "Lake may be forming", "Growing", "Shrinking", "Change not confirmed yet", "Not seen this pass", "Stable", "Not enough NISAR looks yet", "Not observable", "No lake now",
     ]);
   });
   test("does not mutate its input", () => {
@@ -156,6 +156,21 @@ describe("sites with no lake now", () => {
     expect(t.watch_list).toBe("6 lakes and 1 site with no lake now");
     expect(watchList(fixtureLakes)).toBe("7 lakes");
     expect(cloudHeadline(f)).toContain("NISAR made 42 valid looks across 6 lakes.");
+  });
+
+  test("carry the dated Sentinel-2 check, and water in it makes a site where a lake may be forming", () => {
+    const f = file();
+    const hidden = f.lakes.find((l) => l.id === "hidden")!;
+    const dry = { ...hidden, absence_checked: { date: "2026-08-17", s2_id: "S2B_X", water_share: 0.0004, water_km2: 0.001, zone_valid_share: 1, checked: "2026-11-11" } };
+    expect(absenceLine(dry)).toBe("Last checked 17 Aug 2026 with Sentinel-2 (S2B_X): water on 0.04% of the lake zone.");
+    expect(absenceLine({ ...hidden, absence_checked: null })).toBeNull();
+    const wet = { ...dry, lake_state: "lake_forming_check" as const, status: { ...hidden.status, status: "Lake may be forming" as const } };
+    expect(hasLakeNow(wet) || !mayBeForming(wet)).toBe(false);
+    const g = { ...f, lakes: f.lakes.map((l) => (l.id === "hidden" ? wet : l)) };
+    expect(watchList(g)).toBe("6 lakes and 1 site where a lake may be forming");
+    expect(sortLakes(g.lakes)[0].id).toBe("hidden");
+    const both = { ...g, lakes: [...g.lakes, { ...dry, id: "dry" }] };
+    expect(watchList(both)).toBe("6 lakes, 1 site with no lake now and 1 site where a lake may be forming");
   });
 
   test("sort after every other status", () => {

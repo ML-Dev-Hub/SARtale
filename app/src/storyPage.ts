@@ -4,7 +4,7 @@ import "./storyPage.css";
 import copyJson from "./content/storyPage.json";
 import { dataUrl, formatDate } from "./format";
 import { mountAddLake, requestLine, shownRequests, type LakeRequest } from "./lakeRequests";
-import { cloudLooks, hasLakeNow, iouRange, lakesNow, opticalOverlapPhrase, type Lake, type LakesFile } from "./lakes";
+import { cloudLooks, hasLakeNow, iouRange, lakesNow, mayBeForming, opticalOverlapPhrase, type Lake, type LakesFile } from "./lakes";
 
 const copy = copyJson;
 const DASH = "—";
@@ -281,7 +281,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   for (const l of lakes) {
     const pos = mapPin(l.lon, l.lat);
     if (pos) {
-      const pin = el("span", hasLakeNow(l) ? "sp-pin" : "sp-pin sp-pin-nolake");
+      const pin = el("span", hasLakeNow(l) ? "sp-pin" : mayBeForming(l) ? "sp-pin sp-pin-nolake sp-pin-forming" : "sp-pin sp-pin-nolake");
       pin.style.left = pos.left;
       pin.style.top = pos.top;
       pin.title = hasLakeNow(l) ? l.name : `${l.name}: ${l.status.status}`;
@@ -299,7 +299,8 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   }
   const mapCredit = text("figcaption", "sp-map-credit", w.mapCredit);
   const mapKey = el("figcaption", "sp-map-key", el("span", "sp-key-pin"), ` ${w.keyWatched} `);
-  if (file?.lakes.some((l) => !hasLakeNow(l))) mapKey.append(el("span", "sp-key-pin sp-key-nolake"), ` ${w.keyNoLake} `);
+  if (file?.lakes.some((l) => !hasLakeNow(l) && !mayBeForming(l))) mapKey.append(el("span", "sp-key-pin sp-key-nolake"), ` ${w.keyNoLake} `);
+  if (file?.lakes.some(mayBeForming)) mapKey.append(el("span", "sp-key-pin sp-key-nolake sp-key-forming"), ` ${w.keyForming} `);
   mapKey.append(el("span", "sp-key-pin sp-key-request"), ` ${w.keyRequested}`);
   mapEl.append(mapKey, mapCredit);
   const requestEls: HTMLElement[] = [];
