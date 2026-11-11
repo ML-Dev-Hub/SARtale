@@ -22,7 +22,7 @@ function render(file: LakesFile | null) {
 }
 
 describe("storyNumbers", () => {
-  it("reads every number from the file", () => {
+  it("reads every number from the frozen 11-lake file of 23 Oct 2026 (a dated historical fixture)", () => {
     const n = storyNumbers(frozen);
     expect(n.lakes).toBe("11");
     expect(n.cloudLooks).toBe("60");
@@ -37,8 +37,17 @@ describe("storyNumbers", () => {
 
   it("reads the shipped file's own totals, whatever it holds", () => {
     const n = storyNumbers(real);
-    expect(real.lakes.length).toBeGreaterThanOrEqual(7);
-    expect(real.lakes.some((l) => l.id === "attabad")).toBe(true);
+    // Invariants, not a catalogue size: a justified retirement must not fail this test. Ids are unique, the
+    // Attabad control (the gate's lake) is there and holds a lake, and every site sits inside its own window.
+    const ids = real.lakes.map((l) => l.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const attabad = real.lakes.find((l) => l.id === "attabad");
+    expect(attabad && hasLakeNow(attabad) && attabad.role === "control").toBe(true);
+    for (const l of real.lakes) {
+      if (!l.bounds) continue;
+      const [w, s, e, nn] = l.bounds;
+      expect(w <= l.lon && l.lon <= e && s <= l.lat && l.lat <= nn, l.id).toBe(true);
+    }
     const now = real.lakes.filter(hasLakeNow);
     expect(n.sites).toBe(String(real.lakes.length));
     expect(n.lakes).toBe(String(now.length));
