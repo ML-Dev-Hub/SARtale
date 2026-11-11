@@ -253,6 +253,8 @@ def make_repo(tmp_path, name="repo"):
     for rel, text in {"processing/lakes_in.json": "[]\n", "app/public/data/lakes.json": '{"built": "a"}\n',
                       "app/public/data/requests.json": json.dumps(ACCEPTED_FEED) + "\n",
                       "app/public/data/lakes/attabad/old.webp": "old", "app/public/data/lakes/attabad/keep.webp": "k",
+                      "processing/sartale/config.py": "DROP_DB = 3.0\n",
+                      "processing/outlines/a.geojson": "{}\n", "environment.yml": "name: sartale\n",
                       "README.md": "hi\n"}.items():
         (repo / rel).parent.mkdir(parents=True, exist_ok=True)
         (repo / rel).write_text(text, encoding="utf-8")
@@ -291,6 +293,8 @@ def test_pack_lists_every_allowed_output_and_the_base(tmp_path):
     assert set(manifest["base"]) == {"processing/lakes_in.json", "app/public/data/lakes.json",
                                      "app/public/data/lakes"}
     assert all(len(v) == 40 for v in manifest["base"].values())
+    assert set(manifest["science"]) == set(data_artifact.SCIENCE)
+    assert len(manifest["science"]["processing/sartale"]) == 40
     assert not (out / "README.md").exists()
 
 
@@ -888,3 +892,37 @@ def test_accept_workflow_rechecks_live_before_it_commits():
     assert "steps.live.outputs.result == 'ok'" in steps[names.index("Comment and close the issue")]["if"]
     assert "live_approval.py" in steps[live]["run"]
     assert wf["jobs"]["gate"]["outputs"]["approver"]
+
+
+
+@pytest.mark.parametrize("path, text", [
+    ("processing/sartale/config.py", "DROP_DB = 2.5\n"),          # a method constant changed
+    ("processing/sartale/lakewater.py", "# new rule\n"),           # method code added
+    ("processing/outlines/a.geojson", '{"type": "Polygon"}\n'),    # an outline changed
+    ("environment.yml", "name: sartale\ndependencies: [numpy]\n"),
+    ("processing/lake_checks.json", "[]\n"),                       # check rows the build merges in
+])
+def test_w02_unpack_refuses_data_built_with_other_method_inputs(tmp_path, path, text):
+    repo, out, _ = rebuilt(tmp_path)
+    (repo / path).parent.mkdir(parents=True, exist_ok=True)
+    (repo / path).write_text(text, encoding="utf-8")
+    git("add", ".", cwd=repo)
+    git("commit", "-q", "-m", "method fix", cwd=repo)
+    with pytest.raises(data_artifact.Refused) as e:
+        data_artifact.unpack(repo, out)
+    assert e.value.code == 6 and "another" in str(e.value)
+
+
+def test_w02_unpack_refuses_a_manifest_without_the_method_identity(tmp_path):
+    repo, out, _ = rebuilt(tmp_path)
+    _rewrite_manifest(out, lambda m: m.pop("science"))
+    with pytest.raises(data_artifact.Refused) as e:
+        data_artifact.unpack(repo, out)
+    assert e.value.code == 2
+
+
+def test_w02_a_change_outside_the_science_still_publishes(tmp_path):
+    repo, out, _ = rebuilt(tmp_path)
+    (repo / "README.md").write_text("changed\n", encoding="utf-8")
+    git("commit", "-q", "-am", "docs", cwd=repo)
+    data_artifact.unpack(repo, out)

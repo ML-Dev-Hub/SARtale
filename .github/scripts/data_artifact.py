@@ -9,7 +9,9 @@
 Allowed paths: processing/lakes_in.json, app/public/data/lakes.json, app/public/data/requests.json and
 app/public/data/lakes/**. `unpack` refuses symlinks, paths outside those, files missing from the manifest or
 not matching its SHA-256, and data rebuilt on an older main than the publish checkout (the manifest records
-the git object ids of the inputs it started from). It never writes requests.json: the publish job's copy may
+the git object ids of the inputs it started from). The same holds for the scientific inputs (SCIENCE): data built
+with other method code, configuration, outlines, Sentinel-2 check rows, environment or rebuild action than the
+publish checkout's are refused too, so a method fix made during a rebuild is never published with older numbers. It never writes requests.json: the publish job's copy may
 have newer entries, so `accept` changes only the accepted issue's entry, and only if the values the team
 approved are still those of the current entry.
 
@@ -32,6 +34,11 @@ REQUESTS = "app/public/data/requests.json"
 PICTURES = "app/public/data/lakes"
 FILES = (LAKES_IN, LAKES_JSON, REQUESTS)
 BASE = (LAKES_IN, LAKES_JSON, PICTURES)  # inputs that only the rebuild jobs change
+# What the numbers are computed with, besides the register: the method code (config.py included), the outlines,
+# the Sentinel-2 check rows lakes-build merges in, the Python environment and the rebuild steps. Recorded as git
+# object ids (a folder's tree id covers every file in it) of the commit the rebuild started from.
+SCIENCE = ("processing/sartale", "processing/outlines", "processing/lake_checks.json", "environment.yml",
+           ".github/actions/rebuild/action.yml")
 MANIFEST = "manifest.json"
 SEGMENT = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9._-]*$")
 LAKE_ID = re.compile(r"^[a-z0-9_]+$")
@@ -92,7 +99,8 @@ def pack(repo: Path, out: Path) -> dict:
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src, dst)
         files[rel] = sha256(dst)
-    manifest = {"version": 1, "base": {p: git_object(repo, p) for p in BASE}, "files": files}
+    manifest = {"version": 1, "base": {p: git_object(repo, p) for p in BASE},
+                "science": {p: git_object(repo, p) for p in SCIENCE}, "files": files}
     (out / MANIFEST).write_text(json.dumps(manifest, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     return manifest
 
@@ -135,6 +143,12 @@ def unpack(repo: Path, src: Path) -> list[str]:
     for path in BASE:
         if manifest["base"].get(path) != git_object(repo, path):
             raise Refused(f"main changed {path} while the data were rebuilt", 6)
+    science = manifest.get("science")
+    if not isinstance(science, dict) or set(science) != set(SCIENCE):
+        raise Refused("the manifest does not say which method code built the data")
+    for path in SCIENCE:
+        if science[path] != git_object(repo, path):
+            raise Refused(f"the data were built with another {path} than main has now", 6)
     files = manifest["files"]
     copied = []
     for rel in sorted(files):

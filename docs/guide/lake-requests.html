@@ -69,7 +69,7 @@
 <p>The rebuild runs in separate jobs so that no job holds both the Earthdata login and a write token:</p>
 <ul>
   <li><b>Rebuild</b> has the Earthdata login (the <code>earthdata</code> environment) and read-only access. It adds the lake, searches, fetches, builds and runs the tests, then hands the data over as an artifact.</li>
-  <li><b>Publish</b> has a write token and no Earthdata login. It checks the artifact, commits the data, redeploys, comments and closes the issue.</li>
+  <li><b>Publish</b> has a write token and no Earthdata login. It checks the artifact, commits the data, redeploys, comments and closes the issue. It refuses data built from other method code, configuration, outlines, Sentinel-2 check rows, environment or rebuild steps than main has now, and starts the accept again instead.</li>
 </ul>
 <p>Only one rebuild runs at a time, shared with the <a href="deploy.html#weekly-refresh">weekly refresh</a>. A second accept waits and is started when the first is done. If the data on <code>main</code> change during a rebuild, it starts itself again, at most 3 runs in all.</p>
 
