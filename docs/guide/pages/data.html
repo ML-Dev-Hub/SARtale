@@ -20,6 +20,8 @@
     <tr><td><code>zone_radius_km</code></td><td>Radius of the search circle when there is no outline: 1 km by default, at most 2.5 km (the window is 6 km across). Karambar's terminus pond uses 0.3.</td></tr>
     <tr><td><code>lake_state</code></td><td><code>"lake"</code> (default); <code>"unconfirmed"</code>, a lake recent imagery does not confirm, which keeps its status and gets a limit; or <code>"no_lake"</code>, a site with no lake now, whose status is No lake now with no verdict and no water layer.</td></tr>
     <tr><td><code>lake_state_source</code></td><td>What shows the state, with dates. Required unless <code>lake_state</code> is <code>"lake"</code>.</td></tr>
+    <tr><td><code>forming_share</code>, <code>forming_share_source</code></td><td>Optional, for a <code>"no_lake"</code> site only: the water share of the zone above which the Sentinel-2 re-check says a lake may be forming (default 4%, <code>FORMING_WATER_SHARE</code>), and why. Set where the empty zone holds other water, such as a river.</td></tr>
+    <tr><td><code>limits</code></td><td>Optional list of the site's own sourced limits, shown with the lake (for example a past partial drainage).</td></tr>
   </tbody>
 </table></div>
 <div class="table-wrap"><table>
@@ -50,12 +52,14 @@
   <thead><tr><th>Key</th><th>Contents</th></tr></thead>
   <tbody>
     <tr><td><code>status</code></td><td><code>status</code>, <code>track</code>, <code>latest_date</code>, <code>looks</code>, <code>change_km2</code>, <code>noise_km2</code>, a plain <code>reason</code>, and <code>new_crid</code> (for Change not confirmed yet, the new processing version the change waits on; otherwise null)</td></tr>
-    <tr><td><code>series</code></td><td>Every pass: <code>date</code>, <code>track</code>, <code>area_km2</code>, <code>observable_share</code>, <code>excluded</code> (null, or the reason it was left out) and <code>crid</code> (the pass's processing version)</td></tr>
+    <tr><td><code>series</code></td><td>Every pass: <code>date</code>, <code>track</code>, <code>area_km2</code>, <code>observable_share</code>, <code>excluded</code> (null, or the reason it was left out) and <code>crid</code> (the pass's processing version). A left-out pass has <code>area_km2</code> null and keeps what it read as <code>diagnostic_km2</code> (null when it had no valid pixel), which the chart draws as a hollow marker and the status never uses</td></tr>
     <tr><td><code>excluded</code></td><td>The passes left out, as <code>{"pass", "reason"}</code></td></tr>
     <tr><td><code>images</code></td><td>Paths, relative to <code>data/</code>, of <code>latest_hh</code> and <code>water</code></td></tr>
     <tr><td><code>bounds</code></td><td>The window's <code>[west, south, east, north]</code> in degrees</td></tr>
     <tr><td><code>area_label</code>, <code>outline_source</code>, <code>limits</code>, <code>directions</code>, <code>cloud_window_looks</code></td><td>What the area measures, the outline's source, lake-specific limits, the viewing directions seen (A, D) and looks in the cloud window</td></tr>
-    <tr><td><code>lake_state</code>, <code>lake_state_source</code></td><td>Copied from the register. The app leaves sites with <code>"no_lake"</code> out of the lake count and the cloud-window looks, and never features a site that is not a confirmed lake</td></tr>
+    <tr><td><code>lake_state</code>, <code>lake_state_source</code></td><td>Copied from the register, except that a <code>"no_lake"</code> site whose latest Sentinel-2 check found water above its threshold becomes <code>"lake_forming_check"</code> (status Lake may be forming). The app leaves both out of the lake count and the cloud-window looks, and never features a site that is not a confirmed lake</td></tr>
+    <tr><td><code>absence_checked</code></td><td>For a site with no lake now: the last Sentinel-2 check, <code>date</code> and <code>s2_id</code> of the scene, <code>water_share</code> and <code>water_km2</code> of the zone, <code>zone_valid_share</code>, <code>checked</code> (when SARtale ran it), <code>season</code> and <code>source</code>. Null before the first check</td></tr>
+    <tr><td><code>zone_radius_km</code>, <code>forming_share</code>, <code>forming_share_source</code></td><td>The circle zone's radius (null for an outline), and for a site with no lake now the threshold its re-check uses</td></tr>
   </tbody>
 </table></div>
 <p>A sample pass from <code>series</code>:</p>
