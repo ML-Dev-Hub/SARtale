@@ -283,15 +283,16 @@ def screen_all(by_track: dict[str, list[dict]], manual: dict[str, str] | None = 
     return excluded
 
 
-def season_dark(by_track: dict[str, list[dict]], excluded: dict[str, str]) -> dict[str, np.ndarray]:
-    """Dark mask of each track's season-median image (two-view rule, R2), from non-excluded passes only."""
+def season_dark(by_track: dict[str, list[dict]], excluded: dict[str, str]) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+    """(dark, valid) masks of each track's season-median image (two-view rule, R2), from non-excluded passes only.
+    `valid` is kept so that a pixel a track never measured is not read as "not dark" there."""
     out = {}
     for k, ps in by_track.items():
         ok = [p for p in ps if p["id"] not in excluded]
         if ok:
             med_hh = _nanmedian0(np.stack([p["hh_db"] for p in ok]))
             med_hv = _nanmedian0(np.stack([p["hv_db"] for p in ok]))
-            out[k] = dark_mask(med_hh, med_hv)[0]
+            out[k] = dark_mask(med_hh, med_hv)
     return out
 
 
@@ -311,7 +312,8 @@ def _analyse(passes: list[dict], xs, ys, limits: list[str]):
     excluded = screen_all(by_track)
     medians_dark = season_dark(by_track, excluded)
     directions = {k: k[-1] for k in by_track}
-    shadow = shadow_prone(medians_dark, directions) if medians_dark else None
+    shadow = (shadow_prone({k: v[0] for k, v in medians_dark.items()}, directions,
+                           {k: v[1] for k, v in medians_dark.items()}) if medians_dark else None)
     if shadow is None:
         limits.append("single viewing direction")
     return epsg, px, by_track, excluded, directions, shadow

@@ -52,6 +52,33 @@ def test_shadow_prone_is_one_direction_only():
     assert sp[STRIP].all() and not sp[LAKE].any()
 
 
+def test_missing_opposite_view_is_not_shadow():
+    """C02: a real water patch seen only by the ascending view (the descending one has no data there) stays
+    observable water; it does not become shadow because the other view is missing."""
+    hh, hv = scene()
+    a_dark, a_valid = dark_mask(hh, hv)
+    hh2, hv2 = hh.copy(), hv.copy()
+    hh2[LAKE], hv2[LAKE] = np.nan, np.nan
+    d_dark, d_valid = dark_mask(hh2, hv2)
+    sp = shadow_prone({"156A": a_dark, "063D": d_dark}, {"156A": "A", "063D": "D"},
+                      {"156A": a_valid, "063D": d_valid})
+    assert not sp[LAKE].any()
+    out = pass_water(hh, hv, LAKE.copy(), sp, pixel_m=10.0)
+    assert out["observable_share"] == pytest.approx(1.0)
+    assert out["area_km2"] == pytest.approx(LAKE.sum() * 100 / 1e6)
+
+
+def test_shadow_needs_the_opposite_view_to_see_the_pixel_light():
+    hh, hv = scene()
+    a_dark, a_valid = dark_mask(hh, hv)
+    hh2, hv2 = hh.copy(), hv.copy()
+    hh2[STRIP], hv2[STRIP] = -7.0, -14.0  # the descending view sees the strip as land
+    d_dark, d_valid = dark_mask(hh2, hv2)
+    sp = shadow_prone({"156A": a_dark, "063D": d_dark}, {"156A": "A", "063D": "D"},
+                      {"156A": a_valid, "063D": d_valid})
+    assert sp[STRIP].all() and not sp[LAKE].any()
+
+
 def test_shadow_prone_none_with_single_direction():
     hh, hv = scene()
     dark, _ = dark_mask(hh, hv)
@@ -114,6 +141,17 @@ def test_lake_zone_polygon_buffered_200m():
     assert zone[50, 75]  # ~15 px = 150 m beyond the edge, inside the 200 m buffer
     assert not zone[50, 90]  # ~300 m beyond
     assert not zone[5, 5]
+
+
+def test_an_outline_outside_the_window_fails_instead_of_drawing_a_phantom_zone():
+    """C04: a polygon 5 km beyond the grid has no pixel on it; the zone must not appear in a corner."""
+    to_ll = Transformer.from_crs(EPSG, 4326, always_xy=True)
+    off = 5000.0
+    corners = [(X[40] + off, Y[40]), (X[60] + off, Y[40]), (X[60] + off, Y[60]), (X[40] + off, Y[60]),
+               (X[40] + off, Y[40])]
+    ring = [to_ll.transform(cx, cy) for cx, cy in corners]
+    with pytest.raises(ValueError, match="does not cover any pixel"):
+        lake_zone((100, 100), X, Y, EPSG, centre_lake(), outline_polygon=ring)
 
 
 def test_despeckle_constant_field_unchanged():

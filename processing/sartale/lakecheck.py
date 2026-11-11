@@ -22,6 +22,10 @@ MAX_CLOUD_PCT = 20.0
 SCL_BAD = (0, 1, 3, 8, 9, 10)
 SCL_SNOW = 11
 NO_SCENE = "no clear Sentinel-2 scene within 3 days"
+# A pair compares water only when Sentinel-2 sees at least this share of the lake zone clear (not cloud, shadow or
+# no data). The window cloud share alone can be 1% while cloud covers the whole of a small lake; the comparison would
+# then report a measured 0 km2 of water where nothing was seen.
+MIN_ZONE_VALID = 0.8
 NO_SEASON_PAIR = "no open-water-season pair"
 _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
@@ -183,6 +187,12 @@ def optical_on_grid(scene: dict, x: np.ndarray, y: np.ndarray, epsg: int) -> dic
             "invalid_share": float(1 - valid.mean())}
 
 
+def zone_valid_share(valid: np.ndarray, zone: np.ndarray) -> float:
+    """Share of the lake zone's pixels that Sentinel-2 sees clear; 0.0 for an empty zone."""
+    zone = np.asarray(zone, bool)
+    return float(np.asarray(valid, bool)[zone].mean()) if zone.any() else 0.0
+
+
 def _pair(a: dict) -> dict:
     return {"radar_km2": a["radar_km2"], "optical_km2": a["optical_km2"],
             "area_error_pct": a["area_error_pct"], "iou": a["iou"]}
@@ -193,7 +203,8 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
     """One check row for a lake: among the (valid NISAR pass, Sentinel-2 scene) pairs within `days` of each other
     whose NISAR pass falls in the open-water season (`config.OPEN_WATER_SEASON` unless `season` is given), the one
     whose lake window is clearest (lowest SCL cloud share, then fewest days apart, then the latest), provided that
-    share is at most `max_cloud` percent. Outside the season a lake can be frozen or under snow, which optical water
+    share is at most `max_cloud` percent and Sentinel-2 sees at least MIN_ZONE_VALID of the lake zone clear (a
+    clouded lake zone is not measured as zero water; the row is then a note). Outside the season a lake can be frozen or under snow, which optical water
     never counts, so such a pair is no test of radar water. Without a valid in-season pass the row is a note
     (NO_SEASON_PAIR); without a clear scene, NO_SCENE. Every row carries `season`, the season in words.
 
@@ -241,8 +252,10 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
             log(f"{lake.id} {pass_id} vs {scene['id']}: unreadable ({type(e).__name__})")
             continue
         pct = 100 * opt["window_cloud_share"]
-        log(f"{lake.id} {pass_id} vs {scene['id']} ({apart} d apart): window cloud/no-data {pct:.1f}%")
-        if pct <= max_cloud:
+        zone_valid = zone_valid_share(opt["valid"], radar["zone"])
+        log(f"{lake.id} {pass_id} vs {scene['id']} ({apart} d apart): window cloud/no-data {pct:.1f}%, "
+            f"lake zone seen clear {100 * zone_valid:.1f}%")
+        if pct <= max_cloud and zone_valid >= MIN_ZONE_VALID:
             clear.append((round(pct, 1), apart, -Date.fromisoformat(d).toordinal(), track, scene, radar, opt, d, pct))
     if clear:
         _, apart, _, track, scene, radar, opt, d, pct = min(clear, key=lambda c: c[:4] + (c[4]["id"],))
@@ -254,6 +267,6 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
         return {"lake": lake.id, "nisar_date": d, "nisar_track": track, "s2_date": scene["date"],
                 "s2_id": scene["id"], "days_apart": apart, "s2_window_cloud_pct": round(pct, 1),
                 "scope": "zone", "season": words, **_pair(zone_cmp),
-                "zone_valid_share": float(opt["valid"][zone].mean()),
+                "zone_valid_share": zone_valid_share(opt["valid"], zone),
                 **{f"window_{k}": v for k, v in _pair(win_cmp).items()}}
     return {"lake": lake.id, "note": f"{NO_SCENE} in the open-water season ({words})", "season": words}

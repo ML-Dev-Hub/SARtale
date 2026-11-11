@@ -245,3 +245,36 @@ def test_check_picks_the_clearest_in_season_pair_and_says_which_season(tmp_path,
     assert "S2-oct" not in seen  # an October pair is never read: the lake may be frozen
     assert (row["s2_id"], row["nisar_date"], row["days_apart"]) == ("S2-aug", "2026-08-17", 1)  # clearest beats nearest
     assert row["season"] == "15 Jun–30 Sep" and row["s2_window_cloud_pct"] == 1.0
+
+
+def test_a_clouded_lake_zone_is_not_reported_as_measured_zero_water(tmp_path, monkeypatch):
+    """C05: cloud covers the whole lake zone but only a sliver of the window. The window share passes, the zone
+    is unseen, so the pair is not used and the row says no clear scene instead of radar 0 / optical 0."""
+    lake = make_lake("tiny")
+    cache = tmp_path / "cache"
+    for d in ["2026-07-12", "2026-07-24", "2026-08-05"]:
+        write_pass(cache, lake, d, "156A")
+        write_pass(cache, lake, d, "063D")
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a, **k: [
+        {"id": "S2C", "properties": {"datetime": "2026-07-12T05:00:00Z", "eo:cloud_cover": 1.0},
+         "assets": {"green": {}, "swir16": {}, "scl": {}}}])
+
+    def optical(scene, x, y, epsg):
+        from sartale.lakebuild import radar_water_masks
+        zone = radar_water_masks(lake, cache, "2026-07-12_156A")["zone"]
+        return {"water": np.zeros(zone.shape, bool), "valid": ~zone, "window_cloud_share": 0.01, "invalid_share": 0.01}
+
+    monkeypatch.setattr(lakecheck, "optical_on_grid", optical)
+    series = [{"date": "2026-07-12", "track": "156A", "excluded": None, "area_km2": 0.1, "observable_share": 1.0}]
+    row = lakecheck.check_lake(lake, cache, series, log=lambda *_: None)
+    assert "note" in row and "radar_km2" not in row and "optical_km2" not in row
+    assert row["note"].startswith(lakecheck.NO_SCENE)
+
+
+def test_zone_valid_share():
+    zone = np.zeros((4, 4), bool)
+    zone[:2] = True
+    valid = np.ones((4, 4), bool)
+    valid[0] = False
+    assert lakecheck.zone_valid_share(valid, zone) == 0.5
+    assert lakecheck.zone_valid_share(valid, np.zeros((4, 4), bool)) == 0.0

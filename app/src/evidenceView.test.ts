@@ -84,7 +84,7 @@ describe("How we know", () => {
 
   test("states the two-view rule, the search circle and the data file's own note", () => {
     const { text } = withLakes();
-    expect(text).toMatch(/dark in one viewing direction's season median image \(ascending or descending\) but not in the other's/);
+    expect(text).toMatch(/dark in one viewing direction's season median image \(ascending or descending\) but seen and not dark in the other's/);
     expect(text).toContain("inside the lake zone, not shadow-prone, and valid");
     expect(text).toMatch(/robust z-score above 3\.5/);
     expect(text).toMatch(/that is radar shadow, not water/);
