@@ -6,7 +6,8 @@ name: Accept a lake request
 # Earthdata login:
 #   gate     (read only)                     who approved, and do they have write, maintain or admin?
 #   rebuild  (earthdata, read only)          add the lake, rebuild, test, upload the data as an artifact
-#   publish  (write, no Earthdata, no build) check the artifact, commit, comment; reports every failure
+#   publish  (write, no Earthdata, no build) check the artifact, re-read the issue live, commit, comment;
+#                                            reports every failure
 # Issue text is never put into a script; the issue number goes through env and must be digits.
 # A rebuild whose inputs changed on main meanwhile is started again (input `attempt`, at most 3 runs) instead
 # of being reported as failed. A rebuild queued out of `sartale-rebuild` before it started ends quietly: it
@@ -45,6 +46,7 @@ jobs:
     outputs:
       decision: ${{ steps.perm.outputs.decision }}
       approved_at: ${{ steps.perm.outputs.approved_at }}
+      approver: ${{ steps.perm.outputs.approver }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -96,6 +98,7 @@ jobs:
           case "$perm" in
             admin|maintain|write)
               echo "approved_at=$approved_at" >> "$GITHUB_OUTPUT"
+              echo "approver=$approver" >> "$GITHUB_OUTPUT"
               decide allowed ;;
             unknown) decide refuse-lookup ;;
             *) decide refuse-team ;;
@@ -284,6 +287,28 @@ jobs:
             *) exit "$code" ;;
           esac
 
+      - name: Re-read the issue live just before publishing
+        # still open and accepted, by the same approver at the same time, with the values the rebuild used;
+        # otherwise nothing is published and the issue says why (a fixed sentence, never issue text)
+        id: live
+        if: steps.install.outputs.result == 'ok'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPROVER: ${{ needs.gate.outputs.approver }}
+          APPROVED_AT: ${{ needs.gate.outputs.approved_at }}
+        run: |
+          set +e
+          python3 .github/scripts/live_approval.py --issue "$ISSUE" --approver "$APPROVER" \
+            --approved-at "$APPROVED_AT" --from "$RUNNER_TEMP/lake-data" --why "$RUNNER_TEMP/live.md"
+          code=$?
+          set -e
+          case "$code" in
+            0) echo "result=ok" >> "$GITHUB_OUTPUT" ;;
+            7) echo "result=withdrawn" >> "$GITHUB_OUTPUT"
+               gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/live.md" ;;
+            *) exit "$code" ;;
+          esac
+
       - name: Refuse a request that changed during the rebuild
         if: steps.install.outputs.result == 'changed'
         env:
@@ -327,14 +352,14 @@ jobs:
 
       - name: Commit the new lake and start the deploy
         id: commit
-        if: steps.install.outputs.result == 'ok'
+        if: steps.install.outputs.result == 'ok' && steps.live.outputs.result == 'ok'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |  # a block: in a plain YAML scalar " #" would start a comment and cut the command
           bash .github/scripts/commit-data.sh "Add requested lake from issue #$ISSUE" processing/lakes_in.json app/public/data
 
       - name: Comment and close the issue
-        if: steps.install.outputs.result == 'ok'
+        if: steps.install.outputs.result == 'ok' && steps.live.outputs.result == 'ok'
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/apply-actions.sh "$RUNNER_TEMP/actions.json"
@@ -345,6 +370,7 @@ jobs:
           needs.rebuild.outputs.decision != 'refuse-changed' && needs.rebuild.outputs.decision != 'refuse-unchecked' &&
           needs.rebuild.outputs.decision != 'refuse-migrated' &&
           steps.install.outputs.result != 'changed' && steps.install.outputs.result != 'stale' &&
+          steps.live.outputs.result != 'withdrawn' &&
           !(needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true') &&
           (needs.rebuild.result != 'success' || failure() || cancelled())
         env:

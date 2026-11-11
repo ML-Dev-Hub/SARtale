@@ -75,6 +75,7 @@
 
 <h3 id="if-the-request-changes-after-approval">If the request changes after approval<a class="anchor" href="#if-the-request-changes-after-approval" aria-label="Link to this section">#</a></h3>
 <p>An approval covers the name, coordinates and source the team saw. If the visitor edits the issue afterwards, the approval is withdrawn: the workflow removes <code>accepted</code> and comments "This request changed after it was approved. A team member must accept it again."</p>
+<p>The rebuild takes a while, so just before it publishes, the workflow reads the issue again. It publishes only if the issue is still open, still carries <code>accepted</code> from the same team member at the same time, and still has the values the rebuild used. If not, nothing is published and the issue gets a comment saying which of these changed.</p>
 <p>A request labelled <code>accepted</code> before this system was deployed is refused once, with "This request was approved before the new check existed. A team member must accept it again."</p>
 
 <h2 id="rejecting">Rejecting<a class="anchor" href="#rejecting" aria-label="Link to this section">#</a></h2>

@@ -800,3 +800,91 @@ def test_the_accept_comment_has_one_wording():
 
     assert data_artifact.ACCEPTED_COMMENT == lake_issues.ACCEPTED_COMMENT
     assert data_artifact.SITE == lake_issues.SITE_LAKE
+
+
+# --- W01: the live re-check just before an accepted lake is published --------------------------------------------
+
+live_approval = load_script("live_approval")
+BODY = ("### Lake name\n\nNew pond\n\n### Latitude (°N)\n\n36.2\n\n### Longitude (°E)\n\n74.1 °E\n\n"
+        "### Where the coordinates come from\n\nA survey, 2026\n")
+APPROVED_AT = "2026-11-05T11:00:00Z"
+
+
+def live_gh(body=BODY, state="open", labels=("lake-request", "searched", "accepted"),
+            events=(labeled("accepted", "owner-1", APPROVED_AT),)):
+    return FakeGh("", single=issue(7, state=state, labels=labels, body=body), events=list(events))
+
+
+def built_hash(body=BODY):
+    from sartale.lake_issues import issue_values_sha256
+    return issue_values_sha256({"body": body})
+
+
+def test_live_hash_rule_matches_the_pipeline():
+    from sartale.lake_issues import issue_values_sha256
+    bodies = [BODY, BODY.replace("36.2", "36.20"), BODY.replace("74.1 °E", "74.1"), BODY.replace("New pond", "  New pond  "),
+              BODY.replace("36.2", "3.6e1"), BODY.replace("New pond", "N"), BODY.replace("New pond", "New​pond"),
+              BODY.replace("### Lake name", "### Name"), BODY.replace("A survey, 2026", "_No response_"), "", "\r\n".join(BODY.split("\n"))]
+    for b in bodies:
+        assert live_approval.issue_values_sha256({"body": b}) == issue_values_sha256({"body": b}), b
+
+
+def test_live_recheck_passes_when_nothing_changed():
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=live_gh()) is None
+    # a label event's recorded time may be the issue's update time a few seconds off the event itself
+    assert live_approval.recheck("o/r", 7, "owner-1", "2026-11-05T11:00:03Z", built_hash(), runner=live_gh()) is None
+
+
+def test_live_recheck_refuses_a_revoked_approval():
+    gh = live_gh(labels=("lake-request", "searched"))
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=gh) == live_approval.NOT_OPEN
+
+
+def test_live_recheck_refuses_a_closed_issue():
+    gh = live_gh(state="closed")
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=gh) == live_approval.NOT_OPEN
+
+
+def test_live_recheck_refuses_edited_values():
+    gh = live_gh(body=BODY.replace("74.1 °E", "74.2 °E"))
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=gh) == live_approval.EDITED
+
+
+@pytest.mark.parametrize("events", [
+    [labeled("accepted", "owner-1", APPROVED_AT), labeled("accepted", "owner-2", "2026-11-05T12:00:00Z")],  # someone else
+    [labeled("accepted", "owner-1", "2026-11-05T13:00:00Z")],   # removed and added again later
+    [],                                                         # no approval event
+])
+def test_live_recheck_refuses_an_approver_or_time_change(events):
+    gh = live_gh(events=events)
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=gh) == live_approval.OTHER_APPROVAL
+
+
+def test_live_main_writes_the_reason_and_exits_7(tmp_path, monkeypatch):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    art = tmp_path / "lake-data" / "app" / "public" / "data"
+    art.mkdir(parents=True)
+    (art / "requests.json").write_text(json.dumps({"requests": [{"issue": 7, "values_sha256": built_hash()}]}), "utf-8")
+    why = tmp_path / "why.md"
+    args = ["--issue", "7", "--approver", "owner-1", "--approved-at", APPROVED_AT, "--from", str(tmp_path / "lake-data"),
+            "--why", str(why)]
+    live_approval.main(args, runner=live_gh())
+    assert not why.exists()
+    with pytest.raises(SystemExit) as e:
+        live_approval.main(args, runner=live_gh(body=BODY.replace("New pond", "Other pond")))
+    assert e.value.code == 7 and why.read_text("utf-8").strip() == live_approval.EDITED
+    assert "Other pond" not in why.read_text("utf-8")
+
+
+def test_accept_workflow_rechecks_live_before_it_commits():
+    import yaml
+    wf = yaml.safe_load((SCRIPTS.parents[0] / "workflows" / "lake-accept.yml").read_text(encoding="utf-8"))
+    steps = wf["jobs"]["publish"]["steps"]
+    names = [s.get("name", "") for s in steps]
+    live = names.index("Re-read the issue live just before publishing")
+    commit = names.index("Commit the new lake and start the deploy")
+    assert live < commit
+    assert "steps.live.outputs.result == 'ok'" in steps[commit]["if"]
+    assert "steps.live.outputs.result == 'ok'" in steps[names.index("Comment and close the issue")]["if"]
+    assert "live_approval.py" in steps[live]["run"]
+    assert wf["jobs"]["gate"]["outputs"]["approver"]
