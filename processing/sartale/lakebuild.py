@@ -544,11 +544,51 @@ def validation_of(check: dict | None) -> dict | None:
             "nisar_track": check.get("nisar_track"), "s2_date": check.get("s2_date"), "s2_id": check.get("s2_id")}
 
 
+def check_key(lake: Lake) -> dict:
+    """What a Sentinel-2 check of a lake was made for, stored with it as `key`: the water method (config.METHOD_ID) and
+    the zone (`absence_zone`: the register point, and the circle's radius or the outline file's SHA-256). A check made
+    for another method, zone or point is stale."""
+    return {"method": config.METHOD_ID, "zone": absence_zone(lake)}
+
+
+def is_current(row: dict | None, lake: Lake) -> bool:
+    """True for a check row of `lake` made for its current key with an IoU (a usable check)."""
+    return (bool(row) and row.get("lake") == lake.id and row.get("key") == check_key(lake)
+            and isinstance(row.get("iou"), (int, float)))
+
+
+def pick_check(lake: Lake, *sources: list[dict] | None) -> dict | None:
+    """The lake's check row: the first current one (`is_current`) in `sources` (lake_checks.json, then the published
+    lakes.json `checks`), else the first row of the lake at all (a note, a failure or a stale check, which says why
+    the lake is not validated), else None."""
+    rows = [r for src in sources for r in (src or []) if isinstance(r, dict) and r.get("lake") == lake.id]
+    return next((r for r in rows if is_current(r, lake)), rows[0] if rows else None)
+
+
+def validation_for(lake: Lake, row: dict | None) -> dict | None:
+    """The `validation` of a lake (`lakestatus.assess`): the current check's IoU, or `iou` None with why there is none
+    (no check yet, a check for an older method, zone or point, a note, a failure). None for a site with no lake now."""
+    if lake.lake_state == "no_lake":
+        return None
+    if is_current(row, lake):
+        return validation_of(row)
+    if not row:
+        why = "it has no Sentinel-2 check yet"
+    elif row.get("key") != check_key(lake):
+        why = "its Sentinel-2 check was made for an older water method, zone or lake point"
+    elif row.get("failed"):
+        why = f"its last Sentinel-2 check could not be made ({row.get('note', 'failed')})"
+    else:
+        why = f"its last Sentinel-2 check found no usable pair ({row.get('note', 'no measurement')})"
+    return {"iou": None, "why": why}
+
+
 def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str, str] | None = None,
                listed: set[tuple[str, str, str]] | None = None, absence: dict | None = None,
                prior: dict | None = None, check: dict | None = None) -> dict:
     """`listed`: the (date, key, CRID) of the passes lakes-search listed for this lake; None reads every window.
-    `check`: the lake's Sentinel-2 check row (lakes-check); its IoU decides whether the lake can be given a level.
+    `check`: the lake's `validation` (`validation_for`): without a current Sentinel-2 check, or with one under IoU 0.4,
+    the lake gets no level. None leaves the check out (no level depends on it).
     `absence`: the last Sentinel-2 absence check of a site with no lake now (`lakecheck.absence_check`).
     `prior`: the lake's last freeze check ({"freeze": the freeze object, "flags": {(date, track): frozen}}, from
     `carried_freeze`): the passes it flagged keep their flag and stay out of the summer core and level, and the freeze
@@ -568,7 +608,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         "lake_state": lake.lake_state, "lake_state_source": lake.lake_state_source,
         "downstream": lake.downstream, "downstream_source": lake.downstream_source,
         "elevation_m": lake.elevation_m, "elevation_source": lake.elevation_source,
-        "validation": validation_of(check) if lake.lake_state != "no_lake" else None,
+        "validation": check if lake.lake_state != "no_lake" else None,
     }
     lake_dir = Path(cache_dir) / lake.id
     if not lake_dir.is_dir():
@@ -718,17 +758,25 @@ def carried_freeze(previous: dict | None, lake: Lake) -> dict | None:
 def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, checks: list[dict] | None = None,
                 collections: dict[str, str] | None = None, previous: dict | None = None) -> dict:
     """`checks` are the Sentinel-2 cross-check rows from `lakes-check`, merged in as the `checks` block.
-    `collections` maps CRID -> CMR short name (default: read from `cache_dir`/passes.json). Only the passes that
+    `collections` maps CRID -> CMR short name (default: read from `cache_dir`/passes.json). With `checks` (a list, maybe
+    empty) each lake needs a current check (`check_key`) for a level; `checks` None leaves the check out. Only the passes that
     `cache_dir`/passes.json lists are built; without that file every cached window is read. `previous` is the
     lakes.json this build replaces: each no-lake site keeps its last Sentinel-2 absence check from it."""
     if collections is None:
         collections = read_collections(Path(cache_dir) / PASSES_JSON)
     listed = read_listed(Path(cache_dir) / PASSES_JSON)
-    rows = {c.get("lake"): c for c in (checks or [])}
+    # With `checks` given (the CLI always gives a list), a lake gets a level only with a current Sentinel-2 check, from
+    # lake_checks.json or carried from the published lakes.json (a refresh's lakes-check writes only the latter).
+    # Without, no level depends on a check.
+    picked = {lake.id: pick_check(lake, checks, (previous or {}).get("checks")) for lake in lakes} \
+        if checks is not None else {}
     built_lakes = [build_lake(lake, Path(cache_dir), Path(out_dir), collections,
                               None if listed is None else listed.get(lake.id, set()),
-                              carried_absence(previous, lake), carried_freeze(previous, lake), rows.get(lake.id))
+                              carried_absence(previous, lake), carried_freeze(previous, lake),
+                              validation_for(lake, picked[lake.id]) if checks is not None else None)
                    for lake in lakes]
+    out_checks = [r for lake in lakes for r in [picked.get(lake.id)] if r and (is_current(r, lake) or (
+        r.get("key") == check_key(lake)))] if checks is not None else []
     crids = sorted({p["crid"] for lk in built_lakes for p in lk["series"]})
     return {
         "version": 1, "built": built, "notes": NOTES, "method": METHOD,
@@ -757,8 +805,38 @@ def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, c
                       "s2_target_clear": config.S2_TARGET_CLEAR,
                       "power_stale_days": config.POWER_STALE_DAYS},
         "lakes": built_lakes,
-        "checks": list(checks or []),
+        "checks": out_checks,
     }
+
+
+def radar_water_context(lake: Lake, cache_dir: Path):
+    """A function pass_id -> `radar_water_masks` of that pass, which reads, aligns and analyses the lake's cached
+    windows once (lakes-check asks for several passes of one lake: doing that per pass made it take minutes)."""
+    limits: list[str] = []
+    outline = _load_outline(lake)
+    lake_dir = Path(cache_dir) / lake.id
+    listed = read_listed(Path(cache_dir) / PASSES_JSON)
+    mine = None if listed is None else listed.get(lake.id, set())
+    raw = _read_cache(lake_dir, limits, mine) if lake_dir.is_dir() else []
+    passes, xs, ys = _align(raw, limits, lake) if raw else ([], None, None)
+    state: dict = {}
+
+    def masks_for(pass_id: str) -> dict:
+        if pass_id not in {p["id"] for p in passes}:
+            raise KeyError(f"{lake.id}: no usable cached pass {pass_id}")
+        if not state:
+            epsg, _, _, excluded, directions, _ = _analyse(passes, xs, ys, limits)
+            state.update(epsg=epsg, excluded=excluded,
+                         masks=demmask.stat_masks(lake_dir, xs, ys, epsg, set(directions.values())),
+                         zone=lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline))
+        if pass_id in state["excluded"]:
+            raise ValueError(f"{lake.id} {pass_id} was excluded: {state['excluded'][pass_id]}")
+        p = next(q for q in passes if q["id"] == pass_id)
+        window = water_mask(p["hh_w"], p["w_valid"], stat_mask_of(state["masks"], p["key"]))
+        zone = state["zone"]
+        return {"window": window, "zone_mask": window & zone, "zone": zone, "x": xs, "y": ys, "epsg": state["epsg"]}
+
+    return masks_for
 
 
 def radar_water_masks(lake: Lake, cache_dir: Path, pass_id: str) -> dict:
@@ -768,23 +846,7 @@ def radar_water_masks(lake: Lake, cache_dir: Path, pass_id: str) -> dict:
     to the lake zone, "zone": the zone itself (outline if the lake has a readable one, else the 1 km circle), "x",
     "y", "epsg"}. KeyError if the pass is not usable, ValueError if the screen excluded it.
     """
-    limits: list[str] = []
-    outline = _load_outline(lake)
-    lake_dir = Path(cache_dir) / lake.id
-    listed = read_listed(Path(cache_dir) / PASSES_JSON)
-    mine = None if listed is None else listed.get(lake.id, set())
-    raw = _read_cache(lake_dir, limits, mine) if lake_dir.is_dir() else []
-    passes, xs, ys = _align(raw, limits, lake) if raw else ([], None, None)
-    if pass_id not in {p["id"] for p in passes}:
-        raise KeyError(f"{lake.id}: no usable cached pass {pass_id}")
-    epsg, px, _, excluded, directions, _ = _analyse(passes, xs, ys, limits)
-    if pass_id in excluded:
-        raise ValueError(f"{lake.id} {pass_id} was excluded: {excluded[pass_id]}")
-    p = next(q for q in passes if q["id"] == pass_id)
-    masks = demmask.stat_masks(lake_dir, xs, ys, epsg, set(directions.values()))
-    window = water_mask(p["hh_w"], p["w_valid"], stat_mask_of(masks, p["key"]))
-    zone = lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline)
-    return {"window": window, "zone_mask": window & zone, "zone": zone, "x": xs, "y": ys, "epsg": epsg}
+    return radar_water_context(lake, cache_dir)(pass_id)
 
 
 def freeze_masks(lake: Lake, cache_dir: Path, frozen: set[str] | frozenset = frozenset()) -> dict | None:

@@ -105,7 +105,7 @@ describe("sortLakes", () => {
   });
   test("status order is the documented one: an Alert first", () => {
     expect(STATUS_ORDER).toEqual([
-      "Alert: growing", "Lake may be forming", "Watch", "Decrease noted", "Frozen (likely)", "Frozen (seen by Sentinel-2)", "Break-up likely", "Not seen this pass", "No change", "Not enough NISAR looks yet", "Not measurable", "Not observable", "No lake now",
+      "Alert: growing", "Lake may be forming", "Watch", "Decrease noted", "Frozen (likely)", "Frozen (seen by Sentinel-2)", "Break-up likely", "Not seen this pass", "No change", "Not enough NISAR looks yet", "Not measurable", "Not yet validated against Sentinel-2", "Not observable", "No lake now",
     ]);
     expect(STATUS_ORDER).not.toContain("Change not confirmed yet");
   });
@@ -130,10 +130,14 @@ describe("statusSentence", () => {
     const s = statusSentence(by("shrink"), 2);
     expect(s).toContain("−0.040 km² (−31%)");
   });
-  test("a lake whose latest pass is a track's first on a new processing version says Alerts are paused", () => {
+  test("Alerts paused only when every track has switched version; otherwise the pass's own track is named", () => {
     const g = by("grow-old");
-    const lake = { ...g, status: { ...g.status, alerts_paused: { crid: "P05036", track: "084A", date: "2026-10-30" } } };
-    expect(statusSentence(lake, 2)).toContain("; Alerts paused: first 084A pass on processing version P05036");
+    const all = { ...g, status: { ...g.status, alerts_paused: { crid: "P05036", track: "084A", date: "2026-10-30", tracks: ["084A", "164D"] } } };
+    expect(statusSentence(all, 2)).toContain("; Alerts paused: every track's latest pass is its first on a new processing version");
+    const one = { ...g, status: { ...g.status, first_on_version: { crid: "P05036", track: "084A", date: "2026-10-30" } } };
+    const s = statusSentence(one, 2);
+    expect(s).toContain("this pass is track 084A's first on processing version P05036: it cannot count toward an Alert (other tracks can)");
+    expect(s).not.toContain("Alerts paused");
   });
   test("a status from a build made before the levels keeps its old wording", () => {
     const old = olderFile().lakes.find((l) => l.status.status === "Growing")!;

@@ -8,6 +8,7 @@ export type LakeStatusName =
   | "Not seen this pass"
   | "Not observable"
   | "Not measurable"
+  | "Not yet validated against Sentinel-2"
   | "Not enough NISAR looks yet"
   | "No lake now"
   | "Lake may be forming"
@@ -146,8 +147,10 @@ export interface LakeStatus {
   /** The latest compared pass: z and the baseline it was measured against. */
   z?: number | null;
   baseline_km2?: number | null;
-  /** Set when the latest pass is a track's first on a processing version its baseline lacks: no Alert until a second. */
-  alerts_paused?: { crid: string | null; track: string; date: string } | null;
+  /** Set when every track's latest pass is its first on a processing version its baseline lacks: no Alert until a second. */
+  alerts_paused?: { crid: string | null; track: string; date: string; tracks?: string[] } | null;
+  /** Set when the latest pass alone is its track's first on a new processing version: it cannot count toward an Alert. */
+  first_on_version?: { crid: string | null; track: string; date: string } | null;
   message?: LevelMessage | null;
 }
 
@@ -450,6 +453,7 @@ export const STATUS_ORDER: LakeStatusName[] = [
   "No change",
   "Not enough NISAR looks yet",
   "Not measurable",
+  "Not yet validated against Sentinel-2",
   "Not observable",
   "No lake now",
 ];
@@ -732,7 +736,11 @@ export function statusSentence(lake: Lake, changeFactor: number): string {
     const pct = s.baseline_km2 ? Math.round((100 * change) / s.baseline_km2) : 0;
     const pctText = pct === 0 ? "0%" : `${pct > 0 ? "+" : "−"}${Math.abs(pct)}%`;
     const since = s.level_since && s.level_since !== s.latest_date ? `; since ${formatDate(s.level_since)}` : "";
-    const paused = s.alerts_paused ? `; Alerts paused: first ${s.alerts_paused.track} pass on processing version ${s.alerts_paused.crid ?? "new"}` : "";
+    const paused = s.alerts_paused
+      ? `; Alerts paused: every track's latest pass is its first on a new processing version`
+      : s.first_on_version
+        ? `; this pass is track ${s.first_on_version.track}'s first on processing version ${s.first_on_version.crid ?? "new"}: it cannot count toward an Alert (other tracks can)`
+        : "";
     return `${s.status}: ${signed(change)} km² (${pctText})${scope} against the baseline of earlier ${s.track} passes, z = ${signed(s.z, 1)} (noise ±${km2(noise)} km²; a level needs ${changeFactor}× noise), ${s.looks} looks${when}${since}${paused}`;
   }
   return `${s.status}: ${signed(change)} km²${scope} since earlier ${s.track} passes (noise ±${km2(noise)} km²; change must exceed ${changeFactor}× noise), ${s.looks} looks${when}`;

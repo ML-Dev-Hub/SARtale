@@ -141,6 +141,28 @@ def test_a_decrease_on_two_passes_is_decrease_noted_and_never_an_alert():
 def test_the_two_pass_decrease_replaces_the_watch_of_its_first_pass():
     got = levels(flat("156A", NOISY + [0.5, 0.5]))
     assert got[-2:] == [("2026-09-06", "156A", WATCH), ("2026-09-07", "156A", DECREASE)]
+    # on one pass: a two-pass decrease replaces the falling Watch of the same passes (one pass and CUSUM alike)
+    from sartale.lakestatus import pick_level
+    assert pick_level({"decrease", "watch_down_pass"}) == (DECREASE, "pair")
+    assert pick_level({"decrease", "watch_down_cusum"}) == (DECREASE, "pair")
+
+
+def test_a_rising_watch_outranks_a_decrease_noted_and_an_alert_outranks_all():
+    from sartale.lakestatus import pick_level
+    assert pick_level({"decrease", "watch_up_pass"}) == (WATCH, "pass")
+    assert pick_level({"decrease", "watch_up_cusum"}) == (WATCH, "cusum")
+    assert pick_level({"alert", "watch_up_pass", "watch_up_cusum", "decrease"}) == (ALERT, "pair")
+    assert pick_level(set()) == (NO_CHANGE, None)
+    # in a series: the level is the most recent evidence; a rise after a Decrease noted makes the lake a Watch
+    s = lake_status(flat("156A", NOISY + [0.5, 0.5, 1.5]))
+    assert s["status"] == WATCH and s["z"] > 2 and s["message"]["level"] == WATCH
+    # and a rising Watch on another track right after a decrease pair is a Watch, not a Decrease noted
+    a = [pt(f"2026-08-{d:02d}", "156A", v) for d, v in zip((1, 13, 25), (1.0, 1.02, 0.99))]
+    b = [pt(f"2026-08-{d:02d}", "063D", v) for d, v in zip((6, 18, 30), (0.50, 0.51, 0.49))]
+    seq = a + b + [pt("2026-09-01", "156A", 0.5), pt("2026-09-03", "063D", 0.3), pt("2026-09-05", "156A", 1.4)]
+    got = levels(seq)
+    assert got[-2:] == [("2026-09-03", "063D", DECREASE), ("2026-09-05", "156A", WATCH)]
+    assert lake_status(seq)["status"] == WATCH
 
 
 def test_a_cusum_reaching_4_is_a_watch_when_no_single_pass_is_beyond_twice_the_noise():
@@ -174,10 +196,14 @@ OLD5 = ["P05023"] * 5
 
 def test_the_first_pass_on_a_new_processing_version_can_watch_but_not_alert():
     s = lake_status(versioned("084A", NOISY + [1.5], OLD5 + ["P05036"]))
-    assert s["status"] == WATCH and s["alerts_paused"] == {"crid": "P05036", "track": "084A", "date": "2026-10-06"}
-    assert ("Alerts are paused: this is the first 084A pass on NISAR processing version P05036, which its baseline "
-            "lacks") in s["reason"]
-    assert "it can raise a Watch but not an Alert" in s["message"]["how_sure"]
+    # one track only, so every track's latest pass is its first on the new version: Alerts paused
+    assert s["status"] == WATCH and s["alerts_paused"] == {"crid": "P05036", "track": "084A", "date": "2026-10-06",
+                                                           "tracks": ["084A"]}
+    assert s["first_on_version"] is None
+    assert ("Alerts paused: every track's latest pass is its first on a new NISAR processing version (P05036)"
+            in s["reason"])
+    assert ("This pass is track 084A's first on processing version P05036; it can raise a Watch but cannot count "
+            "toward an Alert. Other tracks can.") in s["message"]["how_sure"]
     assert s["level_passes"][0]["new_version"] is True
     # the second pass on the new version: its baseline has the version now, but its pair is the first pass: no Alert
     two = lake_status(versioned("084A", NOISY + [1.5, 1.5], OLD5 + ["P05036"] * 2))
@@ -192,7 +218,15 @@ def test_when_every_track_switches_version_alerts_wait_for_a_second_pass_on_a_tr
     b = [{**pt(f"2026-09-{d:02d}", "063D", 1.0), "crid": "P05023"} for d in (3, 7, 11, 15)]
     new = [{**pt("2026-09-17", "156A", 1.5), "crid": "P05036"}, {**pt("2026-09-19", "063D", 1.5), "crid": "P05036"}]
     s = lake_status(a + b + new)
-    assert s["status"] == WATCH and s["alerts_paused"]["crid"] == "P05036"
+    assert s["status"] == WATCH and s["alerts_paused"]["tracks"] == ["063D", "156A"]
+    assert "Alerts paused" in s["reason"]
+    # while only one track has switched, the status speaks of that pass and track, not of a pause
+    one = lake_status(a + b + new[:1])
+    assert one["alerts_paused"] is None
+    assert one["first_on_version"] == {"crid": "P05036", "track": "156A", "date": "2026-09-17"}
+    assert "Alerts paused" not in one["reason"]
+    assert one["reason"].endswith("This pass is track 156A's first on processing version P05036; it can raise a Watch "
+                                  "but cannot count toward an Alert. Other tracks can.")
     more = new + [{**pt("2026-09-21", "156A", 1.5), "crid": "P05036"}, {**pt("2026-09-23", "063D", 1.5), "crid": "P05036"}]
     assert lake_status(a + b + more)["status"] == ALERT
 
@@ -285,8 +319,14 @@ def test_a_lake_whose_sentinel2_check_overlaps_under_0_4_is_not_measurable():
                            "optical water with IoU 0.31, under the 0.4 SARtale needs to give a level.")
     assert lake_status(flat("156A", NOISY + [1.5, 1.5]), validation={"iou": 0.4})["status"] == ALERT
     assert lake_status(flat("156A", NOISY + [1.5, 1.5]), validation=None)["status"] == ALERT
-    # a check without an IoU (a note) is no evidence either way
-    assert lake_status(flat("156A", NOISY + [1.5, 1.5]), validation={"iou": None})["status"] == ALERT
+    # a lake with no current check (none, stale, a note or a failure) gets no level and says why
+    nv = lake_status(flat("156A", NOISY + [1.5, 1.5]),
+                     validation={"iou": None, "why": "its Sentinel-2 check failed (TimeoutError)"})
+    assert nv["status"] == "Not yet validated against Sentinel-2" and nv["level"] is None and nv["message"] is None
+    assert nv["reason"] == ("Radar water area 1.500 km² on 7 Sep 2026 (156A), shown as information only: SARtale gives "
+                            "a level only to a lake whose radar water has been checked against Sentinel-2, and its "
+                            "Sentinel-2 check failed (TimeoutError). The check runs again at every data refresh.")
+    assert "has no Sentinel-2 check yet" in lake_status(flat("156A", NOISY), validation={"iou": None})["reason"]
     # and under 50% of the zone observable is "Not observable", ahead of it
     assert lake_status(flat("156A", NOISY, share=0.3), validation=v)["status"] == "Not observable"
 
@@ -368,7 +408,8 @@ def test_the_status_names_list_every_status():
     from sartale.lakestatus import STATUS_NAMES
     assert STATUS_NAMES == ("Alert: growing", "Lake may be forming", "Watch", "Decrease noted", "Frozen (likely)",
                             "Frozen (seen by Sentinel-2)", "Break-up likely", "Not seen this pass", "No change",
-                            "Not enough NISAR looks yet", "Not measurable", "Not observable", "No lake now")
+                            "Not enough NISAR looks yet", "Not measurable", "Not yet validated against Sentinel-2",
+                            "Not observable", "No lake now")
     assert "Change not confirmed yet" not in STATUS_NAMES
 
 
@@ -402,7 +443,7 @@ def test_the_app_lists_the_same_statuses_and_styles_the_levels_apart():
     # an Alert is told apart by more than colour: a solid fill and a heavier border
     chip = next(line for line in css if line.startswith(".lw-status-alert-growing"))
     assert "background" in chip and "border-width" in chip
-    for slug in ("no-lake-now", "not-measurable"):  # no level here: neutral, never a level colour
+    for slug in ("no-lake-now", "not-measurable", "not-yet-validated-against-sentinel-2"):  # no level: neutral
         chip = next(line for line in css if f".lw-status-{slug}" in line)
         pin = next(line for line in css if f'.lw-marker[data-status="{slug}"]' in line)
         assert "border-style: dashed" in chip and "--warm" not in chip and "--alert" not in chip

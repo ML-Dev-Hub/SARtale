@@ -386,7 +386,12 @@ def test_rebuild_action_order():
     elevation = at("lakes-elevation")
     assert at("lakes-fetch") < elevation < at("lakes-build") < freeze
     assert "continue-on-error" not in steps[elevation]
-    for i in (absence, missing, freeze, elevation):
+    # the lakes without a current Sentinel-2 check are checked after the freeze check (which sets the statuses the
+    # check sets again), before the comparison, without the login, failing soft inside the command
+    check = at("lakes-check --stale-only")
+    assert freeze < check < at("lakes-diff")
+    assert "continue-on-error" not in steps[check]
+    for i in (absence, missing, freeze, elevation, check):
         assert "unset EARTHDATA_USERNAME EARTHDATA_PASSWORD" in runs[i]
     assert '> "$RUNNER_TEMP/lakes.published.json"' in runs[at("git show HEAD:app/public/data/lakes.json")]
     assert "continue-on-error" not in steps[at("lakes-diff")], "a large drop must fail the rebuild"

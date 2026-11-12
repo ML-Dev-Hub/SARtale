@@ -46,6 +46,9 @@ LEVELS = (ALERT, WATCH, DECREASE, NO_CHANGE)
 # No level is given: the Sentinel-2 check of the method at this lake overlapped too little (lakes-check IoU below
 # config.MIN_VALIDATION_IOU). The area is shown as information only.
 NOT_MEASURABLE = "Not measurable"
+# No level either: the lake has no current Sentinel-2 check (none yet, one made for an older method, zone or point, a
+# check that found no clear pair, or one that failed). lakes-check runs at every refresh for these lakes.
+NOT_VALIDATED = "Not yet validated against Sentinel-2"
 NOT_OBSERVABLE = "Not observable"
 NOT_ENOUGH = "Not enough NISAR looks yet"
 NOT_SEEN = "Not seen this pass"
@@ -77,6 +80,7 @@ STATUS_NAMES = (
     NO_CHANGE,
     NOT_ENOUGH,
     NOT_MEASURABLE,
+    NOT_VALIDATED,
     NOT_OBSERVABLE,
     NO_LAKE,
 )
@@ -189,22 +193,48 @@ def compare_passes(series: list[SeriesPoint]) -> list[dict]:
         eligible = not p.get("new_version")
         q = out[prev] if prev is not None else None
         pair = q is not None and eligible and not q.get("new_version") and not q.get("after_open")
+        found = set()
         if pair and q["_z"] >= CHANGE_FACTOR and z >= CHANGE_FACTOR:
-            level, why = ALERT, "pair"
-        elif pair and q["_z"] <= -CHANGE_FACTOR and z <= -CHANGE_FACTOR:
-            level, why = DECREASE, "pair"
-        elif abs(z) >= CHANGE_FACTOR:
-            level, why = WATCH, "pass"
-        elif cusum_hit:
-            level, why = WATCH, "cusum"
-        else:
-            level, why = NO_CHANGE, None
+            found.add("alert")
+        if pair and q["_z"] <= -CHANGE_FACTOR and z <= -CHANGE_FACTOR:
+            found.add("decrease")
+        if z >= CHANGE_FACTOR:
+            found.add("watch_up_pass")
+        if z <= -CHANGE_FACTOR:
+            found.add("watch_down_pass")
+        if up >= CUSUM_H:
+            found.add("watch_up_cusum")
+        if down >= CUSUM_H:
+            found.add("watch_down_cusum")
+        level, why = pick_level(found)
         p.update(level_contrib=level, _why=why, _prev=prev if why == "pair" else None, _cusum_at=round(cusum_at, 2))
         if cusum_hit:
             up = down = 0.0  # the CUSUM starts again once it has made a Watch
         p["_cusum"] = {"up": round(up, 2), "down": round(down, 2)}
         prev = i
     return out
+
+
+# What one pass can show, in the order that decides its level: an Alert outranks all; a Watch on a rising area
+# outranks a Decrease noted; a Decrease noted replaces a Watch on a falling area from the same passes (it is the
+# two-pass form of that Watch). On one pass a rising and a falling signal cannot both hold (one z, and an upward CUSUM
+# can only reach its limit on a rising pass), so the order matters where a caller lists both.
+LEVEL_RANK = (
+    ("alert", ALERT, "pair"),
+    ("watch_up_pass", WATCH, "pass"),
+    ("watch_up_cusum", WATCH, "cusum"),
+    ("decrease", DECREASE, "pair"),
+    ("watch_down_pass", WATCH, "pass"),
+    ("watch_down_cusum", WATCH, "cusum"),
+)
+
+
+def pick_level(found: set[str]) -> tuple[str, str | None]:
+    """(level, why) from the signals a pass shows (`LEVEL_RANK` names): the highest-ranked one, or No change."""
+    for key, level, why in LEVEL_RANK:
+        if key in found:
+            return level, why
+    return NO_CHANGE, None
 
 
 def public(series: list[dict]) -> list[dict]:
@@ -230,6 +260,7 @@ def _result(status, track=None, latest_date=None, looks=0, change=None, noise=No
         "z": None,
         "baseline_km2": None,
         "alerts_paused": None,
+        "first_on_version": None,
         "message": None,
     }
     out.update(level)
@@ -295,13 +326,18 @@ def level_message(level: str, name: str | None, passes: list[dict], why: str | N
                     "confirmed; the next pass shows whether it holds.")
         what = f"Radar water area of {lake}: {pass_line(last)} from earlier {last['track']} passes."
         if last.get("new_version"):
-            sure += (f" This is the first {last['track']} pass on NISAR processing version {last.get('crid')}, which "
-                     "its baseline lacks: it can raise a Watch but not an Alert.")
+            sure += " " + version_note(last["track"], last.get("crid"))
     falling = level == DECREASE or (level == WATCH and last["z"] < 0)
     not_ = f"{DRAWDOWN_TEXT if level == DECREASE else DRAWDOWN_WATCH} {NOT_TEXT}" if falling else NOT_TEXT
     msg = {"level": level, "title": title, "what": what, "how_sure": sure, "not": not_, "do": DO_TEXT}
     msg["text"] = " ".join(msg[k] for k in ("title", "what", "how_sure", "not", "do"))
     return msg
+
+
+def version_note(track: str, crid: str | None) -> str:
+    """What a track's first pass on a new processing version means, in the words the status and message use."""
+    return (f"This pass is track {track}'s first on processing version {crid}; it can raise a Watch but cannot count "
+            "toward an Alert. Other tracks can.")
 
 
 def _validation_iou(validation: dict | None) -> float | None:
@@ -317,8 +353,10 @@ def assess(series: list[SeriesPoint], latest_expected: dict[str, str] | None = N
     "Not seen this pass" fires when, for some track, that newest pass is newer than the lake's latest valid pass and
     has no valid point in `series` (excluded, unobservable or missing).
 
-    `validation` is the lake's Sentinel-2 check (a lakes-check row, with `iou`): below MIN_VALIDATION_IOU the lake is
-    "Not measurable" and gets no level; its latest area is given as information. `name` is the lake's name, for the
+    `validation` is the lake's Sentinel-2 check (`lakebuild.validation_of`: `iou`, or `iou` None with `why` when the
+    lake has no current check): below MIN_VALIDATION_IOU the lake is "Not measurable", and without an IoU "Not yet
+    validated against Sentinel-2"; neither gets a level, and the latest area is given as information. None leaves the
+    check out (callers that do not hold one). `name` is the lake's name, for the
     message a Watch, an Alert or a Decrease noted carries.
     """
     compared = compare_passes(series)
@@ -335,6 +373,13 @@ def assess(series: list[SeriesPoint], latest_expected: dict[str, str] | None = N
     latest = valid[-1]
     stream = [p for p in valid if p.get("z") is not None]
     iou = _validation_iou(validation)
+    if validation is not None and iou is None:
+        t = latest["track"]
+        why = (validation.get("why") or "it has no Sentinel-2 check yet").rstrip(".")
+        return _result(NOT_VALIDATED, t, latest["date"], len(by_track[t]), reason=(
+            f"Radar water area {latest['area_km2']:.3f} km² on {day_text(latest['date'])} ({t}), shown as information "
+            f"only: SARtale gives a level only to a lake whose radar water has been checked against Sentinel-2, and "
+            f"{why}. The check runs again at every data refresh.")), annotated
     if iou is not None and iou < MIN_VALIDATION_IOU:
         t = latest["track"]
         v = validation or {}
@@ -388,16 +433,26 @@ def assess(series: list[SeriesPoint], latest_expected: dict[str, str] | None = N
         reason += f"; one pass beyond {CHANGE_FACTOR:g}× noise."
     else:
         reason += f"; within {CHANGE_FACTOR:g}× noise."
-    paused = None
+    paused = first_pass = None
     if last.get("new_version"):
-        paused = {"crid": last.get("crid"), "track": t, "date": last["date"]}
-        reason += (f" Alerts are paused: this is the first {t} pass on NISAR processing version {last.get('crid')}, "
-                   "which its baseline lacks, so it can raise a Watch but not an Alert; Alerts resume once a second "
-                   "pass on that version enters the baseline.")
+        latest_by_track: dict[str, dict] = {}
+        for p in stream:
+            latest_by_track[p["track"]] = p
+        if all(p.get("new_version") for p in latest_by_track.values()):
+            crids = sorted({p.get("crid") for p in latest_by_track.values()} - {None})
+            paused = {"crid": last.get("crid"), "track": t, "date": last["date"],
+                      "tracks": sorted(latest_by_track)}
+            reason += (f" Alerts paused: every track's latest pass is its first on a new NISAR processing version "
+                       f"({', '.join(crids)}), which its baseline lacks; such a pass can raise a Watch but cannot count "
+                       "toward an Alert. Alerts resume once a second pass on that version enters a track's baseline.")
+        else:
+            first_pass = {"crid": last.get("crid"), "track": t, "date": last["date"]}
+            reason += " " + version_note(t, last.get("crid"))
     message = level_message(level, name, level_passes, why, last.get("_cusum_at")) if level != NO_CHANGE else None
     return _result(level, t, last["date"], looks, round(change, 6), last["noise_km2"], reason,
                    level=level, level_since=since, level_passes=level_passes, cusum=cusum, z=last["z"],
-                   baseline_km2=last["baseline_km2"], alerts_paused=paused, message=message), annotated
+                   baseline_km2=last["baseline_km2"], alerts_paused=paused, first_on_version=first_pass,
+                   message=message), annotated
 
 
 def lake_status(series: list[SeriesPoint], latest_expected: dict[str, str] | None = None,

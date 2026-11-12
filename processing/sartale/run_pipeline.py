@@ -18,8 +18,10 @@ from sartale.lakebuild import (
     carried_absence,
     pass_images,
     read_listed,
+    check_key,
+    is_current,
     unlisted_windows,
-    validation_of,
+    validation_for,
 )
 from sartale.freeze import restatus
 from sartale.lakecheck import check_lake
@@ -183,39 +185,66 @@ def check_ids(lakes, chosen: str | None) -> list[str]:
     return [lk.id for lk in lakes if lk.lake_state != "no_lake"]
 
 
+def check_row_line(lid: str, row: dict) -> str:
+    """One log line on a check row."""
+    if "note" in row:
+        return f"{lid}: {row['note']}"
+    return (f"{lid}: NISAR {row['nisar_date']} {row['nisar_track']} vs S2 {row['s2_date']} {row['s2_id']} | "
+            f"zone radar {row['radar_km2']:.3f} km2, optical {row['optical_km2']:.3f} km2, "
+            f"error {row['area_error_pct'] if row['area_error_pct'] is None else round(row['area_error_pct'], 1)} %, "
+            f"IoU {row['iou'] if row['iou'] is None else round(row['iou'], 3)} | window radar "
+            f"{row['window_radar_km2']:.3f}, optical {row['window_optical_km2']:.3f}, IoU {row['window_iou']}")
+
+
 def cmd_lakes_check(args) -> None:
-    """Compare the radar water of chosen lakes with Sentinel-2 MNDWI water; write the rows and merge
-    them into lakes.json (the lakes themselves are not rebuilt)."""
+    """Compare the radar water of chosen lakes with Sentinel-2 MNDWI water; write the rows (each with the `key` it was
+    made for: method and zone) into lake_checks.json and lakes.json, and set each lake's status again, since a level
+    needs a current check with IoU of at least config.MIN_VALIDATION_IOU (the lakes themselves are not rebuilt).
+
+    `--stale-only` (the rebuild's step) checks only the lakes without a current check in lakes.json (none, one made
+    for another method, zone or point, a note or a failure) and keeps the others' rows. Needs no login. Never fails the
+    run for one lake: a check that raises leaves a "failed" row, and the lake says it is not yet validated."""
+    import time
+
     lakes = {lk.id: lk for lk in load_lakes(Path(args.lakes_in))}
     path = Path(args.out) / "lakes.json"
     doc = _read_json(path)
-    rows = []
+    old = {r.get("lake"): r for r in doc.get("checks") or [] if isinstance(r, dict)}
+    rows: dict[str, dict] = {}
+    t0 = time.time()
     for lid in check_ids(list(lakes.values()), args.lakes):
-        series = next(lk["series"] for lk in doc["lakes"] if lk["id"] == lid)
-        row = check_lake(lakes[lid], Path(args.cache), series)
-        rows.append(row)
-        if "note" in row:
-            print(f"{lid}: {row['note']}")
-        else:
-            print(f"{lid}: NISAR {row['nisar_date']} {row['nisar_track']} vs S2 {row['s2_date']} {row['s2_id']} | "
-                  f"zone radar {row['radar_km2']:.3f} km2, optical {row['optical_km2']:.3f} km2, "
-                  f"error {row['area_error_pct'] if row['area_error_pct'] is None else round(row['area_error_pct'], 1)} %, "
-                  f"IoU {row['iou'] if row['iou'] is None else round(row['iou'], 3)} | window radar {row['window_radar_km2']:.3f}, "
-                  f"optical {row['window_optical_km2']:.3f}, IoU {row['window_iou']}")
-    write_json_atomic(Path(args.checks), rows)
-    doc["checks"] = rows
-    # A new check can change whether a lake gets a level (IoU under config.MIN_VALIDATION_IOU: "Not measurable"), so
-    # each checked lake's status is set again from what lakes.json holds.
-    by_row = {r["lake"]: r for r in rows}
+        lake = lakes[lid]
+        entry = next((lk for lk in doc["lakes"] if lk["id"] == lid), None)
+        if entry is None:
+            print(f"{lid}: not in {path.name}; run lakes-build first")
+            continue
+        if args.stale_only and is_current(old.get(lid), lake):
+            rows[lid] = old[lid]
+            print(f"{lid}: current check kept (IoU {old[lid]['iou']:.3f}, {old[lid].get('nisar_date')})")
+            continue
+        t = time.time()
+        try:
+            row = check_lake(lake, Path(args.cache), entry["series"])
+        except Exception as e:  # noqa: BLE001 - one lake's failed check never stops the refresh; the lake says so
+            row = {"lake": lid, "note": f"Sentinel-2 check failed ({type(e).__name__})", "failed": True}
+        row = {**row, "key": check_key(lake)}
+        rows[lid] = row
+        print(f"{check_row_line(lid, row)} [{time.time() - t:.0f} s]", flush=True)
+    kept = [r for lid, r in old.items() if lid not in rows and lid in lakes]
+    out = list(rows.values()) + kept
+    write_json_atomic(Path(args.checks), out)
+    doc["checks"] = out
     for i, lk in enumerate(doc["lakes"]):
-        if lk["id"] in by_row:
-            entry = {**lk, "validation": validation_of(by_row[lk["id"]])}
-            doc["lakes"][i] = restatus(entry)
-            before, after = (lk.get("status") or {}).get("status"), (doc["lakes"][i].get("status") or {}).get("status")
-            if before != after:
-                print(f"{lk['id']}: status {before} -> {after}")
+        lake = lakes.get(lk["id"])
+        if lake is None or lk["id"] not in rows:
+            continue
+        entry = {**lk, "validation": validation_for(lake, rows[lk["id"]])}
+        doc["lakes"][i] = restatus(entry)
+        before, after = (lk.get("status") or {}).get("status"), (doc["lakes"][i].get("status") or {}).get("status")
+        if before != after:
+            print(f"{lk['id']}: status {before} -> {after}")
     write_json_atomic(path, doc)
-    print(f"{len(rows)} checks -> {args.checks} and {path}")
+    print(f"{len(out)} checks -> {args.checks} and {path} ({time.time() - t0:.0f} s)")
 
 
 def cmd_lakes_absence(args) -> None:
@@ -460,6 +489,8 @@ def build_parser() -> argparse.ArgumentParser:
     lc.add_argument("--checks", default=str(REPO_ROOT / "processing" / "lake_checks.json"))
     lc.add_argument("--lakes", default=None,
                     help="comma-separated lake ids (default: every register lake except those with no lake now)")
+    lc.add_argument("--stale-only", action="store_true",
+                    help="check only lakes without a current check in lakes.json (the rebuild's step)")
     lc.set_defaults(func=cmd_lakes_check)
 
     la = sub.add_parser("lakes-absence", help="re-check the sites with no lake now with Sentinel-2 (all year; clear, "

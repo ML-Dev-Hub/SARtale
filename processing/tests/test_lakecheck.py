@@ -125,9 +125,13 @@ def test_radar_water_mask_matches_build(tmp_path):
 
 def test_build_lakes_merges_checks(tmp_path):
     from sartale.lakebuild import build_lakes
-    rows = [{"lake": "alpha", "note": lakecheck.NO_SCENE}]
+    from sartale.lakebuild import check_key
+    rows = [{"lake": "alpha", "note": lakecheck.NO_SCENE, "key": check_key(make_lake("alpha"))}]
     doc = build_lakes([make_lake("alpha")], tmp_path / "c", tmp_path / "o", "t", rows)
     assert doc["checks"] == rows
+    # a row made for another method, zone or point is not carried
+    assert build_lakes([make_lake("alpha")], tmp_path / "c", tmp_path / "o", "t",
+                       [{"lake": "alpha", "note": lakecheck.NO_SCENE}])["checks"] == []
     assert build_lakes([], tmp_path / "c", tmp_path / "o", "t")["checks"] == []
 
 

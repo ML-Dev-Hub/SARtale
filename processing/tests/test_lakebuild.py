@@ -321,7 +321,8 @@ def test_a_first_pass_on_a_new_processing_version_can_watch_but_not_alert(tmp_pa
     lk = build_lakes([a], cache, out, "t", collections=COLLECTIONS)["lakes"][0]
     st = lk["status"]
     assert st["status"] == "Watch" and st["change_km2"] > 0 and st["alerts_paused"]["crid"] == "P05036"
-    assert "first 156A pass on NISAR processing version P05036" in st["reason"]
+    assert "Alerts paused: every track's latest pass is its first on a new NISAR processing version" in st["reason"]
+    assert st["alerts_paused"]["tracks"] == ["156A"]
     assert st["message"]["title"] == "Watch: one radar pass of Alpha is beyond 2× noise."
     assert lk["series"][-1]["new_version"] is True
 
@@ -639,8 +640,9 @@ def test_a_sentinel2_check_under_0_4_iou_gives_the_lake_no_level(tmp_path):
     a = make_lake("alpha")
     for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24"]:
         write_pass(cache, a, d, "156A")
+    from sartale.lakebuild import check_key
     row = {"lake": "alpha", "nisar_date": "2026-07-12", "nisar_track": "156A", "s2_date": "2026-07-12", "s2_id": "S2X",
-           "iou": 0.25, "radar_km2": 0.1, "optical_km2": 0.4}
+           "iou": 0.25, "radar_km2": 0.1, "optical_km2": 0.4, "key": check_key(a)}
     lk = build_lakes([a], cache, out, "t", checks=[row])["lakes"][0]
     assert lk["validation"] == {"iou": 0.25, "nisar_date": "2026-07-12", "nisar_track": "156A",
                                 "s2_date": "2026-07-12", "s2_id": "S2X"}
@@ -648,5 +650,55 @@ def test_a_sentinel2_check_under_0_4_iou_gives_the_lake_no_level(tmp_path):
     assert "IoU 0.25, under the 0.4 SARtale needs to give a level" in lk["status"]["reason"]
     ok = build_lakes([a], cache, out, "t", checks=[{**row, "iou": 0.6}])["lakes"][0]
     assert ok["status"]["status"] == "No change"
-    note = build_lakes([a], cache, out, "t", checks=[{"lake": "alpha", "note": "no clear scene"}])["lakes"][0]
-    assert note["validation"] is None and note["status"]["status"] == "No change"
+    note = build_lakes([a], cache, out, "t", checks=[{"lake": "alpha", "note": "no clear scene", "key": check_key(a)}])
+    nv = note["lakes"][0]
+    assert nv["validation"] == {"iou": None, "why": "its last Sentinel-2 check found no usable pair (no clear scene)"}
+    assert nv["status"]["status"] == "Not yet validated against Sentinel-2" and nv["status"]["level"] is None
+
+
+def _four_passes(tmp_path):
+    cache, out = tmp_path / "c", tmp_path / "o"
+    a = make_lake("alpha")
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24"]:
+        write_pass(cache, a, d, "156A")
+    return cache, out, a
+
+
+def test_a_lake_without_a_current_check_gets_no_level_and_says_why(tmp_path):
+    from dataclasses import replace
+
+    from sartale.lakebuild import check_key
+    cache, out, a = _four_passes(tmp_path)
+    good = {"lake": "alpha", "iou": 0.7, "nisar_date": "2026-07-12", "s2_date": "2026-07-12", "key": check_key(a)}
+    # missing
+    st = build_lakes([a], cache, out, "t", checks=[])["lakes"][0]["status"]
+    assert st["status"] == "Not yet validated against Sentinel-2"
+    assert "it has no Sentinel-2 check yet" in st["reason"]
+    # stale: made for another water method, or before the point moved
+    for old_key in ({**check_key(a), "method": "B0"}, check_key(replace(a, lon=a.lon + 0.01))):
+        st = build_lakes([a], cache, out, "t", checks=[{**good, "key": old_key}])["lakes"][0]["status"]
+        assert st["status"] == "Not yet validated against Sentinel-2"
+        assert "made for an older water method, zone or lake point" in st["reason"]
+    # failed
+    failed = {"lake": "alpha", "note": "Sentinel-2 check failed (TimeoutError)", "failed": True, "key": check_key(a)}
+    st = build_lakes([a], cache, out, "t", checks=[failed])["lakes"][0]["status"]
+    assert "its last Sentinel-2 check could not be made (Sentinel-2 check failed (TimeoutError))" in st["reason"]
+    # current: a level
+    assert build_lakes([a], cache, out, "t", checks=[good])["lakes"][0]["status"]["status"] == "No change"
+
+
+def test_a_current_check_is_reused_from_the_published_lakes_json(tmp_path):
+    """A refresh's lakes-check writes its rows into lakes.json only (lake_checks.json is not published), so the next
+    build takes a current check from the published file when lake_checks.json has none."""
+    from sartale.lakebuild import check_key
+    cache, out, a = _four_passes(tmp_path)
+    good = {"lake": "alpha", "iou": 0.7, "nisar_date": "2026-07-12", "s2_date": "2026-07-12", "key": check_key(a)}
+    stale = {**good, "iou": 0.9, "key": {**check_key(a), "method": "B0"}}
+    doc = build_lakes([a], cache, out, "t", checks=[stale], previous={"lakes": [], "checks": [good]})
+    lk = doc["lakes"][0]
+    assert lk["validation"]["iou"] == 0.7 and lk["status"]["status"] == "No change"
+    assert doc["checks"] == [good]
+    # a current row in lake_checks.json wins over the published one
+    mine = {**good, "iou": 0.65}
+    assert build_lakes([a], cache, out, "t", checks=[mine], previous={"lakes": [], "checks": [good]})[
+        "lakes"][0]["validation"]["iou"] == 0.65
