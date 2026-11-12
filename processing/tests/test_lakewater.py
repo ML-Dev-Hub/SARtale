@@ -160,6 +160,22 @@ def test_an_outline_outside_the_window_fails_instead_of_drawing_a_phantom_zone()
         lake_zone((100, 100), X, Y, EPSG, centre_lake(), outline_polygon=ring)
 
 
+def test_an_outline_narrower_than_a_pixel_still_makes_a_zone():
+    """M10: a 4 m sliver between pixel centres holds no centre, but it lies on the grid: the pixels it touches are
+    taken (all_touched) and buffered, instead of failing the whole rebuild."""
+    to_ll = Transformer.from_crs(EPSG, 4326, always_xy=True)
+    x0, y0 = X[50] + 3.0, Y[50] - 3.0  # 3 m off a pixel centre, so the sliver holds none
+    corners = [(x0, y0), (x0 + 4.0, y0), (x0 + 4.0, y0 - 4.0), (x0, y0 - 4.0), (x0, y0)]
+    ring = [to_ll.transform(cx, cy) for cx, cy in corners]
+    zone = lake_zone((100, 100), X, Y, EPSG, centre_lake(), outline_polygon=ring)
+    assert zone[50, 50]
+    assert 0 < zone.sum() < 100 * 100
+    # about the 200 m buffer around one pixel: pi * 20^2 pixels of 10 m
+    assert zone.sum() == pytest.approx(np.pi * 20 ** 2, rel=0.1)
+    from sartale.lakewater import outline_window_share
+    assert outline_window_share(X, Y, EPSG, ring) == 1.0  # on the grid: no "runs past the window" limit
+
+
 def test_despeckle_constant_field_unchanged():
     from sartale.lakewater import despeckle
     assert np.allclose(despeckle(np.full((9, 9), 0.2)), 0.2)

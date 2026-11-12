@@ -178,6 +178,10 @@ def lake_zone(shape, x, y, epsg, lake: Lake, outline_polygon=None, half_km: floa
     poly = {"type": "Polygon", "coordinates": [ring]}
     inside = geometry_mask([poly], out_shape=tuple(shape), transform=transform, invert=True)
     if not inside.any():
+        # An outline narrower than a pixel can hold no pixel centre and still lie on the grid: take every pixel it
+        # touches instead (the 200 m buffer below dwarfs the difference).
+        inside = geometry_mask([poly], out_shape=tuple(shape), transform=transform, invert=True, all_touched=True)
+    if not inside.any():
         # With no outline pixel on the grid the distance transform measures from nothing and draws a phantom zone
         # in a corner. An outline that misses the window (an old outline after the point moved) is an error.
         raise ValueError(f"{lake.id}: the outline does not cover any pixel of the radar window; check that the "
@@ -197,8 +201,10 @@ def outline_window_share(x, y, epsg, outline_polygon) -> float:
     if area == 0:
         return 0.0
     transform = Affine(dx, 0, x[0] - dx / 2, 0, dy, y[0] - dy / 2)
-    inside = geometry_mask([{"type": "Polygon", "coordinates": [ring]}], out_shape=(len(y), len(x)),
-                           transform=transform, invert=True)
+    poly = {"type": "Polygon", "coordinates": [ring]}
+    inside = geometry_mask([poly], out_shape=(len(y), len(x)), transform=transform, invert=True)
+    if not inside.any():  # narrower than a pixel: as lake_zone, count the pixels it touches
+        inside = geometry_mask([poly], out_shape=(len(y), len(x)), transform=transform, invert=True, all_touched=True)
     return min(1.0, float(inside.sum()) * abs(dx * dy) / area)
 
 
