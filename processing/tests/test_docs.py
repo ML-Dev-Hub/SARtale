@@ -9,6 +9,30 @@ ROOT = Path(__file__).resolve().parents[2]
 SITE = "https://saeedahmad.me/SARtale/"
 
 
+def shipped_lakes_path() -> Path:
+    """The lakes.json the tests read as "the shipped data": app/public/data/lakes.json, or the file named by the
+    SARTALE_LAKES_JSON environment variable (test-only: to run the suite against another build, e.g. one where lakes
+    are frozen). No test that reads it may assume any lake's freeze state or any status the weather can change."""
+    import os
+    return Path(os.environ.get("SARTALE_LAKES_JSON") or ROOT / "app" / "public" / "data" / "lakes.json")
+
+
+def open_attabad(doc: dict) -> dict:
+    """A fixture made from `doc`: Attabad as an open lake (no freeze object, no frozen flags, no last open-water pass,
+    and its usual status from the passes), whatever the weather did in the build `doc` comes from."""
+    import copy
+
+    from sartale.lakestatus import open_water_status
+    d = copy.deepcopy(doc)
+    a = next(lk for lk in d["lakes"] if lk["id"] == "attabad")
+    for p in a["series"]:
+        p.pop("frozen", None)
+    a.pop("freeze", None)
+    a.pop("last_open", None)
+    a["status"] = open_water_status(a["series"])
+    return d
+
+
 def _load(path: Path, name: str):
     spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
@@ -48,7 +72,7 @@ def test_d03_worked_example_is_reproducible_from_the_lake_data_it_names():
     import json
     from datetime import datetime
     build = _load(ROOT / "docs" / "guide" / "build.py", "guide_build")
-    doc = json.loads(build.LAKES_JSON.read_text(encoding="utf-8"))
+    doc = json.loads(shipped_lakes_path().read_text(encoding="utf-8"))
     ex = build.worked_example(doc)
     method = (ROOT / "docs" / "guide" / "method.html").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -71,7 +95,7 @@ def test_the_worked_example_never_quotes_a_frozen_pass_as_water():
 
     import pytest
     build = _load(ROOT / "docs" / "guide" / "build.py", "guide_build")
-    doc = json.loads(build.LAKES_JSON.read_text(encoding="utf-8"))
+    doc = open_attabad(json.loads(shipped_lakes_path().read_text(encoding="utf-8")))
     d = copy.deepcopy(doc)
     a = next(lk for lk in d["lakes"] if lk["id"] == "attabad")
     track = a["status"]["track"]
@@ -94,7 +118,7 @@ def test_the_worked_example_never_quotes_a_frozen_pass_as_water():
     a["last_open"] = None
     with pytest.raises(build.WorkedExampleError, match="frozen"):
         build.worked_example(d)
-    # an open Attabad has no note
+    # an open Attabad (a fixture: never the shipped file's state, which the weather changes) has no note
     assert build.worked_example(doc)["EX_FROZEN"] == ""
 
 
@@ -104,7 +128,8 @@ def test_m9_worked_example_fails_clearly_without_a_measured_attabad_status():
 
     import pytest
     build = _load(ROOT / "docs" / "guide" / "build.py", "guide_build")
-    doc = json.loads(build.LAKES_JSON.read_text(encoding="utf-8"))
+    # a fixture with Attabad open: the shipped file's Attabad may be frozen this week
+    doc = open_attabad(json.loads(shipped_lakes_path().read_text(encoding="utf-8")))
     attabad = next(lk for lk in doc["lakes"] if lk["id"] == "attabad")
 
     def with_status(**changes):

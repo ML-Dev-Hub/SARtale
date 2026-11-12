@@ -68,5 +68,13 @@ export default defineConfig({
   base: "./",
   plugins: [sartaleMedia()],
   build: { target: "es2022", chunkSizeWarningLimit: 1300 /* maplibre-gl is bundled for offline use */ },
-  test: { environment: "node", include: ["src/**/*.test.ts"] },
+  test: {
+    environment: "node",
+    include: ["src/**/*.test.ts"],
+    // Test-only: SARTALE_LAKES_JSON runs the tests against another lakes.json in place of the shipped one (e.g. a
+    // build where lakes are frozen). No test may assume a lake's freeze state or any status the weather changes.
+    alias: process.env.SARTALE_LAKES_JSON
+      ? [{ find: /^\.\.\/public\/data\/lakes\.json$/, replacement: resolve(process.env.SARTALE_LAKES_JSON) }]
+      : [],
+  },
 });

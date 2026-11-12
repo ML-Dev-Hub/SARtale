@@ -66,9 +66,11 @@ def test_the_register_heights_are_valid_and_a_missing_one_says_why():
     from pathlib import Path
 
     from sartale.elevation import height_problems
+    import os
     root = Path(__file__).resolve().parents[2]
     lakes = load_lakes(root / "processing" / "lakes_in.json")
-    doc = json.loads((root / "app" / "public" / "data" / "lakes.json").read_text(encoding="utf-8"))
+    shipped = os.environ.get("SARTALE_LAKES_JSON") or root / "app" / "public" / "data" / "lakes.json"
+    doc = json.loads(Path(shipped).read_text(encoding="utf-8"))
     assert height_problems(lakes, doc) == []
 
 

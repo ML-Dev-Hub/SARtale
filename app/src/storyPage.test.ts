@@ -180,7 +180,8 @@ describe("renderStoryPage", () => {
   it("every image has alt text and a visible source line", () => {
     const { root } = render(real);
     const imgs = [...root.querySelectorAll("img")];
-    expect(imgs.length).toBeGreaterThanOrEqual(6);
+    // Not counting Attabad's water layer: it is hidden while the lake is frozen, which the weather decides.
+    expect(imgs.filter((i) => !i.classList.contains("sp-water")).length).toBeGreaterThanOrEqual(5);
     for (const img of imgs) {
       expect(img.getAttribute("alt")?.trim()).toBeTruthy();
       const holder = img.closest("figure, section")!;
@@ -349,5 +350,10 @@ describe("a frozen Attabad on the story page (review N1)", () => {
     expect(measure.querySelector('[data-role="sp-frozen-note"]')?.textContent).toBe("Attabad Lake's newest pass was taken while it was frozen; this is its last open-water pass.");
     expect(measure.querySelector(".sp-water")).toBeNull();
     expect(storyNumbers(withLake(lake)).attabadArea).toBe("2.04 km²");
+    // the open-water pass has no picture of its own: the newest picture stays, without its water layer, and says so
+    const pics = [...measure.querySelectorAll("img")];
+    expect(pics.map((i) => i.getAttribute("src"))).toEqual([`data/${a.images!.latest_hh}`]);
+    expect(pics[0].getAttribute("alt")).toContain("while the lake was frozen; no water layer");
+    expect(measure.querySelector("figcaption")?.textContent).toMatch(/track \w+\. Water layer hidden: not an open-water measurement while frozen\.$/);
   });
 });

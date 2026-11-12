@@ -70,6 +70,11 @@ export interface MeasureView {
   note: string | null;
   /** True when the area shown was read while the lake was frozen (no open-water pass to show instead). */
   greyed: boolean;
+  /**
+   * Set when the picture is the newest pass, taken while frozen, drawn without its water layer: its date and track
+   * (the open-water pass has no picture of its own, or there is no open-water pass).
+   */
+  frozenPicture: { date: string | null; track: string | null } | null;
 }
 
 /**
@@ -79,26 +84,30 @@ export interface MeasureView {
  * and the area greyed as not an open-water measurement.
  */
 export function measureView(a: Lake | null): MeasureView {
-  if (!a) return { date: null, track: null, area: null, noise: null, hh: null, water: null, note: null, greyed: false };
+  if (!a) return { date: null, track: null, area: null, noise: null, hh: null, water: null, note: null, greyed: false, frozenPicture: null };
   const name = a.name.split(" (")[0];
   const frozen = isFrozen(a) || picturedPassFrozen(a);
   if (!frozen) {
     return { date: a.images?.date ?? a.status.latest_date, track: a.status.track, area: latestArea(a), noise: a.status.noise_km2,
-      hh: a.images?.latest_hh ?? null, water: a.images?.water ?? null, note: null, greyed: false };
+      hh: a.images?.latest_hh ?? null, water: a.images?.water ?? null, note: null, greyed: false, frozenPicture: null };
   }
+  const newest = { date: a.images?.date ?? a.status.latest_date, track: a.images?.track ?? a.status.track };
   const lo = a.last_open;
   if (lo) {
     const since = a.freeze?.freeze_up ?? a.freeze?.since ?? null;
     const note = isFrozen(a)
       ? `${name} is frozen now${since ? ` (since ${formatDate(since)})` : ""}; this is its last open-water pass.`
       : `${name}'s newest pass was taken while it was frozen; this is its last open-water pass.`;
-    return { date: lo.date, track: lo.track, area: lo.area_km2, noise: lo.noise_km2, hh: lo.images?.latest_hh ?? null,
-      water: lo.images?.water ?? null, note, greyed: false };
+    // Its own picture and water layer when lakes-freeze drew them; else the newest picture with no water layer.
+    const own = !!lo.images?.latest_hh;
+    return { date: lo.date, track: lo.track, area: lo.area_km2, noise: lo.noise_km2,
+      hh: own ? lo.images!.latest_hh : a.images?.latest_hh ?? null, water: own ? lo.images!.water ?? null : null, note,
+      greyed: false, frozenPicture: own ? null : newest };
   }
   const p = a.series.find((x) => x.date === a.images?.date && x.track === a.images?.track)
     ?? a.series.find((x) => x.date === a.status.latest_date && x.track === a.status.track);
-  return { date: a.images?.date ?? a.status.latest_date, track: a.images?.track ?? a.status.track, area: p?.area_km2 ?? null,
-    noise: null, hh: a.images?.latest_hh ?? null, water: null, note: `Water layer hidden: ${FROZEN_AREA}.`, greyed: true };
+  return { date: newest.date, track: newest.track, area: p?.area_km2 ?? null, noise: null, hh: a.images?.latest_hh ?? null,
+    water: null, note: `Water layer hidden: ${FROZEN_AREA}.`, greyed: true, frozenPicture: newest };
 }
 
 /** Every number on the page, read from lakes.json. "—" for anything missing. */
@@ -311,17 +320,21 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const measure = section("04 The measure", "sp-section sp-measure");
   if (mv.hh) {
     const fig = el("figure", "sp-overlay");
-    const stack = el("div", "sp-overlay-stack", img(dataUrl(mv.hh), f(m.imageAlt).replace(", with the water SARtale reads shown in blue", mv.water ? ", with the water SARtale reads shown in blue" : "")));
+    const fp = mv.frozenPicture;
+    const when = (d: string | null) => (d ? formatDate(d) : DASH);
+    const alt = fp ? `${a!.name.split(" (")[0]} in NISAR radar on ${when(fp.date)}, while the lake was frozen; no water layer` : f(m.imageAlt);
+    const stack = el("div", "sp-overlay-stack", img(dataUrl(mv.hh), alt));
     if (mv.water) {
       const w = img(dataUrl(mv.water), m.waterAlt);
       w.className = "sp-water";
       stack.append(w);
     }
-    const caption = mv.greyed ? `${f("{attabadDate}, track {attabadTrack}.")} ${mv.note}` : f(m.caption);
+    const caption = fp ? `${when(fp.date)}, track ${fp.track ?? DASH}. Water layer hidden: ${FROZEN_AREA}.` : f(m.caption);
     fig.append(stack, text("figcaption", undefined, caption));
     measure.append(fig);
   }
   if (mv.note && !mv.greyed) {
+    // the frozen picture's own caption already says the water layer is hidden; this says what the numbers are
     const note = text("p", "sp-frozen-note", mv.note);
     note.dataset.role = "sp-frozen-note";
     measure.append(note);
