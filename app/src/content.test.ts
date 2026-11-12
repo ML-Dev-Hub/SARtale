@@ -28,6 +28,16 @@ describe("findBannedClaims", () => {
 
   test("clean text and the allowed hypothesis wording pass", () => {
     expect(findBannedClaims("A drop in HV may indicate standing water.")).toEqual([]);
+  });
+
+  test("allows Watch and Alert as level names only", () => {
+    expect(findBannedClaims("Watch: one radar pass is beyond 2× noise. Alert: growing on two passes in a row.")).toEqual([]);
+    expect(findBannedClaims("A GLOF alert for Hunza")).toEqual(["glof alert"]);
+    expect(findBannedClaims("Flood watch issued")).toEqual(["flood watch"]);
+    expect(findBannedClaims("Red alert: alert issued")).toEqual(["red alert", "alert issued"]);
+    expect(findBannedClaims("an outburst alert")).toEqual(["outburst alert"]);
+    // hazard, risk, prediction and "safe" wording stays banned
+    expect(findBannedClaims("predict a safe lake with no risk")).toEqual(["predict", "safe", "no risk"]);
     expect(findBannedClaims("")).toEqual([]);
   });
 });
