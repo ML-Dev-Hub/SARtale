@@ -1,6 +1,6 @@
 {
  "version": 1,
- "built": "2026-11-12T14:56:14Z",
+ "built": "2026-11-12T15:23:43Z",
  "notes": "Areas are water within a lake's outline (buffered 200 m) or, without one, a search circle (1 km unless the lake sets a smaller one), and underestimate lakes whose shores sit in radar shadow; images are crops on the UTM grid, north up; they are pictures, not map overlays.",
  "crid": "P05023, P05036",
  "collections": [
@@ -33,6 +33,7 @@
   "s2_open_water_share": 0.5,
   "s2_freeze_days": 7,
   "s2_freeze_clear": 0.8,
+  "s2_target_clear": 0.5,
   "power_stale_days": 10
  },
  "lakes": [
@@ -463,7 +464,10 @@
    },
    "freeze": {
     "state": "open",
-    "since": "2026-06-18",
+    "since": null,
+    "freeze_up": null,
+    "released_by": null,
+    "released_on": null,
     "temp_through": "2026-11-09",
     "checked": "2026-11-12",
     "cold_run_days": 0,
@@ -474,13 +478,16 @@
     "power_cell_elev_m": 4490.97,
     "s2": null,
     "s2_searched": true,
+    "s2_evidence": null,
+    "s2_events": [],
     "breakup_pass": null,
     "frozen_passes": 0,
     "radar_assessed": true,
     "in_season": true,
     "held_over_sep": false,
     "source": "NASA POWER daily T2M and T2M_MIN (MERRA-2 based), moved to the lake's height at -6.5 C/km",
-    "reason": "Open again since 18 Jun 2026 by the air-temperature rule (14 days in a row above 0 \u00b0C and a radar pass back within its summer range), so the usual assessment applies. The daily mean air temperature at the lake has been above 0 \u00b0C for 237 days in a row, with 0 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,359 m). No clear Sentinel-2 view of the lake zone in the last 7 days."
+    "reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been above 0 \u00b0C for 237 days in a row, with 0 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,359 m). No clear Sentinel-2 view of the lake in the last 7 days.",
+    "fresh_reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been above 0 \u00b0C for 237 days in a row, with 0 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,359 m). No clear Sentinel-2 view of the lake in the last 7 days."
    }
   },
   {
@@ -1193,7 +1200,10 @@
    },
    "freeze": {
     "state": "open",
-    "since": "2026-06-18",
+    "since": null,
+    "freeze_up": null,
+    "released_by": null,
+    "released_on": null,
     "temp_through": "2026-11-09",
     "checked": "2026-11-12",
     "cold_run_days": 3,
@@ -1206,18 +1216,22 @@
      "date": "2026-11-10",
      "s2_id": "S2B_43SDA_20261110_1_L2A",
      "clear_share": 1.0,
+     "target_clear_share": 1.0,
      "snow_share": 0.0,
      "water_share": 0.138,
      "water_over": "lake outline"
     },
     "s2_searched": true,
+    "s2_evidence": null,
+    "s2_events": [],
     "breakup_pass": null,
     "frozen_passes": 0,
     "radar_assessed": true,
     "in_season": true,
     "held_over_sep": false,
     "source": "NASA POWER daily T2M and T2M_MIN (MERRA-2 based), moved to the lake's height at -6.5 C/km",
-    "reason": "Open again since 18 Jun 2026 by the air-temperature rule (14 days in a row above 0 \u00b0C and a radar pass back within its summer range), so the usual assessment applies. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 6 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,551 m). Clearest Sentinel-2 view of the last 7 days: 10 Nov 2026 (S2B_43SDA_20261110_1_L2A), snow or ice on 0% of the lake zone seen clear, water on 14% of the lake outline seen clear."
+    "reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 6 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,551 m). Clearest Sentinel-2 view of the last 7 days: 10 Nov 2026 (S2B_43SDA_20261110_1_L2A), snow or ice on 0% and water on 14% of the lake outline seen clear.",
+    "fresh_reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 6 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,551 m). Clearest Sentinel-2 view of the last 7 days: 10 Nov 2026 (S2B_43SDA_20261110_1_L2A), snow or ice on 0% and water on 14% of the lake outline seen clear."
    }
   },
   {
@@ -1925,7 +1939,10 @@
    },
    "freeze": {
     "state": "open",
-    "since": "2026-06-25",
+    "since": null,
+    "freeze_up": null,
+    "released_by": null,
+    "released_on": null,
     "temp_through": "2026-11-09",
     "checked": "2026-11-12",
     "cold_run_days": 3,
@@ -1936,13 +1953,16 @@
     "power_cell_elev_m": 4210.9,
     "s2": null,
     "s2_searched": true,
+    "s2_evidence": null,
+    "s2_events": [],
     "breakup_pass": null,
     "frozen_passes": 0,
     "radar_assessed": true,
     "in_season": true,
     "held_over_sep": false,
     "source": "NASA POWER daily T2M and T2M_MIN (MERRA-2 based), moved to the lake's height at -6.5 C/km",
-    "reason": "Open again since 25 Jun 2026 by the air-temperature rule (14 days in a row above 0 \u00b0C and a radar pass back within its summer range), so the usual assessment applies. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 14 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,856 m). No clear Sentinel-2 view of the lake zone in the last 7 days."
+    "reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 14 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,856 m). No clear Sentinel-2 view of the lake in the last 7 days.",
+    "fresh_reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 14 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,856 m). No clear Sentinel-2 view of the lake in the last 7 days."
    }
   },
   {
@@ -2238,7 +2258,7 @@
     "looks": 9,
     "change_km2": null,
     "noise_km2": null,
-    "reason": "Snow or ice covers 100% of the lake zone seen clear in a Sentinel-2 scene of 8 Nov 2026 (S2C_43SBV_20261108_0_L2A). By the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep) the lake has probably been frozen since 18 Oct 2026. The daily mean air temperature at the lake has been below 0 \u00b0C for 29 days in a row, with 171 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 4,188 m). Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so SARtale gives no growing or shrinking verdict while the lake is frozen.",
+    "reason": "Snow or ice covers 100% of the lake outline seen clear in a Sentinel-2 scene of 8 Nov 2026 (S2C_43SBV_20261108_0_L2A). The lake has probably been frozen since 18 Oct 2026. The daily mean air temperature at the lake has been below 0 \u00b0C for 29 days in a row, with 171 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 4,188 m). Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so SARtale gives no growing or shrinking verdict while the lake is frozen.",
     "new_crid": null
    },
    "cloud_window_looks": 4,
@@ -2258,9 +2278,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05023",
-     "core_contrast_hh_db": -4.159,
-     "core_contrast_hv_db": -3.825,
-     "core_dark_share": 0.651,
+     "core_contrast_hh_db": -3.989,
+     "core_contrast_hv_db": -3.653,
+     "core_dark_share": 0.596,
      "frozen": true
     },
     {
@@ -2270,9 +2290,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05023",
-     "core_contrast_hh_db": -3.316,
-     "core_contrast_hv_db": -3.245,
-     "core_dark_share": 0.442,
+     "core_contrast_hh_db": -3.307,
+     "core_contrast_hv_db": -3.241,
+     "core_dark_share": 0.438,
      "frozen": true
     },
     {
@@ -2283,9 +2303,9 @@
      "excluded": "window dark share 20.0% is an outlier on its track (robust z +4.6, limit 3.5)",
      "crid": "P05023",
      "diagnostic_km2": 0.1063,
-     "core_contrast_hh_db": -8.057,
-     "core_contrast_hv_db": -6.829,
-     "core_dark_share": 0.897,
+     "core_contrast_hh_db": -8.101,
+     "core_contrast_hv_db": -6.849,
+     "core_dark_share": 0.901,
      "frozen": true
     },
     {
@@ -2295,9 +2315,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05023",
-     "core_contrast_hh_db": -8.136,
-     "core_contrast_hv_db": -6.924,
-     "core_dark_share": 0.951,
+     "core_contrast_hh_db": -7.9,
+     "core_contrast_hv_db": -6.831,
+     "core_dark_share": 0.889,
      "frozen": false
     },
     {
@@ -2307,9 +2327,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05023",
-     "core_contrast_hh_db": -6.918,
-     "core_contrast_hv_db": -6.338,
-     "core_dark_share": 0.91,
+     "core_contrast_hh_db": -6.931,
+     "core_contrast_hv_db": -6.35,
+     "core_dark_share": 0.915,
      "frozen": false
     },
     {
@@ -2319,9 +2339,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05023",
-     "core_contrast_hh_db": -8.055,
-     "core_contrast_hv_db": -6.862,
-     "core_dark_share": 0.969,
+     "core_contrast_hh_db": -7.755,
+     "core_contrast_hv_db": -6.671,
+     "core_dark_share": 0.931,
      "frozen": false
     },
     {
@@ -2331,9 +2351,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05023",
-     "core_contrast_hh_db": -7.766,
-     "core_contrast_hv_db": -6.82,
-     "core_dark_share": 0.969,
+     "core_contrast_hh_db": -7.779,
+     "core_contrast_hv_db": -6.839,
+     "core_dark_share": 0.974,
      "frozen": false
     },
     {
@@ -2343,9 +2363,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05023",
-     "core_contrast_hh_db": -9.829,
-     "core_contrast_hv_db": -8.058,
-     "core_dark_share": 0.985,
+     "core_contrast_hh_db": -9.848,
+     "core_contrast_hv_db": -8.072,
+     "core_dark_share": 0.992,
      "frozen": false
     },
     {
@@ -2355,9 +2375,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05023",
-     "core_contrast_hh_db": -7.929,
-     "core_contrast_hv_db": -7.353,
-     "core_dark_share": 0.973,
+     "core_contrast_hh_db": -7.718,
+     "core_contrast_hv_db": -7.228,
+     "core_dark_share": 0.933,
      "frozen": false
     },
     {
@@ -2367,9 +2387,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05023",
-     "core_contrast_hh_db": -7.572,
-     "core_contrast_hv_db": -6.889,
-     "core_dark_share": 0.903,
+     "core_contrast_hh_db": -7.589,
+     "core_contrast_hv_db": -6.931,
+     "core_dark_share": 0.905,
      "frozen": false
     },
     {
@@ -2379,9 +2399,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05023",
-     "core_contrast_hh_db": -7.868,
-     "core_contrast_hv_db": -7.204,
-     "core_dark_share": 0.978,
+     "core_contrast_hh_db": -7.888,
+     "core_contrast_hv_db": -7.238,
+     "core_dark_share": 0.98,
      "frozen": false
     },
     {
@@ -2391,9 +2411,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05023",
-     "core_contrast_hh_db": -7.958,
-     "core_contrast_hv_db": -7.204,
-     "core_dark_share": 0.958,
+     "core_contrast_hh_db": -7.615,
+     "core_contrast_hv_db": -6.961,
+     "core_dark_share": 0.941,
      "frozen": false
     },
     {
@@ -2403,9 +2423,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05023",
-     "core_contrast_hh_db": -7.707,
-     "core_contrast_hv_db": -7.47,
-     "core_dark_share": 0.962,
+     "core_contrast_hh_db": -7.721,
+     "core_contrast_hv_db": -7.482,
+     "core_dark_share": 0.968,
      "frozen": false
     },
     {
@@ -2415,9 +2435,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05023",
-     "core_contrast_hh_db": -6.554,
-     "core_contrast_hv_db": -7.045,
-     "core_dark_share": 0.921,
+     "core_contrast_hh_db": -6.615,
+     "core_contrast_hv_db": -7.059,
+     "core_dark_share": 0.924,
      "frozen": true
     },
     {
@@ -2427,9 +2447,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05036",
-     "core_contrast_hh_db": -4.4,
-     "core_contrast_hv_db": -5.704,
-     "core_dark_share": 0.77,
+     "core_contrast_hh_db": -4.304,
+     "core_contrast_hv_db": -5.6,
+     "core_dark_share": 0.751,
      "frozen": true
     },
     {
@@ -2439,9 +2459,9 @@
      "observable_share": 0.8,
      "excluded": null,
      "crid": "P05036",
-     "core_contrast_hh_db": -7.009,
-     "core_contrast_hv_db": -7.889,
-     "core_dark_share": 0.916,
+     "core_contrast_hh_db": -7.031,
+     "core_contrast_hv_db": -7.925,
+     "core_dark_share": 0.922,
      "frozen": true
     }
    ],
@@ -2465,25 +2485,28 @@
    ],
    "summer_ref": {
     "084A": {
-     "passes": 6,
-     "core_px": 956,
+     "passes": 5,
+     "core_px": 949,
      "assessed": true,
-     "core_contrast_hh_db": -7.669,
-     "core_contrast_hv_db": -6.854,
-     "core_dark_share": 0.94
+     "core_contrast_hh_db": -7.779,
+     "core_contrast_hv_db": -6.931,
+     "core_dark_share": 0.974
     },
     "164D": {
-     "passes": 5,
-     "core_px": 932,
+     "passes": 4,
+     "core_px": 1018,
      "assessed": true,
-     "core_contrast_hh_db": -7.958,
-     "core_contrast_hv_db": -6.924,
-     "core_dark_share": 0.958
+     "core_contrast_hh_db": -7.736,
+     "core_contrast_hv_db": -6.896,
+     "core_dark_share": 0.932
     }
    },
    "freeze": {
     "state": "frozen_s2",
     "since": "2026-10-18",
+    "freeze_up": "2026-10-18",
+    "released_by": null,
+    "released_on": null,
     "temp_through": "2026-11-09",
     "checked": "2026-11-12",
     "cold_run_days": 29,
@@ -2496,18 +2519,40 @@
      "date": "2026-11-08",
      "s2_id": "S2C_43SBV_20261108_0_L2A",
      "clear_share": 1.0,
+     "target_clear_share": 1.0,
      "snow_share": 1.0,
      "water_share": 0.0,
      "water_over": "lake outline"
     },
     "s2_searched": true,
+    "s2_evidence": {
+     "date": "2026-11-08",
+     "s2_id": "S2C_43SBV_20261108_0_L2A",
+     "clear_share": 1.0,
+     "target_clear_share": 1.0,
+     "snow_share": 1.0,
+     "water_share": 0.0,
+     "water_over": "lake outline"
+    },
+    "s2_events": [
+     {
+      "date": "2026-11-08",
+      "s2_id": "S2C_43SBV_20261108_0_L2A",
+      "clear_share": 1.0,
+      "target_clear_share": 1.0,
+      "snow_share": 1.0,
+      "water_share": 0.0,
+      "water_over": "lake outline"
+     }
+    ],
     "breakup_pass": null,
     "frozen_passes": 6,
     "radar_assessed": true,
     "in_season": true,
     "held_over_sep": false,
     "source": "NASA POWER daily T2M and T2M_MIN (MERRA-2 based), moved to the lake's height at -6.5 C/km",
-    "reason": "Snow or ice covers 100% of the lake zone seen clear in a Sentinel-2 scene of 8 Nov 2026 (S2C_43SBV_20261108_0_L2A). By the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep) the lake has probably been frozen since 18 Oct 2026. The daily mean air temperature at the lake has been below 0 \u00b0C for 29 days in a row, with 171 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 4,188 m). Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so SARtale gives no growing or shrinking verdict while the lake is frozen."
+    "reason": "Snow or ice covers 100% of the lake outline seen clear in a Sentinel-2 scene of 8 Nov 2026 (S2C_43SBV_20261108_0_L2A). The lake has probably been frozen since 18 Oct 2026. The daily mean air temperature at the lake has been below 0 \u00b0C for 29 days in a row, with 171 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 4,188 m). Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so SARtale gives no growing or shrinking verdict while the lake is frozen.",
+    "fresh_reason": "Snow or ice covers 100% of the lake outline seen clear in a Sentinel-2 scene of 8 Nov 2026 (S2C_43SBV_20261108_0_L2A). The lake has probably been frozen since 18 Oct 2026. The daily mean air temperature at the lake has been below 0 \u00b0C for 29 days in a row, with 171 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 4,188 m). Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so SARtale gives no growing or shrinking verdict while the lake is frozen."
    }
   }
  ],
