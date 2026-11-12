@@ -109,7 +109,7 @@ def test_the_worked_example_never_quotes_a_frozen_pass_as_water():
                       "change_km2": 0.012, "noise_km2": 0.1, "looks": len(on_track) - 1, "images": None}
     ex = build.worked_example(d)
     assert ex["EX_DATE"] == build._day(before["date"]) and ex["EX_AREA"] == f"{before['area_km2']:.3f}"
-    assert ex["EX_EARLIER"] == str(len(on_track) - 2) and ex["EX_STATUS"] == "Stable"
+    assert ex["EX_EARLIER"] == str(min(6, len(on_track) - 2)) and ex["EX_STATUS"] == "Stable"
     assert ex["EX_FROZEN"] == " Attabad Lake is frozen now (since 8 January 2027); this was its last open-water pass."
     assert ex["EX_FROZEN"] in build.readme_example(ex)
     i = [p[0] for p in build.PAGES].index("method")

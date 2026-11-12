@@ -87,9 +87,10 @@ class WorkedExampleError(ValueError):
 
 
 def worked_example(doc: dict) -> dict[str, str]:
-    """The Attabad worked example, computed from lakes.json the way the status is (lakestatus.lake_status): the
-    status track's valid passes, the median of the earlier ones, the change and the noise the build recorded.
-    Every number in the guide's and the README's example comes from here, with the build it was taken from.
+    """The Attabad worked example, computed from lakes.json the way the level is (lakestatus.assess): the latest
+    compared pass, its baseline (the median of up to 6 earlier valid passes on its own track, checked against the one
+    the build recorded), the change, the noise and z the build recorded, and the level. Every number in the guide's
+    and the README's example comes from here, with the build it was taken from.
 
     Raises WorkedExampleError, with what is missing, when the build has no measured Attabad status to quote (no
     Attabad entry, a status without a change, noise, track or latest date, or fewer than two valid passes)."""
@@ -109,7 +110,8 @@ def worked_example(doc: dict) -> dict[str, str]:
         frozen_note = (f" Attabad Lake is frozen now{f' (since {_day(since)})' if since else ''}; this was its last "
                        "open-water pass.")
         st = {**st, "status": lo["status"], "track": lo["track"], "latest_date": lo["date"],
-              "change_km2": lo["change_km2"], "noise_km2": lo["noise_km2"]}
+              "change_km2": lo["change_km2"], "noise_km2": lo["noise_km2"], "z": lo.get("z"),
+              "baseline_km2": lo.get("ref_km2")}
     missing = [k for k in ("track", "latest_date", "change_km2", "noise_km2") if st.get(k) is None]
     if missing:
         raise WorkedExampleError(f"Attabad's status is {st.get('status')!r} with no {', '.join(missing)}, so there is "
@@ -122,19 +124,35 @@ def worked_example(doc: dict) -> dict[str, str]:
     if len(pts) < 2:
         raise WorkedExampleError(f"Attabad has {len(pts)} valid pass(es) on track {track}; the example needs a latest "
                                  "pass and earlier ones")
-    latest, earlier = pts[-1], [p["area_km2"] for p in pts[:-1]]
+    # The baseline is the median of up to BASELINE_PASSES earlier valid passes on the track (all of them in builds
+    # made before the levels, which recorded no baseline).
+    window = int(c.get("baseline_passes") or 0) or len(pts) - 1
+    latest, earlier = pts[-1], [p["area_km2"] for p in pts[:-1]][-window:]
+    ref = median(earlier)
+    if st.get("baseline_km2") is not None and abs(ref - st["baseline_km2"]) > 1e-6:
+        raise WorkedExampleError(f"Attabad's recorded baseline {st['baseline_km2']} km2 is not the median of its "
+                                 f"{len(earlier)} earlier passes ({ref:.6f} km2)")
+    z = st.get("z")
+    if z is None:
+        z = st["change_km2"] / st["noise_km2"]
     share = next((m.group(1) for t in lake["limits"] for m in [re.search(r"(\d+)% of it is inside", t)] if m), None)
     return {
         "EX_DATE": _day(st["latest_date"]), "EX_TRACK": track, "EX_AREA": f"{latest['area_km2']:.3f}",
-        "EX_AREA2": f"{latest['area_km2']:.2f}", "EX_REF": f"{median(earlier):.3f}", "EX_EARLIER": str(len(earlier)),
-        "EX_CHANGE": f"{st['change_km2']:+.3f}", "EX_CHANGE2": f"{st['change_km2']:+.2f}",
-        "EX_NOISE": f"{st['noise_km2']:.3f}", "EX_NOISE2": f"{st['noise_km2']:.2f}",
+        "EX_AREA2": f"{latest['area_km2']:.2f}", "EX_REF": f"{ref:.3f}", "EX_EARLIER": str(len(earlier)),
+        "EX_CHANGE": _signed(st["change_km2"], 3), "EX_CHANGE2": _signed(st["change_km2"], 2),
+        "EX_NOISE": f"{st['noise_km2']:.3f}", "EX_NOISE2": f"{st['noise_km2']:.2f}", "EX_Z": _signed(z, 1),
         "EX_FACTOR": f"{c['change_factor']:g}", "EX_THRESHOLD": f"{c['change_factor'] * st['noise_km2']:.3f}",
         "EX_STATUS": st["status"], "EX_BUILT": _day(doc["built"], short=True),
         "EX_SHARE": (f"Only {share}% of Attabad's outline falls inside the 6 km window, so its area is the part "
                      "inside the window.") if share else "All of Attabad's outline falls inside the 6 km window.",
         "EX_FROZEN": frozen_note,
     }
+
+
+def _signed(v: float, digits: int) -> str:
+    """"+0.012" / "−0.012" (a true minus sign); a value that rounds to zero has no sign."""
+    t = f"{abs(v):.{digits}f}"
+    return t if float(t) == 0 else ("+" if v > 0 else "−") + t
 
 
 FROZEN_STATUSES = ("Frozen (likely)", "Frozen (seen by Sentinel-2)", "Break-up likely")
@@ -152,8 +170,9 @@ def is_frozen_now(lake: dict) -> bool:
 
 def readme_example(ex: dict[str, str]) -> str:
     return (f"{EX_START}\nFor example, Attabad on {ex['EX_DATE']} held {ex['EX_AREA2']} km² on track {ex['EX_TRACK']}, "
-            f"a change of {ex['EX_CHANGE2']} km² against a noise of {ex['EX_NOISE2']} km², so it reads "
-            f"**{ex['EX_STATUS']}** (from the lake data built {ex['EX_BUILT']}; the app shows the current numbers)."
+            f"a change of {ex['EX_CHANGE2']} km² against the median of its earlier passes on that track and a noise of "
+            f"{ex['EX_NOISE2']} km² (z = {ex['EX_Z']}), so it reads **{ex['EX_STATUS']}** (from the lake data built "
+            f"{ex['EX_BUILT']}; the app shows the current numbers)."
             f"{ex.get('EX_FROZEN', '')}\n"
             f"{EX_END}")
 
