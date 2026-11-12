@@ -34,7 +34,7 @@ Radar sees through cloud, day or night. From 17 June to 4 August 2026, while clo
 
 ## What it does
 
-- **Gives each watched lake one plain status:** Growing, Stable, Shrinking, Change not confirmed yet, Not seen this pass, Not observable, Not enough NISAR looks yet, or No lake now (a site, such as a drained ice-dammed lake's basin, with no lake in recent imagery, kept to watch for a lake forming). The site shows the current status of each.
+- **Gives each watched lake one plain status:** Growing, Stable, Shrinking, Change not confirmed yet, Not seen this pass, Not observable, Not enough NISAR looks yet, or No lake now (a site, such as a drained ice-dammed lake's basin, with no lake in recent imagery, kept to watch for a lake forming), which becomes Lake may be forming when a clear, snow-free Sentinel-2 view shows water there (the SARtale team then reviews the site to add it as a measured lake). The site shows the current status of each.
 - **Shows the evidence:** the latest radar picture with the water read from it, a chart and a table of every pass, and each pass left out, with the reason.
 - **Prints a one-page brief** per lake: dates, looks, noise and limits.
 - **Takes requests for new lakes through GitHub issues.** A visitor fills in the website's form, which opens a pre-filled "Add a lake" issue (a GitHub sign-in is needed). A workflow checks the point, counts the NISAR passes over it and comments; a team member adds the `accepted` label to start the rebuild, or closes the issue to reject it. See [Lake requests](docs/guide/lake-requests.html). The repository is private for now, so only collaborators can open request issues until it is made public.

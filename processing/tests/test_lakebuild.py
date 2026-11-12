@@ -335,7 +335,8 @@ def test_a_no_lake_site_keeps_its_passes_but_gets_no_verdict_and_no_water_layer(
     assert (st["change_km2"], st["noise_km2"]) == (None, None)
     assert (st["track"], st["latest_date"], st["looks"]) == ("156A", "2026-07-24", 4)
     assert st["reason"] == ("No lake in recent imagery: Sentinel-2 shows a dry basin on 17 Aug 2026. "
-                            "SARtale re-checks the site with Sentinel-2 in each open-water season for a lake forming.")
+                            "SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only "
+                            "views where the lake zone is clear of cloud, snow and ice.")
     assert lk["absence_checked"] is None
     assert lk["lake_state"] == "no_lake" and lk["lake_state_source"] == src
     assert lk["area_label"] == NO_LAKE_LABEL
@@ -400,23 +401,68 @@ def _no_lake_site(tmp_path):
     return cache, replace(base, lake_state="no_lake", lake_state_source="a dry basin")
 
 
-EV_DRY = {"date": "2026-08-17", "s2_id": "S2_DRY", "water_share": 0.002, "water_km2": 0.006, "zone_valid_share": 1.0,
-          "checked": "2026-08-20", "season": "15 Jun–30 Sep", "source": "Sentinel-2"}
-EV_WET = {**EV_DRY, "date": "2026-09-01", "s2_id": "S2_WET", "water_share": 0.05, "water_km2": 0.157}
+def _ev(lake, **extra):
+    """Absence evidence of `lake` under the current rule (snow share, zone key), dry unless `extra` says otherwise."""
+    from sartale.lakebuild import absence_zone
+    return {"date": "2026-08-17", "s2_id": "S2_DRY", "water_share": 0.002, "water_km2": 0.006,
+            "zone_valid_share": 1.0, "snow_share": 0.0, "checked": "2026-08-20", "searched": "2026-08-20",
+            "no_view_since": False, "source": "Sentinel-2", "zone": absence_zone(lake), **extra}
+
+
+def _wet(lake):
+    return _ev(lake, date="2026-09-01", s2_id="S2_WET", water_share=0.05, water_km2=0.157)
+
+
+EV_WET = {"date": "2026-09-01", "s2_id": "S2_WET", "water_share": 0.05, "water_km2": 0.157, "snow_share": 0.0}
 
 
 def test_a_no_lake_site_carries_its_last_absence_check_from_the_previous_build(tmp_path):
+    from dataclasses import replace
+
     from sartale.lakestatus import NO_LAKE
     cache, gone = _no_lake_site(tmp_path)
     first = build_lakes([gone], cache, tmp_path / "out", "t")
-    first["lakes"][0]["absence_checked"] = EV_DRY
+    first["lakes"][0]["absence_checked"] = _ev(gone)
     again = build_lakes([gone], cache, tmp_path / "out", "t", previous=first)["lakes"][0]
-    assert again["absence_checked"] == EV_DRY and again["status"]["status"] == NO_LAKE
+    assert again["absence_checked"] == _ev(gone) and again["status"]["status"] == NO_LAKE
     assert "Last checked 17 Aug 2026" in again["status"]["reason"]
-    # a moved point starts again with no evidence
+    # a moved point or a new radius starts again with no evidence
+    for changed in (replace(gone, lon=gone.lon + 0.001), replace(gone, zone_radius_km=0.5)):
+        assert build_lakes([changed], cache, tmp_path / "out", "t", previous=first)["lakes"][0]["absence_checked"] is None
+    # evidence from before snow and ice stopped counting as clear (no snow_share) is not carried
+    old = {k: v for k, v in _ev(gone).items() if k != "snow_share"}
+    first["lakes"][0]["absence_checked"] = old
+    assert build_lakes([gone], cache, tmp_path / "out", "t", previous=first)["lakes"][0]["absence_checked"] is None
+
+
+def test_m7_an_outline_site_keeps_its_evidence_and_a_changed_outline_resets_it(tmp_path):
+    """M7: an outline site's lakes.json entry has zone_radius_km None; the evidence carries the zone key (outline path
+    and file hash) instead, so it is kept from build to build, and dropped when the outline file changes."""
     from dataclasses import replace
-    moved = build_lakes([replace(gone, lon=gone.lon + 0.001)], cache, tmp_path / "out", "t", previous=first)
-    assert moved["lakes"][0]["absence_checked"] is None
+
+    from sartale.lakebuild import absence_zone, carried_absence
+    cache, gone = _no_lake_site(tmp_path)
+    d = 0.004
+    ring = [[gone.lon + sx * d, gone.lat + sy * d] for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))]
+    poly = tmp_path / "basin.geojson"
+    poly.write_text(json.dumps({"type": "Polygon", "coordinates": [ring]}), encoding="utf-8")
+    outlined = replace(gone, outline=str(poly))
+    zone = absence_zone(outlined)
+    assert zone["outline"] == str(poly) and len(zone["outline_sha256"]) == 64 and "radius_km" not in zone
+    first = build_lakes([outlined], cache, tmp_path / "out", "t")
+    assert first["lakes"][0]["zone_radius_km"] is None
+    first["lakes"][0]["absence_checked"] = _ev(outlined)
+    kept = build_lakes([outlined], cache, tmp_path / "out", "t", previous=first)["lakes"][0]
+    assert kept["absence_checked"] == _ev(outlined)
+    assert carried_absence(first, outlined) == _ev(outlined)
+    # the same path with other contents: a new zone, no evidence
+    ring2 = [[x + 0.001, y] for x, y in ring]
+    poly.write_text(json.dumps({"type": "Polygon", "coordinates": [ring2]}), encoding="utf-8")
+    assert carried_absence(first, outlined) is None
+    assert build_lakes([outlined], cache, tmp_path / "out", "t", previous=first)["lakes"][0]["absence_checked"] is None
+    # nor does the circle's evidence carry to the outline, or back
+    first["lakes"][0]["absence_checked"] = _ev(gone)
+    assert carried_absence(first, outlined) is None
 
 
 def test_water_in_the_absence_check_turns_no_lake_now_into_lake_may_be_forming(tmp_path):
@@ -425,16 +471,16 @@ def test_water_in_the_absence_check_turns_no_lake_now_into_lake_may_be_forming(t
     cache, gone = _no_lake_site(tmp_path)
     out = tmp_path / "out"
     doc = build_lakes([gone], cache, out, "t")
-    entry = apply_absence(doc["lakes"][0], EV_WET)
+    entry = apply_absence(doc["lakes"][0], _wet(gone))
     assert entry["lake_state"] == FORMING_STATE and entry["status"]["status"] == LAKE_FORMING
-    assert entry["area_label"] == FORMING_LABEL and entry["absence_checked"] == EV_WET
+    assert entry["area_label"] == FORMING_LABEL and entry["absence_checked"] == _wet(gone)
     assert entry["status"]["change_km2"] is None
     # the next build keeps the water layer once the pictured pass is no older than the wet scene
     doc["lakes"][0] = entry
     rebuilt = build_lakes([gone], cache, out, "t", previous=doc)["lakes"][0]
     assert rebuilt["status"]["status"] == LAKE_FORMING and rebuilt["images"]["water"]
     # water gone again: back to no lake now
-    back = apply_absence(rebuilt, EV_DRY)
+    back = apply_absence(rebuilt, _ev(gone))
     assert back["lake_state"] == "no_lake" and back["status"]["status"] == NO_LAKE
 
 

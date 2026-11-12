@@ -46,13 +46,17 @@ now. A links and coordinates audit on 11 Nov 2026 then moved three points:
 ### No lake now: dated checks and when a lake may be forming
 
 A site the register holds as having no lake now (Shisper, Khurdopin, Rogheli) carries `absence_checked` in
-`lakes.json`: the Sentinel-2 scene id and date, and the share of the lake zone's clear pixels that held water
-(MNDWI > 0, as in the cross-check). `lakes-absence` runs on every refresh. In the open-water season (15 Jun-30 Sep) it
-takes the newest scene of the season so far whose lake zone is at least 80% clear; outside the season it keeps the
-last check, and the app shows its date ("Last checked ..."). Water above the site's threshold turns the site into
-**Lake may be forming**: no growing or shrinking verdict, and SARtale measures it from the next NISAR pass. The
-thresholds come from a survey of every clear scene of 15 Jun-30 Sep 2026 and of dates when the lakes were there
-(11 Nov 2026):
+`lakes.json`: the Sentinel-2 scene id and date, the share of the lake zone's clear pixels that held water (MNDWI > 0,
+as in the cross-check), and the share of the zone under snow or ice. `lakes-absence` runs on every refresh, all year:
+the lake that matters most can form outside summer (Shisper's 2022 lake filled in March and April and burst on 7 May).
+It takes the newest scene whose lake zone is at least 80% clear, counting snow and ice (scene classification 11) as
+not clear, and with snow or ice on no more than 1% of the zone: a frozen or snow-covered pond reads as dry ground in
+MNDWI, so a snowy scene is never evidence that a site is empty. When no scene qualifies, the last check stands, and the
+site says so: "Last checked <date> ...; no clear, snow-free Sentinel-2 view of the zone since (searched to <date>)".
+Water above the site's threshold turns the site into **Lake may be forming**: no growing or shrinking verdict; its
+radar dark area is shown but not yet treated as lake area, and the SARtale team reviews the site to add it to the
+register as a measured lake (nothing promotes it automatically). The thresholds come from a survey of every clear
+scene of 15 Jun-30 Sep 2026 and of dates when the lakes were there (11 Nov 2026):
 
 | Site and zone | Empty zone, 2026 | When the lake was there | Threshold |
 |---|---|---|---|

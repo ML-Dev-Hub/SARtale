@@ -18,7 +18,8 @@ UNCONFIRMED = "Change not confirmed yet"
 # basin, say). It gets no growing/shrinking verdict and its dark radar area is not lake area.
 NO_LAKE = "No lake now"
 # A "no lake now" site where the latest Sentinel-2 absence check found water on more than config.FORMING_WATER_SHARE
-# of the lake zone: a lake may be forming. No verdict; SARtale measures it as a lake from the next NISAR pass.
+# of the lake zone: a lake may be forming. No verdict, and its radar dark area is shown but not treated as lake area:
+# the SARtale team reviews the site and adds it to the register as a measured lake (no automatic promotion).
 LAKE_FORMING = "Lake may be forming"
 # Every status a lake can have, in the order the app lists them (app/src/lakes.ts STATUS_ORDER).
 STATUS_NAMES = (
@@ -185,12 +186,29 @@ def share_text(share: float) -> str:
     return f"{pct:.2f}%" if pct < 1 else f"{pct:.1f}%"
 
 
+NO_VIEW_SINCE = "no clear, snow-free Sentinel-2 view of the zone since"
+RECHECK = ("SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only views where the lake "
+           "zone is clear of cloud, snow and ice.")
+FORMING_NEXT = ("Its radar dark area is shown but not yet treated as lake area; the SARtale team reviews the site to add "
+                "it as a measured lake.")
+
+
+def stale_text(absence: dict) -> str:
+    """"; no clear, snow-free Sentinel-2 view of the zone since (searched to 12 Nov 2026)" when the last search found
+    nothing newer that qualified for a while (`no_view_since`), else ""."""
+    if not absence.get("no_view_since"):
+        return ""
+    searched = absence.get("searched") or absence.get("checked")
+    return f"; {NO_VIEW_SINCE} (searched to {day_text(searched)})" if searched else f"; {NO_VIEW_SINCE}"
+
+
 def absence_sentence(absence: dict | None) -> str:
-    """The dated evidence of an absence check in words, or "" when there is none."""
+    """The dated evidence of an absence check in words, or "" when there is none. When no clear, snow-free scene has
+    come since, it says so, so an old view never reads as a recent check."""
     if not absence:
         return ""
     return (f"Last checked {day_text(absence['date'])} with Sentinel-2 ({absence['s2_id']}): water on "
-            f"{share_text(absence['water_share'])} of the lake zone.")
+            f"{share_text(absence['water_share'])} of the lake zone{stale_text(absence)}.")
 
 
 def no_lake_status(computed: dict, source: str | None, absence: dict | None = None) -> dict:
@@ -199,15 +217,15 @@ def no_lake_status(computed: dict, source: str | None, absence: dict | None = No
     Sentinel-2 absence check when there is one."""
     why = f"No lake in recent imagery: {source.rstrip('.')}." if source else "No lake in recent imagery."
     checked = absence_sentence(absence)
-    tail = "SARtale re-checks the site with Sentinel-2 in each open-water season for a lake forming."
-    reason = " ".join(t for t in (why, checked, tail) if t)
+    reason = " ".join(t for t in (why, checked, RECHECK) if t)
     return _result(NO_LAKE, computed["track"], computed["latest_date"], computed["looks"], reason=reason)
 
 
 def forming_status(computed: dict, absence: dict) -> dict:
     """The status of a "no lake now" site where Sentinel-2 found water: a lake may be forming. No growing or
-    shrinking verdict; the track, latest date and looks are those the passes give."""
+    shrinking verdict; the track, latest date and looks are those the passes give. Nothing promotes the site to a
+    measured lake automatically: the reason says that the team reviews it."""
     reason = (f"Sentinel-2 on {day_text(absence['date'])} ({absence['s2_id']}) shows water on "
               f"{share_text(absence['water_share'])} of the lake zone ({absence['water_km2']:.3f} km2), where recent "
-              "imagery had no lake. A lake may be forming; SARtale measures it from the next NISAR pass.")
+              f"imagery had no lake{stale_text(absence)}. A lake may be forming. {FORMING_NEXT}")
     return _result(LAKE_FORMING, computed["track"], computed["latest_date"], computed["looks"], reason=reason)

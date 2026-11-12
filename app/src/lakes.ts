@@ -17,7 +17,10 @@ export type LakeStatusName =
  */
 export type LakeState = "lake" | "unconfirmed" | "no_lake" | "lake_forming_check";
 
-/** The dated Sentinel-2 check of a site with no lake now: the scene, and how much of the lake zone held water. */
+/**
+ * The dated Sentinel-2 check of a site with no lake now: the newest scene whose lake zone was clear of cloud, snow and
+ * ice, and how much of the zone held water.
+ */
 export interface AbsenceCheck {
   /** Date of the Sentinel-2 scene. */
   date: string;
@@ -25,9 +28,18 @@ export interface AbsenceCheck {
   /** Share of the lake zone's clear pixels that were water, 0 to 1. */
   water_share: number;
   water_km2: number;
+  /** Share of the zone seen clear of cloud, shadow, snow and ice. */
   zone_valid_share: number;
-  /** When SARtale ran the check. */
+  /** Share of the zone under snow or ice (absent in older builds). */
+  snow_share?: number;
+  /** The run that found the scene. */
   checked: string;
+  /** The last run that searched (absent in older builds). */
+  searched?: string;
+  /** True when no clear, snow-free scene has come for over a week since `date` (absent in older builds). */
+  no_view_since?: boolean;
+  rule?: string;
+  /** Older builds only: the open-water season the check was limited to. */
   season?: string;
   source?: string;
 }
@@ -186,7 +198,8 @@ export function lakeState(l: Lake): LakeState {
 
 /**
  * True for a site that holds a lake now (confirmed or not). False for an empty basin kept to watch for a lake forming,
- * and for one where Sentinel-2 has just shown water: that may be a lake forming, but SARtale has not measured it yet.
+ * and for one where Sentinel-2 has just shown water: that may be a lake forming, but it is not a measured lake until
+ * the SARtale team reviews the site and adds it.
  */
 export function hasLakeNow(l: Lake): boolean {
   const s = lakeState(l);
@@ -198,13 +211,20 @@ export function mayBeForming(l: Lake): boolean {
   return lakeState(l) === "lake_forming_check";
 }
 
-/** "Last checked 17 Aug 2026 with Sentinel-2 (scene): water on 0.04% of the lake zone.", or null without a check. */
+/**
+ * "Last checked 17 Aug 2026 with Sentinel-2 (scene): water on 0.04% of the lake zone.", or null without a check. When no
+ * clear, snow-free scene has come since, it says so (the pipeline's lakestatus.absence_sentence, word for word).
+ */
 export function absenceLine(l: Lake): string | null {
   const a = l.absence_checked;
   if (!a) return null;
   const pct = a.water_share * 100;
   const shown = pct === 0 ? "0%" : pct < 1 ? `${pct.toFixed(2)}%` : `${pct.toFixed(1)}%`;
-  return `Last checked ${formatDate(a.date)} with Sentinel-2 (${a.s2_id}): water on ${shown} of the lake zone.`;
+  const searched = a.searched ?? a.checked;
+  const since = a.no_view_since
+    ? `; no clear, snow-free Sentinel-2 view of the zone since${searched ? ` (searched to ${formatDate(searched)})` : ""}`
+    : "";
+  return `Last checked ${formatDate(a.date)} with Sentinel-2 (${a.s2_id}): water on ${shown} of the lake zone${since}.`;
 }
 
 /** The sites that hold a lake now: what the lake counts and the cloud-window looks are made of. */

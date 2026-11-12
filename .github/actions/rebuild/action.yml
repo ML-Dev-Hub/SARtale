@@ -75,6 +75,17 @@ runs:
           echo "no published lakes.json to compare with"
         fi
 
+    - name: Re-check the sites with no lake now (Sentinel-2, all year, clear and snow-free scenes only)
+      # Before the build, on the published lakes.json: the absence check reads no build output, and the build that
+      # follows carries the new evidence, so a site where a lake may be forming keeps its radar water layer in this
+      # same refresh. When no scene qualifies, or the search fails, the last evidence stands and the site says that
+      # no clear, snow-free view has come since.
+      shell: bash -el {0}
+      working-directory: processing
+      run: |
+        unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
+        python -m sartale.run_pipeline lakes-absence
+
     - name: Build the lakes (fails when the Attabad gate fails)
       shell: bash -el {0}
       working-directory: processing
@@ -82,14 +93,13 @@ runs:
         unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
         python -m sartale.run_pipeline lakes-build
 
-    - name: Re-check the sites with no lake now (Sentinel-2, open-water season)
-      # Searches only in the open-water season; outside it the last dated evidence is kept. A failed search keeps
-      # the last evidence too, and the site shows its date.
+    - name: Check the sites with no lake now that have no evidence yet
+      # a site new to the register (not in the published lakes.json, so skipped above) gets its first check here
       shell: bash -el {0}
       working-directory: processing
       run: |
         unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
-        python -m sartale.run_pipeline lakes-absence
+        python -m sartale.run_pipeline lakes-absence --only-missing
 
     - name: Compare with the published passes (fails when too many would be dropped)
       shell: bash -el {0}

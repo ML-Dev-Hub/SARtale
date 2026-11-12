@@ -167,6 +167,11 @@ def test_no_lake_status_carries_the_dated_absence_check():
     s = no_lake_status(computed, "a dry basin", ev)
     assert s["status"] == NO_LAKE and s["change_km2"] is None
     assert "Last checked 17 Aug 2026 with Sentinel-2 (S2B_43SFA_20260817_0_L2A): water on 0.04% of the lake zone." in s["reason"]
+    assert "at every data refresh, all year" in s["reason"] and "open-water season" not in s["reason"]
+    # I1/I2: when no clear, snow-free view has come since, the site says so instead of implying a recent check
+    stale = no_lake_status(computed, "a dry basin", {**ev, "searched": "2026-11-12", "no_view_since": True})
+    assert ("Last checked 17 Aug 2026 with Sentinel-2 (S2B_43SFA_20260817_0_L2A): water on 0.04% of the lake zone; "
+            "no clear, snow-free Sentinel-2 view of the zone since (searched to 12 Nov 2026).") in stale["reason"]
 
 
 def test_forming_status_says_a_lake_may_be_forming_without_a_verdict():
@@ -176,4 +181,7 @@ def test_forming_status_says_a_lake_may_be_forming_without_a_verdict():
     s = forming_status(computed, ev)
     assert s["status"] == LAKE_FORMING and s["change_km2"] is None and s["noise_km2"] is None
     assert s["reason"].startswith("Sentinel-2 on 1 Sep 2026 (S2A_X) shows water on 5.0% of the lake zone (0.157 km2)")
-    assert "SARtale measures it from the next NISAR pass" in s["reason"]
+    # I3: says what happens; nothing measures the site automatically
+    assert "next NISAR pass" not in s["reason"] and "measures it" not in s["reason"]
+    assert s["reason"].endswith("A lake may be forming. Its radar dark area is shown but not yet treated as lake "
+                                "area; the SARtale team reviews the site to add it as a measured lake.")

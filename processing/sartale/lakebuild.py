@@ -1,4 +1,5 @@
 """Build lakes.json and the per-lake images from the cached windows."""
+import hashlib
 import json
 import warnings
 from pathlib import Path
@@ -38,7 +39,8 @@ POINT_LABEL = "water area in the search window"
 OUTLINE_LABEL = "water area in the lake outline (buffered 200 m)"
 NO_LAKE_LABEL = "dark radar area in the search circle; there is no lake here now, so it is not lake area"
 FORMING_LABEL = ("dark radar area in the search circle; Sentinel-2 shows water where there was no lake, so a lake may "
-                 "be forming; this is not yet measured as lake area")
+                 "be forming; this dark area is not treated as lake area until the SARtale team reviews the site and "
+                 "adds it as a measured lake")
 FORMING_STATE = "lake_forming_check"  # lakes.json lake_state of a no-lake site where the absence check found water
 WATER_RGBA = (0x2b, 0x8c, 0xff, 200)
 SHADOW_RGBA = (128, 128, 128, 120)
@@ -55,17 +57,19 @@ def _nanmedian0(stack: np.ndarray) -> np.ndarray:
         return np.nanmedian(stack, axis=0)
 
 
-def _outline_feature(lake: Lake) -> dict | None:
-    """The outline as a GeoJSON Feature if `lake.outline` is a readable local GeoJSON file, else None.
-
-    A relative path is read from the processing folder (where lakes_in.json lives), wherever the command runs.
-    """
+def _outline_path(lake: Lake) -> Path | None:
+    """The outline file of `lake` (a relative path is read from the processing folder, where lakes_in.json lives,
+    wherever the command runs), or None without an outline."""
     if not lake.outline:
         return None
     p = Path(lake.outline)
-    if not p.is_absolute():
-        p = OUTLINE_ROOT / p
-    if not p.is_file():
+    return p if p.is_absolute() else OUTLINE_ROOT / p
+
+
+def _outline_feature(lake: Lake) -> dict | None:
+    """The outline as a GeoJSON Feature if `lake.outline` is a readable local GeoJSON file, else None."""
+    p = _outline_path(lake)
+    if p is None or not p.is_file():
         return None
     doc = json.loads(p.read_text(encoding="utf-8"))
     if doc.get("type") == "FeatureCollection":
@@ -508,17 +512,31 @@ def attabad_gate(doc: dict) -> dict:
             "attabad_cloud_window_looks": cw, "pass": ok}
 
 
+def absence_zone(lake: Lake) -> dict:
+    """The key of the zone an absence check measures: the lake point with the circle's radius, or with the outline
+    (its path in the register and the SHA-256 of the file) when the lake has a readable outline, as `build_lake`
+    uses it. The evidence stores it, and is carried only while the lake's key is the same."""
+    key = {"lon": lake.lon, "lat": lake.lat}
+    if _outline_feature(lake) is not None:
+        digest = hashlib.sha256(_outline_path(lake).read_bytes()).hexdigest()
+        return {**key, "outline": lake.outline, "outline_sha256": digest}
+    return {**key, "radius_km": lake.zone_radius_km}
+
+
 def carried_absence(previous: dict | None, lake: Lake) -> dict | None:
-    """The last absence check of `lake` in a previously published lakes.json, if that entry was for the same
-    point and zone (a moved site or a changed zone starts again with no evidence)."""
+    """The last absence check of `lake` in a previously published lakes.json, if it was made for the same zone
+    (`absence_zone`: point, and radius or outline file) under the current rule. A moved site, a new radius or a
+    changed outline starts again with no evidence, and so does evidence from before snow and ice stopped counting
+    as a clear view (it has no `snow_share`)."""
     if lake.lake_state != "no_lake" or not previous:
         return None
     old = next((lk for lk in previous.get("lakes", []) if lk.get("id") == lake.id), None)
-    if not old or not isinstance(old.get("absence_checked"), dict):
+    ev = old.get("absence_checked") if old else None
+    if not isinstance(ev, dict) or "snow_share" not in ev:
         return None
-    if (old.get("lon"), old.get("lat")) != (lake.lon, lake.lat) or old.get("zone_radius_km") != lake.zone_radius_km:
+    if ev.get("zone") != absence_zone(lake):
         return None
-    return old["absence_checked"]
+    return ev
 
 
 def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, checks: list[dict] | None = None,

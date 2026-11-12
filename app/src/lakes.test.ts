@@ -213,6 +213,9 @@ describe("sites with no lake now", () => {
     const dry = { ...hidden, absence_checked: { date: "2026-08-17", s2_id: "S2B_X", water_share: 0.0004, water_km2: 0.001, zone_valid_share: 1, checked: "2026-11-11" } };
     expect(absenceLine(dry)).toBe("Last checked 17 Aug 2026 with Sentinel-2 (S2B_X): water on 0.04% of the lake zone.");
     expect(absenceLine({ ...hidden, absence_checked: null })).toBeNull();
+    // I1/I2: no clear, snow-free view since: said, so an old view never reads as a recent check
+    const stale = { ...hidden, absence_checked: { ...dry.absence_checked, snow_share: 0, searched: "2026-11-12", no_view_since: true } };
+    expect(absenceLine(stale)).toBe("Last checked 17 Aug 2026 with Sentinel-2 (S2B_X): water on 0.04% of the lake zone; no clear, snow-free Sentinel-2 view of the zone since (searched to 12 Nov 2026).");
     const wet = { ...dry, lake_state: "lake_forming_check" as const, status: { ...hidden.status, status: "Lake may be forming" as const } };
     expect(hasLakeNow(wet) || !mayBeForming(wet)).toBe(false);
     const g = { ...f, lakes: f.lakes.map((l) => (l.id === "hidden" ? wet : l)) };

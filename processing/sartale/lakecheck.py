@@ -18,13 +18,15 @@ STAC_URL = "https://earth-search.aws.element84.com/v1"
 COLLECTION = "sentinel-2-l2a"
 MAX_CLOUD_PCT = 20.0
 # Scene classification values that make a pixel unusable: no data, saturated, cloud shadow,
-# medium and high cloud probability, thin cirrus. Snow/ice (11) is usable but never water here.
+# medium and high cloud probability, thin cirrus (the window cloud share counts these).
 SCL_BAD = (0, 1, 3, 8, 9, 10)
+# Snow/ice is never water, and never a clear view either: a frozen or snow-covered lake reads as dry ground, so a
+# pixel under snow or ice is left out of `valid` (and of the zone's clear share) as cloud is.
 SCL_SNOW = 11
 NO_SCENE = "no clear Sentinel-2 scene within 3 days"
-# A pair compares water only when Sentinel-2 sees at least this share of the lake zone clear (not cloud, shadow or
-# no data). The window cloud share alone can be 1% while cloud covers the whole of a small lake; the comparison would
-# then report a measured 0 km2 of water where nothing was seen.
+# A pair compares water only when Sentinel-2 sees at least this share of the lake zone clear (not cloud, shadow, no
+# data, snow or ice). The window cloud share alone can be 1% while cloud covers the whole of a small lake; the
+# comparison would then report a measured 0 km2 of water where nothing was seen. The absence check uses it too.
 MIN_ZONE_VALID = 0.8
 NO_SEASON_PAIR = "no open-water-season pair"
 _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
@@ -141,9 +143,9 @@ def optical_on_grid(scene: dict, x: np.ndarray, y: np.ndarray, epsg: int) -> dic
 
     MNDWI is computed at 10 m (B11 and SCL, 20 m, are resampled to the B03 grid), then averaged onto
     the NISAR grid: a NISAR pixel is optical water when at least half of it is, and unusable when at
-    least half of it is cloud/shadow/no-data or lies outside the scene. Snow and ice are never water.
-    Returns water and valid (bool grids on the NISAR window), window_cloud_share (SCL cloud share over
-    the whole window) and invalid_share.
+    least half of it is cloud/shadow/no-data/snow/ice or lies outside the scene. Snow and ice are never water and
+    never clear. Returns water, valid and snow (bool grids on the NISAR window: snow where at least half the pixel is
+    snow or ice), window_cloud_share (SCL cloud share over the whole window) and invalid_share.
     """
     x, y = np.asarray(x, float), np.asarray(y, float)
     dx, dy = float(x[1] - x[0]), float(y[1] - y[0])
@@ -168,8 +170,9 @@ def optical_on_grid(scene: dict, x: np.ndarray, y: np.ndarray, epsg: int) -> dic
             scl = c.read(1, window=_window(*wb, c.transform), out_shape=green.shape,
                          resampling=Resampling.nearest, boundless=True, fill_value=0)
     bad10 = np.isin(scl, SCL_BAD)
+    snow10 = scl == SCL_SNOW
     water10 = mndwi_water(_reflectance(scene, "green", green), _reflectance(scene, "swir16", swir))
-    water10 &= (scl != SCL_SNOW) & ~bad10
+    water10 &= ~snow10 & ~bad10
 
     def to_grid(a: np.ndarray) -> np.ndarray:
         dst = np.zeros(shape, np.float32)
@@ -179,11 +182,14 @@ def optical_on_grid(scene: dict, x: np.ndarray, y: np.ndarray, epsg: int) -> dic
 
     inside = to_grid(np.ones(green.shape, np.float32))  # >0 where the padded read covers the grid
     covered = to_grid((green > 0).astype(np.float32))  # scene pixels actually present
-    bad, wfrac = to_grid(bad10), to_grid(water10)
-    valid = (covered >= 0.5) & (bad < 0.5)
+    bad, wfrac, sfrac = to_grid(bad10), to_grid(water10), to_grid(snow10)
+    present = covered >= 0.5
+    # Snow or ice is not a clear view: a frozen or snow-covered lake reads as dry ground in MNDWI.
+    valid = present & (bad + sfrac < 0.5)
+    snow = present & (sfrac >= 0.5)
     seen = inside > 0.5
     cloud_share = float(np.clip(bad[seen] / inside[seen], 0, 1).mean()) if seen.any() else 1.0
-    return {"water": (wfrac >= 0.5) & valid, "valid": valid, "window_cloud_share": cloud_share,
+    return {"water": (wfrac >= 0.5) & valid, "valid": valid, "snow": snow, "window_cloud_share": cloud_share,
             "invalid_share": float(1 - valid.mean())}
 
 
@@ -203,9 +209,10 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
     """One check row for a lake: among the (valid NISAR pass, Sentinel-2 scene) pairs within `days` of each other
     whose NISAR pass falls in the open-water season (`config.OPEN_WATER_SEASON` unless `season` is given), the one
     whose lake window is clearest (lowest SCL cloud share, then fewest days apart, then the latest), provided that
-    share is at most `max_cloud` percent and Sentinel-2 sees at least MIN_ZONE_VALID of the lake zone clear (a
-    clouded lake zone is not measured as zero water; the row is then a note). Outside the season a lake can be frozen or under snow, which optical water
-    never counts, so such a pair is no test of radar water. Without a valid in-season pass the row is a note
+    share is at most `max_cloud` percent and Sentinel-2 sees at least MIN_ZONE_VALID of the lake zone clear of cloud,
+    shadow, snow and ice (a clouded or snow-covered lake zone is not measured as zero water; the row is then a note).
+    Outside the season a lake can be frozen or under snow, which optical water never counts, so such a pair is no
+    test of radar water. Without a valid in-season pass the row is a note
     (NO_SEASON_PAIR); without a clear scene, NO_SCENE. Every row carries `season`, the season in words.
 
     The headline numbers (`radar_km2`, `optical_km2`, `area_error_pct`, `iou`) are for the lake
@@ -274,32 +281,28 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
 
 # --- absence check: is a site with no lake still empty? ------------------------------------------------------------
 
-ABSENCE_MAX_SCENES = 12  # newest scenes tried per check; the first whose lake zone is clear enough is used
+ABSENCE_MAX_SCENES = 12  # newest scenes tried per run (more than a week of scenes); the first that qualifies is used
+ABSENCE_FIRST_SCENES = 60  # a site without evidence yet: newest scenes tried, enough to reach back past a winter
+ABSENCE_FIRST_LOOKBACK_DAYS = 400  # a site without evidence yet: how far back to search (the last summer included)
 ABSENCE_MAX_TILE_CLOUD = 60.0  # tile cloud cover a scene may have and still be tried (the zone is checked itself)
+# Snow or ice on more than this share of the lake zone disqualifies a scene, even when 80% of the zone is clear: a
+# frozen or snow-covered pond reads as dry ground in MNDWI and would hide the very water the check looks for. Not
+# quite zero, so a few bright pixels the scene classification calls snow do not void every summer view; well under
+# every site's forming share (4% to 16%), so snow that small cannot hide a lake that would change the verdict.
+ABSENCE_MAX_SNOW_SHARE = 0.01
+# Evidence older than this many days at the last search says so on the site: no clear, snow-free view since.
+ABSENCE_STALE_DAYS = 7
 ABSENCE_PIXEL_M = 10.0
 ABSENCE_SOURCE = "Sentinel-2 L2A (Earth Search), MNDWI water in the lake zone"
+# What a scene must show to count, stored with the evidence (`rule`).
+ABSENCE_RULE = (f"at least {MIN_ZONE_VALID:.0%} of the lake zone clear of cloud, shadow, snow and ice, and snow or ice "
+                f"on no more than {ABSENCE_MAX_SNOW_SHARE:.0%} of it")
 
 
-def season_bounds(today: str, season=None) -> tuple[str, str] | None:
-    """(first day of this year's season, today) when `today` is in the open-water season, else None (outside the
-    season the last evidence stands)."""
-    from sartale.config import OPEN_WATER_SEASON
-    (m0, d0), _ = season or OPEN_WATER_SEASON
-    if not in_season(today, season):
-        return None
-    t = Date.fromisoformat(today)
-    return Date(t.year, m0, d0).isoformat(), t.isoformat()
-
-
-def last_season_bounds(today: str, season=None) -> tuple[str, str]:
-    """The most recent open-water season that has started by `today`, up to today: this year's when it has begun,
-    else last year's. Used once, to give a site its first dated evidence."""
-    from sartale.config import OPEN_WATER_SEASON
-    (m0, d0), (m1, d1) = season or OPEN_WATER_SEASON
-    t = Date.fromisoformat(today)
-    year = t.year if (t.month, t.day) >= (m0, d0) else t.year - 1
-    end = min(Date(year, m1, d1), t)
-    return Date(year, m0, d0).isoformat(), end.isoformat()
+def no_view_since(date: str, searched: str) -> bool:
+    """True when the last search (`searched`) is more than ABSENCE_STALE_DAYS after the evidence's scene (`date`):
+    every newer scene was cloudy, snowy or unreadable."""
+    return (Date.fromisoformat(searched) - Date.fromisoformat(date)).days > ABSENCE_STALE_DAYS
 
 
 def absence_grid(lake, pixel_m: float = ABSENCE_PIXEL_M):
@@ -317,7 +320,8 @@ def absence_grid(lake, pixel_m: float = ABSENCE_PIXEL_M):
 
 
 def zone_water(lake, opt: dict, x, y, epsg) -> dict:
-    """Water share and area of the lake zone in one optical reading, over the zone pixels seen clear."""
+    """Water share and area of the lake zone in one optical reading, over the zone pixels seen clear, with the share
+    of the zone seen clear (not cloud, shadow, no data, snow or ice) and the share under snow or ice."""
     from sartale.lakebuild import _load_outline
     from sartale.lakewater import lake_zone
     zone = lake_zone((len(y), len(x)), x, y, epsg, lake, outline_polygon=_load_outline(lake))
@@ -325,46 +329,69 @@ def zone_water(lake, opt: dict, x, y, epsg) -> dict:
     seen = zone & opt["valid"]
     n_seen = int(seen.sum())
     water = int((opt["water"] & seen).sum())
+    snow = opt.get("snow")
     return {"zone_valid_share": zone_valid_share(opt["valid"], zone),
+            "snow_share": zone_valid_share(snow, zone) if snow is not None else 0.0,
             "water_share": (water / n_seen) if n_seen else 0.0,
             "water_km2": water * px ** 2 / 1e6}
 
 
-def absence_check(lake, today: str, prior: dict | None = None, log=print, season=None, bootstrap: bool = True,
-                  max_scenes: int = ABSENCE_MAX_SCENES) -> dict | None:
-    """Dated evidence on whether a site with no lake now is still empty: the newest Sentinel-2 scene of the
-    open-water season whose lake zone is at least MIN_ZONE_VALID clear, with the water share of the zone.
+def qualifies(w: dict) -> bool:
+    """A scene counts for the absence check: the lake zone at least MIN_ZONE_VALID clear (snow and ice are not clear)
+    and at most ABSENCE_MAX_SNOW_SHARE of it under snow or ice."""
+    return w["zone_valid_share"] >= MIN_ZONE_VALID and w["snow_share"] <= ABSENCE_MAX_SNOW_SHARE
 
-    In the season, the season so far is searched on every run. Outside it, `prior` (the last evidence) is kept
-    unchanged; only a site without any evidence yet (`bootstrap`) is checked against the last season. When no
-    scene qualifies, `prior` is kept. Returns {"date", "s2_id", "water_share", "water_km2", "zone_valid_share",
-    "checked", "season", "source"}, or None when there is no evidence at all.
+
+def absence_check(lake, today: str, prior: dict | None = None, log=print, max_scenes: int | None = None,
+                  zone: dict | None = None) -> dict | None:
+    """Dated evidence on whether a site with no lake now is still empty: the newest Sentinel-2 scene whose lake zone
+    is clear and snow-free (`qualifies`), with the water and snow shares of the zone. Runs all year: the lake that
+    matters most can form in spring (Shisper's 2022 lake filled in March-April and burst on 7 May), and a winter
+    scene counts when the zone is clear of cloud, snow and ice.
+
+    With `prior` (the last evidence, from the same rule and zone), only scenes after its date are tried, newest first,
+    up to ABSENCE_MAX_SCENES. Without it, the last ABSENCE_FIRST_LOOKBACK_DAYS are searched, up to
+    ABSENCE_FIRST_SCENES. When no scene qualifies, `prior` is kept with this run's date as `searched` (and
+    `no_view_since` set once it is more than ABSENCE_STALE_DAYS old), so the site never implies a recent check.
+
+    Returns {"date", "s2_id", "water_share", "water_km2", "zone_valid_share", "snow_share", "checked" (the run that
+    found the scene), "searched" (the last run that searched), "no_view_since", "rule", "source", "zone"}, or None
+    when there is no evidence at all. `zone` is the zone key (`lakebuild.absence_zone`), stored so the evidence is
+    only ever carried for the same zone.
     """
+    from sartale.lakebuild import absence_zone
     from sartale.lakes import lake_bbox
-    words = season_text(season)
-    span = season_bounds(today, season)
-    if span is None:
-        if prior is not None or not bootstrap:
-            return prior
-        span = last_season_bounds(today, season)
+    zone = zone if zone is not None else absence_zone(lake)
+    t = Date.fromisoformat(today)
+    if prior:
+        start, limit = prior["date"], max_scenes or ABSENCE_MAX_SCENES
+    else:
+        start, limit = (t - timedelta(days=ABSENCE_FIRST_LOOKBACK_DAYS)).isoformat(), max_scenes or ABSENCE_FIRST_SCENES
     x, y, epsg = absence_grid(lake)
-    scenes = [_scene(f, Date.fromisoformat(span[1])) for f in search_scenes(lake_bbox(lake), *span)]
-    scenes = [s for s in scenes if s["cloud"] <= ABSENCE_MAX_TILE_CLOUD
+    scenes = [_scene(f, t) for f in search_scenes(lake_bbox(lake), start, today)]
+    scenes = [s for s in scenes if s["cloud"] <= ABSENCE_MAX_TILE_CLOUD and (not prior or s["date"] > prior["date"])
               and all(k in s["assets"] for k in ("green", "swir16", "scl"))]
     scenes.sort(key=lambda s: (s["date"], -s["cloud"], s["id"]), reverse=True)
-    for scene in scenes[:max_scenes]:
+    for scene in scenes[:limit]:
         try:
             opt = optical_on_grid(scene, x, y, epsg)
         except Exception as e:  # noqa: BLE001 - an unreadable scene is skipped, and said so
             log(f"{lake.id} absence vs {scene['id']}: unreadable ({type(e).__name__})")
             continue
         w = zone_water(lake, opt, x, y, epsg)
+        ok = qualifies(w)
         log(f"{lake.id} absence vs {scene['id']} ({scene['date']}): zone seen clear "
-            f"{100 * w['zone_valid_share']:.1f}%, water {100 * w['water_share']:.2f}% of the zone "
-            f"({w['water_km2']:.4f} km2)")
-        if w["zone_valid_share"] >= MIN_ZONE_VALID:
+            f"{100 * w['zone_valid_share']:.1f}%, snow/ice {100 * w['snow_share']:.2f}%, water "
+            f"{100 * w['water_share']:.2f}% of the clear zone ({w['water_km2']:.4f} km2): "
+            f"{'used' if ok else 'not clear and snow-free'}")
+        if ok:
             return {"date": scene["date"], "s2_id": scene["id"], "water_share": round(w["water_share"], 4),
                     "water_km2": round(w["water_km2"], 4), "zone_valid_share": round(w["zone_valid_share"], 3),
-                    "checked": today, "season": words, "source": ABSENCE_SOURCE}
-    log(f"{lake.id} absence: no scene with the lake zone clear in {span[0]}..{span[1]}; the last evidence stands")
-    return prior
+                    "snow_share": round(w["snow_share"], 4), "checked": today, "searched": today,
+                    "no_view_since": no_view_since(scene["date"], today), "rule": ABSENCE_RULE,
+                    "source": ABSENCE_SOURCE, "zone": zone}
+    log(f"{lake.id} absence: no clear, snow-free scene in {start}..{today}"
+        + ("; the last evidence stands" if prior else "; no evidence yet"))
+    if not prior:
+        return None
+    return {**prior, "searched": today, "no_view_since": no_view_since(prior["date"], today)}

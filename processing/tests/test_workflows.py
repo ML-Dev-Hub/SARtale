@@ -369,6 +369,15 @@ def test_rebuild_action_order():
     # the published lakes.json is kept before the build and compared with the new one after it
     assert at("git show HEAD:app/public/data/lakes.json") < at("lakes-build") < at("lakes-diff") < at("pytest tests -q")
     assert '--old "$RUNNER_TEMP/lakes.published.json"' in runs[at("lakes-diff")]
+    # M8: the absence check runs before the build (the build carries its fresh evidence), after the published copy
+    # is kept, without the Earthdata login; new sites get their first check after the build
+    absence = at("lakes-absence")
+    assert at("git show HEAD:app/public/data/lakes.json") < absence < at("lakes-build")
+    assert "--only-missing" not in runs[absence]
+    missing = at("lakes-absence --only-missing")
+    assert at("lakes-build") < missing < at("lakes-diff")
+    for i in (absence, missing):
+        assert "unset EARTHDATA_USERNAME EARTHDATA_PASSWORD" in runs[i]
     assert '> "$RUNNER_TEMP/lakes.published.json"' in runs[at("git show HEAD:app/public/data/lakes.json")]
     assert "continue-on-error" not in steps[at("lakes-diff")], "a large drop must fail the rebuild"
     assert at("pytest tests -q") < at("npm test -- --run")

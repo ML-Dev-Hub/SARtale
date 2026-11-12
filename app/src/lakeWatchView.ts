@@ -88,6 +88,12 @@ export function lakeChartData(lake: Lake, minObservable = 0): LakeChartData {
 
 const slug = statusSlug;
 
+/** At a site where a lake may be forming: what the radar layer is, and what happens next (no automatic measurement). */
+export const FORMING_LAYER =
+  "Sentinel-2 shows water here. The blue layer is the radar dark area; it is shown but not yet treated as lake area. The SARtale team reviews the site to add it as a measured lake.";
+export const FORMING_NO_LAYER =
+  "No radar water layer yet: Sentinel-2 shows water here, but no NISAR pass since that scene has been read. The SARtale team reviews the site to add it as a measured lake.";
+
 /**
  * The lake to open on: the one with the most water in its latest trend pass (clearest picture), else the first in list
  * order. A site with no lake now is never picked over a lake: its dark area is not lake water.
@@ -220,7 +226,8 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     }
     if (!hh) wrap.append(el("p", "lw-none", "No radar picture yet for the latest HH image"));
     if (!water && hasLakeNow(lake)) wrap.append(el("p", "lw-none", "No radar picture yet for the water pixels"));
-    if (!water && mayBeForming(lake)) wrap.append(el("p", "lw-note", "No water layer yet: Sentinel-2 shows water here, and SARtale measures it from the next NISAR pass."));
+    if (!water && mayBeForming(lake)) wrap.append(el("p", "lw-note", FORMING_NO_LAYER));
+    else if (water && mayBeForming(lake)) wrap.append(el("p", "lw-note", FORMING_LAYER));
     else if (!water && !hasLakeNow(lake)) wrap.append(el("p", "lw-note", "No water layer: there is no lake at this site now."));
     wrap.append(el("p", "lw-note", "NISAR GCOV crop on the UTM grid, north up, about 6 km across. A picture, not an interactive map."));
     return wrap;

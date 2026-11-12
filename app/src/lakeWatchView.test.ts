@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { findBannedClaims } from "./content";
 import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
 import { sortLakes, type Lake, type LakesFile } from "./lakes";
-import { checkLine, createLakeWatchView, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
+import { checkLine, createLakeWatchView, FORMING_LAYER, FORMING_NO_LAYER, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
 
 function setup(file: LakesFile | null = fixtureLakes, extra: Partial<Parameters<typeof createLakeWatchView>[1]> = {}) {
   const root = document.createElement("div");
@@ -301,6 +301,24 @@ describe("Lake Watch: a site with no lake now", () => {
     expect(detail.textContent).toContain("No water layer: there is no lake at this site now.");
     expect(detail.textContent).not.toContain("No radar picture yet for the water pixels");
     expect(findBannedClaims(detail.textContent ?? "")).toEqual([]);
+  });
+
+  test("I3: a site where a lake may be forming says what happens next, and promises no automatic measurement", () => {
+    const forming = (water: string | null): Lake => ({
+      ...basin,
+      lake_state: "lake_forming_check",
+      images: { ...basin.images!, water },
+      status: { ...basin.status, status: "Lake may be forming", reason: "Sentinel-2 on 1 Oct 2026 (S2_WET) shows water on 8.0% of the lake zone (0.250 km2), where recent imagery had no lake. A lake may be forming. Its radar dark area is shown but not yet treated as lake area; the SARtale team reviews the site to add it as a measured lake." },
+    });
+    for (const [water, note] of [[null, FORMING_NO_LAYER], ["lakes/basin/water.webp", FORMING_LAYER]] as const) {
+      const { root, view } = setup({ ...fixtureLakes, lakes: [...fixtureLakes.lakes, forming(water)] });
+      view.select("basin");
+      const text = root.querySelector('[data-role="lw-detail"]')!.textContent ?? "";
+      expect(text).toContain(note);
+      expect(text).toContain("the SARtale team reviews the site to add it as a measured lake");
+      expect(text).not.toMatch(/next NISAR pass|measures it/);
+      expect(findBannedClaims(text)).toEqual([]);
+    }
   });
 
   test("C06: its table calls the dark pixels dark area, not water, and never says a pass was used", () => {
