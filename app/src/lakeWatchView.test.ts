@@ -220,6 +220,17 @@ describe("Lake Watch", () => {
     const { root } = setup(null);
     expect(root.textContent).toContain("No lake data in this build");
   });
+
+  test("M6: names the sites the page could not read, and still shows the rest", () => {
+    const { root } = setup({ ...fixtureLakes, dropped_lakes: ["Future lake"] });
+    const note = root.querySelector<HTMLElement>('[data-role="lw-dropped"]')!;
+    expect(note.hidden).toBe(false);
+    expect(note.textContent).toContain("Future lake");
+    expect(note.textContent).toContain("Reload the page");
+    expect(rowIds(root)).toHaveLength(fixtureLakes.lakes.length);
+    const plain = setup(fixtureLakes).root.querySelector<HTMLElement>('[data-role="lw-dropped"]')!;
+    expect(plain.hidden).toBe(true);
+  });
 });
 
 describe("Lake Watch after an accept", () => {

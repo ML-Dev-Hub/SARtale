@@ -163,6 +163,8 @@ export interface LakesFile {
   checks: LakeCheck[];
   /** Check rows without measurements; filled by splitChecks. */
   check_notes?: LakeCheckNote[];
+  /** Names of the sites the file lists but this version of the page cannot show; filled by keepValidLakes. */
+  dropped_lakes?: string[];
 }
 
 export const STATUS_ORDER: LakeStatusName[] = [
@@ -254,7 +256,8 @@ function isStatus(s: unknown): boolean {
     && isNumOrNull(s.noise_km2) && isStr(s.reason);
 }
 
-function isLake(l: unknown): boolean {
+/** True for a lake entry with every field the views read (and a status this version of the page knows). */
+export function isLake(l: unknown): boolean {
   if (!isObj(l)) return false;
   const images = l.images;
   const bounds = l.bounds;
@@ -268,9 +271,11 @@ function isLake(l: unknown): boolean {
 }
 
 /**
- * True when `v` has every part of lakes.json the views read, with finite numbers where they compute: version, build
- * time, notes, processing versions, cloud window, the method constants, and each lake's place, status and passes.
- * Anything less takes the "no lake data" path instead of breaking the whole page while it draws.
+ * True when `v` has the file-level parts of lakes.json the views read, with finite numbers where they compute: version,
+ * build time, notes, processing versions, cloud window, the method constants, and a list of lakes and of checks. A file
+ * without them takes the "no lake data" path instead of breaking the whole page while it draws. Each lake is checked on
+ * its own (`keepValidLakes`), so one entry this page cannot read (say a status from a newer pipeline) drops that lake
+ * only.
  */
 export function isLakesFile(v: unknown): v is LakesFile {
   if (!isObj(v)) return false;
@@ -279,7 +284,28 @@ export function isLakesFile(v: unknown): v is LakesFile {
   return isNum(v.version) && isStr(v.built) && isStr(v.notes) && isStr(v.crid)
     && Array.isArray(w) && w.length === 2 && w.every(isIso)
     && isObj(c) && ["drop_db", "min_looks", "min_observable", "noise_floor_km2", "change_factor", "speckle_box"].every((k) => isNum(c[k]))
-    && Array.isArray(v.lakes) && v.lakes.every(isLake) && Array.isArray(v.checks);
+    && Array.isArray(v.lakes) && Array.isArray(v.checks);
+}
+
+/** Keeps the lakes the views can draw and lists the others by name (or id) in `dropped_lakes`. */
+export function keepValidLakes(f: LakesFile): LakesFile {
+  const all = f.lakes as unknown[];
+  const kept = all.filter(isLake) as Lake[];
+  const dropped = all
+    .filter((l) => !isLake(l))
+    .map((l, i) => {
+      const o = isObj(l) ? l : {};
+      return isStr(o.name) ? o.name : isStr(o.id) ? o.id : `entry ${i + 1}`;
+    });
+  return dropped.length ? { ...f, lakes: kept, dropped_lakes: dropped } : { ...f, lakes: kept };
+}
+
+/** "1 site in the data could not be shown ...", or null when nothing was dropped. */
+export function droppedLine(f: LakesFile): string | null {
+  const n = f.dropped_lakes?.length ?? 0;
+  if (!n) return null;
+  const which = f.dropped_lakes!.join(", ");
+  return `${n} ${n === 1 ? "site" : "sites"} in the data (${which}) could not be shown by this version of the page. Reload the page to see ${n === 1 ? "it" : "them"}.`;
 }
 
 /**
@@ -294,7 +320,7 @@ export async function loadLakes(url: string, fetchFn: typeof fetch = (...a) => f
     const res = await fetchFn(url, { cache: "no-cache", signal: ctl.signal });
     if (!res.ok) return null;
     const json: unknown = await res.json();
-    return isLakesFile(json) ? splitChecks(json) : null;
+    return isLakesFile(json) ? splitChecks(keepValidLakes(json)) : null;
   } catch {
     return null;
   } finally {

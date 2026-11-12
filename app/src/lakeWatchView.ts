@@ -1,4 +1,4 @@
-import { cloudHeadline, hasLakeNow, isTrendPass, mayBeForming, methodLimits, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
+import { cloudHeadline, droppedLine, hasLakeNow, isTrendPass, mayBeForming, methodLimits, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
 import { dataUrl, formatDate } from "./format";
 import { statusSlug } from "./lakeLocator";
 
@@ -41,10 +41,12 @@ const TEMPLATE = `
 <div class="lw-empty" data-role="lw-empty" hidden>
   <p class="sites-empty">No lake data in this build</p>
   <p class="sites-why">Lake Watch needs data/lakes.json, made by the pipeline in processing/.</p>
+  <p class="lw-note" data-role="lw-dropped-empty" hidden></p>
 </div>
 <div class="lw-body" data-role="lw-body" hidden>
   <p class="lw-headline"><a href="#cloud-gap" data-role="lw-headline"></a></p>
   <p class="lw-screening" data-role="lw-screening">Indicative screening on provisional NISAR data. Official warnings come from PMD, NDMA, GBDMA and PDMA.</p>
+  <p class="lw-note" data-role="lw-dropped" role="status" hidden></p>
   <div class="lw-grid">
     <nav class="lw-list-wrap" aria-label="Lakes">
       <div class="lw-locator" data-role="lw-locator" aria-label="Where the lakes are"></div>
@@ -124,6 +126,11 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   q("lw-body").hidden = !has;
   let chart: { destroy(): void } | undefined;
   let locator: { highlight(id: string): void; destroy(): void } | undefined;
+  // Sites the data list but this version of the page cannot read: say so rather than drop them silently.
+  const dropped = file ? droppedLine(file) : null;
+  const droppedEl = q(has ? "lw-dropped" : "lw-dropped-empty");
+  droppedEl.hidden = !dropped;
+  if (dropped) droppedEl.textContent = dropped;
   if (!has) return { select() {}, destroy: () => void (root.innerHTML = "") };
 
   q("lw-headline").textContent = cloudHeadline(file!);

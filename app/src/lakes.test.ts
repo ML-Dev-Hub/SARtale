@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { fixtureLakes } from "./fixtures";
 import realLakes from "../public/data/lakes.json";
 import frozenLakes from "./frozen/lakes.json";
-import { isLakesFile } from "./lakes";
+import { droppedLine, isLake, isLakesFile } from "./lakes";
 import { absenceLine, cloudHeadline, hasLakeNow, lakeTokens, mayBeForming, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -33,14 +33,13 @@ describe("loadLakes", () => {
     expect(await loadLakes("data/lakes.json", stall, 20)).toBeNull();
   });
 
-  test("C09: a file the views cannot draw takes the no-data path", async () => {
+  test("C09: a file whose shape the views cannot draw takes the no-data path", async () => {
     const bad = [
       { lakes: [{ id: "x", status: {} }], checks: [] },
       { ...fixtureLakes, constants: { ...fixtureLakes.constants, change_factor: "2" } },
-      { ...fixtureLakes, lakes: [{ ...fixtureLakes.lakes[0], lon: null }] },
-      { ...fixtureLakes, lakes: [{ ...fixtureLakes.lakes[0], status: { ...fixtureLakes.lakes[0].status, status: "Danger" } }] },
-      { ...fixtureLakes, lakes: [{ ...fixtureLakes.lakes[0], series: [{ date: "x", track: "1A" }] }] },
       { ...fixtureLakes, cloud_window: ["2026-06-17"] },
+      { ...fixtureLakes, lakes: "x" },
+      { ...fixtureLakes, checks: null },
     ];
     for (const b of bad) {
       vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => b })));
@@ -48,9 +47,29 @@ describe("loadLakes", () => {
     }
   });
 
-  test("C09: the shipped and the frozen lakes.json pass the check", () => {
+  test("M6: a lake the page cannot read is dropped and named; the other lakes stay", async () => {
+    const [first, ...rest] = fixtureLakes.lakes;
+    const cases = [
+      { ...first, status: { ...first.status, status: "Alert level 2" } }, // a status from a newer pipeline
+      { ...first, lon: null },
+      { ...first, series: [{ date: "x", track: "1A" }] },
+    ];
+    for (const broken of cases) {
+      const file = { ...fixtureLakes, lakes: [broken, ...rest] };
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => file })));
+      const out = await loadLakes("data/lakes.json");
+      expect(out, JSON.stringify(broken).slice(0, 80)).not.toBeNull();
+      expect(out!.lakes.map((l) => l.id)).toEqual(rest.map((l) => l.id));
+      expect(out!.dropped_lakes).toEqual([first.name]);
+      expect(droppedLine(out!)).toBe(`1 site in the data (${first.name}) could not be shown by this version of the page. Reload the page to see it.`);
+    }
+  });
+
+  test("C09: the shipped and the frozen lakes.json pass the check, every lake included", () => {
     expect(isLakesFile(realLakes)).toBe(true);
     expect(isLakesFile(frozenLakes)).toBe(true);
+    expect(realLakes.lakes.every(isLake)).toBe(true);
+    expect(frozenLakes.lakes.every(isLake)).toBe(true);
   });
 
   test("test_loadLakes_returns_null_on_404", async () => {
