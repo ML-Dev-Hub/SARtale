@@ -1,6 +1,6 @@
 {
  "version": 1,
- "built": "2026-11-12T21:50:00Z",
+ "built": "2026-11-12T22:12:46Z",
  "notes": "Areas are water within a lake's outline (buffered 200 m) or, without one, a search circle (1 km unless the lake sets a smaller one), by method D17 (Lee-filtered HH at least 3 dB below the window median); wet shore and sediment flats read as water, so a lake drawing down onto them barely changes its radar area; images are crops on the UTM grid, north up; they are pictures, not map overlays.",
  "method": {
   "id": "D17",
@@ -116,6 +116,7 @@
     "z": -0.07,
     "baseline_km2": 4.43635,
     "alerts_paused": null,
+    "first_on_version": null,
     "message": null
    },
    "cloud_window_looks": 7,
@@ -684,6 +685,7 @@
     "z": null,
     "baseline_km2": null,
     "alerts_paused": null,
+    "first_on_version": null,
     "message": null
    },
    "cloud_window_looks": 3,
@@ -990,6 +992,7 @@
     "z": -1.76,
     "baseline_km2": 0.142,
     "alerts_paused": null,
+    "first_on_version": null,
     "message": {
      "level": "Watch",
      "title": "Watch: small changes in the radar water area of Passu terminal lake have added up over recent passes.",
@@ -1574,6 +1577,7 @@
     "z": null,
     "baseline_km2": null,
     "alerts_paused": null,
+    "first_on_version": null,
     "message": null
    },
    "cloud_window_looks": 8,
@@ -2022,6 +2026,7 @@
     "z": -0.53,
     "baseline_km2": 0.07625,
     "alerts_paused": null,
+    "first_on_version": null,
     "message": null
    },
    "cloud_window_looks": 3,
@@ -2388,6 +2393,7 @@
     "z": null,
     "baseline_km2": null,
     "alerts_paused": null,
+    "first_on_version": null,
     "message": null
    },
    "cloud_window_looks": 5,
@@ -2670,6 +2676,7 @@
     "z": null,
     "baseline_km2": null,
     "alerts_paused": null,
+    "first_on_version": null,
     "message": null
    },
    "cloud_window_looks": 4,
@@ -3048,7 +3055,16 @@
    "window_radar_km2": 9.0253,
    "window_optical_km2": 4.402,
    "window_area_error_pct": 105.02726033621079,
-   "window_iou": 0.3592861047559272
+   "window_iou": 0.3592861047559272,
+   "key": {
+    "method": "D17",
+    "zone": {
+     "lon": 74.8665,
+     "lat": 36.333,
+     "outline": "outlines/attabad_osm.geojson",
+     "outline_sha256": "caffcf3b06aaf6465e7d76f62d7d618d54b55c5a214bbb6f1a33be8b663350ad"
+    }
+   }
   },
   {
    "lake": "passu",
@@ -3068,7 +3084,16 @@
    "window_radar_km2": 7.8319,
    "window_optical_km2": 6.6437,
    "window_area_error_pct": 17.884612490028147,
-   "window_iou": 0.4065314768211277
+   "window_iou": 0.4065314768211277,
+   "key": {
+    "method": "D17",
+    "zone": {
+     "lon": 74.881,
+     "lat": 36.458,
+     "outline": "outlines/passu_osm.geojson",
+     "outline_sha256": "17056ad8a88c03bd0789450a4f4f02a651a0c818c4953ec7a9be73b63c3dd31a"
+    }
+   }
   },
   {
    "lake": "karambar",
@@ -3088,7 +3113,15 @@
    "window_radar_km2": 5.7542,
    "window_optical_km2": 0.7289,
    "window_area_error_pct": 689.4361366442585,
-   "window_iou": 0.044381081255235516
+   "window_iou": 0.044381081255235516,
+   "key": {
+    "method": "D17",
+    "zone": {
+     "lon": 74.07906,
+     "lat": 36.6214,
+     "radius_km": 0.3
+    }
+   }
   },
   {
    "lake": "shazore",
@@ -3108,7 +3141,16 @@
    "window_radar_km2": 3.5167,
    "window_optical_km2": 2.3804000000000003,
    "window_area_error_pct": 47.735674676524944,
-   "window_iou": 0.2507900820836957
+   "window_iou": 0.2507900820836957,
+   "key": {
+    "method": "D17",
+    "zone": {
+     "lon": 72.1741,
+     "lat": 35.7794,
+     "outline": "outlines/shazore_s2_2026.geojson",
+     "outline_sha256": "92918af7656ebe71ee90e7eef75bd932e631409b191092639130cc500d922e4a"
+    }
+   }
   }
  ]
 }
