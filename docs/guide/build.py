@@ -82,17 +82,33 @@ def _day(iso: str, short: bool = False) -> str:
     return f"{d} {_MONTHS[m - 1][:3] if short else _MONTHS[m - 1]} {y}"
 
 
+class WorkedExampleError(ValueError):
+    """The lake data cannot give the Attabad worked example."""
+
+
 def worked_example(doc: dict) -> dict[str, str]:
     """The Attabad worked example, computed from lakes.json the way the status is (lakestatus.lake_status): the
     status track's valid passes, the median of the earlier ones, the change and the noise the build recorded.
-    Every number in the guide's and the README's example comes from here, with the build it was taken from."""
-    lake = next(lk for lk in doc["lakes"] if lk["id"] == "attabad")
+    Every number in the guide's and the README's example comes from here, with the build it was taken from.
+
+    Raises WorkedExampleError, with what is missing, when the build has no measured Attabad status to quote (no
+    Attabad entry, a status without a change, noise, track or latest date, or fewer than two valid passes)."""
+    lake = next((lk for lk in doc.get("lakes", []) if lk.get("id") == "attabad"), None)
+    if lake is None:
+        raise WorkedExampleError("the lake data have no Attabad entry")
     st, c = lake["status"], doc["constants"]
+    missing = [k for k in ("track", "latest_date", "change_km2", "noise_km2") if st.get(k) is None]
+    if missing:
+        raise WorkedExampleError(f"Attabad's status is {st.get('status')!r} with no {', '.join(missing)}, so there is "
+                                 "no measured change to quote")
     track = st["track"]
     pts = sorted((p for p in lake["series"] if p["track"] == track and p["excluded"] is None
-                  and p["area_km2"] is not None and p["observable_share"] >= c["min_observable"]),
+                  and p["area_km2"] is not None and (p["observable_share"] or 0) >= c["min_observable"]),
                  key=lambda p: p["date"])
     pts = [p for p in pts if p["date"] <= st["latest_date"]]
+    if len(pts) < 2:
+        raise WorkedExampleError(f"Attabad has {len(pts)} valid pass(es) on track {track}; the example needs a latest "
+                                 "pass and earlier ones")
     latest, earlier = pts[-1], [p["area_km2"] for p in pts[:-1]]
     share = next((m.group(1) for t in lake["limits"] for m in [re.search(r"(\d+)% of it is inside", t)] if m), None)
     return {
@@ -168,7 +184,11 @@ def page(i: int, ex: dict[str, str] | None = None) -> str:
 
 
 def main() -> None:
-    ex = worked_example(json.loads(LAKES_JSON.read_text(encoding="utf8")))
+    try:
+        ex = worked_example(json.loads(LAKES_JSON.read_text(encoding="utf8")))
+    except WorkedExampleError as e:
+        raise SystemExit(f"build.py: cannot write the Attabad worked example from {LAKES_JSON.name}: {e}. "
+                         "Nothing was written.") from None
     for i, (file, _, _) in enumerate(PAGES):
         (HERE / f"{file}.html").write_text(page(i, ex), encoding="utf8", newline="\n")
     text = README.read_text(encoding="utf8")

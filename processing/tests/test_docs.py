@@ -62,3 +62,28 @@ def test_d03_worked_example_is_reproducible_from_the_lake_data_it_names():
         assert "{{EX_" not in method
     else:
         assert datetime.strptime(when, "%d %b %Y") < datetime.strptime(ex["EX_BUILT"], "%d %b %Y")
+
+
+def test_m9_worked_example_fails_clearly_without_a_measured_attabad_status():
+    import copy
+    import json
+
+    import pytest
+    build = _load(ROOT / "docs" / "guide" / "build.py", "guide_build")
+    doc = json.loads(build.LAKES_JSON.read_text(encoding="utf-8"))
+    attabad = next(lk for lk in doc["lakes"] if lk["id"] == "attabad")
+
+    def with_status(**changes):
+        d = copy.deepcopy(doc)
+        next(lk for lk in d["lakes"] if lk["id"] == "attabad")["status"].update(changes)
+        return d
+
+    for broken, words in [
+        (with_status(status="Not enough NISAR looks yet", change_km2=None, noise_km2=None), "change_km2, noise_km2"),
+        (with_status(status="Not observable", track=None, latest_date=None, change_km2=None, noise_km2=None), "track"),
+        ({**doc, "lakes": [lk for lk in doc["lakes"] if lk["id"] != "attabad"]}, "no Attabad entry"),
+        (with_status(latest_date="1999-01-01"), "0 valid pass"),
+    ]:
+        with pytest.raises(build.WorkedExampleError, match=words):
+            build.worked_example(broken)
+    assert build.worked_example(doc)["EX_TRACK"] == attabad["status"]["track"]
