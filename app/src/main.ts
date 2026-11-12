@@ -22,7 +22,7 @@ void loadLakes("data/lakes.json").then((lakes) => {
     createLakeLocator,
     requests: [],
     onLakeBrief: (lake) => {
-      if (lakes) void printLatestBrief(lake, lakes);
+      if (lakes) void printLatestBrief(lake);
     },
   });
   if (app) void requests.then((list) => app.setRequests(list));

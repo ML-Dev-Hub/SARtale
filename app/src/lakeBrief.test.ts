@@ -2,8 +2,8 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { findBannedClaims } from "./content";
 import { fixtureLakes } from "./fixtures";
-import { briefHtml, dataLine, printBrief, printLatestBrief } from "./lakeBrief";
-import type { LakesFile } from "./lakes";
+import { BRIEF_UNAVAILABLE, briefHtml, dataLine, printBrief, printLatestBrief } from "./lakeBrief";
+import { loadLakes, type LakesFile } from "./lakes";
 import type { Lake, LakeSeriesPoint } from "./lakes";
 
 const NOW = new Date("2026-11-02T10:00:00Z");
@@ -185,25 +185,32 @@ describe("brief freshness", () => {
     const old = lakeOf();
     const newer = { ...old, series: [pass("2026-11-04", 9.999, 0.7)] };
     const fresh = { ...fixtureLakes, built: "2026-11-09T00:00:00Z", lakes: [newer] } as LakesFile;
-    await printLatestBrief(old, fixtureLakes, async () => fresh, win);
+    await printLatestBrief(old, async () => fresh, win);
     expect(win.print).toHaveBeenCalledOnce();
     expect(document.querySelector(".lake-brief")?.textContent).toContain("9.999");
   });
 
-  test("prints the loaded data marked as an offline copy when the server cannot be reached", async () => {
-    const win = { document, print: vi.fn() } as unknown as Window;
-    const old = lakeOf();
-    expect(await printLatestBrief(old, fixtureLakes, async () => null, win)).toBe("offline");
-    expect(document.querySelector(".lake-brief h1")?.textContent).toBe(old.name);
-    expect(document.querySelector(".lake-brief-offline")?.textContent).toContain("Offline copy");
-    expect(win.print).toHaveBeenCalledOnce();
+  test("M5: prints nothing and says the latest data could not be loaded when they cannot be fetched or read", async () => {
+    // loadLakes returns null for no connection, a timeout and a fresh file this app cannot read alike: none of them
+    // says the page's own copy is still right, so the stale lake is never printed
+    const unreadable = () => loadLakes("data/lakes.json", async () => new Response('{"version": 2}'));
+    const unreachable = () => loadLakes("data/lakes.json", async () => { throw new TypeError("Failed to fetch"); });
+    for (const load of [async () => null, unreadable, unreachable]) {
+      const win = { document, print: vi.fn() } as unknown as Window;
+      document.querySelectorAll(".lake-brief, .lake-brief-notice").forEach((e) => e.remove());
+      expect(await printLatestBrief(lakeOf(), load, win)).toBe("unavailable");
+      expect(win.print).not.toHaveBeenCalled();
+      expect(document.querySelector(".lake-brief")).toBeNull();
+      expect(document.querySelector(".lake-brief-notice")?.textContent).toBe(BRIEF_UNAVAILABLE);
+      expect(document.body.textContent).not.toContain("Offline copy");
+    }
   });
 
   test("C08: never prints a lake the fresh data removed; says so instead", async () => {
     const win = { document, print: vi.fn() } as unknown as Window;
     const old = lakeOf({ name: "Ghulkin / Yaz-Sam lakes" });
     const fresh = { ...fixtureLakes, built: "2026-11-10T00:26:40Z", lakes: fixtureLakes.lakes.filter((l) => l.id !== old.id) } as LakesFile;
-    expect(await printLatestBrief(old, fixtureLakes, async () => fresh, win)).toBe("removed");
+    expect(await printLatestBrief(old, async () => fresh, win)).toBe("removed");
     expect(win.print).not.toHaveBeenCalled();
     expect(document.querySelector(".lake-brief")).toBeNull();
     expect(document.querySelector(".lake-brief-notice")?.textContent).toContain("Ghulkin / Yaz-Sam lakes is not in SARtale's data built 10 Nov 2026");

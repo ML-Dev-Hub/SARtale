@@ -290,7 +290,6 @@ body > #app > .maturity { margin: 24px 40px 0; display: inline-block; }
   .lake-brief p, .lake-brief ul { margin: 0 0 4pt; }
   .lake-brief ul { padding-left: 16pt; }
   .lake-brief-meta { color: #333; font-size: 9.5pt; }
-  .lake-brief-offline { font-weight: 700; border: 1pt solid #000; padding: 3pt 5pt; }
   .lake-brief-status { font-size: 11.5pt; }
   .lake-brief-passes { width: 100%; border-collapse: collapse; margin-bottom: 4pt; }
   .lake-brief-passes th, .lake-brief-passes td { border: 0.5pt solid #888; padding: 2pt 5pt; text-align: left; }

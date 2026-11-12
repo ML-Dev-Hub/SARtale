@@ -25,7 +25,7 @@ export function dataLine(lake: Lake, file: LakesFile): string {
 }
 
 /** The one-page brief for a lake, as an HTML fragment. Every piece of data text is escaped. */
-export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date, offline = false): string {
+export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): string {
   const minShare = file.constants.min_observable;
   const track = lake.status.track;
   // Only the status track's passes: the status sentence compares these and nothing else.
@@ -48,8 +48,7 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date, offlin
     : "Downstream exposure: not in this build";
   const outline = lake.outline_source ? `<p>Outline: ${esc(lake.outline_source)}</p>` : "";
   return `<section class="lake-brief" aria-label="Lake brief">
-<h1>${esc(lake.name)}</h1>${offline ? `
-<p class="lake-brief-offline">Offline copy: the server could not be reached, so this brief uses the data this page loaded, built ${esc(file.built ? formatDate(file.built.slice(0, 10)) : "at an unknown date")}. Newer data may exist.</p>` : ""}
+<h1>${esc(lake.name)}</h1>
 <p class="lake-brief-meta">Coordinates ${lake.lat.toFixed(4)}, ${lake.lon.toFixed(4)}. Source: ${esc(lake.coord_source)}</p>${outline}
 <p class="lake-brief-meta">Measures: ${esc(lake.area_label)}. Brief made ${esc(formatDate(localIsoDate(generatedAt)))}.</p>
 <p class="lake-brief-meta">${esc(dataLine(lake, file))}</p>
@@ -68,16 +67,17 @@ ${list(methodLimits(file))}${lakeLimits}
 }
 
 /** Puts the brief at the end of <body>, replacing any earlier one, and opens the print dialog. Print CSS hides everything else. */
-export function printBrief(lake: Lake, file: LakesFile, win: Window = window, offline = false): void {
+export function printBrief(lake: Lake, file: LakesFile, win: Window = window): void {
   const doc = win.document;
   doc.querySelectorAll(".lake-brief, .lake-brief-notice").forEach((e) => e.remove());
   const host = doc.createElement("div");
-  host.innerHTML = briefHtml(lake, file, new Date(), offline);
+  host.innerHTML = briefHtml(lake, file, new Date());
   doc.body.append(...host.children);
   win.print();
 }
 
-/** Shows a short notice in place of a brief (no print): used when the newest data no longer list the lake. */
+/** Shows a short notice in place of a brief (no print): used when the newest data cannot be loaded or no longer list
+ * the lake. */
 function showNotice(text: string, win: Window): void {
   const doc = win.document;
   doc.querySelectorAll(".lake-brief, .lake-brief-notice").forEach((e) => e.remove());
@@ -88,32 +88,36 @@ function showNotice(text: string, win: Window): void {
   doc.body.append(p);
 }
 
-/** What printLatestBrief did: printed the newest data, printed the loaded data offline, or refused a removed lake. */
-export type BriefOutcome = "fresh" | "offline" | "removed";
+/** What printLatestBrief did: printed the newest data, refused because the newest data could not be loaded, or
+ * refused a removed lake. */
+export type BriefOutcome = "fresh" | "unavailable" | "removed";
+
+export const BRIEF_UNAVAILABLE =
+  "The latest lake data could not be loaded, so no brief is printed. Check the connection and try again, or reload the page.";
 
 /**
  * Prints from the newest data on the server, so a tab left open across a weekly update still prints today's numbers.
- * When the server cannot be reached, prints the data the page loaded, marked as an offline copy with its build date.
- * When the newest data no longer list the lake (a site removed from the register), prints nothing and says so: a
- * removed site must never get a newly dated brief.
+ * When the newest data cannot be loaded (no connection, a timeout, or a file this page cannot read), prints nothing
+ * and says so: the page's own copy may be out of date, or list a site the newest data removed. When the newest data no
+ * longer list the lake (a site removed from the register), prints nothing and says so too: a removed site must never
+ * get a newly dated brief.
  */
 export async function printLatestBrief(
   lake: Lake,
-  loaded: LakesFile,
   load: () => Promise<LakesFile | null> = () => loadLakes("data/lakes.json"),
   win: Window = window,
 ): Promise<BriefOutcome> {
   const fresh = await load();
-  if (fresh) {
-    const freshLake = fresh.lakes.find((l) => l.id === lake.id);
-    if (!freshLake) {
-      const built = fresh.built ? formatDate(fresh.built.slice(0, 10)) : "the newest build";
-      showNotice(`${lake.name} is not in SARtale's data built ${built}: the site was removed or renamed, so no brief is printed. Reload the page to see the current list.`, win);
-      return "removed";
-    }
-    printBrief(freshLake, fresh, win);
-    return "fresh";
+  if (!fresh) {
+    showNotice(BRIEF_UNAVAILABLE, win);
+    return "unavailable";
   }
-  printBrief(lake, loaded, win, true);
-  return "offline";
+  const freshLake = fresh.lakes.find((l) => l.id === lake.id);
+  if (!freshLake) {
+    const built = fresh.built ? formatDate(fresh.built.slice(0, 10)) : "the newest build";
+    showNotice(`${lake.name} is not in SARtale's data built ${built}: the site was removed or renamed, so no brief is printed. Reload the page to see the current list.`, win);
+    return "removed";
+  }
+  printBrief(freshLake, fresh, win);
+  return "fresh";
 }
