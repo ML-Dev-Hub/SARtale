@@ -491,6 +491,31 @@ def test_accept_starts_again_only_when_stale():
     (failed,) = failure_steps(steps)
     assert "steps.install.outputs.result != 'stale'" in failed["if"]
     assert f"!({UNSTARTED})" in failed["if"]
+    # M4: a stale base found after the rebase, just before the push, starts the accept again too
+    names = [s.get("name", "") for s in steps]
+    commit = next(s for s in steps if "commit-data.sh" in (s.get("run") or ""))
+    assert 'DATA_ARTIFACT="$RUNNER_TEMP/lake-data"' in commit["run"]
+    assert '6) echo "result=stale" >> "$GITHUB_OUTPUT"' in commit["run"]
+    assert "steps.commit.outputs.result == 'stale'" in again["if"]
+    assert names.index(commit["name"]) < names.index(again["name"]), "again must run after the commit step"
+    assert "steps.commit.outputs.result != 'stale'" in failed["if"]
+    close = next(s for s in steps if s.get("name") == "Comment and close the issue")
+    assert "steps.commit.outputs.result != 'stale'" in close["if"]
+
+
+def test_refresh_refuses_a_stale_base_after_the_rebase_and_says_why():
+    """M4: the refresh passes the artifact to commit-data.sh, and exit 6 (at unpack or after the rebase) says that
+    main changed the data or the method code, not only that an accepted lake was published."""
+    doc = load(REFRESH)
+    publish = doc["jobs"]["publish"]
+    stale = publish["env"]["STALE"]
+    assert "accepted lake" in stale and "method code" in stale and "nothing was published" in stale
+    commit = next(s for s in publish["steps"] if "commit-data.sh" in (s.get("run") or ""))
+    assert 'DATA_ARTIFACT="$RUNNER_TEMP/lake-data"' in commit["run"]
+    assert '6) echo "$STALE" >> "$GITHUB_STEP_SUMMARY"' in commit["run"]
+    install = next(s for s in publish["steps"] if "data_artifact.py unpack" in (s.get("run") or ""))
+    assert '"$STALE"' in install["run"]
+    assert "An accepted lake was published while this refresh ran" not in REFRESH.read_text(encoding="utf-8")
 
 
 def test_an_accept_that_never_started_ends_quietly():

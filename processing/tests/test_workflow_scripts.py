@@ -785,6 +785,76 @@ def test_commit_data_fails_after_three_push_attempts(tmp_path):
     assert gh_calls(env) == []
 
 
+def artifact_for(work: Path, art: Path) -> Path:
+    """A rebuild artifact whose manifest records the inputs of `work`'s HEAD, as pack would."""
+    for rel in (data_artifact.LAKES_IN, data_artifact.LAKES_JSON):
+        (art / rel).parent.mkdir(parents=True, exist_ok=True)
+        (art / rel).write_text("{}\n", encoding="utf-8")
+    manifest = {"version": 1,
+                "base": {p: data_artifact.git_object(work, p) for p in data_artifact.BASE},
+                "science": {p: data_artifact.git_object(work, p) for p in data_artifact.SCIENCE},
+                "files": {rel: data_artifact.sha256(art / rel)
+                          for rel in (data_artifact.LAKES_IN, data_artifact.LAKES_JSON)}}
+    (art / data_artifact.MANIFEST).write_text(json.dumps(manifest), encoding="utf-8")
+    return art
+
+
+def push_from_other(tmp_path, origin, rel, text):
+    other = tmp_path / "other"
+    git("clone", str(origin), str(other), cwd=tmp_path)
+    git("config", "user.name", "x", cwd=other)
+    git("config", "user.email", "x@example.com", cwd=other)
+    (other / rel).parent.mkdir(parents=True, exist_ok=True)
+    (other / rel).write_text(text, encoding="utf-8")
+    git("add", ".", cwd=other)
+    git("commit", "-m", f"change {rel}", cwd=other)
+    git("push", "origin", "HEAD:main", cwd=other)
+
+
+@needs_bash
+@pytest.mark.parametrize("rel", ["processing/sartale/config.py", "processing/lakes_in.json",
+                                 ".github/actions/rebuild/action.yml"])
+def test_commit_data_refuses_when_main_changed_the_inputs_before_the_push(tmp_path, rel):
+    """M4: unpack checked the inputs against the publish checkout; a push of method code or data before our push
+    is caught after the rebase, and nothing is pushed (exit 6, stale)."""
+    env = fake_env(tmp_path)
+    origin, work = make_clone(tmp_path)
+    env["DATA_ARTIFACT"] = str(artifact_for(work, tmp_path / "lake-data"))
+    push_from_other(tmp_path, origin, rel, "changed\n")
+    before = git("rev-parse", "main", cwd=origin)
+    (work / "data" / "a.json").write_text("6\n", encoding="utf-8")
+    r = bash(SCRIPTS / "commit-data.sh", ["Weekly data refresh", "data"], env, work)
+    assert r.returncode == 6, r.stderr + r.stdout
+    assert "nothing was pushed" in r.stderr
+    assert git("rev-parse", "main", cwd=origin) == before
+    assert gh_calls(env) == [], "no deploy"
+
+
+@needs_bash
+def test_commit_data_pushes_when_main_changed_only_other_files(tmp_path):
+    env = fake_env(tmp_path)
+    origin, work = make_clone(tmp_path)
+    env["DATA_ARTIFACT"] = str(artifact_for(work, tmp_path / "lake-data"))
+    push_from_other(tmp_path, origin, "docs/guide/pages/faq.html", "<p>new</p>\n")
+    (work / "data" / "a.json").write_text("7\n", encoding="utf-8")
+    r = bash(SCRIPTS / "commit-data.sh", ["Weekly data refresh", "data"], env, work)
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert git("show", "main:data/a.json", cwd=origin) == "7\n"
+
+
+def test_verify_compares_the_inputs_at_the_given_commit(tmp_path):
+    origin, work = make_clone(tmp_path)
+    art = artifact_for(work, tmp_path / "lake-data")
+    data_artifact.verify(work, art, "HEAD")
+    (work / "environment.yml").write_text("name: x\n", encoding="utf-8")
+    git("add", ".", cwd=work)
+    git("commit", "-m", "env", cwd=work)
+    with pytest.raises(data_artifact.Refused) as e:
+        data_artifact.verify(work, art, "HEAD")
+    assert e.value.code == 6 and "environment.yml" in str(e.value)
+    data_artifact.verify(work, art, "HEAD~1")
+
+
 @needs_bash
 def test_every_run_block_is_valid_bash():
     import re

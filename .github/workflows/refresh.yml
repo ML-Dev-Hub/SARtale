@@ -60,6 +60,11 @@ jobs:
     concurrency:
       group: sartale-data
       cancel-in-progress: false
+    env:
+      # exit 6 of unpack or of commit-data.sh: main no longer holds the inputs the data were built from
+      STALE: >-
+        Main changed while this refresh ran (an accepted lake was published, or the method code, outlines, checks,
+        environment or rebuild steps changed), so nothing was published; the next weekly run refreshes.
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:  # always: the drain step reads requests.json
@@ -83,8 +88,7 @@ jobs:
           case "$code" in
             0) echo "result=ok" >> "$GITHUB_OUTPUT" ;;
             6) echo "result=stale" >> "$GITHUB_OUTPUT"
-               echo "An accepted lake was published while this refresh ran; the next weekly run refreshes." \
-                 >> "$GITHUB_STEP_SUMMARY" ;;
+               echo "$STALE" >> "$GITHUB_STEP_SUMMARY" ;;
             *) exit "$code" ;;
           esac
 
@@ -100,7 +104,16 @@ jobs:
             git checkout -- app/public/data/lakes.json
             exit 0
           fi
-          bash .github/scripts/commit-data.sh "Weekly data refresh" app/public/data
+          # exit 6: main changed the data or the method code between the checkout and the push; nothing was pushed
+          set +e
+          DATA_ARTIFACT="$RUNNER_TEMP/lake-data" bash .github/scripts/commit-data.sh "Weekly data refresh" app/public/data
+          code=$?
+          set -e
+          case "$code" in
+            0) ;;
+            6) echo "$STALE" >> "$GITHUB_STEP_SUMMARY" ;;
+            *) exit "$code" ;;
+          esac
 
       - name: Note a refresh that never started
         if: always() && needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true'

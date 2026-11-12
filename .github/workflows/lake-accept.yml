@@ -324,10 +324,48 @@ jobs:
           gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/refused.md"
           gh issue edit "$ISSUE" --remove-label accepted
 
+      - name: Note an accept that never started
+        # queued out of sartale-rebuild by a newer accept or refresh: no comment, no label, no new run; the
+        # drain step of a later publish (or the daily check) starts it again
+        if: always() && needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true'
+        run: |
+          printf 'The rebuild for issue #%s was queued out before it started; a later run starts it again.\n' \
+            "$ISSUE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit the new lake and start the deploy
+        id: commit
+        if: steps.install.outputs.result == 'ok' && steps.live.outputs.result == 'ok'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |  # a block: in a plain YAML scalar " #" would start a comment and cut the command
+          # exit 6: main changed the data or the method code between the checkout and the push; nothing was
+          # pushed, and the accept starts again like any stale base
+          set +e
+          DATA_ARTIFACT="$RUNNER_TEMP/lake-data" \
+            bash .github/scripts/commit-data.sh "Add requested lake from issue #$ISSUE" processing/lakes_in.json app/public/data
+          code=$?
+          set -e
+          case "$code" in
+            0) ;;
+            6) echo "result=stale" >> "$GITHUB_OUTPUT" ;;
+            *) exit "$code" ;;
+          esac
+
+      - name: Comment and close the issue
+        if: >-
+          steps.install.outputs.result == 'ok' && steps.live.outputs.result == 'ok' &&
+          steps.commit.outputs.result != 'stale'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/apply-actions.sh "$RUNNER_TEMP/actions.json"
+
       - name: Start the accept again, or give up after three tries
-        # the data were built on an older main; only these stale-base outcomes count towards the three tries
+        # the data were built on an older main (found at unpack, or after the rebase just before the push); only
+        # these stale-base outcomes count towards the three tries. It runs after the commit step for that reason.
         id: again
-        if: always() && needs.gate.outputs.decision == 'allowed' && steps.install.outputs.result == 'stale'
+        if: >-
+          always() && needs.gate.outputs.decision == 'allowed' &&
+          (steps.install.outputs.result == 'stale' || steps.commit.outputs.result == 'stale')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -347,34 +385,13 @@ jobs:
           gh issue edit "$ISSUE" --add-label "rebuild failed"
           gh issue edit "$ISSUE" --remove-label accepted
 
-      - name: Note an accept that never started
-        # queued out of sartale-rebuild by a newer accept or refresh: no comment, no label, no new run; the
-        # drain step of a later publish (or the daily check) starts it again
-        if: always() && needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true'
-        run: |
-          printf 'The rebuild for issue #%s was queued out before it started; a later run starts it again.\n' \
-            "$ISSUE" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Commit the new lake and start the deploy
-        id: commit
-        if: steps.install.outputs.result == 'ok' && steps.live.outputs.result == 'ok'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |  # a block: in a plain YAML scalar " #" would start a comment and cut the command
-          bash .github/scripts/commit-data.sh "Add requested lake from issue #$ISSUE" processing/lakes_in.json app/public/data
-
-      - name: Comment and close the issue
-        if: steps.install.outputs.result == 'ok' && steps.live.outputs.result == 'ok'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/apply-actions.sh "$RUNNER_TEMP/actions.json"
-
       - name: Report a failed rebuild
         if: >-
           always() && needs.gate.outputs.decision == 'allowed' &&
           needs.rebuild.outputs.decision != 'refuse-changed' && needs.rebuild.outputs.decision != 'refuse-unchecked' &&
           needs.rebuild.outputs.decision != 'refuse-migrated' &&
           steps.install.outputs.result != 'changed' && steps.install.outputs.result != 'stale' &&
+          steps.commit.outputs.result != 'stale' &&
           steps.live.outputs.result != 'withdrawn' &&
           !(needs.rebuild.result == 'cancelled' && needs.rebuild.outputs.started != 'true') &&
           (needs.rebuild.result != 'success' || failure() || cancelled())
