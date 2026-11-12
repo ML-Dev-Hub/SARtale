@@ -122,6 +122,17 @@ def test_apply_mask_rule_by_crid():
     assert np.isfinite(apply_mask(power, zeros, "D00404")).all()
 
 
+def test_an_unknown_d_prefixed_crid_is_treated_as_production(tmp_path):
+    """M1: only the known pre-launch CRID keeps mask 0. A future release whose CRID also starts with D must not
+    count partially focused samples as valid."""
+    power = np.ones((3, 3))
+    zeros = np.zeros((3, 3), "u1")
+    for crid in ("D00405", "D05100", "D", "d00404", "D00404X"):
+        assert np.isnan(apply_mask(power, zeros, crid)).all(), crid
+    path = write_gcov(tmp_path / "g.h5", mask=np.zeros((N, N), "u1"), release_id="D06000")
+    assert np.isnan(read_layer(path, "HHHH", FULL_BBOX).power).all()
+
+
 def test_layer_keeps_the_raw_mask_for_the_histogram(tmp_path):
     path = write_gcov(tmp_path / "g.h5", mask=_mask_with(fill_rows=[0], zero_rows=[1]))
     layer = read_layer(path, "HHHH", FULL_BBOX)

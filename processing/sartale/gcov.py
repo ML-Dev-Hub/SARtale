@@ -27,14 +27,15 @@ RELEASE_ID = "compositeReleaseId"  # the CRID, e.g. P05023 (D00404 in the 2008 s
 MASK_FILL = 255
 MASK_INVALID = 0
 # The pre-launch simulated samples (CRID D00404, 2008) carry a mask of only 0 and 255 across the whole file, with 0
-# on every real sample. Only products whose CRID starts with this letter keep their zeros. Every other product (the
-# P05023 and P05036 releases, or a file without a CRID) follows the mask's own description: 0 is invalid.
-LEGACY_ZERO_VALID_CRID_PREFIX = "D"
+# on every real sample. Only products with exactly one of these CRIDs keep their zeros. Every other product (the
+# P05023 and P05036 releases, any future release, whatever letter its CRID starts with, or a file without a CRID)
+# follows the mask's own description: 0 is invalid.
+LEGACY_ZERO_VALID_CRIDS = frozenset({"D00404"})
 
 
 def zero_is_valid(crid: str | None) -> bool:
-    """True only for the pre-launch sample convention (CRID D...), where mask 0 marks the real samples."""
-    return bool(crid) and str(crid).startswith(LEGACY_ZERO_VALID_CRID_PREFIX)
+    """True only for the known pre-launch samples (CRID D00404), where mask 0 marks the real samples."""
+    return bool(crid) and str(crid) in LEGACY_ZERO_VALID_CRIDS
 
 
 def invalid_samples(mask: np.ndarray, crid: str | None = None) -> np.ndarray:
