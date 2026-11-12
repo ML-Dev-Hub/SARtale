@@ -449,6 +449,23 @@ def test_refresh_scheduled_weekly():
     assert "json_changed.py app/public/data/lakes.json built" in text
 
 
+def test_both_publish_jobs_commit_the_register_when_the_rebuild_measured_a_height():
+    """I2: the rebuild may add a lake's height to processing/lakes_in.json (lakes-elevation); unpack copies it into the
+    publish checkout, so both publish jobs must commit it with the data, or the rebase before the push fails on the
+    unstaged change. The refresh also publishes when only the register changed."""
+    refresh = next(s for s in load(REFRESH)["jobs"]["publish"]["steps"] if "commit-data.sh" in (s.get("run") or ""))
+    run = refresh["run"].replace("\\\n", " ")
+    assert re.search(r'commit-data\.sh "Weekly data refresh"\s+app/public/data\s+processing/lakes_in\.json', run)
+    assert 'git status --porcelain -- processing/lakes_in.json' in run and '[ -z "$register" ]' in run
+    accept = next(s for s in accept_jobs()["publish"]["steps"] if "commit-data.sh" in (s.get("run") or ""))
+    assert "processing/lakes_in.json app/public/data" in accept["run"]
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("data_artifact", SCRIPTS / "data_artifact.py")
+    da = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(da)
+    assert da.LAKES_IN in da.BASE and da.LAKES_IN not in da.SCIENCE and da.allowed(da.LAKES_IN)
+
+
 def test_data_jobs_start_deploy_through_commit_script():
     for path in DATA_WORKFLOWS:
         for job_name, job in jobs_of(load(path)):

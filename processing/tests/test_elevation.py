@@ -59,12 +59,41 @@ def test_the_register_checks_the_elevation(tmp_path):
             load_lakes(p)
 
 
-def test_every_lake_in_the_register_has_its_height():
+def test_the_register_heights_are_valid_and_a_missing_one_says_why():
+    """Runs in the rebuild after lakes-elevation, the build and lakes-freeze: every height present is plausible and
+    sourced; a lake without one (the DEM could not be read: lakes-elevation fails soft) is allowed as long as the built
+    lakes.json says "Freeze not assessed" for it with that reason. So a missing height never fails the rebuild."""
     from pathlib import Path
-    lakes = load_lakes(Path(__file__).resolve().parents[1] / "lakes_in.json")
-    for lk in lakes:
-        if lk.lake_state == "lake":
-            assert lk.elevation_m is not None and "Copernicus DEM GLO-30" in lk.elevation_source, lk.id
+
+    from sartale.elevation import height_problems
+    root = Path(__file__).resolve().parents[2]
+    lakes = load_lakes(root / "processing" / "lakes_in.json")
+    doc = json.loads((root / "app" / "public" / "data" / "lakes.json").read_text(encoding="utf-8"))
+    assert height_problems(lakes, doc) == []
+
+
+def test_a_missing_height_passes_only_with_its_reason_in_the_build():
+    from dataclasses import replace
+
+    from sartale.elevation import height_problems
+    from sartale.freeze import freeze_lake
+    from sartale.lakes import Lake
+    new = Lake(id="new", name="New", lon=72.0, lat=35.0, coord_source="x", outline=None, role="watch",
+               downstream=None, downstream_source=None)
+    status = {"status": "Not enough NISAR looks yet", "track": None, "latest_date": None, "looks": 0,
+              "change_km2": None, "noise_km2": None, "reason": "No valid NISAR pass yet.", "new_crid": None}
+    # what the rebuild publishes for a lake whose DEM could not be read: lakes-freeze says why
+    built = freeze_lake(new, {"id": "new", "lake_state": "lake", "series": [], "summer_ref": {}, "status": status},
+                        "2026-11-12", log=lambda m: None)
+    assert height_problems([new], {"lakes": [built]}) == []
+    # a silent missing height (no build, or a build without the freeze check) is a problem
+    assert height_problems([new], {"lakes": [{"id": "new", "status": status}]}) != []
+    assert height_problems([new], None) != []
+    # a height present must be plausible and sourced; a site with no lake now needs none
+    assert height_problems([replace(new, elevation_m=4188.0, elevation_source="Copernicus DEM GLO-30")], None) == []
+    assert height_problems([replace(new, elevation_m=9500.0, elevation_source="x")], None) != []
+    assert height_problems([replace(new, elevation_m=4188.0, elevation_source=" ")], None) != []
+    assert height_problems([replace(new, lake_state="no_lake", lake_state_source="dry")], None) == []
 
 
 def test_lakes_elevation_fills_missing_heights_and_fails_soft(tmp_path, monkeypatch, capsys):

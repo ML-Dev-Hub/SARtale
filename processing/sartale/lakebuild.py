@@ -336,14 +336,15 @@ def _analyse(passes: list[dict], xs, ys, limits: list[str]):
 
 
 def summer_cores(by_track: dict[str, list[dict]], excluded: dict[str, str], zone: np.ndarray,
-                 shadow: np.ndarray | None) -> dict[str, tuple[np.ndarray, int]]:
+                 shadow: np.ndarray | None, frozen: set[str] | frozenset = frozenset()) -> dict[str, tuple[np.ndarray, int]]:
     """Per track: (the lake core, the number of open-water-season passes it comes from). The core is the zone pixels,
     not shadow-prone, that were dark in at least half of the track's non-excluded passes in the open-water season
-    (config.OPEN_WATER_SEASON). A track without such a pass has no core."""
+    (config.OPEN_WATER_SEASON), leaving out the passes in `frozen` (ids of passes the last freeze check flagged: a
+    late ice-out pass is not open water). A track without such a pass has no core."""
     not_shadow = np.ones(zone.shape, bool) if shadow is None else ~shadow
     out = {}
     for k, ps in by_track.items():
-        summer = [p for p in ps if p["id"] not in excluded and in_season(p["date"])]
+        summer = [p for p in ps if p["id"] not in excluded and p["id"] not in frozen and in_season(p["date"])]
         if summer:
             frac = np.mean([dark_mask(p["hh_db"], p["hv_db"])[0] for p in summer], axis=0)
             out[k] = (zone & not_shadow & (frac >= 0.5), len(summer))
@@ -366,16 +367,17 @@ def core_metrics(hh_db: np.ndarray, hv_db: np.ndarray, core: np.ndarray) -> dict
             "core_dark_share": round(float((dark & c).sum() / c.sum()), 3)}
 
 
-def summer_reference(series: list[dict], cores: dict[str, tuple[np.ndarray, int]]) -> dict[str, dict]:
-    """Per track, the summer level the radar break-up test compares a pass with: the medians, over the track's
-    non-excluded open-water-season passes, of the core contrast (HH, HV) and dark share; `assessed` is False with
-    fewer than config.SUMMER_MIN_PASSES such passes or an empty core (the radar test is then not run there)."""
+def summer_reference(series: list[dict], core_px: dict[str, int]) -> dict[str, dict]:
+    """Per track (`core_px`: the track's core size in pixels), the summer level the radar break-up test compares a pass
+    with: the medians, over the track's non-excluded open-water-season passes not flagged `frozen`, of the core
+    contrast (HH, HV) and dark share; `assessed` is False with fewer than config.SUMMER_MIN_PASSES such passes or an
+    empty core (the radar test is then not run there). lakes-freeze computes it again once it has flagged the passes."""
     out = {}
-    for k, (core, n) in sorted(cores.items()):
+    for k, px in sorted(core_px.items()):
         rows = [p for p in series if p["track"] == k and p["excluded"] is None and in_season(p["date"])
-                and "core_dark_share" in p]
-        ref = {"passes": n, "core_px": int(core.sum()),
-               "assessed": n >= config.SUMMER_MIN_PASSES and int(core.sum()) > 0 and len(rows) >= config.SUMMER_MIN_PASSES}
+                and not p.get("frozen") and "core_dark_share" in p]
+        n = len(rows)
+        ref = {"passes": n, "core_px": int(px), "assessed": n >= config.SUMMER_MIN_PASSES and int(px) > 0}
         if rows:
             ref.update({key: round(float(np.median([p[key] for p in rows])), 3)
                         for key in ("core_contrast_hh_db", "core_contrast_hv_db", "core_dark_share")})
@@ -387,7 +389,8 @@ def pictured_pass(series: list[SeriesPoint], track: str | None) -> str | None:
     """Pass id of the picture a lake shows: the status track's latest valid pass (same rule as the status:
     not excluded, has an area, observable share >= MIN_OBSERVABLE). Without a status track, the latest
     valid pass on any track; None if there is no valid pass."""
-    valid = [p for p in series if is_valid(p)]
+    # A pass flagged frozen is still the newest look at the lake: the picture shows it (its water layer is hidden).
+    valid = [p for p in series if is_valid({**p, "frozen": False})]
     on_track = [p for p in valid if p["track"] == track] if track else []
     pool = on_track or valid
     if not pool:
@@ -463,9 +466,13 @@ def _empty(entry: dict, limits: list[str], lake: Lake, absence: dict | None = No
 
 
 def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str, str] | None = None,
-               listed: set[tuple[str, str, str]] | None = None, absence: dict | None = None) -> dict:
+               listed: set[tuple[str, str, str]] | None = None, absence: dict | None = None,
+               prior: dict | None = None) -> dict:
     """`listed`: the (date, key, CRID) of the passes lakes-search listed for this lake; None reads every window.
-    `absence`: the last Sentinel-2 absence check of a site with no lake now (`lakecheck.absence_check`)."""
+    `absence`: the last Sentinel-2 absence check of a site with no lake now (`lakecheck.absence_check`).
+    `prior`: the lake's last freeze check ({"freeze": the freeze object, "flags": {(date, track): frozen}}, from
+    `carried_freeze`): the passes it flagged keep their flag and stay out of the summer core and level, and the freeze
+    object is carried for lakes-freeze, which keeps it when NASA POWER cannot be read this time."""
     limits: list[str] = state_limits(lake) + list(lake.limits)
     feature = _outline_feature(lake)
     outline = feature["geometry"] if feature else None
@@ -497,7 +504,9 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         if share < 0.99:
             limits.append(f"the outline runs past the 6 km radar window; {round(share * 100)}% of it is inside "
                           "and only that part is counted")
-    cores = summer_cores(by_track, excluded, zone, shadow)
+    flags = (prior or {}).get("flags") or {}
+    frozen_ids = {f"{d}_{k}" for (d, k), v in flags.items() if v}
+    cores = summer_cores(by_track, excluded, zone, shadow, frozen_ids)
     series: list[SeriesPoint] = []
     for p in sorted(passes, key=lambda q: (q["date"], q["key"])):
         w = pass_water(p["hh_db"], p["hv_db"], zone, shadow, px)
@@ -510,11 +519,14 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         if p["key"] in cores:
             # The lake core against its window, for the freeze check's radar break-up test (lakes-freeze).
             point.update(core_metrics(p["hh_db"], p["hv_db"], cores[p["key"]][0]) or {})
+        if p["id"] in frozen_ids and lake.lake_state == "lake":
+            point["frozen"] = True  # the last freeze check's flag; lakes-freeze sets it again
         series.append(point)
 
-    latest_expected: dict[str, str] = {}  # R-P2: newest cached pass per track, excluded or not
+    latest_expected: dict[str, str] = {}  # R-P2: newest cached pass per track, excluded or not (frozen ones aside)
     for p in passes:
-        latest_expected[p["key"]] = max(latest_expected.get(p["key"], ""), p["date"])
+        if p["id"] not in frozen_ids or lake.lake_state != "lake":
+            latest_expected[p["key"]] = max(latest_expected.get(p["key"], ""), p["date"])
 
     good = [p for p in passes if p["id"] not in excluded]
     status = lake_status(series, latest_expected)
@@ -540,7 +552,10 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
            "cloud_window_looks": cloud_window_looks(series),
            "directions": sorted(set(directions.values())), "limits": limits, "series": series,
            "excluded": [{"pass": k, "reason": v} for k, v in sorted(excluded.items())],
-           "images": images, "bounds": _bounds(xs, ys, epsg, px), "summer_ref": summer_reference(series, cores)}
+           "images": images, "bounds": _bounds(xs, ys, epsg, px),
+           "summer_ref": summer_reference(series, {k: int(c.sum()) for k, (c, _) in cores.items()})}
+    if lake.lake_state == "lake" and (prior or {}).get("freeze"):
+        out["freeze"] = prior["freeze"]
     return apply_absence(out, absence)
 
 
@@ -600,6 +615,18 @@ def carried_absence(previous: dict | None, lake: Lake) -> dict | None:
     return ev
 
 
+def carried_freeze(previous: dict | None, lake: Lake) -> dict | None:
+    """The lake's last freeze check from a previously published lakes.json: {"freeze": its freeze object, "flags":
+    {(date, track): frozen}}, or None (no previous file, no entry, or a site that is not a lake)."""
+    if lake.lake_state != "lake" or not previous:
+        return None
+    old = next((lk for lk in previous.get("lakes", []) if lk.get("id") == lake.id), None)
+    if not old or not isinstance(old.get("freeze"), dict):
+        return None
+    flags = {(p["date"], p["track"]): bool(p.get("frozen")) for p in old.get("series", []) if "frozen" in p}
+    return {"freeze": old["freeze"], "flags": flags}
+
+
 def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, checks: list[dict] | None = None,
                 collections: dict[str, str] | None = None, previous: dict | None = None) -> dict:
     """`checks` are the Sentinel-2 cross-check rows from `lakes-check`, merged in as the `checks` block.
@@ -611,7 +638,7 @@ def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, c
     listed = read_listed(Path(cache_dir) / PASSES_JSON)
     built_lakes = [build_lake(lake, Path(cache_dir), Path(out_dir), collections,
                               None if listed is None else listed.get(lake.id, set()),
-                              carried_absence(previous, lake)) for lake in lakes]
+                              carried_absence(previous, lake), carried_freeze(previous, lake)) for lake in lakes]
     crids = sorted({p["crid"] for lk in built_lakes for p in lk["series"]})
     return {
         "version": 1, "built": built, "notes": NOTES,
@@ -632,6 +659,7 @@ def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, c
                       "s2_frozen_snow_share": config.S2_FROZEN_SNOW_SHARE,
                       "s2_open_water_share": config.S2_OPEN_WATER_SHARE,
                       "s2_freeze_days": config.S2_FREEZE_DAYS, "s2_freeze_clear": config.S2_FREEZE_CLEAR,
+                      "s2_target_clear": config.S2_TARGET_CLEAR,
                       "power_stale_days": config.POWER_STALE_DAYS},
         "lakes": built_lakes,
         "checks": list(checks or []),
@@ -665,7 +693,7 @@ def radar_water_masks(lake: Lake, cache_dir: Path, pass_id: str) -> dict:
     return {"window": window, "zone_mask": window & zone, "zone": zone, "x": xs, "y": ys, "epsg": epsg}
 
 
-def freeze_masks(lake: Lake, cache_dir: Path) -> dict | None:
+def freeze_masks(lake: Lake, cache_dir: Path, frozen: set[str] | frozenset = frozenset()) -> dict | None:
     """The masks the freeze check's Sentinel-2 look uses, on the lake's radar window grid: the lake zone (outline
     buffered 200 m, or the circle; the clear gate and the snow/ice share are measured over it) and where open water is
     looked for: the outline itself, unbuffered, for a lake with an outline, else the summer radar core (zone pixels,
@@ -688,7 +716,7 @@ def freeze_masks(lake: Lake, cache_dir: Path) -> dict | None:
         target, kind = outline_mask(shape, xs, ys, epsg, outline) & zone, "lake outline"
     else:
         target = np.zeros(shape, bool)
-        for core, _ in summer_cores(by_track, excluded, zone, shadow).values():
+        for core, _ in summer_cores(by_track, excluded, zone, shadow, frozen).values():
             target |= core
         kind = "summer radar water core"
     if not target.any():

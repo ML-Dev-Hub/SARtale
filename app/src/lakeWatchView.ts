@@ -195,7 +195,8 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   function thumb(lake: Lake): HTMLElement {
     const t = el("span", "lw-thumb");
     t.setAttribute("aria-hidden", "true");
-    for (const [path, cls] of [[lake.images?.latest_hh, "lw-thumb-hh"], [lake.images?.water, "lw-thumb-water"]] as const) {
+    const water = isFrozen(lake) ? null : lake.images?.water; // a frozen lake's dark area is not open water
+    for (const [path, cls] of [[lake.images?.latest_hh, "lw-thumb-hh"], [water, "lw-thumb-water"]] as const) {
       if (!path) continue;
       const i = el("img", cls);
       i.src = dataUrl(path);
@@ -210,7 +211,9 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   function pictures(lake: Lake): HTMLElement {
     const wrap = el("div", "lw-pictures");
     const hh = lake.images?.latest_hh ?? null;
-    const water = lake.images?.water ?? null;
+    // While the lake is frozen the dark pixels are no open-water measurement: the water layer is not drawn.
+    const hidden = isFrozen(lake) && !!lake.images?.water;
+    const water = hidden ? null : lake.images?.water ?? null;
     if (!hh && !water) {
       wrap.append(el("p", "lw-none", "No radar picture yet"));
       return wrap;
@@ -244,7 +247,11 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
       wrap.append(label);
     }
     if (!hh) wrap.append(el("p", "lw-none", "No radar picture yet for the latest HH image"));
-    if (!water && hasLakeNow(lake)) wrap.append(el("p", "lw-none", "No radar picture yet for the water pixels"));
+    if (hidden) {
+      const note = el("p", "lw-note", `Water layer hidden: ${FROZEN_AREA}.`);
+      note.dataset.role = "lw-water-hidden";
+      wrap.append(note);
+    } else if (!water && hasLakeNow(lake)) wrap.append(el("p", "lw-none", "No radar picture yet for the water pixels"));
     if (!water && mayBeForming(lake)) wrap.append(el("p", "lw-note", FORMING_NO_LAYER));
     else if (water && mayBeForming(lake)) wrap.append(el("p", "lw-note", FORMING_LAYER));
     else if (!water && !hasLakeNow(lake)) wrap.append(el("p", "lw-note", "No water layer: there is no lake at this site now."));

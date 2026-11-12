@@ -369,7 +369,7 @@ describe("a frozen lake", () => {
     expect(card.textContent).toContain("Probably frozen since 18 Oct 2026 (air temperature)");
     expect(card.textContent).toContain("below 0 °C for 30 days in a row");
     expect(card.textContent).toContain("Freezing degree-days since 1 Sep: 150.");
-    expect(card.textContent).toContain("Sentinel-2: none clear over the lake zone in the last 7 days.");
+    expect(card.textContent).toContain("Sentinel-2: none clear over the lake in the last 7 days.");
     const area = detail.querySelector('[data-role="lw-frozen-area"]')!;
     expect(area.textContent).toBe("Latest reading 0.226 km² on 30 Oct 2026 (084A): not an open-water measurement while frozen.");
     expect(area.className).toBe("lw-frozen-area");
@@ -420,5 +420,24 @@ describe("a frozen lake", () => {
       expect(root.querySelector('[data-role="lw-freeze"]')).toBeNull();
     }
     expect(root.querySelector('[data-role="lw-ice"]')).toBeNull();
+  });
+});
+
+
+describe("a frozen lake's radar picture", () => {
+  test("M8: the water layer is hidden while frozen and the caption says why", () => {
+    const ice = frozenFixture("ice", "Frozen (likely)", { images: { latest_hh: "lakes/ice/latest_hh.webp", water: "lakes/ice/water.webp", date: "2026-10-30", track: "084A" } });
+    const { root, view } = setup({ ...fixtureLakes, lakes: [...fixtureLakes.lakes, ice] });
+    view.select("ice");
+    const detail = root.querySelector('[data-role="lw-detail"]')!;
+    expect(detail.querySelector(".lw-img-water")).toBeNull();
+    expect(detail.querySelector(".lw-img-hh")).not.toBeNull();
+    expect(detail.querySelector('[data-role="lw-water-hidden"]')?.textContent).toBe("Water layer hidden: not an open-water measurement while frozen.");
+    expect(root.querySelector('[data-lake-id="ice"] .lw-thumb-water')).toBeNull();
+    // an open lake keeps its layer
+    const open = { ...ice, id: "warm", status: fixtureLakes.lakes.find((l) => l.id === "stable")!.status };
+    const two = setup({ ...fixtureLakes, lakes: [...fixtureLakes.lakes, open] });
+    two.view.select("warm");
+    expect(two.root.querySelector('[data-role="lw-detail"] .lw-img-water')).not.toBeNull();
   });
 });

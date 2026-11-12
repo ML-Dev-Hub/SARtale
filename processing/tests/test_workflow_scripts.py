@@ -762,6 +762,50 @@ def test_commit_data_rebases_on_newer_main(tmp_path):
 
 
 @needs_bash
+def test_a_register_the_rebuild_changed_is_committed_with_the_data_and_the_push_goes_through(tmp_path):
+    """I2, the scratch-repository scenario: unpack leaves processing/lakes_in.json changed (lakes-elevation added a
+    height) beside the new data while main has moved on. Committing only the data leaves the register unstaged and the
+    rebase refuses; committing both, as both publish jobs now do, rebases and pushes."""
+    env = fake_env(tmp_path)
+    origin, work = make_clone(tmp_path)
+    (work / "processing").mkdir()
+    (work / "processing" / "lakes_in.json").write_text('[{"id": "a"}]\n', encoding="utf-8")
+    git("add", ".", cwd=work)
+    git("commit", "-m", "register", cwd=work)
+    git("push", "origin", "HEAD:main", cwd=work)
+    other = tmp_path / "other"
+    git("clone", str(origin), str(other), cwd=tmp_path)
+    git("config", "user.name", "x", cwd=other)
+    git("config", "user.email", "x@example.com", cwd=other)
+    (other / "README").write_text("hi\n", encoding="utf-8")
+    git("add", ".", cwd=other)
+    git("commit", "-m", "someone else", cwd=other)
+    git("push", "origin", "HEAD:main", cwd=other)
+
+    def unpacked(repo):
+        (repo / "data" / "a.json").write_text("4\n", encoding="utf-8")
+        (repo / "processing" / "lakes_in.json").write_text(
+            '[{"id": "a", "elevation_m": 4188, "elevation_source": "Copernicus DEM GLO-30"}]\n', encoding="utf-8")
+
+    env["COMMIT_DATA_WAIT"] = "0"
+    unpacked(work)
+    before = git("rev-parse", "main", cwd=origin)
+    r = bash(SCRIPTS / "commit-data.sh", ["Weekly data refresh", "data"], env, work)
+    assert r.returncode == 1 and git("rev-parse", "main", cwd=origin) == before, "the old command cannot push"
+
+    fresh = tmp_path / "fresh"
+    git("clone", str(origin), str(fresh), cwd=tmp_path)
+    git("config", "core.autocrlf", "false", cwd=fresh)
+    git("reset", "--hard", "HEAD~1", cwd=fresh)  # the publish checkout, made before "someone else" was pushed
+    unpacked(fresh)
+    r = bash(SCRIPTS / "commit-data.sh", ["Weekly data refresh", "data", "processing/lakes_in.json"], env, fresh)
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert git("log", "--format=%s", "main", cwd=origin).splitlines()[:2] == ["Weekly data refresh", "someone else"]
+    assert "4188" in git("show", "main:processing/lakes_in.json", cwd=origin)
+    assert git("show", "main:data/a.json", cwd=origin) == "4\n"
+
+
+@needs_bash
 def test_commit_data_without_changes_does_nothing(tmp_path):
     env = fake_env(tmp_path)
     origin, work = make_clone(tmp_path)

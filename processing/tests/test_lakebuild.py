@@ -584,3 +584,24 @@ def test_freeze_masks_look_for_open_water_in_the_unbuffered_outline_of_an_outlin
     # the outline is 800 m square (0.64 km2); the zone is it buffered by 200 m (about 1.4 km2)
     assert 0.55e6 < m["target"].sum() * PX * PX < 0.72e6
     assert 1.3e6 < m["zone"].sum() * PX * PX < 1.5e6
+
+
+def test_the_build_carries_the_last_freeze_check_and_keeps_its_frozen_passes_out_of_the_summer_core(built, tmp_path):
+    """M4/M6/M7: the build keeps the last check's freeze object and pass flags for lakes-freeze, and a pass it flagged
+    leaves the summer core and level."""
+    import copy
+    doc, _ = built
+    previous = copy.deepcopy(doc)
+    alpha_prev = lake(previous, "alpha")
+    alpha_prev["freeze"] = {"state": "open", "checked": "2026-11-02", "reason": "r"}
+    for p in alpha_prev["series"]:
+        p["frozen"] = p["date"] == "2026-06-18" and p["track"] == "156A"
+    cache = tmp_path / "cache"
+    a = make_lake("alpha")
+    again = build_lakes([a], cache, tmp_path / "out2", "2026-11-09T00:00:00Z", previous=previous)
+    alpha = lake(again, "alpha")
+    assert alpha["freeze"] == alpha_prev["freeze"]
+    flagged = [(p["date"], p["track"]) for p in alpha["series"] if p.get("frozen")]
+    assert flagged == [("2026-06-18", "156A")]
+    assert alpha["summer_ref"]["156A"]["passes"] == 4 and alpha["summer_ref"]["063D"]["passes"] == 5
+    assert alpha["status"]["status"] != "Not seen this pass"

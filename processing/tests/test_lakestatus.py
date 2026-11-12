@@ -86,6 +86,11 @@ def test_cloud_window_counts_only_valid_points_in_dates():
     assert cloud_window_looks(series) == 3
 
 
+def test_a_look_at_a_frozen_lake_still_counts_in_the_cloud_window():
+    series = [{**pt("2026-06-25", "164D", 0.07), "frozen": True}, pt("2026-07-19", "164D", 0.09)]
+    assert cloud_window_looks(series) == 2
+
+
 def test_status_growing_with_three_looks():
     s = lake_status(flat("156A", [1.0, 1.0, 1.5]))
     assert s["status"] == "Growing"

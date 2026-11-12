@@ -294,14 +294,14 @@ describe("frozen lakes", () => {
     const facts = freezeFacts(frozenFixture("ice"));
     expect(facts[0]).toBe("Air temperature (NASA POWER to 10 Nov 2026, adjusted to the lake's height of 4,188 m): daily mean below 0 °C for 30 days in a row; 7-day mean −5.8 °C.");
     expect(facts[1]).toBe("Freezing degree-days since 1 Sep: 150.");
-    expect(facts[2]).toBe("Sentinel-2: none clear over the lake zone in the last 7 days.");
+    expect(facts[2]).toBe("Sentinel-2: none clear over the lake in the last 7 days.");
     expect(facts[3]).toBe(`2 passes were taken while the lake was probably frozen: greyed below, ${FROZEN_AREA}, and left out of the comparison.`);
     const seen = freezeFacts(frozenFixture("ice", "Frozen (seen by Sentinel-2)"));
-    expect(seen[2]).toBe("Sentinel-2 8 Nov 2026 (S2A_43SCV_20261108_0_L2A): snow or ice on 94% of the lake zone seen clear; water on 0% of the lake outline seen clear.");
+    expect(seen[2]).toBe("Sentinel-2 8 Nov 2026 (S2A_43SCV_20261108_0_L2A): snow or ice on 94% and water on 0% of the lake outline seen clear.");
     // an older freeze object without water_over measured water over the lake zone
     const olderS2 = frozenFixture("ice", "Frozen (seen by Sentinel-2)");
     olderS2.freeze = { ...olderS2.freeze!, s2: { date: "2026-11-08", snow_share: 0.94, water_share: 0 } };
-    expect(freezeFacts(olderS2)[2]).toBe("Sentinel-2 8 Nov 2026: snow or ice on 94% of the lake zone seen clear; water on 0% of the lake zone seen clear.");
+    expect(freezeFacts(olderS2)[2]).toBe("Sentinel-2 8 Nov 2026: snow or ice on 94% and water on 0% of the lake zone seen clear.");
     expect(freezeHeadline(frozenFixture("ice").freeze!)).toBe("Probably frozen since 18 Oct 2026 (air temperature)");
     expect(freezeHeadline(frozenFixture("ice", "Frozen (seen by Sentinel-2)").freeze!)).toBe("Frozen since 18 Oct 2026: snow or ice seen by Sentinel-2");
     expect(freezeHeadline({ ...frozenFixture("ice").freeze!, state: "open", since: null })).toBe("Not frozen by the air-temperature rule");
@@ -316,5 +316,38 @@ describe("frozen lakes", () => {
     const t = lakeTokens({ ...fixtureLakes, constants: c });
     expect([t.lapse_c_per_km, t.freeze_cold_run_days, t.freeze_fdd, t.s2_frozen_pct, t.s2_open_pct]).toEqual(["6.5", "7", "30", "80", "50"]);
     expect(lakeTokens(fixtureLakes).freeze_fdd).toBeUndefined();
+  });
+});
+
+
+describe("frozen lakes, review fixes", () => {
+  const base = () => frozenFixture("ice").freeze!;
+
+  test("I3: an open lake is worded by what released it, never as open water from air temperature", () => {
+    const open = { ...base(), state: "open", since: "2026-10-24", released_on: "2026-10-24" };
+    expect(freezeHeadline({ ...open, released_by: "air" })).toBe("No freeze signal in air temperature since 24 Oct 2026; open water not confirmed by radar or Sentinel-2");
+    expect(freezeHeadline({ ...open, released_by: "radar" })).toBe("Radar back within its summer range on 24 Oct 2026");
+    expect(freezeHeadline({ ...open, released_by: "s2" })).toBe("Open water seen by Sentinel-2 on 24 Oct 2026");
+    expect(freezeHeadline({ ...open, released_by: null, released_on: null, since: null })).toBe("Not frozen by the air-temperature rule");
+    for (const by of ["air", "radar", "s2"] as const) expect(freezeHeadline({ ...open, released_by: by })).not.toMatch(/open again|\(air temperature\)/i);
+  });
+
+  test("M12: a malformed break-up pass drops only that lake instead of breaking the card", () => {
+    const ice = frozenFixture("ice", "Break-up likely");
+    const pass = { date: "2026-06-25", track: "164D", contrast_hh_change_db: 3.3, contrast_hv_change_db: 2.9, core_dark_share: 0.32, summer_core_dark_share: 0.95 };
+    expect(isLake({ ...ice, freeze: { ...ice.freeze!, breakup_pass: pass } })).toBe(true);
+    expect(isLake({ ...ice, freeze: { ...ice.freeze!, breakup_pass: { ...pass, contrast_hh_change_db: "3.3" } } })).toBe(false);
+    expect(isLake({ ...ice, freeze: { ...ice.freeze!, breakup_pass: { date: "2026-06-25" } } })).toBe(false);
+    expect(isLake({ ...ice, freeze: { ...ice.freeze!, s2_evidence: { date: "x" } } })).toBe(false);
+  });
+
+  test("M4/M6: the last Sentinel-2 evidence and a check that could not be refreshed are said on the card", () => {
+    const ev = { date: "2026-11-08", s2_id: "S2A_X", snow_share: 1, water_share: 0, water_over: "lake outline" };
+    const lake = frozenFixture("ice", "Frozen (seen by Sentinel-2)", {});
+    lake.freeze = { ...lake.freeze!, s2: null, s2_searched: true, s2_evidence: ev, not_refreshed_since: "2026-11-12", refresh_problem: "NASA POWER air temperature could not be fetched" };
+    const facts = freezeFacts(lake);
+    expect(facts).toContain("Sentinel-2: none clear over the lake in the last 7 days.");
+    expect(facts).toContain("Last Sentinel-2 evidence, which still holds: 8 Nov 2026 (S2A_X), snow or ice on 100% and water on 0% of the lake outline seen clear.");
+    expect(facts[facts.length - 1]).toBe("Not refreshed since 12 Nov 2026: NASA POWER air temperature could not be fetched; the last check stands.");
   });
 });

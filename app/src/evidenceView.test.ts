@@ -34,7 +34,9 @@ describe("How we know", () => {
     expect(sec).toContain("Winter radar is untested");
     expect(sec).toContain("tested again with late-January data");
     expect(sec).toContain("one to two weeks late");
-    expect(sec).toContain("Air temperature alone never says a lake is open");
+    expect(sec).toContain("Air temperature alone never shows open water");
+    expect(sec).toContain("No freeze signal in air temperature since");
+    expect(sec).not.toMatch(/Rogheli|melting ice brightens/);
     expect(text).toContain("NASA POWER daily air temperature");
     expect(text).toContain("Copernicus DEM GLO-30");
     // an older build without the freeze constants leaves the rule's figures out instead of showing {gaps}

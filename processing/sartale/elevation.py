@@ -67,6 +67,32 @@ def lake_elevation(lake) -> tuple[float, str] | None:
     return round(value), SOURCE.format(item=item["id"])
 
 
+PLAUSIBLE_M = (0.0, 8900.0)  # a lake surface on Earth
+
+
+def height_problems(lakes, doc: dict | None) -> list[str]:
+    """What is wrong with the register's lake heights, given the built lakes.json `doc`: a height outside
+    PLAUSIBLE_M or without a source; or a lake (lake_state "lake") without a height whose built entry does not say why,
+    as "Freeze not assessed" with the missing height as the reason. A missing height is allowed (lakes-elevation fails
+    soft and tries again at the next refresh); a silent one is not."""
+    built = {lk.get("id"): lk for lk in (doc or {}).get("lakes", [])}
+    out = []
+    for lake in lakes:
+        if lake.elevation_m is not None:
+            lo, hi = PLAUSIBLE_M
+            if not lo < lake.elevation_m < hi:
+                out.append(f"{lake.id}: height {lake.elevation_m} m is not a lake surface height")
+            if not str(lake.elevation_source or "").strip():
+                out.append(f"{lake.id}: height without a source")
+            continue
+        if lake.lake_state != "lake":
+            continue  # only lakes get a freeze check
+        f = (built.get(lake.id) or {}).get("freeze") or {}
+        if f.get("state") != "not_assessed" or "lake height" not in str(f.get("reason", "")):
+            out.append(f"{lake.id}: no height, and the built lakes.json does not say \"Freeze not assessed\" for it")
+    return out
+
+
 def _object_span(text: str, start: int) -> int:
     """Index of the `}` that closes the JSON object opening at `text[start]` (strings and nesting respected)."""
     depth, in_str, esc = 0, False, False

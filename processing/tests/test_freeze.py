@@ -6,13 +6,13 @@ import pytest
 
 from sartale import config
 from sartale.freeze import (
-    combine,
     corrected,
     fetch_power,
     freeze_history,
     freeze_lake,
     freeze_reason,
     power_start,
+    s2_kind,
     season_start,
     zone_shares,
 )
@@ -32,9 +32,9 @@ def last_day(start: str, n: int) -> str:
     return (Date.fromisoformat(start) + timedelta(days=n - 1)).isoformat()
 
 
-def history(values, start="2026-10-01", series=(), ref=None, today=None):
+def history(values, start="2026-10-01", series=(), ref=None, today=None, s2_events=()):
     temps = temps_from(start, values)
-    return freeze_history(temps, list(series), ref or {}, today or last_day(start, len(values)))
+    return freeze_history(temps, list(series), ref or {}, today or last_day(start, len(values)), list(s2_events))
 
 
 # --- the temperature rule ---------------------------------------------------------------------------------------------
@@ -131,7 +131,7 @@ def test_a_lake_still_frozen_on_1_sep_stays_frozen_and_says_so():
     assert h["state"] == "frozen_likely" and h["since"] == "2025-10-07" and h["held_over_sep"]
     assert h["fdd_since_sep"] == 5.0, "the degree-days still start again on 1 Sep"
     f = {**h, "s2": None, "s2_searched": True, "in_season": True}
-    assert "still frozen or breaking up on 1 Sep" in freeze_reason(f, 4188, "frozen_likely")
+    assert "still frozen or breaking up on 1 Sep" in freeze_reason(f, 4188)
 
 
 def test_a_missing_day_ends_the_runs():
@@ -233,7 +233,7 @@ def test_open_again_needs_fourteen_warm_days_and_a_radar_pass_back_in_its_summer
 
 def test_cold_again_during_break_up_is_frozen_again():
     h = history([-5.0] * 10 + [2.0] * 7 + [-3.0] * 7)
-    assert h["state"] == "frozen_likely" and h["since"] == "2026-10-24"
+    assert h["state"] == "frozen_likely" and h["since"] == "2026-10-07"  # M1: the freeze-up date is kept
 
 
 # --- Sentinel-2 ------------------------------------------------------------------------------------------------------
@@ -242,22 +242,67 @@ S2_SNOW = {"date": "2026-11-08", "s2_id": "S2A_43SCV_20261108_0_L2A", "clear_sha
            "water_share": 0.0}
 
 
-def test_sentinel2_snow_or_ice_overrides_the_temperature_state():
-    frozen = {"state": "frozen_likely", "since": "2026-10-18"}
-    assert combine(frozen, S2_SNOW) == ("frozen_s2", "2026-10-18")
-    assert combine({"state": "open", "since": None}, S2_SNOW) == ("frozen_s2", "2026-11-08")
-    edge = {**S2_SNOW, "snow_share": 0.8}
-    assert combine({"state": "open", "since": None}, edge)[0] == "frozen_s2"
-    assert combine({"state": "open", "since": None}, {**S2_SNOW, "snow_share": 0.79})[0] == "open"
+def test_what_a_sentinel2_reading_shows():
+    assert s2_kind(S2_SNOW) == "snow"
+    assert s2_kind({**S2_SNOW, "snow_share": 0.8}) == "snow"
+    assert s2_kind({**S2_SNOW, "snow_share": 0.79}) is None
+    assert s2_kind({**S2_SNOW, "snow_share": 0.1, "water_share": 0.5}) == "water"
+    assert s2_kind({**S2_SNOW, "snow_share": 0.5, "water_share": 0.3}) is None
+    # M3: less than half of the lake itself seen clear: no evidence either way
+    assert s2_kind({**S2_SNOW, "target_clear_share": 0.49}) is None
+    assert s2_kind({**S2_SNOW, "snow_share": 0.0, "water_share": 0.9, "target_clear_share": 0.4}) is None
+    assert s2_kind(None) is None
 
 
-def test_sentinel2_open_water_overrides_and_partial_views_change_nothing():
-    water = {**S2_SNOW, "snow_share": 0.1, "water_share": 0.5}
-    assert combine({"state": "frozen_likely", "since": "2026-10-18"}, water) == ("open", "2026-11-08")
-    partial = {**S2_SNOW, "snow_share": 0.5, "water_share": 0.3}
-    assert combine({"state": "frozen_likely", "since": "2026-10-18"}, partial) == ("frozen_likely", "2026-10-18")
-    assert combine({"state": "frozen_likely", "since": "2026-10-18"}, None) == ("frozen_likely", "2026-10-18")
-    assert combine({"state": "not_assessed", "since": None}, S2_SNOW)[0] == "not_assessed"
+def snow(day, share=0.94):
+    return {**S2_SNOW, "date": day, "s2_id": f"S2_{day}", "snow_share": share, "water_share": 0.0}
+
+
+def water(day, share=0.7):
+    return {**S2_SNOW, "date": day, "s2_id": f"S2_{day}", "snow_share": 0.0, "water_share": share}
+
+
+def test_sentinel2_snow_or_ice_makes_it_frozen_from_the_freeze_up_date_or_the_scene_date():
+    frozen = history([-5.0] * 20, s2_events=[snow("2026-10-15")])  # frozen by the air on 7 Oct
+    assert frozen["state"] == "frozen_s2" and frozen["since"] == "2026-10-07" and frozen["freeze_up"] == "2026-10-07"
+    assert frozen["s2_evidence"]["date"] == "2026-10-15"
+    warm = history([3.0] * 20, s2_events=[snow("2026-10-15")])
+    assert warm["state"] == "frozen_s2" and warm["since"] == "2026-10-15" and warm["freeze_up"] == "2026-10-15"
+    assert history([3.0] * 20, s2_events=[snow("2026-10-15", 0.79)])["state"] == "open"
+
+
+def test_frozen_s2_after_break_up_keeps_the_freeze_up_date():
+    # M1: frozen by the air 7 Oct, break-up by seven warm days on 17 Oct, then a clear scene with snow on the lake
+    h = history([-5.0] * 10 + [2.0] * 9, s2_events=[snow("2026-10-19")])
+    assert h["state"] == "frozen_s2" and h["since"] == "2026-10-07" and h["freeze_up"] == "2026-10-07"
+
+
+def test_sentinel2_open_water_releases_and_partial_views_change_nothing():
+    h = history([-5.0] * 20, s2_events=[water("2026-10-15")])
+    assert h["state"] == "open" and h["released_by"] == "s2" and h["released_on"] == "2026-10-15"
+    partial = {**water("2026-10-15"), "water_share": 0.3}
+    assert history([-5.0] * 20, s2_events=[partial])["state"] == "frozen_likely"
+    assert history([-5.0] * 20)["state"] == "frozen_likely"
+    assert freeze_history({}, [], {}, "2026-10-20", [snow("2026-10-15")])["state"] == "not_assessed"
+
+
+def test_sentinel2_evidence_holds_without_new_evidence():
+    # M4: frozen_s2 holds until a clear open-water scene or the rules release it; no flip back week to week while the
+    # air neither freezes nor thaws for seven days in a row
+    hovering = [1.0, 1.0, -1.0] * 12  # 1 Oct .. 5 Nov
+    for today_n in (12, 24, 36):
+        assert history(hovering[:today_n], s2_events=[snow("2026-10-05")])["state"] == "frozen_s2", today_n
+        assert history(hovering[:today_n])["state"] == "open"
+    # seven warm days after the scene (not the ones before it) call break-up, as for any frozen lake
+    assert history([3.0] * 21, s2_events=[snow("2026-10-15")])["state"] == "frozen_s2"
+    h = history([3.0] * 22, s2_events=[snow("2026-10-15")])
+    assert h["state"] == "breakup_likely" and h["since"] == "2026-10-22"
+    # an open reading holds until a new seven-day cold run (degree-days are already past 30)
+    cold = [-5.0] * 20  # frozen by the air on 7 Oct
+    for n in (0, 3, 6):
+        assert history(cold + [-5.0] * n, s2_events=[water("2026-10-20")])["state"] == "open", n
+    h = history(cold + [-5.0] * 7, s2_events=[water("2026-10-20")])
+    assert h["state"] == "frozen_likely" and h["since"] == "2026-10-27"
 
 
 def test_open_water_is_measured_over_the_outline_or_core_and_the_clear_gate_over_the_zone():
@@ -285,7 +330,7 @@ def test_the_sentinel2_look_uses_the_lakes_own_target(monkeypatch):
     zone = np.ones((10, 10), bool)
     target = np.zeros((10, 10), bool)
     target[4:6, 4:6] = True
-    monkeypatch.setattr(lakebuild, "freeze_masks", lambda lake, cache: {"zone": zone, "target": target,
+    monkeypatch.setattr(lakebuild, "freeze_masks", lambda lake, cache, frozen=(): {"zone": zone, "target": target,
                         "target_kind": "summer radar water core", "x": np.arange(10.0), "y": np.arange(10.0), "epsg": 32643})
     scene = {"type": "Feature", "id": "S2X", "properties": {"datetime": "2026-11-10T06:00:00Z", "eo:cloud_cover": 5},
              "assets": {"green": {}, "swir16": {}, "scl": {}}}
@@ -293,10 +338,14 @@ def test_the_sentinel2_look_uses_the_lakes_own_target(monkeypatch):
     monkeypatch.setattr(lakecheck, "optical_on_grid", lambda *a: {"clear": zone, "snow": np.zeros((10, 10), bool),
                                                                    "water": target})
     got = freeze.s2_scene_check(SHAZORE, "2026-11-12", log=lambda m: None, cache_dir="anywhere")
-    assert got == {"date": "2026-11-10", "s2_id": "S2X", "clear_share": 1.0, "snow_share": 0.0, "water_share": 1.0,
-                   "water_over": "summer radar water core"}
-    assert combine({"state": "frozen_likely", "since": "2026-10-18"}, got) == ("open", "2026-11-10")
+    assert got == {"date": "2026-11-10", "s2_id": "S2X", "clear_share": 1.0, "target_clear_share": 1.0,
+                   "snow_share": 0.0, "water_share": 1.0, "water_over": "summer radar water core"}
+    assert s2_kind(got) == "water"
     assert "water on 100% of the summer radar water core seen clear" in freeze.s2_text({"s2": got})
+    # M2/M3: snow is measured over the lake itself too, and a lake under cloud gives no reading
+    monkeypatch.setattr(lakecheck, "optical_on_grid", lambda *a: {"clear": zone & ~target, "snow": zone,
+                                                                   "water": np.zeros((10, 10), bool)})
+    assert freeze.s2_scene_check(SHAZORE, "2026-11-12", log=lambda m: None, cache_dir="anywhere") is None
 
 
 def test_zone_shares_count_snow_as_seen_and_cloud_edges_as_not():
@@ -310,6 +359,12 @@ def test_zone_shares_count_snow_as_seen_and_cloud_edges_as_not():
     water[2:6, 4] = True  # 4
     s = zone_shares({"clear": clear, "snow": snow, "water": water}, zone)
     assert s == {"clear_share": 0.8, "snow_share": 0.8, "water_share": 0.1, "target_clear_share": 0.8}
+    # M2: snow on the shore alone does not make the lake itself snow-covered
+    lake = np.zeros((10, 10), bool)
+    lake[6:10, 4] = True  # 4 px, open water
+    shore_snow = zone & ~lake
+    w = zone_shares({"clear": zone, "snow": shore_snow, "water": lake}, zone, lake)
+    assert w["snow_share"] == 0.0 and w["water_share"] == 1.0
 
 
 # --- one lake end to end --------------------------------------------------------------------------------------------
@@ -346,7 +401,7 @@ SHAZORE_AIR = [2.0] * 41 + [-5.0] * 30  # 1 Sep..11 Oct, 12 Oct..10 Nov
 def test_a_cold_lake_is_frozen_with_its_date_and_its_frozen_passes_leave_the_baseline():
     seen = []
     out = freeze_lake(SHAZORE, shazore_entry(), "2026-11-12", power=power_like(SHAZORE_AIR),
-                      s2_check=lambda lake, today, log: seen.append(today) or None, log=lambda m: None)
+                      s2_check=lambda lake, today, log, **k: seen.append(today) or None, log=lambda m: None)
     f = out["freeze"]
     assert f["state"] == "frozen_likely" and f["since"] == "2026-10-18" and f["temp_through"] == "2026-11-10"
     assert f["cold_run_days"] == 30 and f["fdd_since_sep"] == 150.0 and f["s2"] is None and f["s2_searched"]
@@ -357,14 +412,14 @@ def test_a_cold_lake_is_frozen_with_its_date_and_its_frozen_passes_leave_the_bas
     assert st["status"] == "Frozen (likely)" and st["change_km2"] is None
     assert st["latest_date"] == "2026-10-30" and st["track"] == "084A"
     assert "Probably frozen since 18 Oct 2026" in st["reason"] and "below 0 °C for 30 days in a row" in st["reason"]
-    assert "No clear Sentinel-2 view of the lake zone in the last 7 days." in st["reason"]
+    assert "No clear Sentinel-2 view of the lake in the last 7 days." in st["reason"]
     assert "4,181 m" in st["reason"] and "NASA POWER to 10 Nov 2026" in st["reason"]
 
 
 def test_a_lake_frozen_today_is_frozen_even_when_its_last_pass_came_before_freeze_up():
     entry = shazore_entry()
     entry["series"] = entry["series"][:5]  # last pass 18 Sep
-    out = freeze_lake(SHAZORE, entry, "2026-11-12", power=power_like(SHAZORE_AIR), s2_check=lambda *a: None,
+    out = freeze_lake(SHAZORE, entry, "2026-11-12", power=power_like(SHAZORE_AIR), s2_check=lambda *a, **k: None,
                       log=lambda m: None)
     assert out["status"]["status"] == "Frozen (likely)" and out["status"]["latest_date"] == "2026-09-18"
     assert not any(p["frozen"] for p in out["series"])
@@ -372,7 +427,7 @@ def test_a_lake_frozen_today_is_frozen_even_when_its_last_pass_came_before_freez
 
 def test_a_clear_snow_covered_scene_makes_it_seen_by_sentinel2():
     out = freeze_lake(SHAZORE, shazore_entry(), "2026-11-12", power=power_like(SHAZORE_AIR),
-                      s2_check=lambda *a: S2_SNOW, log=lambda m: None)
+                      s2_check=lambda *a, **k: S2_SNOW, log=lambda m: None)
     assert out["freeze"]["state"] == "frozen_s2" and out["freeze"]["since"] == "2026-10-18"
     st = out["status"]
     assert st["status"] == "Frozen (seen by Sentinel-2)"
@@ -385,7 +440,7 @@ def test_without_the_frozen_status_the_cold_passes_would_read_as_growth():
     from sartale.lakestatus import open_water_status
     entry = shazore_entry()
     assert open_water_status(entry["series"])["status"] in ("Growing", "Change not confirmed yet")
-    out = freeze_lake(SHAZORE, entry, "2026-11-12", power=power_like(SHAZORE_AIR), s2_check=lambda *a: None,
+    out = freeze_lake(SHAZORE, entry, "2026-11-12", power=power_like(SHAZORE_AIR), s2_check=lambda *a, **k: None,
                       log=lambda m: None)
     assert open_water_status(out["series"])["status"] == "Stable"
 
@@ -394,7 +449,7 @@ def test_a_warm_lake_stays_open_and_its_status_is_the_usual_one():
     air = [6.0] * 71
     called = []
     out = freeze_lake(SHAZORE, shazore_entry(), "2026-11-12", power=power_like(air),
-                      s2_check=lambda *a: called.append(1), log=lambda m: None)
+                      s2_check=lambda *a, **k: called.append(1), log=lambda m: None)
     f = out["freeze"]
     assert f["state"] == "open" and f["since"] is None and not f["s2_searched"] and called == []
     assert out["status"]["status"] in ("Growing", "Change not confirmed yet")
@@ -426,6 +481,78 @@ def test_not_assessed_keeps_the_usual_assessment(lake, power, why):
     assert out["status"]["status"] in ("Growing", "Change not confirmed yet")
 
 
+def _first_check():
+    return freeze_lake(SHAZORE, shazore_entry(), "2026-11-12", power=power_like(SHAZORE_AIR),
+                       s2_check=lambda *a, **k: S2_SNOW, log=lambda m: None)
+
+
+def _next_week(first):
+    """The next build of the same lake: the build carries the last freeze object and flags, and adds a new pass."""
+    new = {"date": "2026-11-11", "track": "084A", "area_km2": 0.23, "observable_share": 1.0, "excluded": None,
+           "crid": "P05036"}
+    return {**first, "series": first["series"] + [new]}
+
+
+def test_stale_and_failed_power_keep_the_last_check_the_same_way():
+    """M6: one behaviour. With NASA POWER stale (its newest day 15 days old) or unreachable, the last check stands:
+    its state, its flags (a new pass of a frozen lake is flagged too) and its reason, marked "not refreshed since"; the
+    status's latest date never moves back."""
+    first = _first_check()
+    assert first["freeze"]["state"] == "frozen_s2" and first["status"]["latest_date"] == "2026-10-30"
+
+    def fail(*a):
+        raise TimeoutError("POWER")
+    outs = [freeze_lake(SHAZORE, _next_week(first), "2026-11-25", power=p, s2_check=lambda *a, **k: pytest.fail("no"),
+                        log=lambda m: None) for p in (power_like(SHAZORE_AIR), fail)]
+    for out in outs:
+        f = out["freeze"]
+        assert f["state"] == "frozen_s2" and f["since"] == "2026-10-18" and f["not_refreshed_since"] == "2026-11-12"
+        assert f["reason"].startswith(first["freeze"]["reason"])
+        assert "Not refreshed since 12 Nov 2026:" in f["reason"]
+        assert [p["frozen"] for p in out["series"]] == [False] * 5 + [True, True, True]
+        assert out["status"]["status"] == "Frozen (seen by Sentinel-2)"
+        assert out["status"]["latest_date"] >= first["status"]["latest_date"]
+    assert outs[0]["series"] == outs[1]["series"]
+    assert {**outs[0]["status"], "reason": ""} == {**outs[1]["status"], "reason": ""}  # only the "why" differs
+    assert "more than 10 days" in outs[0]["freeze"]["refresh_problem"]
+    assert "could not be fetched" in outs[1]["freeze"]["refresh_problem"]
+    # kept twice, it still says since when, once
+    again = freeze_lake(SHAZORE, outs[1], "2026-12-02", power=fail, log=lambda m: None)
+    assert again["freeze"]["reason"].count("Not refreshed since") == 1
+    assert again["freeze"]["not_refreshed_since"] == "2026-11-12"
+    # without a last check both paths give "not assessed" and no flags
+    bare = _next_week({**shazore_entry()})
+    for p in (power_like(SHAZORE_AIR), fail):
+        out = freeze_lake(SHAZORE, bare, "2026-11-25", power=p, log=lambda m: None)
+        assert out["freeze"]["state"] == "not_assessed" and not any(q.get("frozen") for q in out["series"])
+
+
+def test_sentinel2_evidence_is_carried_from_the_last_check():
+    """M4: the next build's check, with no clear scene that week, keeps the Sentinel-2 evidence of the last one."""
+    first = _first_check()
+    nxt = freeze_lake(SHAZORE, _next_week(first), "2026-11-15", power=power_like(SHAZORE_AIR + [-5.0] * 3),
+                      s2_check=lambda *a, **k: None, log=lambda m: None)
+    f = nxt["freeze"]
+    assert f["state"] == "frozen_s2" and f["s2"] is None and f["s2_evidence"]["date"] == "2026-11-08"
+    assert "Snow or ice covers 94% of the lake zone seen clear in a Sentinel-2 scene of 8 Nov 2026" in f["reason"]
+    assert "stands until a clear one shows open water" in f["reason"]
+
+
+def test_the_summer_level_leaves_out_the_passes_flagged_frozen():
+    """M7: a late ice-out pass flagged frozen does not pull the summer level it is compared with."""
+    from sartale.freeze import refreshed_summer_ref
+
+    def p(day, hh, dark, frozen=False):
+        return {"date": day, "track": "084A", "excluded": None, "core_contrast_hh_db": hh, "core_contrast_hv_db": hh,
+                "core_dark_share": dark, "frozen": frozen}
+    series = [p("2026-06-25", -3.0, 0.4, True), p("2026-07-02", -3.0, 0.4, True), p("2026-07-19", -8.0, 0.95),
+              p("2026-08-12", -8.0, 0.96), p("2026-08-31", -8.2, 0.97)]
+    ref = refreshed_summer_ref(series, {"084A": {"core_px": 900}})["084A"]
+    assert ref["passes"] == 3 and ref["core_contrast_hh_db"] == -8.0 and ref["core_dark_share"] == 0.96
+    unflagged_ref = refreshed_summer_ref([{**q, "frozen": False} for q in series], {"084A": {"core_px": 900}})["084A"]
+    assert unflagged_ref["passes"] == 5 and unflagged_ref["core_dark_share"] == 0.95
+
+
 def test_power_start_reaches_back_to_the_season_each_pass_needs():
     # a June pass needs the winter before it: a lake frozen then may still be frozen in June
     series = [{"date": "2026-06-20"}, {"date": "2026-10-18"}]
@@ -438,9 +565,18 @@ def test_the_reason_never_claims_what_the_evidence_cannot_show():
     from sartale.lakestatus import day_text  # noqa: F401
     base = {"since": "2026-10-18", "temp_through": "2026-11-10", "cold_run_days": 30, "warm_run_days": 0,
             "fdd_since_sep": 150.0, "s2": None, "s2_searched": True, "in_season": True, "radar_assessed": True}
-    texts = [freeze_reason({**base, "state": s, "since": None if s == "open" else base["since"]}, 4181, "frozen_likely")
+    texts = [freeze_reason({**base, "state": s, "since": None if s == "open" else base["since"]}, 4181)
              for s in ("frozen_likely", "breakup_likely", "open")]
-    texts.append(freeze_reason({**base, "state": "frozen_s2", "s2": S2_SNOW}, 4181, "frozen_likely"))
+    texts.append(freeze_reason({**base, "state": "frozen_s2", "s2": S2_SNOW, "s2_evidence": S2_SNOW}, 4181))
+    # I3: a release is worded by what released it, never as open water from the air
+    for by, words in (("air", "No freeze signal in air temperature since 24 Oct 2026; open water not confirmed by radar "
+                              "or Sentinel-2"),
+                      ("radar", "Radar back within its summer range on 24 Oct 2026"),
+                      ("s2", "Open water seen by Sentinel-2 on 24 Oct 2026")):
+        r = freeze_reason({**base, "state": "open", "released_by": by, "released_on": "2026-10-24"}, 4181)
+        assert r.startswith(words), r
+        assert "Open again" not in r and "open again since" not in r.lower()
+        texts.append(r)
     for t in texts:
         low = t.lower()
         for word in ("safe", "thick", "radar shows ice", "radar saw ice", "predict", "risk"):

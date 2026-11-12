@@ -52,12 +52,15 @@ SUMMER_CONTRAST_DB = 1.0
 SUMMER_DARK_DROP = 0.15
 SUMMER_MIN_PASSES = 3  # fewer open-water-season passes on a track: the radar break-up test is not assessed there
 # Sentinel-2 override: the clearest scene of the last S2_FREEZE_DAYS days whose lake zone is at least S2_FREEZE_CLEAR
-# clear of cloud, cloud shadow and their 100 m edge; snow/ice on S2_FROZEN_SNOW_SHARE of the clear zone says frozen,
-# water on S2_OPEN_WATER_SHARE says open.
+# clear of cloud, cloud shadow and their 100 m edge; snow/ice on S2_FROZEN_SNOW_SHARE of the lake seen clear says
+# frozen, water on S2_OPEN_WATER_SHARE says open. The evidence holds until other evidence or the rules release it.
 S2_FREEZE_DAYS = 7
 S2_FREEZE_CLEAR = 0.8
 S2_FROZEN_SNOW_SHARE = 0.8
 S2_OPEN_WATER_SHARE = 0.5
+# Both shares are measured over the lake itself (its unbuffered outline, or the summer radar water core for a lake
+# without one), over its clear pixels; a scene counts only when at least this share of the lake itself is clear.
+S2_TARGET_CLEAR = 0.5
 POWER_STALE_DAYS = 10  # newest POWER day older than this at the build: "Not assessed"
 FREEZE_SEASON_START = (9, 1)  # freezing degree-days and the freeze state reset on 1 Sep
 FREEZE_SEASON_END = (5, 31)  # 1 Jun-31 Aug the state is open unless Sentinel-2 shows snow or ice

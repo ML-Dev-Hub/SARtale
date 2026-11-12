@@ -35,7 +35,17 @@ export interface LakeFreeze {
   t2m_mean_7d: number | null;
   t2m_min_mean_7d?: number | null;
   /** The clearest Sentinel-2 scene of the last 7 days over the lake zone; null when none was clear or none was searched. */
-  s2: { date: string; s2_id?: string; snow_share: number; water_share: number; clear_share?: number; water_over?: string } | null;
+  s2: { date: string; s2_id?: string; snow_share: number; water_share: number; clear_share?: number; target_clear_share?: number; water_over?: string } | null;
+  /** The Sentinel-2 reading that set the current state (frozen_s2, or open by Sentinel-2); it holds until other evidence. */
+  s2_evidence?: LakeFreeze["s2"];
+  /** The freeze-up date, kept through break-up. */
+  freeze_up?: string | null;
+  /** What released an open lake this season, and when: radar back in its summer range, Sentinel-2 water, or (only for a lake without a radar summer level) the warm days. */
+  released_by?: "radar" | "s2" | "air" | null;
+  released_on?: string | null;
+  /** Set when NASA POWER was stale or could not be read: the last check stands, from this date. */
+  not_refreshed_since?: string | null;
+  refresh_problem?: string | null;
   /** True when Sentinel-2 was searched (only for a cold or frozen lake). */
   s2_searched?: boolean;
   /** The radar pass that showed the ice-out signature, when break-up came from radar. */
@@ -198,6 +208,19 @@ export const FROZEN_AREA = "not an open-water measurement while frozen";
 const pct = (v: number): string => `${Math.round(v * 100)}%`;
 const degrees = (v: number): string => `${v < 0 ? "−" : ""}${Math.abs(v).toFixed(1)} °C`;
 
+/**
+ * How an open lake was released this season, as the pipeline's freeze.open_headline words it: never open water from
+ * air temperature alone. Null when it never froze this season.
+ */
+export function openHeadline(f: LakeFreeze): string | null {
+  const on = f.released_on ? formatDate(f.released_on) : null;
+  if (!on) return null;
+  if (f.released_by === "s2") return `Open water seen by Sentinel-2 on ${on}`;
+  if (f.released_by === "radar") return `Radar back within its summer range on ${on}`;
+  if (f.released_by === "air") return `No freeze signal in air temperature since ${on}; open water not confirmed by radar or Sentinel-2`;
+  return null;
+}
+
 /** The freeze state in a few words, for the freeze card's first line and the brief. */
 export function freezeHeadline(f: LakeFreeze): string {
   const since = f.since ? ` since ${formatDate(f.since)}` : "";
@@ -211,17 +234,24 @@ export function freezeHeadline(f: LakeFreeze): string {
     case "not_assessed":
       return "Freeze not assessed";
     case "open":
-      if (f.s2 && f.s2.water_share >= 0.5) return `Open water seen by Sentinel-2 on ${formatDate(f.s2.date)}`;
-      return f.since ? `Open again${since} (air temperature)` : "Not frozen by the air-temperature rule";
+      return openHeadline(f) ?? "Not frozen by the air-temperature rule";
     default:
       return `Freeze state: ${f.state}`;
   }
 }
 
+type S2Reading = NonNullable<LakeFreeze["s2"]>;
+
+/** "snow or ice on 94% and water on 0% of the lake outline seen clear": both over the lake itself (older files: the zone). */
+function s2Shares(s: S2Reading): string {
+  return `snow or ice on ${pct(s.snow_share)} and water on ${pct(s.water_share)} of the ${s.water_over ?? "lake zone"} seen clear`;
+}
+
 /**
- * The freeze card's facts, one line each: the air-temperature run and its freezing degree-days, the last Sentinel-2
- * evidence (or "none clear"), the radar pass at break-up, and how many passes were taken while frozen. Never claims the
- * radar saw ice, or that the lake is open from temperature alone.
+ * The freeze card's facts, one line each: the air-temperature run and its freezing degree-days, this week's Sentinel-2
+ * view (or "none clear") and the last Sentinel-2 evidence when older, the radar pass at break-up, how many passes were
+ * taken while frozen, and when the check could not be refreshed. Never claims the radar saw ice, or that the lake is
+ * open from air temperature alone.
  */
 export function freezeFacts(l: Lake): string[] {
   const f = l.freeze;
@@ -237,18 +267,21 @@ export function freezeFacts(l: Lake): string[] {
     if (f.fdd_since_sep != null) out.push(`Freezing degree-days since 1 Sep: ${Math.round(f.fdd_since_sep)}.`);
   }
   if (f.s2) {
-    // Snow and ice over the lake zone; open water over the lake itself (its unbuffered outline or its summer radar core).
-    const over = f.s2.water_over ?? "lake zone";
-    out.push(`Sentinel-2 ${formatDate(f.s2.date)}${f.s2.s2_id ? ` (${f.s2.s2_id})` : ""}: snow or ice on ${pct(f.s2.snow_share)} of the lake zone seen clear; water on ${pct(f.s2.water_share)} of the ${over} seen clear.`);
+    out.push(`Sentinel-2 ${formatDate(f.s2.date)}${f.s2.s2_id ? ` (${f.s2.s2_id})` : ""}: ${s2Shares(f.s2)}.`);
   } else if (f.s2_searched) {
-    out.push("Sentinel-2: none clear over the lake zone in the last 7 days.");
+    out.push("Sentinel-2: none clear over the lake in the last 7 days.");
   } else if (f.state !== "not_assessed") {
     out.push("Sentinel-2: not checked (the lake is not cold).");
+  }
+  const ev = f.s2_evidence;
+  if (ev && (!f.s2 || f.s2.date !== ev.date)) {
+    out.push(`Last Sentinel-2 evidence, which still holds: ${formatDate(ev.date)}${ev.s2_id ? ` (${ev.s2_id})` : ""}, ${s2Shares(ev)}.`);
   }
   const b = f.breakup_pass;
   if (b) out.push(`Radar ${formatDate(b.date)} (${b.track}): lake core ${b.contrast_hh_change_db >= 0 ? "+" : ""}${b.contrast_hh_change_db.toFixed(1)} dB (HH) and ${b.contrast_hv_change_db >= 0 ? "+" : ""}${b.contrast_hv_change_db.toFixed(1)} dB (HV) against its summer level; ${pct(b.core_dark_share)} of it dark (summer ${pct(b.summer_core_dark_share)}).`);
   const n = f.frozen_passes ?? l.series.filter((p) => p.frozen).length;
   if (n) out.push(`${n} ${n === 1 ? "pass was" : "passes were"} taken while the lake was probably frozen: greyed below, ${FROZEN_AREA}, and left out of the comparison.`);
+  if (f.not_refreshed_since) out.push(`Not refreshed since ${formatDate(f.not_refreshed_since)}${f.refresh_problem ? `: ${f.refresh_problem}` : ""}; the last check stands.`);
   return out;
 }
 
@@ -426,7 +459,19 @@ function isFreeze(f: unknown): boolean {
   return isStr(f.state) && isStr(f.reason) && (f.since === null || f.since === undefined || isIso(f.since))
     && (f.temp_through === null || f.temp_through === undefined || isIso(f.temp_through))
     && ["cold_run_days", "warm_run_days", "fdd_since_sep", "t2m_mean_7d"].every((k) => f[k] === undefined || isNumOrNull(f[k]))
-    && (s2 === null || s2 === undefined || (isObj(s2) && isIso(s2.date) && isNum(s2.snow_share) && isNum(s2.water_share)));
+    && isS2(s2) && isS2(f.s2_evidence) && (f.released_on === undefined || f.released_on === null || isIso(f.released_on))
+    && (f.not_refreshed_since === undefined || f.not_refreshed_since === null || isIso(f.not_refreshed_since))
+    && isBreakupPass(f.breakup_pass);
+}
+
+function isS2(s2: unknown): boolean {
+  return s2 === null || s2 === undefined || (isObj(s2) && isIso(s2.date) && isNum(s2.snow_share) && isNum(s2.water_share));
+}
+
+/** The radar pass at break-up, which the card writes out with its numbers: an object with them, or nothing. */
+function isBreakupPass(b: unknown): boolean {
+  return b === null || b === undefined || (isObj(b) && isIso(b.date) && isStr(b.track)
+    && ["contrast_hh_change_db", "contrast_hv_change_db", "core_dark_share", "summer_core_dark_share"].every((k) => isNum(b[k])));
 }
 
 function isStatus(s: unknown): boolean {

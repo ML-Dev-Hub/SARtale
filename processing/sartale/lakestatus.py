@@ -198,8 +198,9 @@ def lake_status(
 def cloud_window_looks(
     series: list[SeriesPoint], start: str = CLOUD_WINDOW[0], end: str = CLOUD_WINDOW[1]
 ) -> int:
-    """Valid, non-excluded points with enough observable zone, dated start..end inclusive."""
-    return sum(1 for p in series if is_valid(p) and start <= p["date"] <= end)
+    """Valid, non-excluded points with enough observable zone, dated start..end inclusive. A look at a lake that was
+    frozen then still counts: it is a valid look, only not an open-water measurement."""
+    return sum(1 for p in series if is_valid({**p, "frozen": False}) and start <= p["date"] <= end)
 
 
 _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
