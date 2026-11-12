@@ -1,0 +1,805 @@
+{
+ "source": "app/public/data/lakes.json built 2026-11-12T21:50:00Z (method D17); the passes of the four measured lakes, frozen as a fixture for the level replay",
+ "lakes": {
+  "attabad": [
+   {
+    "date": "2026-06-18",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 4.6065,
+    "observable_share": 0.9786532049338961,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-06-25",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 3.6215,
+    "observable_share": 0.9893907244619582,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-06-30",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 4.6767,
+    "observable_share": 0.9788280831021056,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-06-30",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 4.2661,
+    "observable_share": 0.9863478443351132,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-07-07",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": null,
+    "observable_share": 0.9894373586401474,
+    "excluded": "window median HH 26.1 dB from the track median",
+    "frozen": false
+   },
+   {
+    "date": "2026-07-12",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 4.725,
+    "observable_share": 0.9788047660130109,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-07-24",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 4.6237,
+    "observable_share": 0.9786881805675379,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-07-24",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 4.2623,
+    "observable_share": 0.9858232098304848,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-12",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 3.3574,
+    "observable_share": 0.9896821880756407,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-17",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 4.6857,
+    "observable_share": 0.9787231562011799,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-17",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 4.2893,
+    "observable_share": 0.9859164781868631,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-24",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 2.914,
+    "observable_share": 0.989658870986546,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-29",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 4.5577,
+    "observable_share": 0.9786532049338961,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-05",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": null,
+    "observable_share": 0.9897637978874717,
+    "excluded": "window dark share 23.5% is an outlier on its track (robust z +4.4, limit 3.5)",
+    "frozen": false
+   },
+   {
+    "date": "2026-09-10",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 4.3604,
+    "observable_share": 0.9787814489239164,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-10",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 4.162,
+    "observable_share": 0.9862895516123767,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-17",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 2.8698,
+    "observable_share": 0.9895656026301677,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-22",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 4.3469,
+    "observable_share": 0.9788164245575582,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-29",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 3.3339,
+    "observable_share": 0.9894490171846947,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-04",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 4.4345,
+    "observable_share": 0.9787348147457271,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-04",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 4.3124,
+    "observable_share": 0.9864411126914916,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-11",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 2.6276,
+    "observable_share": 0.9892974561055797,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-16",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 4.5307,
+    "observable_share": 0.9786765220229906,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-23",
+    "track": "156A",
+    "crid": "P05036",
+    "area_km2": 3.2842,
+    "observable_share": 0.9895656026301677,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-28",
+    "track": "055A",
+    "crid": "P05036",
+    "area_km2": 4.4382,
+    "observable_share": 0.9786998391120852,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-28",
+    "track": "063D",
+    "crid": "P05036",
+    "area_km2": 4.1232,
+    "observable_share": 0.9863944785133024,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-11-04",
+    "track": "156A",
+    "crid": "P05036",
+    "area_km2": 3.3309,
+    "observable_share": 0.9895306269965257,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-11-09",
+    "track": "055A",
+    "crid": "P05036",
+    "area_km2": 4.4264,
+    "observable_share": 0.9786881805675379,
+    "excluded": null,
+    "frozen": false
+   }
+  ],
+  "passu": [
+   {
+    "date": "2026-06-18",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 0.1441,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-06-25",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 0.1298,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-06-30",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 0.1447,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-06-30",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 0.136,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-07-07",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": null,
+    "observable_share": 1.0,
+    "excluded": "window median HH 20.4 dB from the track median",
+    "frozen": false
+   },
+   {
+    "date": "2026-07-12",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": null,
+    "observable_share": 1.0,
+    "excluded": "window dark share 6.4% is an outlier on its track (robust z -5.9, limit 3.5)",
+    "frozen": false
+   },
+   {
+    "date": "2026-07-24",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 0.1488,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-07-24",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 0.1338,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-12",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 0.1261,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-17",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 0.1459,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-17",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 0.137,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-24",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 0.1256,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-29",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 0.1464,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-05",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": null,
+    "observable_share": 1.0,
+    "excluded": "anomalous over Hunza lakes; spec \u00a75",
+    "frozen": false
+   },
+   {
+    "date": "2026-09-10",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 0.1434,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-10",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 0.1356,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-17",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 0.1235,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-22",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 0.1397,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-29",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 0.1241,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-04",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 0.1406,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-04",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 0.1327,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-11",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 0.1088,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-16",
+    "track": "055A",
+    "crid": "P05023",
+    "area_km2": 0.1456,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-23",
+    "track": "156A",
+    "crid": "P05036",
+    "area_km2": 0.119,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-28",
+    "track": "055A",
+    "crid": "P05036",
+    "area_km2": 0.1351,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-28",
+    "track": "063D",
+    "crid": "P05036",
+    "area_km2": 0.1243,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-11-04",
+    "track": "156A",
+    "crid": "P05036",
+    "area_km2": 0.1136,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-11-09",
+    "track": "055A",
+    "crid": "P05036",
+    "area_km2": 0.1332,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   }
+  ],
+  "karambar": [
+   {
+    "date": "2026-06-25",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 0.0726,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-06-30",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 0.0707,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-07-07",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": null,
+    "observable_share": 1.0,
+    "excluded": "window median HH 34.4 dB from the track median",
+    "frozen": false
+   },
+   {
+    "date": "2026-07-24",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 0.0727,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-12",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 0.0759,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-17",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 0.0729,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-24",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 0.0762,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-05",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": null,
+    "observable_share": 1.0,
+    "excluded": "window dark share 26.4% is an outlier on its track (robust z +15.8, limit 3.5)",
+    "frozen": false
+   },
+   {
+    "date": "2026-09-10",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 0.0732,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-17",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 0.0796,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-29",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 0.0763,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-04",
+    "track": "063D",
+    "crid": "P05023",
+    "area_km2": 0.0667,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-11",
+    "track": "156A",
+    "crid": "P05023",
+    "area_km2": 0.0776,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-23",
+    "track": "156A",
+    "crid": "P05036",
+    "area_km2": 0.0762,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-28",
+    "track": "063D",
+    "crid": "P05036",
+    "area_km2": 0.0639,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-11-04",
+    "track": "156A",
+    "crid": "P05036",
+    "area_km2": 0.0736,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   }
+  ],
+  "shazore": [
+   {
+    "date": "2026-06-25",
+    "track": "164D",
+    "crid": "P05023",
+    "area_km2": 0.0953,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": true
+   },
+   {
+    "date": "2026-07-02",
+    "track": "084A",
+    "crid": "P05023",
+    "area_km2": 0.1021,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": true
+   },
+   {
+    "date": "2026-07-14",
+    "track": "084A",
+    "crid": "P05023",
+    "area_km2": null,
+    "observable_share": 1.0,
+    "excluded": "window dark share 20.0% is an outlier on its track (robust z +4.6, limit 3.5)",
+    "frozen": true
+   },
+   {
+    "date": "2026-07-19",
+    "track": "164D",
+    "crid": "P05023",
+    "area_km2": 0.1597,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-07-26",
+    "track": "084A",
+    "crid": "P05023",
+    "area_km2": 0.1333,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-12",
+    "track": "164D",
+    "crid": "P05023",
+    "area_km2": 0.1581,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-19",
+    "track": "084A",
+    "crid": "P05023",
+    "area_km2": 0.1454,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-08-31",
+    "track": "084A",
+    "crid": "P05023",
+    "area_km2": 0.1604,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-05",
+    "track": "164D",
+    "crid": "P05023",
+    "area_km2": 0.1803,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-12",
+    "track": "084A",
+    "crid": "P05023",
+    "area_km2": 0.151,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-24",
+    "track": "084A",
+    "crid": "P05023",
+    "area_km2": 0.1607,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-09-29",
+    "track": "164D",
+    "crid": "P05023",
+    "area_km2": 0.1694,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-06",
+    "track": "084A",
+    "crid": "P05023",
+    "area_km2": 0.1599,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": false
+   },
+   {
+    "date": "2026-10-18",
+    "track": "084A",
+    "crid": "P05023",
+    "area_km2": 0.1682,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": true
+   },
+   {
+    "date": "2026-10-23",
+    "track": "164D",
+    "crid": "P05036",
+    "area_km2": 0.1711,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": true
+   },
+   {
+    "date": "2026-10-30",
+    "track": "084A",
+    "crid": "P05036",
+    "area_km2": 0.183,
+    "observable_share": 1.0,
+    "excluded": null,
+    "frozen": true
+   }
+  ]
+ }
+}

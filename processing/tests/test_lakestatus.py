@@ -435,3 +435,47 @@ def test_forming_status_says_a_lake_may_be_forming_without_a_verdict():
     assert "next NISAR pass" not in s["reason"] and "measures it" not in s["reason"]
     assert s["reason"].endswith("A lake may be forming. Its radar dark area is shown but not yet treated as lake "
                                 "area; the SARtale team reviews the site to add it as a measured lake.")
+
+
+# --- the real 2026 series, replayed --------------------------------------------------------------------------------------
+
+def _real_2026():
+    import json
+    from pathlib import Path
+    return json.loads((Path(__file__).parent / "fixtures" / "series_2026_d17.json").read_text(encoding="utf-8"))["lakes"]
+
+
+def _flags(series):
+    _, out = assess(series)
+    return [(p["date"], p["track"], p["level_contrib"], bool(p.get("new_version")))
+            for p in sorted(out, key=lambda q: (q["date"], q["track"]))
+            if p.get("level_contrib") not in (None, NO_CHANGE)]
+
+
+def test_the_real_2026_series_replayed_under_the_level_rules():
+    """The D17 areas of the 2026 season (a fixture: the build of 12 Nov 2026), replayed. No growth Alert anywhere.
+    Attabad's September drawdown shows as Watches around 10 Sep: with the noise floored at 2% of its 4.3-4.7 km2
+    baseline, the 063D pass of 10 Sep reads z = -1.4, so no two-pass Decrease noted (the method study's replay, with
+    no 2% floor, had one; see step2b-report.md). Passu's October-November decrease is held at Watch by the version
+    rule: its 28 Oct 063D pass is that track's first on P05036. Karambar has no flag, and Shazore (frozen from 18 Oct,
+    its June-July ice-out passes flagged) none either."""
+    lakes = _real_2026()
+    assert _flags(lakes["attabad"]) == [("2026-09-10", "055A", WATCH, False), ("2026-09-17", "156A", WATCH, False),
+                                        ("2026-09-22", "055A", WATCH, False)]
+    assert _flags(lakes["passu"]) == [("2026-10-11", "156A", WATCH, False), ("2026-10-28", "055A", WATCH, True),
+                                      ("2026-10-28", "063D", WATCH, True), ("2026-11-04", "156A", WATCH, False),
+                                      ("2026-11-09", "055A", WATCH, False)]
+    assert _flags(lakes["karambar"]) == [] and _flags(lakes["shazore"]) == []
+    for series in lakes.values():
+        assert ALERT not in [lv for _, _, lv, _ in _flags(series)]
+    # without the version rule Passu's 28 Oct 063D and 4 Nov 156A passes would be a Decrease noted
+    plain = [{k: v for k, v in p.items() if k != "crid"} for p in lakes["passu"]]
+    assert ("2026-11-04", "156A", DECREASE, False) in _flags(plain)
+
+
+def test_without_the_2_percent_floor_attabad_would_read_decrease_noted_on_10_sep(monkeypatch):
+    """The study's replay used no relative floor: the 063D pass of 10 Sep is then z = -4.6 and pairs with the 055A pass
+    of the same day. The brief's rule keeps the floor; this records what it changes."""
+    from sartale import lakestatus
+    monkeypatch.setattr(lakestatus, "NOISE_REL_FLOOR", 0.0)
+    assert ("2026-09-10", "063D", DECREASE, False) in _flags(_real_2026()["attabad"])
