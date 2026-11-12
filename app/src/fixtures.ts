@@ -60,7 +60,7 @@ export const fixtureLakes: LakesFile = {
  */
 export function frozenFixture(id: string, status: "Frozen (likely)" | "Frozen (seen by Sentinel-2)" | "Break-up likely" = "Frozen (likely)", extra: Partial<Lake> = {}): Lake {
   const p = (date: string, area: number, frozen: boolean, crid = "P05023") => ({ date, track: "084A", area_km2: area, observable_share: 1, excluded: null, crid, frozen });
-  const s2 = status === "Frozen (seen by Sentinel-2)" ? { date: "2026-11-08", s2_id: "S2A_43SCV_20261108_0_L2A", clear_share: 0.97, snow_share: 0.94, water_share: 0 } : null;
+  const s2 = status === "Frozen (seen by Sentinel-2)" ? { date: "2026-11-08", s2_id: "S2A_43SCV_20261108_0_L2A", clear_share: 0.97, snow_share: 0.94, water_share: 0, water_over: "lake outline" } : null;
   const state = status === "Frozen (likely)" ? "frozen_likely" : status === "Frozen (seen by Sentinel-2)" ? "frozen_s2" : "breakup_likely";
   const reason = "Probably frozen since 18 Oct 2026, when the air at the lake met the freeze rule.";
   return fixtureLake(id, status, "2026-10-30", {

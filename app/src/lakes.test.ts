@@ -297,7 +297,11 @@ describe("frozen lakes", () => {
     expect(facts[2]).toBe("Sentinel-2: none clear over the lake zone in the last 7 days.");
     expect(facts[3]).toBe(`2 passes were taken while the lake was probably frozen: greyed below, ${FROZEN_AREA}, and left out of the comparison.`);
     const seen = freezeFacts(frozenFixture("ice", "Frozen (seen by Sentinel-2)"));
-    expect(seen[2]).toBe("Sentinel-2 8 Nov 2026 (S2A_43SCV_20261108_0_L2A): snow or ice on 94% and water on 0% of the lake zone seen clear.");
+    expect(seen[2]).toBe("Sentinel-2 8 Nov 2026 (S2A_43SCV_20261108_0_L2A): snow or ice on 94% of the lake zone seen clear; water on 0% of the lake outline seen clear.");
+    // an older freeze object without water_over measured water over the lake zone
+    const olderS2 = frozenFixture("ice", "Frozen (seen by Sentinel-2)");
+    olderS2.freeze = { ...olderS2.freeze!, s2: { date: "2026-11-08", snow_share: 0.94, water_share: 0 } };
+    expect(freezeFacts(olderS2)[2]).toBe("Sentinel-2 8 Nov 2026: snow or ice on 94% of the lake zone seen clear; water on 0% of the lake zone seen clear.");
     expect(freezeHeadline(frozenFixture("ice").freeze!)).toBe("Probably frozen since 18 Oct 2026 (air temperature)");
     expect(freezeHeadline(frozenFixture("ice", "Frozen (seen by Sentinel-2)").freeze!)).toBe("Frozen since 18 Oct 2026: snow or ice seen by Sentinel-2");
     expect(freezeHeadline({ ...frozenFixture("ice").freeze!, state: "open", since: null })).toBe("Not frozen by the air-temperature rule");

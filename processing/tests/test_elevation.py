@@ -65,3 +65,45 @@ def test_every_lake_in_the_register_has_its_height():
     for lk in lakes:
         if lk.lake_state == "lake":
             assert lk.elevation_m is not None and "Copernicus DEM GLO-30" in lk.elevation_source, lk.id
+
+
+def test_lakes_elevation_fills_missing_heights_and_fails_soft(tmp_path, monkeypatch, capsys):
+    """The rebuild runs lakes-elevation before the build: a lake without a height gets one; a lake whose DEM read fails
+    keeps none (its freeze stays "not assessed") and the run goes on; a lake with a height is not measured again."""
+    from sartale import elevation, run_pipeline
+    rows = json.loads(REGISTER)
+    rows[0]["elevation_m"], rows[0]["elevation_source"] = 4000, "measured before"
+    rows.append({**rows[1], "id": "c", "name": "C", "limits": []})
+    p = tmp_path / "lakes_in.json"
+    p.write_text(json.dumps(rows, indent=1), encoding="utf-8")
+    calls = []
+
+    def fake(lake):
+        calls.append(lake.id)
+        if lake.id == "b":
+            raise TimeoutError("DEM")
+        return 3100, "Copernicus DEM GLO-30 (tile), 10th percentile within 1 km of the lake point"
+    monkeypatch.setattr(elevation, "lake_elevation", fake)
+    run_pipeline.main(["lakes-elevation", "--lakes-in", str(p)])
+    out = capsys.readouterr().out
+    assert calls == ["b", "c"]
+    assert "b: the Copernicus DEM could not be read (TimeoutError); its freeze stays not assessed" in out
+    got = {lk.id: lk.elevation_m for lk in load_lakes(p)}
+    assert got == {"a": 4000.0, "b": None, "c": 3100.0}
+
+
+def test_a_lake_without_a_height_is_freeze_not_assessed_with_the_reason():
+    from sartale.freeze import freeze_lake
+    from sartale.lakes import Lake
+    lake = Lake(id="new", name="New", lon=72.0, lat=35.0, coord_source="x", outline=None, role="watch",
+                downstream=None, downstream_source=None)
+    entry = {"id": "new", "lake_state": "lake", "series": [], "summer_ref": {},
+             "status": {"status": "Not enough NISAR looks yet", "track": None, "latest_date": None, "looks": 0,
+                        "change_km2": None, "noise_km2": None, "reason": "No valid NISAR pass yet.", "new_crid": None}}
+    out = freeze_lake(lake, entry, "2026-11-12", power=lambda *a: pytest.fail("no POWER call without a height"),
+                      log=lambda m: None)
+    assert out["freeze"]["state"] == "not_assessed"
+    assert out["freeze"]["reason"].startswith("Freeze not assessed: no lake height in the register yet (the Copernicus "
+                                              "DEM could not be read for it; lakes-elevation tries again at the next "
+                                              "refresh).")
+    assert out["elevation_m"] is None and out["status"]["status"] == "Not enough NISAR looks yet"

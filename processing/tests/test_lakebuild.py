@@ -553,3 +553,34 @@ def test_core_metrics_are_core_minus_window_so_a_calibration_shift_cancels():
     shifted = core_metrics(hh - 1.2, hv - 1.2, core)  # a processing-version change moves everything together
     assert shifted["core_contrast_hh_db"] == pytest.approx(m["core_contrast_hh_db"], abs=1e-9)
     assert core_metrics(hh, hv, np.zeros((40, 40), bool)) is None
+
+def test_freeze_masks_look_for_open_water_in_the_summer_radar_core_of_a_circle_lake(tmp_path):
+    from sartale.lakebuild import freeze_masks
+    cache = tmp_path / "cache"
+    a = make_lake("alpha")
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24"]:
+        write_pass(cache, a, d, "156A", water_m=300.0)
+    m = freeze_masks(a, cache)
+    assert m["target_kind"] == "summer radar water core"
+    # the zone is the 1 km circle; the core is the 300 m dark disc inside it
+    zone_m2, core_m2 = m["zone"].sum() * PX * PX, m["target"].sum() * PX * PX
+    assert 2.8e6 < zone_m2 < 3.4e6 and 0.2e6 < core_m2 < 0.4e6
+    assert not (m["target"] & ~m["zone"]).any()
+    assert freeze_masks(make_lake("nothing"), cache) is None
+
+
+def test_freeze_masks_look_for_open_water_in_the_unbuffered_outline_of_an_outline_lake(tmp_path):
+    from dataclasses import replace
+
+    from sartale.lakebuild import freeze_masks
+    cache = tmp_path / "cache"
+    base = make_lake("alpha")
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24"]:
+        write_pass(cache, base, d, "156A")
+    poly = tmp_path / "alpha.geojson"
+    poly.write_text(json.dumps(_outline_around(base, 400)), encoding="utf-8")
+    m = freeze_masks(replace(base, outline=str(poly)), cache)
+    assert m["target_kind"] == "lake outline"
+    # the outline is 800 m square (0.64 km2); the zone is it buffered by 200 m (about 1.4 km2)
+    assert 0.55e6 < m["target"].sum() * PX * PX < 0.72e6
+    assert 1.3e6 < m["zone"].sum() * PX * PX < 1.5e6

@@ -35,7 +35,7 @@ export interface LakeFreeze {
   t2m_mean_7d: number | null;
   t2m_min_mean_7d?: number | null;
   /** The clearest Sentinel-2 scene of the last 7 days over the lake zone; null when none was clear or none was searched. */
-  s2: { date: string; s2_id?: string; snow_share: number; water_share: number; clear_share?: number } | null;
+  s2: { date: string; s2_id?: string; snow_share: number; water_share: number; clear_share?: number; water_over?: string } | null;
   /** True when Sentinel-2 was searched (only for a cold or frozen lake). */
   s2_searched?: boolean;
   /** The radar pass that showed the ice-out signature, when break-up came from radar. */
@@ -237,7 +237,9 @@ export function freezeFacts(l: Lake): string[] {
     if (f.fdd_since_sep != null) out.push(`Freezing degree-days since 1 Sep: ${Math.round(f.fdd_since_sep)}.`);
   }
   if (f.s2) {
-    out.push(`Sentinel-2 ${formatDate(f.s2.date)}${f.s2.s2_id ? ` (${f.s2.s2_id})` : ""}: snow or ice on ${pct(f.s2.snow_share)} and water on ${pct(f.s2.water_share)} of the lake zone seen clear.`);
+    // Snow and ice over the lake zone; open water over the lake itself (its unbuffered outline or its summer radar core).
+    const over = f.s2.water_over ?? "lake zone";
+    out.push(`Sentinel-2 ${formatDate(f.s2.date)}${f.s2.s2_id ? ` (${f.s2.s2_id})` : ""}: snow or ice on ${pct(f.s2.snow_share)} of the lake zone seen clear; water on ${pct(f.s2.water_share)} of the ${over} seen clear.`);
   } else if (f.s2_searched) {
     out.push("Sentinel-2: none clear over the lake zone in the last 7 days.");
   } else if (f.state !== "not_assessed") {

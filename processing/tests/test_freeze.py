@@ -79,12 +79,59 @@ def test_the_1_sep_reset():
     assert history(values, start="2026-05-01", series=series)["flags"] == [True, False]
 
 
-def test_outside_the_season_the_lake_is_open():
+def test_no_freeze_up_starts_outside_the_season():
     assert season_start(Date(2026, 7, 1)) is None
     assert season_start(Date(2026, 11, 12)) == Date(2026, 9, 1)
     assert season_start(Date(2027, 3, 1)) == Date(2026, 9, 1)
     h = history([-8.0] * 20, start="2026-06-01")
     assert h["state"] == "open" and h["since"] is None
+
+
+# A high lake's spring: frozen all winter (from 1 Oct 2025), then a June of thaw and frost by turns (+2, +2, -1: never
+# seven warm days in a row), then a warm July.
+WINTER = [-6.0] * 243  # 1 Oct 2025 .. 31 May 2026
+JUNE = [2.0, 2.0, -1.0] * 10  # 1..30 Jun
+JULY = [4.0] * 31
+
+
+def test_a_lake_frozen_in_may_stays_frozen_through_june_and_opens_on_the_rule():
+    series = [radar_pass(d) for d in ("2026-06-12", "2026-06-24")] + [radar_pass("2026-07-10", hh=-8.3, hv=-7.4, dark=0.86)]
+    h = history(WINTER + JUNE + JULY, start="2025-10-01", series=series, ref=REF, today="2026-07-31")
+    # June passes: still frozen after 31 May (no seven warm days, no radar ice-out signature)
+    assert h["flags"][:2] == [True, True]
+    # 7 Jul: seventh warm day -> break-up; 10 Jul: radar back within summer range; 14 Jul: fourteenth warm day -> open
+    assert h["state"] == "open" and h["since"] == "2026-07-14" and h["flags"][2] is True
+    mid_june = history(WINTER + JUNE[:20], start="2025-10-01", ref=REF, today="2026-06-20")
+    assert mid_june["state"] == "frozen_likely" and mid_june["since"] == "2025-10-07"
+
+
+def test_a_shazore_like_2026_spring_reads_ice_out_from_radar_in_late_june():
+    # the radar ice-out signature of 25 Jun and 2 Jul 2026 (+3.2 to +3.7 dB HH, +2.9 to +3.4 dB HV, dark share 0.32-0.50
+    # against 0.89-0.95), then a pass back within its summer range in mid July
+    series = [radar_pass("2026-06-13"),
+              radar_pass("2026-06-25", track="164D", hh=-4.6, hv=-4.0, dark=0.32),
+              radar_pass("2026-07-02", hh=-4.4, hv=-3.6, dark=0.50),
+              radar_pass("2026-07-21", hh=-8.2, hv=-7.3, dark=0.88),
+              radar_pass("2026-07-25")]
+    ref = {**REF, "164D": {**REF["084A"], "core_contrast_hh_db": -7.9, "core_contrast_hv_db": -6.9, "core_dark_share": 0.95}}
+    june = [2.0, 2.0, -1.0] * 10
+    july = [2.0, 2.0, -1.0] * 3 + [4.0] * 22  # cool to 9 Jul, warm from 10 Jul
+    h = history(WINTER + june + july, start="2025-10-01", series=series, ref=ref, today="2026-07-31")
+    assert h["flags"] == [True, True, True, True, False]
+    # break-up from radar on 25 Jun (not from the air); open again on the fourteenth warm day after the radar pass back
+    flags_at_jul2 = history(WINTER + june + july[:2], start="2025-10-01", series=series[:3], ref=ref, today="2026-07-02")
+    assert flags_at_jul2["state"] == "breakup_likely" and flags_at_jul2["since"] == "2026-06-25"
+    assert flags_at_jul2["breakup_pass"]["track"] == "164D"
+    assert h["state"] == "open" and h["since"] == "2026-07-23"
+
+
+def test_a_lake_still_frozen_on_1_sep_stays_frozen_and_says_so():
+    summer = [2.0, 2.0, 2.0, -1.0] * 23  # 1 Jun .. 31 Aug: never seven warm days in a row
+    h = history(WINTER + summer + [-1.0] * 5, start="2025-10-01", today="2026-09-05")
+    assert h["state"] == "frozen_likely" and h["since"] == "2025-10-07" and h["held_over_sep"]
+    assert h["fdd_since_sep"] == 5.0, "the degree-days still start again on 1 Sep"
+    f = {**h, "s2": None, "s2_searched": True, "in_season": True}
+    assert "still frozen or breaking up on 1 Sep" in freeze_reason(f, 4188, "frozen_likely")
 
 
 def test_a_missing_day_ends_the_runs():
@@ -213,6 +260,45 @@ def test_sentinel2_open_water_overrides_and_partial_views_change_nothing():
     assert combine({"state": "not_assessed", "since": None}, S2_SNOW)[0] == "not_assessed"
 
 
+def test_open_water_is_measured_over_the_outline_or_core_and_the_clear_gate_over_the_zone():
+    zone = np.zeros((20, 20), bool)
+    zone[2:18, 2:18] = True  # 256 px: the outline buffered, or the circle
+    target = np.zeros((20, 20), bool)
+    target[8:12, 8:12] = True  # 16 px: the unbuffered outline, or the summer radar core
+    clear = np.ones((20, 20), bool)
+    clear[2:5, 2:18] = False  # 48 zone pixels under cloud: zone 81% clear
+    water = target.copy()
+    water[8, 8] = False  # 15 of the 16 target pixels are water; none of the shore is
+    s = zone_shares({"clear": clear, "snow": np.zeros((20, 20), bool), "water": water}, zone, target)
+    assert s["clear_share"] == pytest.approx(208 / 256) and s["water_share"] == pytest.approx(15 / 16)
+    assert s["target_clear_share"] == 1.0
+    # over the whole zone the same lake reads under the 50% open-water line
+    assert zone_shares({"clear": clear, "snow": np.zeros((20, 20), bool), "water": water}, zone)["water_share"] < 0.1
+    # a target under cloud reads no water, whatever the zone shows
+    cloudy = clear & ~target
+    assert zone_shares({"clear": cloudy, "snow": np.zeros((20, 20), bool), "water": water}, zone, target) == {
+        "clear_share": pytest.approx(192 / 256), "snow_share": 0.0, "water_share": 0.0, "target_clear_share": 0.0}
+
+
+def test_the_sentinel2_look_uses_the_lakes_own_target(monkeypatch):
+    from sartale import freeze, lakebuild, lakecheck
+    zone = np.ones((10, 10), bool)
+    target = np.zeros((10, 10), bool)
+    target[4:6, 4:6] = True
+    monkeypatch.setattr(lakebuild, "freeze_masks", lambda lake, cache: {"zone": zone, "target": target,
+                        "target_kind": "summer radar water core", "x": np.arange(10.0), "y": np.arange(10.0), "epsg": 32643})
+    scene = {"type": "Feature", "id": "S2X", "properties": {"datetime": "2026-11-10T06:00:00Z", "eo:cloud_cover": 5},
+             "assets": {"green": {}, "swir16": {}, "scl": {}}}
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a, **k: [scene])
+    monkeypatch.setattr(lakecheck, "optical_on_grid", lambda *a: {"clear": zone, "snow": np.zeros((10, 10), bool),
+                                                                   "water": target})
+    got = freeze.s2_scene_check(SHAZORE, "2026-11-12", log=lambda m: None, cache_dir="anywhere")
+    assert got == {"date": "2026-11-10", "s2_id": "S2X", "clear_share": 1.0, "snow_share": 0.0, "water_share": 1.0,
+                   "water_over": "summer radar water core"}
+    assert combine({"state": "frozen_likely", "since": "2026-10-18"}, got) == ("open", "2026-11-10")
+    assert "water on 100% of the summer radar water core seen clear" in freeze.s2_text({"s2": got})
+
+
 def test_zone_shares_count_snow_as_seen_and_cloud_edges_as_not():
     zone = np.zeros((10, 10), bool)
     zone[:, :5] = True  # 50 pixels
@@ -223,7 +309,7 @@ def test_zone_shares_count_snow_as_seen_and_cloud_edges_as_not():
     water = np.zeros((10, 10), bool)
     water[2:6, 4] = True  # 4
     s = zone_shares({"clear": clear, "snow": snow, "water": water}, zone)
-    assert s == {"clear_share": 0.8, "snow_share": 0.8, "water_share": 0.1}
+    assert s == {"clear_share": 0.8, "snow_share": 0.8, "water_share": 0.1, "target_clear_share": 0.8}
 
 
 # --- one lake end to end --------------------------------------------------------------------------------------------
@@ -340,11 +426,12 @@ def test_not_assessed_keeps_the_usual_assessment(lake, power, why):
     assert out["status"]["status"] in ("Growing", "Change not confirmed yet")
 
 
-def test_power_start_reaches_back_to_the_first_season_with_a_pass():
+def test_power_start_reaches_back_to_the_season_each_pass_needs():
+    # a June pass needs the winter before it: a lake frozen then may still be frozen in June
     series = [{"date": "2026-06-20"}, {"date": "2026-10-18"}]
-    assert power_start(series, "2026-11-12") == "2026-09-01"
+    assert power_start(series, "2026-11-12") == "2025-09-01"
     assert power_start([{"date": "2026-10-18"}], "2027-11-12") == "2026-09-01"
-    assert power_start([{"date": "2026-06-20"}], "2026-07-15") == "2026-07-01"
+    assert power_start([], "2026-07-15") == "2025-09-01"
 
 
 def test_the_reason_never_claims_what_the_evidence_cannot_show():
@@ -379,7 +466,7 @@ def test_the_lakes_freeze_command_sets_each_lake_again_and_is_idempotent(tmp_pat
     out.mkdir()
     (out / "lakes.json").write_text(json.dumps({"lakes": [shazore_entry(), dry]}), encoding="utf-8")
     monkeypatch.setattr(freeze, "fetch_power", power_like(SHAZORE_AIR))
-    monkeypatch.setattr(freeze, "s2_scene_check", lambda lake, today, log: S2_SNOW)
+    monkeypatch.setattr(freeze, "s2_scene_check", lambda lake, today, log, **k: S2_SNOW)
     args = ["lakes-freeze", "--lakes-in", str(lakes_in), "--out", str(out), "--today", "2026-11-12"]
     run_pipeline.main(args)
     first = (out / "lakes.json").read_text(encoding="utf-8")

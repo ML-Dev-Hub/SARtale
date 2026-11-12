@@ -272,9 +272,12 @@ def cmd_lakes_freeze(args) -> None:
     scene for a cold lake), flag the passes taken while it was frozen, and set the statuses again in lakes.json. Runs
     after lakes-build, needs no login, and never fails the run for a failed download: the lake is then "not assessed"
     and keeps the usual assessment."""
-    from sartale.freeze import freeze_lake
+    from functools import partial
+
+    from sartale import freeze
 
     today = args.today or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    s2_check = partial(freeze.s2_scene_check, cache_dir=Path(args.cache))
     path = Path(args.out) / "lakes.json"
     if not path.is_file():
         print(f"no {path}: run lakes-build first")
@@ -285,26 +288,32 @@ def cmd_lakes_freeze(args) -> None:
         if lake.id not in by_id:
             continue
         i = by_id[lake.id]
-        doc["lakes"][i] = freeze_lake(lake, doc["lakes"][i], today)
+        doc["lakes"][i] = freeze.freeze_lake(lake, doc["lakes"][i], today, s2_check=s2_check)
         print(freeze_line(doc["lakes"][i]), flush=True)
     write_json_atomic(path, doc)
 
 
 def cmd_lakes_elevation(args) -> None:
     """Measure the lake surface height (Copernicus DEM GLO-30) of every register lake that has none yet and write it
-    into lakes_in.json, once. The freeze check needs it."""
-    from sartale.elevation import lake_elevation, set_elevation
+    into lakes_in.json, once. The freeze check needs it. The rebuild runs it before the build, so a newly accepted lake
+    gets its height in the same refresh. Never fails the run: a lake whose height cannot be read is said so and stays
+    without one (its freeze is "not assessed"), and the next run tries again."""
+    from sartale import elevation
 
     path = Path(args.lakes_in)
     for lake in load_lakes(path):
         if lake.elevation_m is not None:
             print(f"{lake.id}: {lake.elevation_m:g} m (already measured)")
             continue
-        got = lake_elevation(lake)
-        if got is None:
-            print(f"{lake.id}: no Copernicus DEM value; the freeze check stays not assessed")
+        try:
+            got = elevation.lake_elevation(lake)
+        except Exception as e:  # noqa: BLE001 - fail soft: the freeze check says "not assessed" for this lake
+            print(f"{lake.id}: the Copernicus DEM could not be read ({type(e).__name__}); its freeze stays not assessed")
             continue
-        set_elevation(path, lake.id, *got)
+        if got is None:
+            print(f"{lake.id}: no Copernicus DEM value; its freeze stays not assessed")
+            continue
+        elevation.set_elevation(path, lake.id, *got)
         print(f"{lake.id}: {got[0]} m ({got[1]})")
 
 
@@ -439,6 +448,8 @@ def build_parser() -> argparse.ArgumentParser:
                                              "for a cold lake); flags passes taken while frozen")
     lz.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
     lz.add_argument("--out", default=str(REPO_ROOT / "app" / "public" / "data"), help="folder holding lakes.json")
+    lz.add_argument("--cache", default=str(REPO_ROOT / "data" / "lakes"),
+                    help="the NISAR window cache (for the lake outline or summer radar core the Sentinel-2 look uses)")
     lz.add_argument("--today", default=None, help="YYYY-MM-DD (default: today, UTC)")
     lz.set_defaults(func=cmd_lakes_freeze)
 

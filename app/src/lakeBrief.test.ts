@@ -242,7 +242,7 @@ describe("the brief of a frozen lake", () => {
     expect(t).toContain("Lake ice");
     expect(t).toContain("Frozen since 18 Oct 2026: snow or ice seen by Sentinel-2.");
     expect(t).toContain("Latest reading 0.226 km² on 30 Oct 2026 (084A): not an open-water measurement while frozen.");
-    expect(t).toContain("Sentinel-2 8 Nov 2026 (S2A_43SCV_20261108_0_L2A): snow or ice on 94% and water on 0% of the lake zone seen clear.");
+    expect(t).toContain("Sentinel-2 8 Nov 2026 (S2A_43SCV_20261108_0_L2A): snow or ice on 94% of the lake zone seen clear; water on 0% of the lake outline seen clear.");
     expect(t).toContain("Freezing degree-days since 1 Sep: 150.");
     expect(t).toContain("Latest open-water passes on track 084A (no comparison while the lake is frozen)");
     expect(html).not.toContain("<td>0.225</td>");

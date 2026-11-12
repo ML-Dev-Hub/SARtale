@@ -26,6 +26,7 @@ from sartale.lakewater import (
     dark_mask,
     despeckle,
     lake_zone,
+    outline_mask,
     outline_window_share,
     pass_water,
     screen_outliers,
@@ -662,6 +663,37 @@ def radar_water_masks(lake: Lake, cache_dir: Path, pass_id: str) -> dict:
     window = dark & valid & (np.ones(dark.shape, bool) if shadow is None else ~shadow)
     zone = lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline)
     return {"window": window, "zone_mask": window & zone, "zone": zone, "x": xs, "y": ys, "epsg": epsg}
+
+
+def freeze_masks(lake: Lake, cache_dir: Path) -> dict | None:
+    """The masks the freeze check's Sentinel-2 look uses, on the lake's radar window grid: the lake zone (outline
+    buffered 200 m, or the circle; the clear gate and the snow/ice share are measured over it) and where open water is
+    looked for: the outline itself, unbuffered, for a lake with an outline, else the summer radar core (zone pixels,
+    not shadow-prone, dark in at least half of a track's open-water-season passes, all tracks together). When that is
+    empty, the zone. Returns {"zone", "target", "target_kind", "x", "y", "epsg"}, or None without a usable cached
+    window."""
+    limits: list[str] = []
+    lake_dir = Path(cache_dir) / lake.id
+    listed = read_listed(Path(cache_dir) / PASSES_JSON)
+    mine = None if listed is None else listed.get(lake.id, set())
+    raw = _read_cache(lake_dir, limits, mine) if lake_dir.is_dir() else []
+    passes, xs, ys = _align(raw, limits, lake) if raw else ([], None, None)
+    if not passes:
+        return None
+    epsg, px, by_track, excluded, _, shadow = _analyse(passes, xs, ys, limits)
+    outline = _load_outline(lake)
+    shape = (len(ys), len(xs))
+    zone = lake_zone(shape, xs, ys, epsg, lake, outline_polygon=outline)
+    if outline is not None:
+        target, kind = outline_mask(shape, xs, ys, epsg, outline) & zone, "lake outline"
+    else:
+        target = np.zeros(shape, bool)
+        for core, _ in summer_cores(by_track, excluded, zone, shadow).values():
+            target |= core
+        kind = "summer radar water core"
+    if not target.any():
+        target, kind = zone, "lake zone"
+    return {"zone": zone, "target": target, "target_kind": kind, "x": xs, "y": ys, "epsg": epsg}
 
 
 def radar_water_mask(lake: Lake, cache_dir: Path, pass_id: str, zone_only: bool = True):

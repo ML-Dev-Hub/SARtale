@@ -381,7 +381,12 @@ def test_rebuild_action_order():
     freeze = at("lakes-freeze")
     assert at("lakes-build") < missing < freeze < at("lakes-diff")
     assert "continue-on-error" not in steps[freeze]
-    for i in (absence, missing, freeze):
+    # a lake new to the register gets its height (lakes_in.json) before the build and the freeze check, without the
+    # Earthdata login; the step fails soft inside the command, so it carries no continue-on-error either
+    elevation = at("lakes-elevation")
+    assert at("lakes-fetch") < elevation < at("lakes-build") < freeze
+    assert "continue-on-error" not in steps[elevation]
+    for i in (absence, missing, freeze, elevation):
         assert "unset EARTHDATA_USERNAME EARTHDATA_PASSWORD" in runs[i]
     assert '> "$RUNNER_TEMP/lakes.published.json"' in runs[at("git show HEAD:app/public/data/lakes.json")]
     assert "continue-on-error" not in steps[at("lakes-diff")], "a large drop must fail the rebuild"

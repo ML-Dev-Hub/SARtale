@@ -87,6 +87,15 @@ runs:
         unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
         python -m sartale.run_pipeline lakes-absence
 
+    - name: Measure the surface height of any lake that has none (Copernicus DEM, for the freeze check)
+      # A newly accepted lake gets its height here, in lakes_in.json, before the build and the freeze check. Needs no
+      # login. Fails soft: a lake whose height cannot be read stays "freeze not assessed" and is tried again next time.
+      shell: bash -el {0}
+      working-directory: processing
+      run: |
+        unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
+        python -m sartale.run_pipeline lakes-elevation
+
     - name: Build the lakes (fails when the Attabad gate fails)
       shell: bash -el {0}
       working-directory: processing
