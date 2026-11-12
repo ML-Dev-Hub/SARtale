@@ -2,7 +2,7 @@ import type { Lake } from "./lakes";
 import type { LocatorFactory } from "./lakeWatchView";
 
 /** A status as a CSS-safe word, shared by the locator pins and the status pills (Stable -> stable). */
-export const statusSlug = (status: string): string => status.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+export const statusSlug = (status: string): string => status.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 /** One lake pin: coloured by status (data-status), dashed for a control lake, ringed when selected (data-selected). */
 export function markerElement(lake: Lake, selected: boolean): HTMLButtonElement {

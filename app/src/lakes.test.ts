@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { fixtureLakes } from "./fixtures";
+import { fixtureLakes, frozenFixture } from "./fixtures";
 import realLakes from "../public/data/lakes.json";
 import frozenLakes from "./frozen/lakes.json";
 import { droppedLine, isLake, isLakesFile } from "./lakes";
-import { absenceLine, cloudHeadline, hasLakeNow, lakeTokens, mayBeForming, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
+import { findBannedClaims } from "./content";
+import { absenceLine, cloudHeadline, FROZEN_AREA, freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, isFrozen, isTrendPass, lakeTokens, mayBeForming, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -104,8 +105,13 @@ describe("sortLakes", () => {
   });
   test("status order is the documented one", () => {
     expect(STATUS_ORDER).toEqual([
-      "Lake may be forming", "Growing", "Shrinking", "Change not confirmed yet", "Not seen this pass", "Stable", "Not enough NISAR looks yet", "Not observable", "No lake now",
+      "Lake may be forming", "Growing", "Shrinking", "Change not confirmed yet", "Frozen (likely)", "Frozen (seen by Sentinel-2)", "Break-up likely", "Not seen this pass", "Stable", "Not enough NISAR looks yet", "Not observable", "No lake now",
     ]);
+  });
+  test("frozen lakes sort after Change not confirmed yet and before Not seen this pass and Stable", () => {
+    const lakes = [...fixtureLakes.lakes, frozenFixture("ice", "Frozen (likely)"), frozenFixture("ice-s2", "Frozen (seen by Sentinel-2)"), frozenFixture("thaw", "Break-up likely")];
+    const ids = sortLakes(lakes).map((l) => l.id);
+    expect(ids).toEqual(["grow-new", "grow-old", "shrink", "ice", "ice-s2", "thaw", "stable", "few", "hidden", "control"]);
   });
   test("does not mutate its input", () => {
     const copy = [...fixtureLakes.lakes];
@@ -242,5 +248,69 @@ describe("opticalOverlapPhrase", () => {
     expect(opticalOverlapPhrase([row(0.05), row(0.46), row(0.61)])).toBe("overlapped optical water unevenly across the 3 lakes checked (IoU 0.05–0.61)");
     expect(opticalOverlapPhrase([row(0.7), row(0.8)])).toBe("overlapped optical water with IoU 0.7–0.8 across the 2 lakes checked");
     expect(opticalOverlapPhrase([])).toBeNull();
+  });
+});
+
+describe("frozen lakes", () => {
+  test("an older lakes.json without freeze fields still loads, every lake kept", async () => {
+    for (const l of (frozenLakes as unknown as LakesFile).lakes) {
+      expect(l.freeze).toBeUndefined();
+      expect(l.series.some((p) => "frozen" in p)).toBe(false);
+    }
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => frozenLakes })));
+    const out = await loadLakes("data/lakes.json");
+    expect(out?.lakes.length).toBe(frozenLakes.lakes.length);
+    expect(out?.dropped_lakes).toBeUndefined();
+  });
+
+  test("a lake with a freeze object and frozen passes is valid; a broken freeze object drops only that lake", () => {
+    const ice = frozenFixture("ice");
+    expect(isLake(ice)).toBe(true);
+    expect(isLake({ ...ice, freeze: null })).toBe(true);
+    expect(isLake({ ...ice, freeze: { state: 3, reason: "x" } })).toBe(false);
+    expect(isLake({ ...ice, freeze: { ...ice.freeze, s2: { date: "8 Nov" } } })).toBe(false);
+    expect(isLake({ ...ice, series: [{ ...ice.series[0], frozen: "yes" }] })).toBe(false);
+  });
+
+  test("frozen passes keep their area but are not trend passes", () => {
+    const ice = frozenFixture("ice");
+    const frozen = ice.series.filter((p) => p.frozen);
+    expect(frozen.map((p) => p.area_km2)).toEqual([0.225, 0.226]);
+    expect(frozen.every((p) => !isTrendPass(p, 0.5))).toBe(true);
+    expect(ice.series.filter((p) => isTrendPass(p, 0.5))).toHaveLength(5);
+  });
+
+  test("the frozen statuses: no change figures, the reason and the Ice state", () => {
+    const ice = frozenFixture("ice");
+    expect(isFrozen(ice)).toBe(true);
+    expect(isFrozen(fixtureLakes.lakes[2])).toBe(false);
+    expect(statusSentence(ice, 2)).toBe("Frozen (likely): Probably frozen since 18 Oct 2026, when the air at the lake met the freeze rule., latest 30 Oct 2026");
+    expect(frozenAreaLine(ice)).toBe(`Latest reading 0.226 km² on 30 Oct 2026 (084A): ${FROZEN_AREA}.`);
+    expect(FROZEN_AREA).toBe("not an open-water measurement while frozen");
+    expect(frozenAreaLine(fixtureLakes.lakes[2])).toBeNull();
+  });
+
+  test("the freeze card's facts: temperature run, degree-days, Sentinel-2 evidence or none clear, frozen passes", () => {
+    const facts = freezeFacts(frozenFixture("ice"));
+    expect(facts[0]).toBe("Air temperature (NASA POWER to 10 Nov 2026, adjusted to the lake's height of 4,188 m): daily mean below 0 °C for 30 days in a row; 7-day mean −5.8 °C.");
+    expect(facts[1]).toBe("Freezing degree-days since 1 Sep: 150.");
+    expect(facts[2]).toBe("Sentinel-2: none clear over the lake zone in the last 7 days.");
+    expect(facts[3]).toBe(`2 passes were taken while the lake was probably frozen: greyed below, ${FROZEN_AREA}, and left out of the comparison.`);
+    const seen = freezeFacts(frozenFixture("ice", "Frozen (seen by Sentinel-2)"));
+    expect(seen[2]).toBe("Sentinel-2 8 Nov 2026 (S2A_43SCV_20261108_0_L2A): snow or ice on 94% and water on 0% of the lake zone seen clear.");
+    expect(freezeHeadline(frozenFixture("ice").freeze!)).toBe("Probably frozen since 18 Oct 2026 (air temperature)");
+    expect(freezeHeadline(frozenFixture("ice", "Frozen (seen by Sentinel-2)").freeze!)).toBe("Frozen since 18 Oct 2026: snow or ice seen by Sentinel-2");
+    expect(freezeHeadline({ ...frozenFixture("ice").freeze!, state: "open", since: null })).toBe("Not frozen by the air-temperature rule");
+    expect(freezeHeadline({ ...frozenFixture("ice").freeze!, state: "not_assessed" })).toBe("Freeze not assessed");
+    const notCold = freezeFacts({ ...frozenFixture("ice"), freeze: { ...frozenFixture("ice").freeze!, state: "open", s2_searched: false } });
+    expect(notCold).toContain("Sentinel-2: not checked (the lake is not cold).");
+    for (const t of [...facts, ...seen]) expect(findBannedClaims(t)).toEqual([]);
+  });
+
+  test("the freeze rule's figures come from lakes.json constants, and an older file has none", () => {
+    const c = { ...fixtureLakes.constants, lapse_c_per_km: -6.5, freeze_cold_run_days: 7, freeze_fdd: 30, breakup_warm_run_days: 7, thaw_warm_run_days: 14, breakup_contrast_db: 2, breakup_dark_drop: 0.3, s2_frozen_snow_share: 0.8, s2_open_water_share: 0.5, s2_freeze_days: 7, s2_freeze_clear: 0.8, power_stale_days: 10 };
+    const t = lakeTokens({ ...fixtureLakes, constants: c });
+    expect([t.lapse_c_per_km, t.freeze_cold_run_days, t.freeze_fdd, t.s2_frozen_pct, t.s2_open_pct]).toEqual(["6.5", "7", "30", "80", "50"]);
+    expect(lakeTokens(fixtureLakes).freeze_fdd).toBeUndefined();
   });
 });

@@ -43,7 +43,8 @@
         "label": "Lake Watch",
         "title": "Lake Watch: one status for each lake",
         "body": [
-          "Lake Watch lists {watch_list}, each with a status: Growing, Stable, Shrinking, Change not confirmed yet, Not seen this pass, Not observable, Not enough NISAR looks yet, or No lake now.",
+          "Lake Watch lists {watch_list}, each with a status: Growing, Stable, Shrinking, Change not confirmed yet, Frozen (likely), Frozen (seen by Sentinel-2), Break-up likely, Not seen this pass, Not observable, Not enough NISAR looks yet, or No lake now.",
+          "Frozen (likely) comes from air temperature at the lake, and Frozen (seen by Sentinel-2) from a clear optical image. Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so a frozen lake gets no growing or shrinking verdict until it thaws.",
           "No lake now marks a site where recent imagery shows no lake, such as the empty basin of an ice-dammed lake that has drained. It gets no growing or shrinking verdict, and its dark radar area is not counted as lake area; the site stays on the list to watch for a lake forming.",
           "A status compares a lake only with its own earlier passes from the same track. Growing or Shrinking needs a change larger than {change_factor} times the lake's own noise, so a label can change between passes on a small change.",
           "Control lakes, kept to check the method, are listed last."

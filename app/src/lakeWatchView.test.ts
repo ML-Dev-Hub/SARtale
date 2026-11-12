@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test } from "vitest";
 import { findBannedClaims } from "./content";
-import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
+import { fixtureLakes, frozenFixture, requestedLake, withRequestedLake } from "./fixtures";
 import { sortLakes, type Lake, type LakesFile } from "./lakes";
 import { checkLine, createLakeWatchView, FORMING_LAYER, FORMING_NO_LAYER, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
 
@@ -339,5 +339,86 @@ describe("checkLine", () => {
   test("names the open-water season the pair was chosen in, when the row has one", () => {
     expect(checkLine({ ...c, season: "15 Jun–30 Sep" })).toMatch(/^One NISAR pass vs one Sentinel-2 scene \(open-water season 15 Jun–30 Sep\): NISAR 2\.736 km²/);
     expect(checkLine(c)).toMatch(/^One NISAR pass vs one Sentinel-2 scene: NISAR/);
+  });
+});
+
+
+describe("a frozen lake", () => {
+  const file = (): LakesFile => ({ ...fixtureLakes, lakes: [...fixtureLakes.lakes, frozenFixture("ice"), frozenFixture("ice-s2", "Frozen (seen by Sentinel-2)")] });
+
+  test("its row has the frozen chip and an Ice tag; other rows have none", () => {
+    const { root } = setup(file());
+    const row = root.querySelector('[data-lake-id="ice"]')!;
+    expect(row.querySelector(".lw-chip")?.className).toContain("lw-status-frozen-likely");
+    expect(row.querySelector(".lw-chip")?.textContent).toBe("Frozen (likely)");
+    expect(row.querySelector('[data-role="lw-ice"]')?.textContent).toBe("Ice");
+    expect(root.querySelector('[data-lake-id="ice-s2"] .lw-chip')?.className).toContain("lw-status-frozen-seen-by-sentinel-2");
+    expect(root.querySelector('[data-lake-id="stable"] [data-role="lw-ice"]')).toBeNull();
+    // sorted after Change not confirmed yet, before Stable
+    const ids = rowIds(root);
+    expect(ids.indexOf("ice")).toBeLessThan(ids.indexOf("stable"));
+    expect(ids.indexOf("ice")).toBeGreaterThan(ids.indexOf("shrink"));
+  });
+
+  test("its detail shows the freeze card and greys the area with what it is not", () => {
+    const { root, view } = setup(file());
+    view.select("ice");
+    const detail = root.querySelector('[data-role="lw-detail"]')!;
+    const card = detail.querySelector('[data-role="lw-freeze"]')!;
+    expect(card.querySelector("h3")?.textContent).toBe("Lake ice");
+    expect(card.textContent).toContain("Probably frozen since 18 Oct 2026 (air temperature)");
+    expect(card.textContent).toContain("below 0 °C for 30 days in a row");
+    expect(card.textContent).toContain("Freezing degree-days since 1 Sep: 150.");
+    expect(card.textContent).toContain("Sentinel-2: none clear over the lake zone in the last 7 days.");
+    const area = detail.querySelector('[data-role="lw-frozen-area"]')!;
+    expect(area.textContent).toBe("Latest reading 0.226 km² on 30 Oct 2026 (084A): not an open-water measurement while frozen.");
+    expect(area.className).toBe("lw-frozen-area");
+    const scope = detail.querySelector<HTMLElement>(".lw-scope")!;
+    expect(scope.dataset.frozen).toBe("true");
+    expect(scope.textContent).toContain("(not an open-water measurement while frozen)");
+    expect(detail.querySelector(".lw-sentence-big")?.textContent).toMatch(/^Frozen \(likely\): Probably frozen since 18 Oct 2026/);
+    expect(findBannedClaims(detail.textContent ?? "")).toEqual([]);
+  });
+
+  test("its frozen passes are greyed in the chart and the table, and left out of the track lines", () => {
+    const { root, view, charts } = setup(file());
+    view.select("ice");
+    const data = charts[charts.length - 1];
+    const ice = data.series.find((s) => s.frozen)!;
+    expect(ice.label).toBe("Frozen passes (not open water)");
+    expect(ice.values.filter((v) => v !== null)).toEqual([0.225, 0.226]);
+    const track = data.series.find((s) => s.label === "084A")!;
+    expect(track.values.filter((v) => v !== null)).toHaveLength(5);
+    expect(root.querySelector('[data-role="lw-detail"]')!.textContent).toContain("Grey markers are passes taken while the lake was probably frozen");
+    const rows = [...root.querySelectorAll<HTMLTableRowElement>('[data-role="lw-readings"] tbody tr')];
+    const frozen = rows.filter((r) => r.dataset.frozen === "true");
+    expect(frozen).toHaveLength(2);
+    expect(frozen.every((r) => r.className === "lw-frozen")).toBe(true);
+    expect(frozen[0].children[2].textContent).toBe("0.225");
+    expect(frozen[0].children[4].textContent).toBe("No: frozen, not an open-water measurement while frozen");
+    expect(rows.filter((r) => r.children[4].textContent === "Yes")).toHaveLength(5);
+  });
+
+  test("a lake that is not frozen shows its freeze check as a note, no Ice tag and no greyed area", () => {
+    const open = { ...frozenFixture("warm"), status: fixtureLakes.lakes.find((l) => l.id === "stable")!.status, series: [] };
+    open.freeze = { ...open.freeze!, state: "open", since: null, cold_run_days: 0, warm_run_days: 5, s2_searched: false, frozen_passes: 0, reason: "Not frozen by the freeze rule (7 days in a row below 0 °C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open." };
+    const { root, view } = setup({ ...fixtureLakes, lakes: [...fixtureLakes.lakes, open] });
+    view.select("warm");
+    const card = root.querySelector('[data-role="lw-freeze"]')!;
+    expect(card.textContent).toContain("Not frozen by the air-temperature rule");
+    expect(card.textContent).toContain("Air temperature alone cannot show that the lake is open.");
+    expect(card.textContent).toContain("Sentinel-2: not checked (the lake is not cold).");
+    expect(root.querySelector('[data-role="lw-frozen-area"]')).toBeNull();
+    expect(root.querySelector('[data-lake-id="warm"] [data-role="lw-ice"]')).toBeNull();
+  });
+
+  test("an older lakes.json without freeze fields shows no freeze card and no Ice tag", async () => {
+    const old = (await import("./frozen/lakes.json")).default as unknown as LakesFile;
+    const { root, view } = setup(old);
+    for (const l of old.lakes) {
+      view.select(l.id);
+      expect(root.querySelector('[data-role="lw-freeze"]')).toBeNull();
+    }
+    expect(root.querySelector('[data-role="lw-ice"]')).toBeNull();
   });
 });

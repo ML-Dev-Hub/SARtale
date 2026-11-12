@@ -44,10 +44,27 @@
       ]
     },
     {
+      "id": "frozen",
+      "title": "Frozen lakes",
+      "paragraphs": [
+        "L-band radar does not see a mountain lake freeze. New ice under dry snow stays as dark as open water, while frozen ground around the lake darkens and reads as more water: at Shazore the radar area rose by 44% after freeze-up, although Sentinel-2 showed the lake under snow and ice from 19 Oct 2026. So Lake Watch decides whether a lake is probably frozen from air temperature, and from Sentinel-2 when a clear image shows it, never from the radar area.",
+        "Frozen (likely): the NASA POWER daily mean air temperature, moved from its grid cell's height to the lake's height (from the Copernicus DEM) at {lapse_c_per_km} °C per km, has been below 0 °C on at least {freeze_cold_run_days} days in a row, with at least {freeze_fdd} freezing degree-days since 1 Sep. Frozen (seen by Sentinel-2): snow or ice covers at least {s2_frozen_pct}% of the lake zone in the clearest Sentinel-2 image of the last {s2_freeze_days} days that sees at least {s2_freeze_clear_pct}% of the zone clear of cloud, cloud shadow and their 100 m edge. Water on at least {s2_open_pct}% of the zone in such an image returns the lake to the usual assessment.",
+        "Break-up likely: a frozen lake has had at least {breakup_warm_run_days} days in a row above 0 °C, or a radar pass shows its core at least {breakup_contrast_db} dB brighter against its surroundings than in summer, in both HH and HV, with a dark share at least {breakup_dark_drop} lower. Wet, melting ice brightens on radar, as Shazore's did in late June 2026. The lake is open again after {thaw_warm_run_days} warm days in a row and one radar pass back within its summer range, or a clear Sentinel-2 image of open water.",
+        "While a lake is frozen or its ice is breaking up, it gets no Growing or Shrinking verdict; this comes before Change not confirmed yet and the other statuses, except No lake now. Its area is still shown, greyed, as not an open-water measurement, and passes taken while it was frozen are greyed in the chart and the table and left out of the comparison and of the noise. The rule runs from 1 Sep to 31 May, and freezing degree-days start again each 1 Sep. When the newest air temperature is more than {power_stale_days} days old, the freeze is not assessed and the usual status stands."
+      ],
+      "list": [
+        "Winter radar is untested. The radar data so far end in early November, just after freeze-up; whether these lakes brighten on radar in mid-winter is not known. The rule will be tested again with late-January data.",
+        "Without a clear Sentinel-2 image the rule can be one to two weeks late: Rogheli showed no open water from early October 2026, but its air met the rule only on 15 October.",
+        "The air temperature is an estimate, not a measurement at the lake: a reanalysis value for a cell about 50 km across, moved to the lake's height with one lapse rate, while Karakoram valley lapse rates vary between about 4 and 8 °C per km.",
+        "Frozen describes the lake surface from air temperature or an optical image. The radar does not show the ice, and Lake Watch says nothing about how thick it is.",
+        "Air temperature alone never says a lake is open; only a clear Sentinel-2 image can."
+      ]
+    },
+    {
       "id": "data",
       "title": "The data",
       "paragraphs": [
-        "Lake Watch is built from public sources. Only the first two are satellite data."
+        "Lake Watch is built from public sources. Only the first two are satellite images."
       ],
       "table": {
         "head": [
@@ -72,6 +89,16 @@
             "Quoted with dates; SUPARCO's own lake list is not published with locations."
           ],
           [
+            "NASA POWER daily air temperature (NASA Langley Research Center)",
+            "The freeze check: daily mean and minimum air temperature at each lake from 1 Sep, moved to the lake's height.",
+            "A reanalysis estimate for a cell about 50 km across, not a measurement at the lake; it arrives a few days late."
+          ],
+          [
+            "Copernicus DEM GLO-30 (ESA and Airbus, via Earth Search)",
+            "The height of each lake's surface, measured once, so the air temperature can be moved from its grid cell to the lake.",
+            "About ±100 m where the lake has no flat water surface in the DEM."
+          ],
+          [
             "Lake coordinates",
             "Where each lake's search zone sits.",
             "From published inventories, papers, OpenStreetMap and Sentinel-2 imagery, each named on its lake card. A location check against 2026 imagery removed points that were not lakes."
@@ -93,7 +120,7 @@
       "id": "check",
       "title": "Check it yourself",
       "paragraphs": [
-        "docs/DATA_SOURCES.md lists every source and its licence status. The pipeline in processing/ rebuilds every number on this page: lakes-search, lakes-fetch, lakes-build and lakes-check.",
+        "docs/DATA_SOURCES.md lists every source and its licence status. The pipeline in processing/ rebuilds every number on this page: lakes-search, lakes-fetch, lakes-build, lakes-check and lakes-freeze.",
         "Not an official warning service. For warnings, use the Pakistan Meteorological Department, NDMA, GBDMA and PDMA."
       ]
     }

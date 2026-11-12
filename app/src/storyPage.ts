@@ -4,7 +4,7 @@ import "./storyPage.css";
 import copyJson from "./content/storyPage.json";
 import { dataUrl, formatDate } from "./format";
 import { mountAddLake, requestLine, shownRequests, type LakeRequest } from "./lakeRequests";
-import { cloudLooks, hasLakeNow, iouRange, lakesNow, mayBeForming, opticalOverlapPhrase, type Lake, type LakesFile } from "./lakes";
+import { cloudLooks, FROZEN_AREA, hasLakeNow, iouRange, isFrozen, lakesNow, mayBeForming, opticalOverlapPhrase, type Lake, type LakesFile } from "./lakes";
 
 const copy = copyJson;
 const DASH = "—";
@@ -288,12 +288,17 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
       mapEl.append(pin);
     }
     const meta = [l.status.track, l.status.latest_date ? formatDate(l.status.latest_date) : null].filter(Boolean).join(" · ");
+    // A frozen lake's area is greyed and says what it is not.
+    const area = latestArea(l);
+    const areaEl = isFrozen(l) && area !== null
+      ? text("div", "sp-lake-area sp-lake-area-frozen", `${areaText(area)}, ${FROZEN_AREA}`)
+      : text("div", "sp-lake-area", areaText(area));
     listEl.append(
       el(
         "div",
         "sp-lake",
         el("div", "sp-lake-name", text("div", "sp-lake-title", l.name), text("div", "sp-lake-meta", meta || DASH)),
-        el("div", "sp-lake-right", text("div", `sp-lake-status ${statusClass(l.status.status)}`, l.status.status), text("div", "sp-lake-area", areaText(latestArea(l)))),
+        el("div", "sp-lake-right", text("div", `sp-lake-status ${statusClass(l.status.status)}`, l.status.status), areaEl),
       ),
     );
   }

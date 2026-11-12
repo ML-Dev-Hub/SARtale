@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { findBannedClaims } from "./content";
-import { fixtureLakes } from "./fixtures";
+import { fixtureLakes, frozenFixture } from "./fixtures";
 import { BRIEF_UNAVAILABLE, briefHtml, dataLine, printBrief, printLatestBrief } from "./lakeBrief";
 import { loadLakes, type LakesFile } from "./lakes";
 import type { Lake, LakeSeriesPoint } from "./lakes";
@@ -230,5 +230,27 @@ describe("briefHtml for a site with no lake now", () => {
     expect(html).not.toContain("lake-brief-passes");
     expect(html).not.toContain("0.970");
     expect(html).toContain("SARtale keeps the site to watch for a lake forming.");
+  });
+});
+
+
+describe("the brief of a frozen lake", () => {
+  test("gives the freeze state, the greyed area and the evidence, and compares no frozen pass", () => {
+    const ice = frozenFixture("ice", "Frozen (seen by Sentinel-2)");
+    const html = briefHtml(ice, { ...fixtureLakes, lakes: [ice] }, NOW);
+    const t = text(html);
+    expect(t).toContain("Lake ice");
+    expect(t).toContain("Frozen since 18 Oct 2026: snow or ice seen by Sentinel-2.");
+    expect(t).toContain("Latest reading 0.226 km² on 30 Oct 2026 (084A): not an open-water measurement while frozen.");
+    expect(t).toContain("Sentinel-2 8 Nov 2026 (S2A_43SCV_20261108_0_L2A): snow or ice on 94% and water on 0% of the lake zone seen clear.");
+    expect(t).toContain("Freezing degree-days since 1 Sep: 150.");
+    expect(t).toContain("Latest open-water passes on track 084A (no comparison while the lake is frozen)");
+    expect(html).not.toContain("<td>0.225</td>");
+    expect(html).not.toContain("<td>0.226</td>");
+    expect(findBannedClaims(t)).toEqual([]);
+  });
+
+  test("a lake without a freeze check has no Lake ice section", () => {
+    expect(text(briefHtml(lakeOf(), fixtureLakes, NOW))).not.toContain("Lake ice");
   });
 });

@@ -15,6 +15,7 @@
   --accent-ink: #04222e;
   --warm: #ffc46b;
   --warm-ink: #1a1203;
+  --ice: #e2eef7; /* frozen statuses and the Ice tag: near-white, apart from the change colours */
   --display: "Inter Tight Variable", "Inter Tight", system-ui, sans-serif;
   --body: "Inter Variable", "Inter", system-ui, sans-serif;
   --header-h: 76px;
@@ -132,6 +133,16 @@ a:hover { color: #b8ecfa; }
 /* A lake may be forming: no verdict yet (dashed), but in the attention colour, since it needs a look. */
 .lw-status-lake-may-be-forming { border-style: dashed; border-color: var(--warm); color: var(--warm); }
 .lw-status-not-observable, .lw-status-not-enough-nisar-looks-yet, .lw-status-not-seen-this-pass, .lw-status-change-not-confirmed-yet, .lw-status-no-lake-now { border-style: dashed; color: var(--muted); }
+/* Frozen statuses: an ice colour, never a change colour; dotted when the ice is probably breaking up. */
+.lw-status-frozen-likely, .lw-status-frozen-seen-by-sentinel-2 { border-color: var(--ice); color: var(--ice); }
+.lw-status-break-up-likely { border-style: dotted; border-color: var(--ice); color: var(--ice); }
+.lw-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.lw-ice { padding: 0 8px; border-radius: 4px; background: var(--ice); color: var(--ground); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; }
+.lw-freeze { border-left: 3px solid var(--ice); padding-left: 12px; }
+.lw-freeze-state { font-weight: 700; }
+/* An area read while frozen is not open water: greyed, with the words that say so. */
+.lw-frozen-area, .lw-scope[data-frozen="true"], .lake-brief-frozen-area { color: var(--muted); opacity: 0.85; }
+.lw-table tr.lw-frozen td { color: var(--muted); opacity: 0.75; }
 .lw-locator { height: 260px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); color: var(--muted); font-size: 0.88rem; }
 .lw-town { color: var(--muted); font-size: 0.72rem; pointer-events: none; padding-top: 3px; text-shadow: 0 0 3px var(--ground); }
 .site-marker { width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 3px solid var(--ground); background: var(--muted); box-shadow: 0 0 0 2px var(--muted); cursor: pointer; }
@@ -142,6 +153,8 @@ a:hover { color: #b8ecfa; }
 .lw-marker[data-status="shrinking"] { background: #5b8cff; box-shadow: 0 0 0 2px #5b8cff; }
 .lw-marker[data-status="lake-may-be-forming"] { background: transparent; border-color: var(--warm); box-shadow: 0 0 0 2px var(--warm); }
 .lw-marker[data-status="not-observable"], .lw-marker[data-status="not-enough-nisar-looks-yet"], .lw-marker[data-status="not-seen-this-pass"], .lw-marker[data-status="change-not-confirmed-yet"], .lw-marker[data-status="no-lake-now"] { background: transparent; border-color: var(--muted); box-shadow: none; }
+.lw-marker[data-status="frozen-likely"], .lw-marker[data-status="frozen-seen-by-sentinel-2"] { background: var(--ice); box-shadow: 0 0 0 2px var(--ice); }
+.lw-marker[data-status="break-up-likely"] { background: transparent; border-color: var(--ice); box-shadow: 0 0 0 2px var(--ice); }
 .lw-marker[data-control="true"] { border-style: dashed; }
 /* Selection is a white ring around the pin, never a colour, so it cannot be read as a status. */
 .lw-marker[data-selected] { box-shadow: 0 0 0 2px var(--ground), 0 0 0 5px #fff; }

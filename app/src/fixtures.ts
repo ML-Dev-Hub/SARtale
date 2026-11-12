@@ -55,6 +55,28 @@ export const fixtureLakes: LakesFile = {
 };
 
 /**
+ * A lake the way lakes-freeze leaves a frozen one: five open-water passes, two passes flagged frozen that read it 40%
+ * larger, a frozen status from air temperature (and, for "Frozen (seen by Sentinel-2)", a clear snow-covered scene).
+ */
+export function frozenFixture(id: string, status: "Frozen (likely)" | "Frozen (seen by Sentinel-2)" | "Break-up likely" = "Frozen (likely)", extra: Partial<Lake> = {}): Lake {
+  const p = (date: string, area: number, frozen: boolean, crid = "P05023") => ({ date, track: "084A", area_km2: area, observable_share: 1, excluded: null, crid, frozen });
+  const s2 = status === "Frozen (seen by Sentinel-2)" ? { date: "2026-11-08", s2_id: "S2A_43SCV_20261108_0_L2A", clear_share: 0.97, snow_share: 0.94, water_share: 0 } : null;
+  const state = status === "Frozen (likely)" ? "frozen_likely" : status === "Frozen (seen by Sentinel-2)" ? "frozen_s2" : "breakup_likely";
+  const reason = "Probably frozen since 18 Oct 2026, when the air at the lake met the freeze rule.";
+  return fixtureLake(id, status, "2026-10-30", {
+    elevation_m: 4188,
+    elevation_source: "Copernicus DEM GLO-30",
+    series: [p("2026-08-01", 0.158, false), p("2026-08-13", 0.162, false), p("2026-08-25", 0.16, false), p("2026-09-06", 0.161, false), p("2026-09-18", 0.159, false), p("2026-10-18", 0.225, true, "P05036"), p("2026-10-30", 0.226, true, "P05036")],
+    status: { status, track: "084A", latest_date: "2026-10-30", looks: 7, change_km2: null, noise_km2: null, reason },
+    freeze: {
+      state, since: "2026-10-18", temp_through: "2026-11-10", checked: "2026-11-12", cold_run_days: 30, warm_run_days: 0, fdd_since_sep: 150.4,
+      t2m_mean_7d: -5.8, t2m_min_mean_7d: -11.2, s2, s2_searched: true, breakup_pass: null, frozen_passes: 2, reason,
+    },
+    ...extra,
+  });
+}
+
+/**
  * A lake the way lakebuild writes it on the first rebuild after an accept, before any NISAR window is
  * fetched (lakebuild._empty with _no_looks): no passes, no images, no bounds.
  */

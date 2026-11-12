@@ -9,7 +9,41 @@ export type LakeStatusName =
   | "Not observable"
   | "Not enough NISAR looks yet"
   | "No lake now"
-  | "Lake may be forming";
+  | "Lake may be forming"
+  | "Frozen (likely)"
+  | "Frozen (seen by Sentinel-2)"
+  | "Break-up likely";
+
+/** The freeze check's state (pipeline: sartale.freeze). Only frozen_likely, frozen_s2 and breakup_likely are statuses. */
+export type FreezeState = "open" | "frozen_likely" | "frozen_s2" | "breakup_likely" | "not_assessed";
+
+/**
+ * Is the lake probably frozen? From NASA POWER daily air temperature moved to the lake's height, a clear Sentinel-2
+ * scene of the last 7 days when one exists, and radar only at break-up. Absent in older builds and at sites with no lake
+ * now.
+ */
+export interface LakeFreeze {
+  state: FreezeState | string;
+  /** When the current state began (freeze-up, break-up, open again, or the Sentinel-2 scene); null when not known. */
+  since: string | null;
+  /** The newest day of NASA POWER air temperature used. */
+  temp_through: string | null;
+  checked?: string;
+  cold_run_days: number | null;
+  warm_run_days: number | null;
+  fdd_since_sep: number | null;
+  t2m_mean_7d: number | null;
+  t2m_min_mean_7d?: number | null;
+  /** The clearest Sentinel-2 scene of the last 7 days over the lake zone; null when none was clear or none was searched. */
+  s2: { date: string; s2_id?: string; snow_share: number; water_share: number; clear_share?: number } | null;
+  /** True when Sentinel-2 was searched (only for a cold or frozen lake). */
+  s2_searched?: boolean;
+  /** The radar pass that showed the ice-out signature, when break-up came from radar. */
+  breakup_pass?: { date: string; track: string; contrast_hh_change_db: number; contrast_hv_change_db: number; core_dark_share: number; summer_core_dark_share: number } | null;
+  /** How many passes were taken while the lake was frozen or breaking up. */
+  frozen_passes?: number;
+  reason: string;
+}
 
 /**
  * What recent imagery shows at a site: a lake, a dark area not confirmed as a lake, no lake now, or (at a site with no
@@ -77,6 +111,8 @@ export interface LakeSeriesPoint {
    * Null when the pass had no valid pixel in the zone; absent on passes that were used and in older builds.
    */
   diagnostic_km2?: number | null;
+  /** Taken while the lake was probably frozen or breaking up: its area is kept but enters no comparison (absent in older builds). */
+  frozen?: boolean;
 }
 
 export interface Lake {
@@ -94,6 +130,11 @@ export interface Lake {
   lake_state_source?: string | null;
   /** For a site with no lake now: the last Sentinel-2 check (absent in older builds; null before the first check). */
   absence_checked?: AbsenceCheck | null;
+  /** The lake's freeze check (absent in older builds and at sites with no lake now). */
+  freeze?: LakeFreeze | null;
+  /** Height of the lake surface in metres, and where it comes from (absent in older builds). */
+  elevation_m?: number | null;
+  elevation_source?: string | null;
   downstream: string | null;
   downstream_source: string | null;
   status: LakeStatus;
@@ -136,11 +177,91 @@ export interface LakeCheckNote {
 }
 
 /**
- * True for a pass the trend may use: not left out, has an area, and saw at least `minObservable` of the lake zone.
- * The pipeline's status uses the same rule (lakestatus.is_valid).
+ * True for a pass the trend may use: not left out, has an area, saw at least `minObservable` of the lake zone, and was
+ * not taken while the lake was probably frozen. The pipeline's status uses the same rule (lakestatus.is_valid).
  */
 export function isTrendPass(p: Lake["series"][number], minObservable: number): boolean {
-  return p.excluded === null && p.area_km2 !== null && p.observable_share !== null && p.observable_share >= minObservable;
+  return p.excluded === null && p.area_km2 !== null && p.observable_share !== null && p.observable_share >= minObservable && !p.frozen;
+}
+
+/** The statuses that mean the lake is probably under ice (frozen or breaking up): no growing or shrinking verdict. */
+export const FROZEN_STATUSES: LakeStatusName[] = ["Frozen (likely)", "Frozen (seen by Sentinel-2)", "Break-up likely"];
+
+/** True when the lake's status is one of the frozen statuses. */
+export function isFrozen(l: Lake): boolean {
+  return FROZEN_STATUSES.includes(l.status.status);
+}
+
+/** What a radar area of a frozen lake is not (shown greyed beside it). */
+export const FROZEN_AREA = "not an open-water measurement while frozen";
+
+const pct = (v: number): string => `${Math.round(v * 100)}%`;
+const degrees = (v: number): string => `${v < 0 ? "−" : ""}${Math.abs(v).toFixed(1)} °C`;
+
+/** The freeze state in a few words, for the freeze card's first line and the brief. */
+export function freezeHeadline(f: LakeFreeze): string {
+  const since = f.since ? ` since ${formatDate(f.since)}` : "";
+  switch (f.state) {
+    case "frozen_likely":
+      return `Probably frozen${since} (air temperature)`;
+    case "frozen_s2":
+      return `Frozen${since}: snow or ice seen by Sentinel-2`;
+    case "breakup_likely":
+      return `Ice probably breaking up${since}`;
+    case "not_assessed":
+      return "Freeze not assessed";
+    case "open":
+      if (f.s2 && f.s2.water_share >= 0.5) return `Open water seen by Sentinel-2 on ${formatDate(f.s2.date)}`;
+      return f.since ? `Open again${since} (air temperature)` : "Not frozen by the air-temperature rule";
+    default:
+      return `Freeze state: ${f.state}`;
+  }
+}
+
+/**
+ * The freeze card's facts, one line each: the air-temperature run and its freezing degree-days, the last Sentinel-2
+ * evidence (or "none clear"), the radar pass at break-up, and how many passes were taken while frozen. Never claims the
+ * radar saw ice, or that the lake is open from temperature alone.
+ */
+export function freezeFacts(l: Lake): string[] {
+  const f = l.freeze;
+  if (!f) return [];
+  const out: string[] = [];
+  if (f.temp_through && f.state !== "not_assessed") {
+    const height = l.elevation_m != null ? `, adjusted to the lake's height of ${Math.round(l.elevation_m).toLocaleString("en-GB")} m` : "";
+    const run = f.cold_run_days ? `below 0 °C for ${f.cold_run_days} ${f.cold_run_days === 1 ? "day" : "days"} in a row`
+      : f.warm_run_days ? `above 0 °C for ${f.warm_run_days} ${f.warm_run_days === 1 ? "day" : "days"} in a row`
+      : "at 0 °C or without a value on the newest day";
+    const mean = f.t2m_mean_7d != null ? `; 7-day mean ${degrees(f.t2m_mean_7d)}` : "";
+    out.push(`Air temperature (NASA POWER to ${formatDate(f.temp_through)}${height}): daily mean ${run}${mean}.`);
+    if (f.fdd_since_sep != null) out.push(`Freezing degree-days since 1 Sep: ${Math.round(f.fdd_since_sep)}.`);
+  }
+  if (f.s2) {
+    out.push(`Sentinel-2 ${formatDate(f.s2.date)}${f.s2.s2_id ? ` (${f.s2.s2_id})` : ""}: snow or ice on ${pct(f.s2.snow_share)} and water on ${pct(f.s2.water_share)} of the lake zone seen clear.`);
+  } else if (f.s2_searched) {
+    out.push("Sentinel-2: none clear over the lake zone in the last 7 days.");
+  } else if (f.state !== "not_assessed") {
+    out.push("Sentinel-2: not checked (the lake is not cold).");
+  }
+  const b = f.breakup_pass;
+  if (b) out.push(`Radar ${formatDate(b.date)} (${b.track}): lake core ${b.contrast_hh_change_db >= 0 ? "+" : ""}${b.contrast_hh_change_db.toFixed(1)} dB (HH) and ${b.contrast_hv_change_db >= 0 ? "+" : ""}${b.contrast_hv_change_db.toFixed(1)} dB (HV) against its summer level; ${pct(b.core_dark_share)} of it dark (summer ${pct(b.summer_core_dark_share)}).`);
+  const n = f.frozen_passes ?? l.series.filter((p) => p.frozen).length;
+  if (n) out.push(`${n} ${n === 1 ? "pass was" : "passes were"} taken while the lake was probably frozen: greyed below, ${FROZEN_AREA}, and left out of the comparison.`);
+  return out;
+}
+
+/** The newest pass with an area reading (frozen or not), or null. */
+export function latestReading(l: Lake): LakeSeriesPoint | null {
+  const read = l.series.filter((p) => p.area_km2 !== null).sort((a, b) => a.date.localeCompare(b.date) || a.track.localeCompare(b.track));
+  return read.length ? read[read.length - 1] : null;
+}
+
+/** "Latest reading 0.225 km² on 30 Oct 2026 (084A): not an open-water measurement while frozen.", or null. */
+export function frozenAreaLine(l: Lake): string | null {
+  if (!isFrozen(l)) return null;
+  const p = latestReading(l);
+  if (!p) return null;
+  return `Latest reading ${(p.area_km2 as number).toFixed(3)} km² on ${formatDate(p.date)} (${p.track}): ${FROZEN_AREA}.`;
 }
 
 /** True for a check row that carries the dates and numbers the app shows. */
@@ -178,6 +299,19 @@ export interface LakesFile {
     speckle_box: number;
     /** Robust z-score limit of the second pass screen (absent in older builds). */
     outlier_z?: number;
+    /** The freeze rule (absent in older builds). */
+    lapse_c_per_km?: number;
+    freeze_cold_run_days?: number;
+    freeze_fdd?: number;
+    breakup_warm_run_days?: number;
+    thaw_warm_run_days?: number;
+    breakup_contrast_db?: number;
+    breakup_dark_drop?: number;
+    s2_frozen_snow_share?: number;
+    s2_open_water_share?: number;
+    s2_freeze_days?: number;
+    s2_freeze_clear?: number;
+    power_stale_days?: number;
   };
   lakes: Lake[];
   checks: LakeCheck[];
@@ -192,6 +326,9 @@ export const STATUS_ORDER: LakeStatusName[] = [
   "Growing",
   "Shrinking",
   "Change not confirmed yet",
+  "Frozen (likely)",
+  "Frozen (seen by Sentinel-2)",
+  "Break-up likely",
   "Not seen this pass",
   "Stable",
   "Not enough NISAR looks yet",
@@ -275,7 +412,19 @@ const isIso = (v: unknown): boolean => isStr(v) && /^\d{4}-\d{2}-\d{2}$/.test(v)
 function isPoint(p: unknown): boolean {
   return isObj(p) && isIso(p.date) && isStr(p.track) && isNumOrNull(p.area_km2)
     && (p.observable_share === null || isNum(p.observable_share)) && isStrOrNull(p.excluded)
-    && (p.diagnostic_km2 === undefined || isNumOrNull(p.diagnostic_km2));
+    && (p.diagnostic_km2 === undefined || isNumOrNull(p.diagnostic_km2))
+    && (p.frozen === undefined || typeof p.frozen === "boolean");
+}
+
+/** A freeze object the card can read: a state and a reason, numbers or null where it shows them. Absent or null is fine. */
+function isFreeze(f: unknown): boolean {
+  if (f === undefined || f === null) return true;
+  if (!isObj(f)) return false;
+  const s2 = f.s2;
+  return isStr(f.state) && isStr(f.reason) && (f.since === null || f.since === undefined || isIso(f.since))
+    && (f.temp_through === null || f.temp_through === undefined || isIso(f.temp_through))
+    && ["cold_run_days", "warm_run_days", "fdd_since_sep", "t2m_mean_7d"].every((k) => f[k] === undefined || isNumOrNull(f[k]))
+    && (s2 === null || s2 === undefined || (isObj(s2) && isIso(s2.date) && isNum(s2.snow_share) && isNum(s2.water_share)));
 }
 
 function isStatus(s: unknown): boolean {
@@ -294,6 +443,7 @@ export function isLake(l: unknown): boolean {
     && Array.isArray(l.directions) && Array.isArray(l.limits) && l.limits.every(isStr)
     && Array.isArray(l.series) && l.series.every(isPoint)
     && Array.isArray(l.excluded) && l.excluded.every((x) => isObj(x) && isStr(x.pass) && isStr(x.reason))
+    && isFreeze(l.freeze)
     && (images === null || (isObj(images) && isStrOrNull(images.latest_hh ?? null) && isStrOrNull(images.water ?? null)))
     && (bounds === null || (Array.isArray(bounds) && bounds.length === 4 && bounds.every(isNum)));
 }
@@ -512,5 +662,28 @@ export function lakeTokens(file: LakesFile): Record<string, string> {
     notes: file.notes,
     iou_range: iouRange(file.checks) ?? "no IoU yet",
     optical_overlap: opticalOverlapPhrase(file.checks) ?? "has not been compared with optical water in this build",
+    ...freezeTokens(c),
+  };
+}
+
+/** The freeze rule's numbers, from lakes.json constants; none when an older build lacks them (its sentences are then left out). */
+function freezeTokens(c: LakesFile["constants"]): Record<string, string> {
+  const need = [c.lapse_c_per_km, c.freeze_cold_run_days, c.freeze_fdd, c.breakup_warm_run_days, c.thaw_warm_run_days,
+    c.breakup_contrast_db, c.breakup_dark_drop, c.s2_frozen_snow_share, c.s2_open_water_share, c.s2_freeze_days,
+    c.s2_freeze_clear, c.power_stale_days];
+  if (!need.every((v) => typeof v === "number")) return {};
+  return {
+    lapse_c_per_km: String(Math.abs(c.lapse_c_per_km!)),
+    freeze_cold_run_days: String(c.freeze_cold_run_days),
+    freeze_fdd: String(c.freeze_fdd),
+    breakup_warm_run_days: String(c.breakup_warm_run_days),
+    thaw_warm_run_days: String(c.thaw_warm_run_days),
+    breakup_contrast_db: String(c.breakup_contrast_db),
+    breakup_dark_drop: String(c.breakup_dark_drop),
+    s2_frozen_pct: String(Math.round(c.s2_frozen_snow_share! * 100)),
+    s2_open_pct: String(Math.round(c.s2_open_water_share! * 100)),
+    s2_freeze_days: String(c.s2_freeze_days),
+    s2_freeze_clear_pct: String(Math.round(c.s2_freeze_clear! * 100)),
+    power_stale_days: String(c.power_stale_days),
   };
 }
