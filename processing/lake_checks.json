@@ -34,10 +34,10 @@
   "area_error_pct": -93.68115942028986,
   "iou": 0.048,
   "zone_valid_share": 1.0,
-  "window_radar_km2": 3.5836,
+  "window_radar_km2": 3.5835000000000004,
   "window_optical_km2": 6.6437,
-  "window_area_error_pct": -46.060177310835826,
-  "window_iou": 0.3253291519800954
+  "window_area_error_pct": -46.0616824961994,
+  "window_iou": 0.3253333678904195
  },
  {
   "lake": "karambar",
@@ -69,14 +69,14 @@
   "s2_window_cloud_pct": 0.0,
   "scope": "zone",
   "season": "15 Jun\u201330 Sep",
-  "radar_km2": 0.0944,
+  "radar_km2": 0.08750000000000001,
   "optical_km2": 0.1231,
-  "area_error_pct": -23.314378554021122,
-  "iou": 0.5135699373695198,
-  "zone_valid_share": 1.0,
-  "window_radar_km2": 2.746,
+  "area_error_pct": -28.919577579203892,
+  "iou": 0.5394736842105263,
+  "zone_valid_share": 0.8073327222731439,
+  "window_radar_km2": 1.3441,
   "window_optical_km2": 2.3804000000000003,
-  "window_area_error_pct": 15.358763233070057,
-  "window_iou": 0.1798932056711471
+  "window_area_error_pct": -43.5347000504117,
+  "window_iou": 0.26558836521798224
  }
 ]

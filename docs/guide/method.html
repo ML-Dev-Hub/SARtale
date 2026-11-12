@@ -49,7 +49,7 @@
   <li>New processing version: if the change is past 2 × noise but the latest pass is the first on a processing version (CRID) that none of the earlier passes has, the status is Change not confirmed yet. A second pass on that version joins the baseline, and Growing or Shrinking applies if the change holds. A change within the noise stays Stable.</li>
   <li>No lake now: a site the register marks <code>lake_state: "no_lake"</code> (recent imagery shows no lake, such as a drained ice-dammed lake's basin) gets this status whatever its dark area does. Its passes are still read and listed, but there is no change, no noise and no water layer. Each refresh, all year, re-checks the site with Sentinel-2: the newest scene whose lake zone is at least 80% clear of cloud, shadow, snow and ice, with snow or ice on no more than 1% of it (a frozen or snow-covered pond reads as dry ground). It records the scene, its date and the water and snow shares of the zone. When no scene qualifies, the last check stands and the status says that no clear, snow-free view has come since. Water above the site's threshold (4% of the zone by default; set per site where a river or pond shares the zone) turns it into <b>Lake may be forming</b>: still no verdict, and its radar dark area is shown but not yet treated as lake area; the SARtale team reviews the site to add it as a measured lake.</li>
 </ul>
-<p><b>Worked example</b> (from the lake data built 11 Nov 2026; the guide is rebuilt from <code>lakes.json</code>, and the app always shows the current numbers). Attabad on 9 November 2026, track 055A: 2.640 km² against a median of 2.734 km² from 11 earlier looks. The change is -0.094 km² and the noise 0.120 km², so the threshold is 2 × 0.120 = 0.240 km² and the lake reads <b>Stable</b>.</p>
+<p><b>Worked example</b> (from the lake data built 12 Nov 2026; the guide is rebuilt from <code>lakes.json</code>, and the app always shows the current numbers). Attabad on 9 November 2026, track 055A: 2.640 km² against a median of 2.734 km² from 11 earlier looks. The change is -0.094 km² and the noise 0.120 km², so the threshold is 2 × 0.120 = 0.240 km² and the lake reads <b>Stable</b>.</p>
 
 <h2 id="passes-that-are-left-out">Passes that are left out<a class="anchor" href="#passes-that-are-left-out" aria-label="Link to this section">#</a></h2>
 <p>A pass is excluded, with its reason shown in the app, when:</p>
@@ -86,7 +86,7 @@
 <ul>
   <li>Lakes whose shores sit in radar shadow are under-counted.</li>
   <li>Frozen lakes, lakes under 0.05 km² and wind-roughened water are not validated.</li>
-  <li>Only 69% of Attabad's outline falls inside the 6 km window, so its area is the part inside the window. (Lake data built 11 Nov 2026.)</li>
+  <li>Only 69% of Attabad's outline falls inside the 6 km window, so its area is the part inside the window. (Lake data built 12 Nov 2026.)</li>
   <li>A 1 km circle around a published coordinate can include land, or miss part of a large lake. Lakes with an outline are measured inside it.</li>
   <li>A site with no lake now (status No lake now) gets no verdict; its dark radar area is ice, slope or river, not a lake.</li>
 </ul>

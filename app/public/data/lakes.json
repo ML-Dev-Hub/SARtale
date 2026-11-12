@@ -1,6 +1,6 @@
 {
  "version": 1,
- "built": "2026-11-11T23:22:57Z",
+ "built": "2026-11-12T02:46:59Z",
  "notes": "Areas are water within a lake's outline (buffered 200 m) or, without one, a search circle (1 km unless the lake sets a smaller one), and underestimate lakes whose shores sit in radar shadow; images are crops on the UTM grid, north up; they are pictures, not map overlays.",
  "crid": "P05023, P05036",
  "collections": [
@@ -333,7 +333,7 @@
     "looks": 8,
     "change_km2": null,
     "noise_km2": null,
-    "reason": "No lake in recent imagery: no water in the basin in Sentinel-2, 17 Aug 2026 (clearest scene of 1 Jul\u201330 Sep 2026); the lake last held water in spring 2022 and burst on 7 May 2022. Last checked 6 Sep 2026 with Sentinel-2 (S2C_43SDA_20260906_0_L2A): water on 1.5% of the lake zone. SARtale re-checks the site with Sentinel-2 in each open-water season for a lake forming.",
+    "reason": "No lake in recent imagery: no water in the basin in Sentinel-2, 17 Aug 2026 (clearest scene of 1 Jul\u201330 Sep 2026); the lake last held water in spring 2022 and burst on 7 May 2022. Last checked 28 Oct 2026 with Sentinel-2 (S2A_43SDA_20261028_0_L2A): water on 0.47% of the lake zone; no clear, snow-free Sentinel-2 view of the zone since (searched to 12 Nov 2026). SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only views where the lake zone is clear of cloud, snow and ice.",
     "new_crid": null
    },
    "cloud_window_looks": 3,
@@ -499,14 +499,22 @@
     36.38521585486571
    ],
    "absence_checked": {
-    "date": "2026-09-06",
-    "s2_id": "S2C_43SDA_20260906_0_L2A",
-    "water_share": 0.0148,
-    "water_km2": 0.0466,
+    "date": "2026-10-28",
+    "s2_id": "S2A_43SDA_20261028_0_L2A",
+    "water_share": 0.0047,
+    "water_km2": 0.0149,
     "zone_valid_share": 1.0,
-    "checked": "2026-11-11",
-    "season": "15 Jun\u201330 Sep",
-    "source": "Sentinel-2 L2A (Earth Search), MNDWI water in the lake zone"
+    "snow_share": 0.0,
+    "checked": "2026-11-12",
+    "searched": "2026-11-12",
+    "no_view_since": true,
+    "rule": "at least 80% of the lake zone clear of cloud, shadow, snow and ice, and snow or ice on no more than 1% of it",
+    "source": "Sentinel-2 L2A (Earth Search), MNDWI water in the lake zone",
+    "zone": {
+     "lon": 74.567,
+     "lat": 36.358,
+     "radius_km": 1.0
+    }
    }
   },
   {
@@ -822,7 +830,7 @@
     "looks": 12,
     "change_km2": null,
     "noise_km2": null,
-    "reason": "No lake in recent imagery: the basin against the Khurdopin glacier tongue is a dry sediment flat in Sentinel-2, 17 Aug 2026 (clearest scene of 1 Jul\u201330 Sep 2026); the lake last formed in 2017\u20132021 (HMAGLOFDB events 2017, 2018 and 2021). Last checked 28 Sep 2026 with Sentinel-2 (S2B_43SEA_20260928_1_L2A): water on 10.8% of the lake zone. SARtale re-checks the site with Sentinel-2 in each open-water season for a lake forming.",
+    "reason": "No lake in recent imagery: the basin against the Khurdopin glacier tongue is a dry sediment flat in Sentinel-2, 17 Aug 2026 (clearest scene of 1 Jul\u201330 Sep 2026); the lake last formed in 2017\u20132021 (HMAGLOFDB events 2017, 2018 and 2021). Last checked 10 Nov 2026 with Sentinel-2 (S2B_43SEA_20261110_1_L2A): water on 11.8% of the lake zone. SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only views where the lake zone is clear of cloud, snow and ice.",
     "new_crid": null
    },
    "cloud_window_looks": 8,
@@ -1108,14 +1116,22 @@
     36.371455071535934
    ],
    "absence_checked": {
-    "date": "2026-09-28",
-    "s2_id": "S2B_43SEA_20260928_1_L2A",
-    "water_share": 0.1076,
-    "water_km2": 0.3379,
-    "zone_valid_share": 1.0,
-    "checked": "2026-11-11",
-    "season": "15 Jun\u201330 Sep",
-    "source": "Sentinel-2 L2A (Earth Search), MNDWI water in the lake zone"
+    "date": "2026-11-10",
+    "s2_id": "S2B_43SEA_20261110_1_L2A",
+    "water_share": 0.1177,
+    "water_km2": 0.3665,
+    "zone_valid_share": 0.992,
+    "snow_share": 0.0083,
+    "checked": "2026-11-12",
+    "searched": "2026-11-12",
+    "no_view_since": false,
+    "rule": "at least 80% of the lake zone clear of cloud, shadow, snow and ice, and snow or ice on no more than 1% of it",
+    "source": "Sentinel-2 L2A (Earth Search), MNDWI water in the lake zone",
+    "zone": {
+     "lon": 75.474953,
+     "lat": 36.344239,
+     "radius_km": 1.0
+    }
    }
   },
   {
@@ -1330,7 +1346,7 @@
     "looks": 10,
     "change_km2": null,
     "noise_km2": null,
-    "reason": "No lake in recent imagery: no water in Sentinel-2 on any clear scene of 23 Jun\u201311 Sep 2026; a supraglacial pond of about 0.03 km2 formed here in late June 2019 and 2020 and drained in the 7 Jul 2019 and 13 Jul 2020 GLOFs (HMAGLOFDB GF 498, 504). Last checked 29 Sep 2026 with Sentinel-2 (S2C_43SBV_20260929_0_L2A): water on 4.1% of the lake zone. SARtale re-checks the site with Sentinel-2 in each open-water season for a lake forming.",
+    "reason": "No lake in recent imagery: no water in Sentinel-2 on any clear scene of 23 Jun\u201311 Sep 2026; a supraglacial pond of about 0.03 km2 formed here in late June 2019 and 2020 and drained in the 7 Jul 2019 and 13 Jul 2020 GLOFs (HMAGLOFDB GF 498, 504). Last checked 29 Sep 2026 with Sentinel-2 (S2C_43SBV_20260929_0_L2A): water on 4.1% of the lake zone; no clear, snow-free Sentinel-2 view of the zone since (searched to 12 Nov 2026). SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only views where the lake zone is clear of cloud, snow and ice.",
     "new_crid": null
    },
    "cloud_window_looks": 5,
@@ -1490,9 +1506,17 @@
     "water_share": 0.0406,
     "water_km2": 0.0026,
     "zone_valid_share": 0.903,
-    "checked": "2026-11-11",
-    "season": "15 Jun\u201330 Sep",
-    "source": "Sentinel-2 L2A (Earth Search), MNDWI water in the lake zone"
+    "snow_share": 0.0,
+    "checked": "2026-11-12",
+    "searched": "2026-11-12",
+    "no_view_since": true,
+    "rule": "at least 80% of the lake zone clear of cloud, shadow, snow and ice, and snow or ice on no more than 1% of it",
+    "source": "Sentinel-2 L2A (Earth Search), MNDWI water in the lake zone",
+    "zone": {
+     "lon": 71.9677,
+     "lat": 35.8539,
+     "radius_km": 0.15
+    }
    }
   },
   {
@@ -1717,10 +1741,10 @@
    "area_error_pct": -93.68115942028986,
    "iou": 0.048,
    "zone_valid_share": 1.0,
-   "window_radar_km2": 3.5836,
+   "window_radar_km2": 3.5835000000000004,
    "window_optical_km2": 6.6437,
-   "window_area_error_pct": -46.060177310835826,
-   "window_iou": 0.3253291519800954
+   "window_area_error_pct": -46.0616824961994,
+   "window_iou": 0.3253333678904195
   },
   {
    "lake": "karambar",
@@ -1752,15 +1776,15 @@
    "s2_window_cloud_pct": 0.0,
    "scope": "zone",
    "season": "15 Jun\u201330 Sep",
-   "radar_km2": 0.0944,
+   "radar_km2": 0.08750000000000001,
    "optical_km2": 0.1231,
-   "area_error_pct": -23.314378554021122,
-   "iou": 0.5135699373695198,
-   "zone_valid_share": 1.0,
-   "window_radar_km2": 2.746,
+   "area_error_pct": -28.919577579203892,
+   "iou": 0.5394736842105263,
+   "zone_valid_share": 0.8073327222731439,
+   "window_radar_km2": 1.3441,
    "window_optical_km2": 2.3804000000000003,
-   "window_area_error_pct": 15.358763233070057,
-   "window_iou": 0.1798932056711471
+   "window_area_error_pct": -43.5347000504117,
+   "window_iou": 0.26558836521798224
   }
  ]
 }
