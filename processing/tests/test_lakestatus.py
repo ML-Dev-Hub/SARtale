@@ -136,8 +136,46 @@ def test_without_crids_or_on_the_same_version_the_usual_rule_applies():
 
 def test_the_status_names_list_every_status():
     from sartale.lakestatus import STATUS_NAMES
-    assert len(STATUS_NAMES) == 9 and "Change not confirmed yet" in STATUS_NAMES and STATUS_NAMES[-1] == "No lake now"
+    assert len(STATUS_NAMES) == 12 and "Change not confirmed yet" in STATUS_NAMES and STATUS_NAMES[-1] == "No lake now"
     assert STATUS_NAMES[0] == "Lake may be forming"
+    # the app lists the frozen statuses right after "Change not confirmed yet"
+    at = STATUS_NAMES.index("Change not confirmed yet")
+    assert STATUS_NAMES[at + 1:at + 4] == ("Frozen (likely)", "Frozen (seen by Sentinel-2)", "Break-up likely")
+
+
+def frozen_pt(date, track, area, crid="P05036"):
+    return {**pt(date, track, area), "crid": crid, "frozen": True}
+
+
+def test_frozen_passes_keep_their_area_but_leave_the_baseline_and_noise():
+    from sartale.lakestatus import is_valid, open_water_status
+    # five open-water passes, then two passes taken while frozen that read the lake 50% larger
+    series = flat("084A", NOISY) + [frozen_pt("2026-10-18", "084A", 1.5), frozen_pt("2026-10-30", "084A", 1.5)]
+    assert not is_valid(series[-1]) and series[-1]["area_km2"] == 1.5
+    s = open_water_status(series)
+    assert s["status"] == "Stable" and s["latest_date"] == "2026-09-05" and s["looks"] == 5
+    # the same passes without the flag would read as growth
+    assert lake_status([{**p, "frozen": False} for p in series])["status"] in ("Growing", "Change not confirmed yet")
+    # a frozen newest pass is left out, not missed: no "Not seen this pass"
+    assert s["status"] != "Not seen this pass"
+
+
+def test_frozen_status_takes_precedence_over_change_not_confirmed_yet():
+    from sartale.lakestatus import FROZEN_LIKELY, UNCONFIRMED, frozen_status
+    computed = lake_status(versioned("084A", NOISY + [1.5], OLD5 + ["P05036"]))
+    assert computed["status"] == UNCONFIRMED
+    freeze = {"state": "frozen_likely", "reason": "Probably frozen since 18 Oct 2026, ..."}
+    s = frozen_status(computed, freeze)
+    assert s["status"] == FROZEN_LIKELY and s["change_km2"] is None and s["noise_km2"] is None
+    assert s["track"] == "084A" and s["latest_date"] == "2026-10-06" and s["reason"] == freeze["reason"]
+
+
+def test_frozen_status_takes_precedence_over_the_data_statuses():
+    from sartale.lakestatus import BREAKUP, FROZEN_S2, frozen_status
+    for computed in (lake_status(flat("156A", [1.0, 1.1])), lake_status(flat("156A", NOISY, share=0.3))):
+        assert computed["status"] in ("Not enough NISAR looks yet", "Not observable")
+        assert frozen_status(computed, {"state": "frozen_s2", "reason": "r"})["status"] == FROZEN_S2
+        assert frozen_status(computed, {"state": "breakup_likely", "reason": "r"})["status"] == BREAKUP
 
 
 def test_the_app_lists_the_same_statuses_and_styles_the_unconfirmed_one_as_neutral():

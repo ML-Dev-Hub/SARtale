@@ -72,6 +72,27 @@ def test_more_than_a_quarter_dropped_fails_and_a_quarter_does_not():
     assert diff_lakes(OLD, quarter)["fail"] is None  # exactly 2 of 8
 
 
+def test_freeze_state_changes_are_reported_but_never_count_as_dropped_passes():
+    import copy
+    new = copy.deepcopy(OLD)
+    a = new["lakes"][0]
+    a["freeze"] = {"state": "frozen_likely"}
+    for p in a["series"][1:]:
+        p["frozen"] = True  # two passes now flagged frozen: their area stays, they leave the baseline
+    a["status"] = {"latest_date": "2026-10-23", "status": "Frozen (likely)"}
+    r = diff_lakes(OLD, new)
+    assert (r["dropped"], r["added"], r["backwards"], r["fail"]) == (0, 0, [], None)
+    row = next(x for x in r["lakes"] if x["id"] == "attabad")
+    assert (row["freeze_before"], row["freeze_after"]) == (None, "frozen_likely")
+    assert warnings(r) == []
+    assert "| - | frozen_likely |" in summary_markdown(r)
+    from sartale.lakes_diff import text_report
+    assert "attabad: latest 2026-10-23 -> 2026-10-23; added 0, dropped 0; freeze - -> frozen_likely" in text_report(r)
+    # and back again: a thawed lake's passes are the same passes
+    back = diff_lakes(new, OLD)
+    assert (back["dropped"], back["added"]) == (0, 0)
+
+
 def test_a_lake_gone_from_the_build_counts_as_dropped():
     r = diff_lakes(OLD, _doc(*OLD["lakes"][:2]))
     assert next(x for x in r["lakes"] if x["id"] == "shisper")["dropped"] == ["2026-10-11 156A", "2026-10-16 055A",

@@ -1,6 +1,7 @@
 name: Rebuild the lake data
 description: >
-  Search, fetch and build every watched lake from processing/lakes_in.json, compare the build with the published
+  Search, fetch and build every watched lake from processing/lakes_in.json, work out which lakes are frozen
+  (lakes-freeze), compare the build with the published
   lakes.json, then run the Python and app tests. Fails on any error, including the Attabad gate, a search that
   finds no pass for any lake, and a build that would drop more than a quarter of the published passes. The caller
   passes EARTHDATA_USERNAME and EARTHDATA_PASSWORD through `env:` on the step that uses this action; they are
@@ -100,6 +101,16 @@ runs:
       run: |
         unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
         python -m sartale.run_pipeline lakes-absence --only-missing
+
+    - name: Check which lakes are frozen (NASA POWER air temperature, Sentinel-2 for cold lakes)
+      # After the build: flags the passes taken while a lake was frozen and sets the frozen statuses. Needs no login
+      # (NASA POWER and Earth Search are open). A failed download never fails the run: that lake is "not assessed"
+      # and keeps the usual assessment.
+      shell: bash -el {0}
+      working-directory: processing
+      run: |
+        unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
+        python -m sartale.run_pipeline lakes-freeze
 
     - name: Compare with the published passes (fails when too many would be dropped)
       shell: bash -el {0}

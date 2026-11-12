@@ -1,5 +1,5 @@
-"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-build, lakes-check, lakes-absence, lakes-diff,
-lake-issues, lake-issue-accept."""
+"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-build, lakes-check, lakes-absence, lakes-freeze,
+lakes-elevation, lakes-diff, lake-issues, lake-issue-accept."""
 import argparse
 import json
 import os
@@ -253,6 +253,61 @@ def cmd_lakes_absence(args) -> None:
     write_json_atomic(path, doc)
 
 
+def freeze_line(lk: dict) -> str:
+    """One log line on a lake's freeze state."""
+    f = lk.get("freeze")
+    if not f:
+        return f"{lk['id']}: no freeze state ({lk.get('lake_state', 'lake')}); status {lk['status']['status']}"
+    s2 = f.get("s2")
+    seen = (f"S2 {s2['date']} {s2['s2_id']} clear {s2['clear_share']:.2f} snow {s2['snow_share']:.2f} "
+            f"water {s2['water_share']:.2f}" if s2 else ("S2 none clear" if f.get("s2_searched") else "S2 not searched"))
+    return (f"{lk['id']}: {f['state']} since {f.get('since') or '-'}; air to {f.get('temp_through') or '-'}, "
+            f"cold run {f.get('cold_run_days')}, warm run {f.get('warm_run_days')}, FDD {f.get('fdd_since_sep')}, "
+            f"7-day mean {f.get('t2m_mean_7d')} C; {seen}; frozen passes {f.get('frozen_passes', 0)}; "
+            f"status {lk['status']['status']}")
+
+
+def cmd_lakes_freeze(args) -> None:
+    """Work out each lake's freeze state from NASA POWER air temperature at the lake's height (and a clear Sentinel-2
+    scene for a cold lake), flag the passes taken while it was frozen, and set the statuses again in lakes.json. Runs
+    after lakes-build, needs no login, and never fails the run for a failed download: the lake is then "not assessed"
+    and keeps the usual assessment."""
+    from sartale.freeze import freeze_lake
+
+    today = args.today or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    path = Path(args.out) / "lakes.json"
+    if not path.is_file():
+        print(f"no {path}: run lakes-build first")
+        return
+    doc = _read_json(path)
+    by_id = {lk["id"]: i for i, lk in enumerate(doc["lakes"])}
+    for lake in load_lakes(Path(args.lakes_in)):
+        if lake.id not in by_id:
+            continue
+        i = by_id[lake.id]
+        doc["lakes"][i] = freeze_lake(lake, doc["lakes"][i], today)
+        print(freeze_line(doc["lakes"][i]), flush=True)
+    write_json_atomic(path, doc)
+
+
+def cmd_lakes_elevation(args) -> None:
+    """Measure the lake surface height (Copernicus DEM GLO-30) of every register lake that has none yet and write it
+    into lakes_in.json, once. The freeze check needs it."""
+    from sartale.elevation import lake_elevation, set_elevation
+
+    path = Path(args.lakes_in)
+    for lake in load_lakes(path):
+        if lake.elevation_m is not None:
+            print(f"{lake.id}: {lake.elevation_m:g} m (already measured)")
+            continue
+        got = lake_elevation(lake)
+        if got is None:
+            print(f"{lake.id}: no Copernicus DEM value; the freeze check stays not assessed")
+            continue
+        set_elevation(path, lake.id, *got)
+        print(f"{lake.id}: {got[0]} m ({got[1]})")
+
+
 def cmd_lakes_diff(args) -> None:
     """Compare the previous lakes.json with the new one: print added and dropped passes per lake, write them to
     the job summary, warn for every dropped pass and backwards latest date, fail above the drop threshold."""
@@ -379,6 +434,18 @@ def build_parser() -> argparse.ArgumentParser:
     la.add_argument("--only-missing", action="store_true",
                     help="check only the sites without carried evidence (after lakes-build, for new sites)")
     la.set_defaults(func=cmd_lakes_absence)
+
+    lz = sub.add_parser("lakes-freeze", help="freeze state of each lake from NASA POWER air temperature (and Sentinel-2 "
+                                             "for a cold lake); flags passes taken while frozen")
+    lz.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    lz.add_argument("--out", default=str(REPO_ROOT / "app" / "public" / "data"), help="folder holding lakes.json")
+    lz.add_argument("--today", default=None, help="YYYY-MM-DD (default: today, UTC)")
+    lz.set_defaults(func=cmd_lakes_freeze)
+
+    le = sub.add_parser("lakes-elevation", help="measure each lake's surface height once (Copernicus DEM) into "
+                                                "lakes_in.json")
+    le.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    le.set_defaults(func=cmd_lakes_elevation)
 
     ld = sub.add_parser("lakes-diff", help="compare a previous lakes.json with the new one, pass by pass")
     ld.add_argument("--old", required=True, help="the previously published lakes.json")

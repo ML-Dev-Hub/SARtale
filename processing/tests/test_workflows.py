@@ -376,7 +376,12 @@ def test_rebuild_action_order():
     assert "--only-missing" not in runs[absence]
     missing = at("lakes-absence --only-missing")
     assert at("lakes-build") < missing < at("lakes-diff")
-    for i in (absence, missing):
+    # the freeze check runs after the build (it flags the built passes and sets the statuses again) and before the
+    # comparison, without the Earthdata login (NASA POWER and Earth Search need none), and never stops the run itself
+    freeze = at("lakes-freeze")
+    assert at("lakes-build") < missing < freeze < at("lakes-diff")
+    assert "continue-on-error" not in steps[freeze]
+    for i in (absence, missing, freeze):
         assert "unset EARTHDATA_USERNAME EARTHDATA_PASSWORD" in runs[i]
     assert '> "$RUNNER_TEMP/lakes.published.json"' in runs[at("git show HEAD:app/public/data/lakes.json")]
     assert "continue-on-error" not in steps[at("lakes-diff")], "a large drop must fail the rebuild"

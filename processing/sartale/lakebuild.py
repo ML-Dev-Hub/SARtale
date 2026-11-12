@@ -11,7 +11,7 @@ from pyproj import Transformer
 from sartale import config
 from sartale.catalog import PROVISIONAL, STANDARD
 from sartale.gcov import apply_mask
-from sartale.lakecheck import ABSENCE_RULE
+from sartale.lakecheck import ABSENCE_RULE, in_season
 from sartale.lakes import Lake
 from sartale.lakes import DEFAULT_ZONE_KM
 from sartale.lakestatus import (
@@ -334,6 +334,54 @@ def _analyse(passes: list[dict], xs, ys, limits: list[str]):
     return epsg, px, by_track, excluded, directions, shadow
 
 
+def summer_cores(by_track: dict[str, list[dict]], excluded: dict[str, str], zone: np.ndarray,
+                 shadow: np.ndarray | None) -> dict[str, tuple[np.ndarray, int]]:
+    """Per track: (the lake core, the number of open-water-season passes it comes from). The core is the zone pixels,
+    not shadow-prone, that were dark in at least half of the track's non-excluded passes in the open-water season
+    (config.OPEN_WATER_SEASON). A track without such a pass has no core."""
+    not_shadow = np.ones(zone.shape, bool) if shadow is None else ~shadow
+    out = {}
+    for k, ps in by_track.items():
+        summer = [p for p in ps if p["id"] not in excluded and in_season(p["date"])]
+        if summer:
+            frac = np.mean([dark_mask(p["hh_db"], p["hv_db"])[0] for p in summer], axis=0)
+            out[k] = (zone & not_shadow & (frac >= 0.5), len(summer))
+    return out
+
+
+def core_metrics(hh_db: np.ndarray, hv_db: np.ndarray, core: np.ndarray) -> dict | None:
+    """The lake core of one pass against its window: core median minus window median of the valid pixels, in dB, for
+    HH and HV (a calibration change moves both, so it cancels), and the share of the core's valid pixels that are
+    dark. None when the core has no valid pixel."""
+    dark, valid = dark_mask(hh_db, hv_db)
+    c = core & valid
+    if not c.any():
+        return None
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        hh = float(np.median(hh_db[c]) - np.median(hh_db[valid]))
+        hv = float(np.median(hv_db[c]) - np.median(hv_db[valid]))
+    return {"core_contrast_hh_db": round(hh, 3), "core_contrast_hv_db": round(hv, 3),
+            "core_dark_share": round(float((dark & c).sum() / c.sum()), 3)}
+
+
+def summer_reference(series: list[dict], cores: dict[str, tuple[np.ndarray, int]]) -> dict[str, dict]:
+    """Per track, the summer level the radar break-up test compares a pass with: the medians, over the track's
+    non-excluded open-water-season passes, of the core contrast (HH, HV) and dark share; `assessed` is False with
+    fewer than config.SUMMER_MIN_PASSES such passes or an empty core (the radar test is then not run there)."""
+    out = {}
+    for k, (core, n) in sorted(cores.items()):
+        rows = [p for p in series if p["track"] == k and p["excluded"] is None and in_season(p["date"])
+                and "core_dark_share" in p]
+        ref = {"passes": n, "core_px": int(core.sum()),
+               "assessed": n >= config.SUMMER_MIN_PASSES and int(core.sum()) > 0 and len(rows) >= config.SUMMER_MIN_PASSES}
+        if rows:
+            ref.update({key: round(float(np.median([p[key] for p in rows])), 3)
+                        for key in ("core_contrast_hh_db", "core_contrast_hv_db", "core_dark_share")})
+        out[k] = ref
+    return out
+
+
 def pictured_pass(series: list[SeriesPoint], track: str | None) -> str | None:
     """Pass id of the picture a lake shows: the status track's latest valid pass (same rule as the status:
     not excluded, has an area, observable share >= MIN_OBSERVABLE). Without a status track, the latest
@@ -409,7 +457,7 @@ def _no_looks() -> dict:
 def _empty(entry: dict, limits: list[str], lake: Lake, absence: dict | None = None) -> dict:
     out = {**entry, "status": _no_looks(), "cloud_window_looks": 0, "directions": [], "limits": limits,
            "series": [], "excluded": [], "images": {"latest_hh": None, "water": None, "date": None, "track": None},
-           "bounds": None}
+           "bounds": None, "summer_ref": {}}
     return apply_absence(out, absence)
 
 
@@ -431,6 +479,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         "forming_share": forming_share(lake), "forming_share_source": lake.forming_share_source,
         "lake_state": lake.lake_state, "lake_state_source": lake.lake_state_source,
         "downstream": lake.downstream, "downstream_source": lake.downstream_source,
+        "elevation_m": lake.elevation_m, "elevation_source": lake.elevation_source,
     }
     lake_dir = Path(cache_dir) / lake.id
     if not lake_dir.is_dir():
@@ -447,6 +496,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         if share < 0.99:
             limits.append(f"the outline runs past the 6 km radar window; {round(share * 100)}% of it is inside "
                           "and only that part is counted")
+    cores = summer_cores(by_track, excluded, zone, shadow)
     series: list[SeriesPoint] = []
     for p in sorted(passes, key=lambda q: (q["date"], q["key"])):
         w = pass_water(p["hh_db"], p["hv_db"], zone, shadow, px)
@@ -456,6 +506,9 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         if reason:
             # What the left-out pass read, so the chart can mark it; never used by the status (area_km2 is null).
             point["diagnostic_km2"] = w["area_km2"] if w["valid"] else None
+        if p["key"] in cores:
+            # The lake core against its window, for the freeze check's radar break-up test (lakes-freeze).
+            point.update(core_metrics(p["hh_db"], p["hv_db"], cores[p["key"]][0]) or {})
         series.append(point)
 
     latest_expected: dict[str, str] = {}  # R-P2: newest cached pass per track, excluded or not
@@ -486,7 +539,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
            "cloud_window_looks": cloud_window_looks(series),
            "directions": sorted(set(directions.values())), "limits": limits, "series": series,
            "excluded": [{"pass": k, "reason": v} for k, v in sorted(excluded.items())],
-           "images": images, "bounds": _bounds(xs, ys, epsg, px)}
+           "images": images, "bounds": _bounds(xs, ys, epsg, px), "summer_ref": summer_reference(series, cores)}
     return apply_absence(out, absence)
 
 
@@ -569,7 +622,16 @@ def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, c
                       "change_factor": config.CHANGE_FACTOR, "speckle_box": config.SPECKLE_BOX,
                       "bright_pass_db": config.BRIGHT_PASS_DB, "outlier_z": config.OUTLIER_Z,
                       "outlier_share_floor": config.OUTLIER_SHARE_FLOOR,
-                      "outlier_hv_floor_db": config.OUTLIER_HV_FLOOR_DB},
+                      "outlier_hv_floor_db": config.OUTLIER_HV_FLOOR_DB,
+                      "lapse_c_per_km": config.LAPSE_C_PER_KM, "freeze_cold_run_days": config.FREEZE_COLD_RUN_DAYS,
+                      "freeze_fdd": config.FREEZE_FDD, "breakup_warm_run_days": config.BREAKUP_WARM_RUN_DAYS,
+                      "thaw_warm_run_days": config.THAW_WARM_RUN_DAYS,
+                      "breakup_contrast_db": config.BREAKUP_CONTRAST_DB,
+                      "breakup_dark_drop": config.BREAKUP_DARK_DROP,
+                      "s2_frozen_snow_share": config.S2_FROZEN_SNOW_SHARE,
+                      "s2_open_water_share": config.S2_OPEN_WATER_SHARE,
+                      "s2_freeze_days": config.S2_FREEZE_DAYS, "s2_freeze_clear": config.S2_FREEZE_CLEAR,
+                      "power_stale_days": config.POWER_STALE_DAYS},
         "lakes": built_lakes,
         "checks": list(checks or []),
     }

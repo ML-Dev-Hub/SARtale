@@ -33,3 +33,31 @@ OPEN_WATER_SEASON = ((6, 15), (9, 30))
 # the empty basin read 0.6-1.6% water on every clear scene of 15 Jun-30 Sep 2026 (stream threads), while the lake
 # filled 6.8-12.6% (26 Mar and 5 Apr 2022, 20 and 25 May 2020). 4% sits clear of both.
 FORMING_WATER_SHARE = 0.04
+
+# Frozen status (lakes-freeze; .superpowers/sdd/post-merge/frozen-spike.md and the lake detail and frozen design).
+# Air temperature is NASA POWER daily T2M at the lake, moved from the POWER cell's height to the lake's with this lapse
+# rate (degrees C per km of height; negative: colder higher up).
+LAPSE_C_PER_KM = -6.5
+FREEZE_COLD_RUN_DAYS = 7  # Frozen (likely): daily mean below 0 C on at least this many days in a row ...
+FREEZE_FDD = 30.0  # ... and at least this many freezing degree-days (sum of -T2M on days below 0 C) since 1 Sep
+BREAKUP_WARM_RUN_DAYS = 7  # Break-up likely: a frozen lake with daily mean above 0 C on this many days in a row
+THAW_WARM_RUN_DAYS = 14  # Open again: this many warm days in a row plus one radar pass back within its summer range
+# Radar break-up signature: the lake core at least this much brighter against its window than its summer level, in
+# both HH and HV, and its dark share at least BREAKUP_DARK_DROP below its summer level (Shazore, 25 Jun and 2 Jul 2026).
+BREAKUP_CONTRAST_DB = 2.0
+BREAKUP_DARK_DROP = 0.3
+# A radar pass is back within its summer range when its core contrast is within this many dB of summer in both HH and
+# HV and its dark share no more than SUMMER_DARK_DROP below summer.
+SUMMER_CONTRAST_DB = 1.0
+SUMMER_DARK_DROP = 0.15
+SUMMER_MIN_PASSES = 3  # fewer open-water-season passes on a track: the radar break-up test is not assessed there
+# Sentinel-2 override: the clearest scene of the last S2_FREEZE_DAYS days whose lake zone is at least S2_FREEZE_CLEAR
+# clear of cloud, cloud shadow and their 100 m edge; snow/ice on S2_FROZEN_SNOW_SHARE of the clear zone says frozen,
+# water on S2_OPEN_WATER_SHARE says open.
+S2_FREEZE_DAYS = 7
+S2_FREEZE_CLEAR = 0.8
+S2_FROZEN_SNOW_SHARE = 0.8
+S2_OPEN_WATER_SHARE = 0.5
+POWER_STALE_DAYS = 10  # newest POWER day older than this at the build: "Not assessed"
+FREEZE_SEASON_START = (9, 1)  # freezing degree-days and the freeze state reset on 1 Sep
+FREEZE_SEASON_END = (5, 31)  # 1 Jun-31 Aug the state is open unless Sentinel-2 shows snow or ice

@@ -16,14 +16,21 @@ def _latest(doc: dict | None) -> dict[str, str | None]:
     return {lk["id"]: (lk.get("status") or {}).get("latest_date") for lk in (doc or {}).get("lakes", [])}
 
 
+def _freeze(doc: dict | None) -> dict[str, str | None]:
+    """lake id -> freeze state (None without one). A pass that turns frozen, or back, is the same pass: the comparison
+    keys passes by date and track only, so freeze changes are reported here and never as dropped or added passes."""
+    return {lk["id"]: (lk.get("freeze") or {}).get("state") for lk in (doc or {}).get("lakes", [])}
+
+
 def diff_lakes(old: dict | None, new: dict) -> dict:
-    """Per lake: added, dropped and reprocessed passes and the latest date before and after.
+    """Per lake: added, dropped and reprocessed passes, the latest date and the freeze state before and after.
 
     `backwards` lists lakes whose status latest date moved earlier (or vanished). `fail` is set, with a reason,
     when more than MAX_DROPPED_SHARE of the previously published passes would be dropped.
     """
     before, after = _passes(old), _passes(new)
     latest_before, latest_after = _latest(old), _latest(new)
+    freeze_before, freeze_after = _freeze(old), _freeze(new)
     lakes = []
     for lid in list(after) + [k for k in before if k not in after]:
         b, a = before.get(lid, {}), after.get(lid, {})
@@ -33,6 +40,7 @@ def diff_lakes(old: dict | None, new: dict) -> dict:
             "dropped": sorted(set(b) - set(a)),
             "reprocessed": sorted(f"{k} {b[k]} -> {a[k]}" for k in set(a) & set(b) if b[k] and a[k] and b[k] != a[k]),
             "latest_before": latest_before.get(lid), "latest_after": latest_after.get(lid),
+            "freeze_before": freeze_before.get(lid), "freeze_after": freeze_after.get(lid),
         })
     backwards = [r["id"] for r in lakes
                  if r["latest_before"] and (not r["latest_after"] or r["latest_after"] < r["latest_before"])]
@@ -64,11 +72,12 @@ def summary_markdown(result: dict) -> str:
     lines = ["## Lake passes compared with the last published build", "",
              f"{result['total_before']} passes before, {result['total_after']} after: "
              f"{result['added']} added, {result['dropped']} dropped.", "",
-             "| Lake | Added | Dropped | Reprocessed | Latest before | Latest after |",
-             "|---|---|---|---|---|---|"]
+             "| Lake | Added | Dropped | Reprocessed | Latest before | Latest after | Freeze before | Freeze after |",
+             "|---|---|---|---|---|---|---|---|"]
     for r in result["lakes"]:
         lines.append(f"| {r['id']} | {', '.join(r['added']) or '-'} | {', '.join(r['dropped']) or '-'} | "
-                     f"{', '.join(r['reprocessed']) or '-'} | {r['latest_before'] or '-'} | {r['latest_after'] or '-'} |")
+                     f"{', '.join(r['reprocessed']) or '-'} | {r['latest_before'] or '-'} | {r['latest_after'] or '-'} | "
+                     f"{r.get('freeze_before') or '-'} | {r.get('freeze_after') or '-'} |")
     if result["backwards"]:
         lines += ["", f"Latest date moved backwards: {', '.join(result['backwards'])}."]
     if result["fail"]:
@@ -80,8 +89,11 @@ def text_report(result: dict) -> str:
     """The comparison as plain lines for the log."""
     lines = []
     for r in result["lakes"]:
+        freeze = ""
+        if r.get("freeze_before") != r.get("freeze_after"):
+            freeze = f"; freeze {r.get('freeze_before') or '-'} -> {r.get('freeze_after') or '-'}"
         lines.append(f"{r['id']}: latest {r['latest_before'] or '-'} -> {r['latest_after'] or '-'}; "
-                     f"added {len(r['added'])}, dropped {len(r['dropped'])}")
+                     f"added {len(r['added'])}, dropped {len(r['dropped'])}{freeze}")
         lines += [f"  + {p}" for p in r["added"]]
         lines += [f"  - {p}" for p in r["dropped"]]
         lines += [f"  ~ {p}" for p in r["reprocessed"]]

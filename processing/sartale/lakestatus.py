@@ -21,12 +21,23 @@ NO_LAKE = "No lake now"
 # of the lake zone: a lake may be forming. No verdict, and its radar dark area is shown but not treated as lake area:
 # the SARtale team reviews the site and adds it to the register as a measured lake (no automatic promotion).
 LAKE_FORMING = "Lake may be forming"
+# A lake probably under ice (lakes-freeze, sartale.freeze): from air temperature, or seen under snow or ice on a clear
+# Sentinel-2 scene, or (in spring) with its ice probably breaking up. L-band radar cannot tell new ice from open water,
+# and frozen ground around a lake reads as water, so there is no growing/shrinking verdict while it lasts. These take
+# precedence over every status but "No lake now" (and "Lake may be forming", which only a no-lake site has).
+FROZEN_LIKELY = "Frozen (likely)"
+FROZEN_S2 = "Frozen (seen by Sentinel-2)"
+BREAKUP = "Break-up likely"
+FREEZE_STATUS = {"frozen_likely": FROZEN_LIKELY, "frozen_s2": FROZEN_S2, "breakup_likely": BREAKUP}
 # Every status a lake can have, in the order the app lists them (app/src/lakes.ts STATUS_ORDER).
 STATUS_NAMES = (
     LAKE_FORMING,
     "Growing",
     "Shrinking",
     UNCONFIRMED,
+    FROZEN_LIKELY,
+    FROZEN_S2,
+    BREAKUP,
     "Not seen this pass",
     "Stable",
     "Not enough NISAR looks yet",
@@ -42,6 +53,7 @@ class SeriesPoint(TypedDict):
     observable_share: float
     excluded: str | None  # reason, or None
     crid: NotRequired[str]  # NISAR processing version (composite release ID) of the pass, e.g. "P05036"
+    frozen: NotRequired[bool]  # taken while the lake was probably frozen (lakes-freeze): kept, but in no baseline
 
 
 def track_noise_km2(areas: list[float]) -> float:
@@ -53,12 +65,33 @@ def track_noise_km2(areas: list[float]) -> float:
 
 
 def is_valid(p: SeriesPoint) -> bool:
-    """A pass the status may use: not excluded, has an area, and enough of the zone observable."""
+    """A pass the status may use: not excluded, has an area, enough of the zone observable, and not taken while the
+    lake was probably frozen (`frozen`, set by lakes-freeze: its area is kept but enters no baseline or noise)."""
     return (
         p["excluded"] is None
         and p["area_km2"] is not None
         and p["observable_share"] >= MIN_OBSERVABLE
+        and not p.get("frozen")
     )
+
+
+def open_water_status(series: list[SeriesPoint]) -> dict:
+    """`lake_status` of the passes not flagged frozen, with "Not seen this pass" judged against the newest of those
+    passes on each track (a frozen pass is left out of the comparison, not missed)."""
+    kept = [p for p in series if not p.get("frozen")]
+    latest_expected: dict[str, str] = {}
+    for p in kept:
+        latest_expected[p["track"]] = max(latest_expected.get(p["track"], ""), p["date"])
+    return lake_status(kept, latest_expected)
+
+
+def frozen_status(computed: dict, freeze: dict) -> dict:
+    """The status of a lake whose freeze state is frozen or break-up (`FREEZE_STATUS`): no growing or shrinking
+    verdict, whatever the passes show, and the freeze check's reason (the temperature run and its date, and the
+    Sentinel-2 scene when one was used). Keeps the track, latest date and looks of `computed` (the status of every
+    pass), so the lake's picture and pass count still show."""
+    return _result(FREEZE_STATUS[freeze["state"]], computed["track"], computed["latest_date"], computed["looks"],
+                   reason=freeze["reason"])
 
 
 def _result(status, track=None, latest_date=None, looks=0, change=None, noise=None, reason="", new_crid=None):
