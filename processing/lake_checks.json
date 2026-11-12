@@ -9,15 +9,15 @@
   "s2_window_cloud_pct": 0.0,
   "scope": "zone",
   "season": "15 Jun\u201330 Sep",
-  "radar_km2": 2.7244,
+  "radar_km2": 4.524900000000001,
   "optical_km2": 4.3673,
-  "area_error_pct": -37.61820804616124,
-  "iou": 0.4875715813982758,
+  "area_error_pct": 3.608636915256575,
+  "iou": 0.6628394045927145,
   "zone_valid_share": 0.9931098001725465,
-  "window_radar_km2": 3.697,
+  "window_radar_km2": 9.0253,
   "window_optical_km2": 4.402,
-  "window_area_error_pct": -16.015447523852796,
-  "window_iou": 0.4027157158197374
+  "window_area_error_pct": 105.02726033621079,
+  "window_iou": 0.3592861047559272
  },
  {
   "lake": "passu",
@@ -29,15 +29,15 @@
   "s2_window_cloud_pct": 0.0,
   "scope": "zone",
   "season": "15 Jun\u201330 Sep",
-  "radar_km2": 0.0109,
+  "radar_km2": 0.1464,
   "optical_km2": 0.17250000000000001,
-  "area_error_pct": -93.68115942028986,
-  "iou": 0.048,
+  "area_error_pct": -15.1304347826087,
+  "iou": 0.5779317169717961,
   "zone_valid_share": 1.0,
-  "window_radar_km2": 3.5835000000000004,
+  "window_radar_km2": 7.8319,
   "window_optical_km2": 6.6437,
-  "window_area_error_pct": -46.0616824961994,
-  "window_iou": 0.3253333678904195
+  "window_area_error_pct": 17.884612490028147,
+  "window_iou": 0.4065314768211277
  },
  {
   "lake": "karambar",
@@ -49,15 +49,15 @@
   "s2_window_cloud_pct": 0.0,
   "scope": "zone",
   "season": "15 Jun\u201330 Sep",
-  "radar_km2": 0.0422,
+  "radar_km2": 0.0729,
   "optical_km2": 0.0824,
-  "area_error_pct": -48.786407766990294,
-  "iou": 0.39373601789709173,
+  "area_error_pct": -11.529126213592226,
+  "iou": 0.5608040201005026,
   "zone_valid_share": 1.0,
-  "window_radar_km2": 1.3704,
+  "window_radar_km2": 5.7542,
   "window_optical_km2": 0.7289,
-  "window_area_error_pct": 88.0093291260804,
-  "window_iou": 0.05518974616737874
+  "window_area_error_pct": 689.4361366442585,
+  "window_iou": 0.044381081255235516
  },
  {
   "lake": "shazore",
@@ -69,14 +69,14 @@
   "s2_window_cloud_pct": 0.0,
   "scope": "zone",
   "season": "15 Jun\u201330 Sep",
-  "radar_km2": 0.08750000000000001,
+  "radar_km2": 0.128,
   "optical_km2": 0.1231,
-  "area_error_pct": -28.919577579203892,
-  "iou": 0.5394736842105263,
+  "area_error_pct": 3.980503655564583,
+  "iou": 0.6728847435043305,
   "zone_valid_share": 0.8073327222731439,
-  "window_radar_km2": 1.3441,
+  "window_radar_km2": 3.5167,
   "window_optical_km2": 2.3804000000000003,
-  "window_area_error_pct": -43.5347000504117,
-  "window_iou": 0.26558836521798224
+  "window_area_error_pct": 47.735674676524944,
+  "window_iou": 0.2507900820836957
  }
 ]
