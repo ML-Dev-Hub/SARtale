@@ -79,12 +79,12 @@ describe("renderStoryPage without lakes.json", () => {
       return { t, shadow };
     };
     const a = body(real);
-    expect(a.t).toContain("once it has three looks on one track");
-    expect(a.t).toContain("after three looks on one track");
+    expect(a.t).toContain("once a track has three earlier looks to compare a new pass with");
+    expect(a.t).toContain("once a track has three earlier looks.");
     expect(a.shadow).toContain("less than half of a lake's zone");
     const other = { ...real, constants: { ...real.constants, min_looks: 12, min_observable: 0.6 } } as LakesFile;
     const b = body(other);
-    expect(b.t).toContain("once it has 12 looks on one track");
+    expect(b.t).toContain("once a track has 12 earlier looks to compare a new pass with");
     expect(b.t).not.toContain("three looks");
     expect(b.shadow).toContain("less than 60% of a lake's zone");
   });

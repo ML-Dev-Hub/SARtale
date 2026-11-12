@@ -868,6 +868,25 @@ export function lakeTokens(file: LakesFile): Record<string, string> {
     iou_range: iouRange(file.checks) ?? "no IoU yet",
     optical_overlap: opticalOverlapPhrase(file.checks) ?? "has not been compared with optical water in this build",
     ...freezeTokens(c),
+    ...levelTokens(file),
+  };
+}
+
+/** The level rule's numbers, from lakes.json; none when an older build lacks them (its sentences are then left out). */
+function levelTokens(file: LakesFile): Record<string, string> {
+  const c = file.constants;
+  const need = [c.lee_box, c.baseline_passes, c.noise_passes, c.noise_rel_floor, c.cusum_k, c.cusum_h, c.after_open_passes, c.min_validation_iou];
+  if (!file.method || !need.every((v) => typeof v === "number")) return {};
+  return {
+    method_id: file.method.id,
+    lee_box: String(c.lee_box),
+    baseline_passes: String(c.baseline_passes),
+    noise_passes: String(c.noise_passes),
+    noise_rel_floor_pct: String(Math.round(c.noise_rel_floor! * 100)),
+    cusum_k: String(c.cusum_k),
+    cusum_h: String(c.cusum_h),
+    after_open_passes: String(c.after_open_passes),
+    min_validation_iou: String(c.min_validation_iou),
   };
 }
 
