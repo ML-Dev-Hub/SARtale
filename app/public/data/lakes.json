@@ -1,6 +1,6 @@
 {
  "version": 1,
- "built": "2026-11-12T15:23:43Z",
+ "built": "2026-11-12T15:35:06Z",
  "notes": "Areas are water within a lake's outline (buffered 200 m) or, without one, a search circle (1 km unless the lake sets a smaller one), and underestimate lakes whose shores sit in radar shadow; images are crops on the UTM grid, north up; they are pictures, not map overlays.",
  "crid": "P05023, P05036",
  "collections": [
@@ -2553,6 +2553,23 @@
     "source": "NASA POWER daily T2M and T2M_MIN (MERRA-2 based), moved to the lake's height at -6.5 C/km",
     "reason": "Snow or ice covers 100% of the lake outline seen clear in a Sentinel-2 scene of 8 Nov 2026 (S2C_43SBV_20261108_0_L2A). The lake has probably been frozen since 18 Oct 2026. The daily mean air temperature at the lake has been below 0 \u00b0C for 29 days in a row, with 171 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 4,188 m). Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so SARtale gives no growing or shrinking verdict while the lake is frozen.",
     "fresh_reason": "Snow or ice covers 100% of the lake outline seen clear in a Sentinel-2 scene of 8 Nov 2026 (S2C_43SBV_20261108_0_L2A). The lake has probably been frozen since 18 Oct 2026. The daily mean air temperature at the lake has been below 0 \u00b0C for 29 days in a row, with 171 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 4,188 m). Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so SARtale gives no growing or shrinking verdict while the lake is frozen."
+   },
+   "last_open": {
+    "date": "2026-10-06",
+    "track": "084A",
+    "crid": "P05023",
+    "area_km2": 0.1025,
+    "status": "Stable",
+    "change_km2": 0.006699999999999998,
+    "noise_km2": 0.010600589999999995,
+    "looks": 6,
+    "ref_km2": 0.0958,
+    "images": {
+     "latest_hh": "lakes/shazore/open_latest_hh.webp",
+     "water": "lakes/shazore/open_water.webp",
+     "date": "2026-10-06",
+     "track": "084A"
+    }
    }
   }
  ],
