@@ -381,7 +381,8 @@ def _optical(by_id):
 def _prior(lake, **extra):
     from sartale.lakebuild import absence_zone
     return {"date": "2026-09-06", "s2_id": "S2_SEP", "water_share": 0.01, "water_km2": 0.03, "zone_valid_share": 1.0,
-            "snow_share": 0.0, "checked": "2026-09-08", "searched": "2026-09-08", "no_view_since": False,
+            "snow_share": 0.0, "forming": False, "pending_scene": None, "confirmed": None, "threshold": 0.04,
+            "checked": "2026-09-08", "searched": "2026-09-08", "no_view_since": False,
             "rule": lakecheck.ABSENCE_RULE, "source": lakecheck.ABSENCE_SOURCE, "zone": absence_zone(lake), **extra}
 
 
@@ -404,15 +405,185 @@ def test_absence_check_runs_in_winter_and_uses_a_clear_snow_free_scene(monkeypat
 
 
 def test_absence_check_spring_lake_is_seen(monkeypatch):
-    """I1 scenario: Shisper's basin refills in March-May. An April scene with water on 9% of the zone is used, so the
-    site turns into Lake may be forming instead of keeping September's dry evidence."""
+    """I1 scenario: Shisper's basin refills in March-May. Two clear April scenes a week apart with water on 7-9% of the
+    zone turn the site into Lake may be forming instead of keeping September's dry evidence."""
     from sartale.lakebuild import is_forming
-    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a: _scenes(("S2_APR", "2027-04-05", 10.0)))
-    monkeypatch.setattr(lakecheck, "optical_on_grid", _optical({"S2_APR": (1.0, 0.0, 0.09)}))
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a: _scenes(("S2_APR5", "2027-04-05", 10.0),
+                                                                        ("S2_MAR29", "2027-03-29", 10.0)))
+    monkeypatch.setattr(lakecheck, "optical_on_grid", _optical({"S2_APR5": (1.0, 0.0, 0.09),
+                                                                "S2_MAR29": (1.0, 0.0, 0.07)}))
     lake = _absent_lake()
     row = lakecheck.absence_check(lake, "2027-04-08", _prior(lake), log=lambda *_: None)
-    assert row["s2_id"] == "S2_APR" and row["water_share"] == pytest.approx(0.09, abs=0.01)
-    assert is_forming(row)
+    assert row["s2_id"] == "S2_APR5" and row["water_share"] == pytest.approx(0.09, abs=0.01)
+    assert is_forming(row) and row["pending_scene"] is None
+    assert [r["s2_id"] for r in row["confirmed"]] == ["S2_MAR29", "S2_APR5"]
+
+
+# --- persistence (round 2, ruling a) --------------------------------------------------------------------------------
+
+def _row(date, share, sid=None):
+    return {"date": date, "s2_id": sid or f"S2_{date}", "water_share": share}
+
+
+def test_step_one_scene_above_is_only_pending():
+    st = lakecheck.step(lakecheck.start_state(), _row("2026-10-16", 0.145), 0.04)
+    assert st["forming"] is False and st["pending_scene"] == _row("2026-10-16", 0.145)
+
+
+def test_step_a_second_scene_above_five_days_later_confirms():
+    st = lakecheck.step(lakecheck.start_state(), _row("2026-10-16", 0.145), 0.04)
+    near = lakecheck.step(st, _row("2026-10-19", 0.2), 0.04)  # 3 days: too close to confirm, still pending
+    assert near == st
+    st = lakecheck.step(near, _row("2026-10-21", 0.06), 0.04)
+    assert st["forming"] is True and st["pending_scene"] is None
+    assert st["confirmed"] == [_row("2026-10-16", 0.145), _row("2026-10-21", 0.06)]
+
+
+def test_step_a_scene_below_clears_the_pending_one():
+    st = lakecheck.step(lakecheck.start_state(), _row("2026-10-16", 0.145), 0.04)
+    st = lakecheck.step(st, _row("2026-10-18", 0.006), 0.04)  # even 2 days later: the newest two do not agree
+    assert st == lakecheck.start_state()
+
+
+def test_step_a_forming_site_returns_only_after_two_scenes_below():
+    forming = {"forming": True, "pending_scene": None, "confirmed": [_row("2026-04-01", 0.07), _row("2026-04-08", 0.09)]}
+    one = lakecheck.step(forming, _row("2026-04-20", 0.01), 0.04)
+    assert one["forming"] is True and one["pending_scene"] == _row("2026-04-20", 0.01)
+    wet_again = lakecheck.step(one, _row("2026-04-25", 0.08), 0.04)
+    assert wet_again["forming"] is True and wet_again["pending_scene"] is None
+    two = lakecheck.step(lakecheck.step(one, _row("2026-04-22", 0.0), 0.04), _row("2026-04-26", 0.0), 0.04)
+    assert two["forming"] is False and two["confirmed"] == [_row("2026-04-20", 0.01), _row("2026-04-26", 0.0)]
+
+
+def test_absence_check_keeps_no_lake_on_a_single_wet_scene_and_records_it(monkeypatch):
+    """The Shisper 16 Oct 2026 case: one scene above the threshold. The site stays No lake now, the scene is pending,
+    and the next run's qualifying scene clears it."""
+    from sartale.lakebuild import is_forming
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a: _scenes(("S2_WET", "2026-10-16", 25.0)))
+    monkeypatch.setattr(lakecheck, "optical_on_grid", _optical({"S2_WET": (0.85, 0.0, 0.14)}))
+    lake = _absent_lake()
+    row = lakecheck.absence_check(lake, "2026-10-18", _prior(lake), log=lambda *_: None)
+    assert row["forming"] is False and not is_forming(row)
+    assert row["pending_scene"]["s2_id"] == "S2_WET" and row["pending_scene"]["water_share"] > 0.04
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a: _scenes(("S2_DRY", "2026-10-21", 10.0)))
+    monkeypatch.setattr(lakecheck, "optical_on_grid", _optical({"S2_DRY": (1.0, 0.0, 0.006)}))
+    after = lakecheck.absence_check(lake, "2026-10-25", row, log=lambda *_: None)
+    assert after["forming"] is False and after["pending_scene"] is None and after["s2_id"] == "S2_DRY"
+
+
+def test_absence_check_confirms_on_the_next_run(monkeypatch):
+    lake = _absent_lake()
+    pending = _prior(lake, date="2026-10-16", s2_id="S2_WET", water_share=0.14,
+                     pending_scene={"date": "2026-10-16", "s2_id": "S2_WET", "water_share": 0.14})
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a: _scenes(("S2_WET2", "2026-10-23", 10.0)))
+    monkeypatch.setattr(lakecheck, "optical_on_grid", _optical({"S2_WET2": (1.0, 0.0, 0.10)}))
+    row = lakecheck.absence_check(lake, "2026-10-25", pending, log=lambda *_: None)
+    assert row["forming"] is True and [r["s2_id"] for r in row["confirmed"]] == ["S2_WET", "S2_WET2"]
+
+
+def test_a_first_check_reads_back_to_a_second_scene_five_days_older(monkeypatch):
+    """Without evidence, the newest qualifying scene alone cannot give the state: the search goes on to a qualifying
+    scene at least 5 days older, and stops there."""
+    seen = []
+    scenes = _scenes(("S2_N1", "2026-11-10", 5.0), ("S2_N2", "2026-11-08", 5.0), ("S2_N3", "2026-11-03", 5.0),
+                     ("S2_N4", "2026-10-28", 5.0))
+
+    def optical(scene, x, y, epsg):
+        seen.append(scene["id"])
+        return _optical({"S2_N1": (1.0, 0.0, 0.2), "S2_N2": (1.0, 0.0, 0.2), "S2_N3": (1.0, 0.0, 0.2),
+                         "S2_N4": (1.0, 0.0, 0.2)})(scene, x, y, epsg)
+
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a: scenes)
+    monkeypatch.setattr(lakecheck, "optical_on_grid", optical)
+    lake = _absent_lake()
+    row = lakecheck.absence_check(lake, "2026-11-12", None, log=lambda *_: None)
+    assert seen == ["S2_N1", "S2_N2", "S2_N3"]
+    assert row["s2_id"] == "S2_N1" and row["forming"] is True
+    assert [r["s2_id"] for r in row["confirmed"]] == ["S2_N3", "S2_N2"]  # 3 and 8 Nov confirm; 10 Nov agrees
+    assert row["threshold"] == 0.04 and row["rule"] == lakecheck.ABSENCE_RULE
+
+
+# --- cloud-edge buffer (round 2, ruling b) --------------------------------------------------------------------------
+
+def test_the_cloud_edge_buffer_removes_a_false_water_patch_next_to_cloud_shadow(tmp_path):
+    """A cloud-shadow block (SCL 3) in the zone, bare soil (SCL 5) round it, and MNDWI water everywhere (as haze and
+    shadow edges read). Without the buffer the soil next to the shadow counts as clear water; with it, nothing within
+    100 m of the shadow is clear, and the rest of the zone is unchanged."""
+    lake = _absent_lake()
+    f = synthetic_scene(tmp_path, lake, lambda dx, dy: np.where((abs(dx) < 200) & (abs(dy) < 200), 3, 5))
+    scene = lakecheck._scene(f, lakecheck.Date(2026, 7, 12))
+    x, y, epsg = lakecheck.absence_grid(lake)
+    raw = lakecheck.read_scene(scene, x, y, epsg)
+    plain = lakecheck.grid_scene(scene, raw, x, y, epsg, buffer_m=0)
+    buffered = lakecheck.grid_scene(scene, raw, x, y, epsg)
+    cx, cy = Transformer.from_crs(4326, epsg, always_xy=True).transform(lake.lon, lake.lat)
+    xx, yy = np.meshgrid(x - cx, y - cy)
+    out = np.hypot(np.clip(abs(xx) - 200, 0, None), np.clip(abs(yy) - 200, 0, None))  # metres out of the shadow
+    edge = (out > 25) & (out < 75)
+    far = out > 140
+    assert plain["water"][edge].all() and plain["valid"][edge].all()
+    assert not buffered["water"][edge].any() and not buffered["valid"][edge].any()
+    assert (buffered["valid"][far] == plain["valid"][far]).all() and buffered["water"][far].all()
+    assert buffered["window_cloud_share"] == plain["window_cloud_share"]  # the window share is still SCL cloud only
+    assert lakecheck.optical_on_grid(scene, x, y, epsg)["valid"].sum() == buffered["valid"].sum()
+
+
+def test_near_cloud():
+    scl = np.full((30, 30), 5)
+    scl[15, 15] = 9
+    near = lakecheck.near_cloud(scl, 10.0, 100.0)
+    assert near[15, 25] and near[15, 5] and not near[15, 26] and not near[0, 0]
+    assert lakecheck.near_cloud(scl, 10.0, 0).sum() == 1
+    assert not lakecheck.near_cloud(np.full((5, 5), 11), 10.0, 100.0).any()  # snow is not cloud
+
+
+# --- paging (round 2, ruling c) --------------------------------------------------------------------------------------
+
+def test_search_follows_the_next_links_until_they_end(monkeypatch):
+    calls = []
+    page1 = {"features": [feat("a", "2026-11-10T05:00:00Z", 1), feat("b", "2026-11-08T05:00:00Z", 1)],
+             "links": [{"rel": "next", "method": "POST", "href": "https://earth-search.aws.element84.com/v1/search",
+                        "merge": False, "body": {"collections": ["sentinel-2-l2a"], "limit": 2, "next": "tok1"}}]}
+    page2 = {"features": [feat("c", "2026-11-05T05:00:00Z", 1)],
+             "links": [{"rel": "next", "method": "POST", "href": "https://earth-search.aws.element84.com/v1/search",
+                        "merge": True, "body": {"next": "tok2"}}]}
+    page3 = {"features": [], "links": [{"rel": "next", "method": "POST", "href": "x", "body": {"next": "tok3"}}]}
+    pages = iter([page1, page2, page3])
+
+    class Resp:
+        def __init__(self, doc):
+            self.doc = doc
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.doc
+
+    def post(url, json=None, timeout=None):
+        calls.append(json)
+        return Resp(next(pages))
+
+    monkeypatch.setattr(lakecheck.requests, "post", post)
+    items = lakecheck.search_scenes((74.5, 36.3, 74.6, 36.4), "2026-11-01", "2026-11-12", limit=2)
+    assert [f["id"] for f in items] == ["a", "b", "c"]
+    assert len(calls) == 3 and "next" not in calls[0]
+    assert calls[1] == {"collections": ["sentinel-2-l2a"], "limit": 2, "next": "tok1"}  # merge false: the link's body
+    assert calls[2]["next"] == "tok2" and calls[2]["limit"] == 2  # merge true: added to the last body
+
+
+def test_search_refuses_endless_paging(monkeypatch):
+    class Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"features": [feat("same", "2026-11-10T05:00:00Z", 1)],
+                    "links": [{"rel": "next", "method": "POST", "href": "u", "body": {"next": "t"}}]}
+
+    monkeypatch.setattr(lakecheck.requests, "post", lambda *a, **k: Resp())
+    with pytest.raises(RuntimeError, match="more than 3 pages"):
+        lakecheck.search_scenes((0, 0, 1, 1), "2026-11-01", "2026-11-12", max_pages=3)
 
 
 def test_a_snow_covered_zone_does_not_count_as_clear(monkeypatch):
@@ -442,7 +613,8 @@ def test_a_forming_site_is_not_turned_back_to_no_lake_now_by_a_snowy_scene(tmp_p
     from sartale.lakebuild import FORMING_STATE, apply_absence, build_lakes
     from sartale.lakestatus import LAKE_FORMING
     lake = _absent_lake()
-    wet = _prior(lake, date="2026-10-01", s2_id="S2_WET", water_share=0.08, water_km2=0.25)
+    wet = _prior(lake, date="2026-10-01", s2_id="S2_WET", water_share=0.08, water_km2=0.25, forming=True,
+                 confirmed=[_row("2026-09-24", 0.07), _row("2026-10-01", 0.08, "S2_WET")])
     monkeypatch.setattr(lakecheck, "search_scenes", lambda *a: _scenes(("S2_FROZEN", "2026-10-20", 0.0)))
     monkeypatch.setattr(lakecheck, "optical_on_grid", _optical({"S2_FROZEN": (0.15, 0.85, 0.0)}))
     row = lakecheck.absence_check(lake, "2026-10-26", wet, log=lambda *_: None)

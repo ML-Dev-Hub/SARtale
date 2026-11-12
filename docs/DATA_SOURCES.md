@@ -51,9 +51,14 @@ as in the cross-check), and the share of the zone under snow or ice. `lakes-abse
 the lake that matters most can form outside summer (Shisper's 2022 lake filled in March and April and burst on 7 May).
 It takes the newest scene whose lake zone is at least 80% clear, counting snow and ice (scene classification 11) as
 not clear, and with snow or ice on no more than 1% of the zone: a frozen or snow-covered pond reads as dry ground in
-MNDWI, so a snowy scene is never evidence that a site is empty. When no scene qualifies, the last check stands, and the
-site says so: "Last checked <date> ...; no clear, snow-free Sentinel-2 view of the zone since (searched to <date>)".
-Water above the site's threshold turns the site into **Lake may be forming**: no growing or shrinking verdict; its
+MNDWI, so a snowy scene is never evidence that a site is empty. Pixels within 100 m of cloud or cloud shadow (scene
+classification 3, 8, 9, 10) are not clear either: their edges are often unflagged haze or shadow that MNDWI reads as
+water (Shisper, 16 Oct 2026: 14.5% "water" on bare soil beside cloud shadow). When no scene qualifies, the last check
+stands, and the site says so: "Last checked <date> ...; no clear, snow-free Sentinel-2 view of the zone since
+(searched to <date>)". The site turns into **Lake may be forming** only when its two most recent qualifying scenes, at
+least 5 days apart, both show water above its threshold; one such scene is recorded as pending, and the site says
+that SARtale is checking the next clear scene. It returns to No lake now only after two qualifying scenes below the
+threshold, again at least 5 days apart. A site where a lake may be forming has no growing or shrinking verdict; its
 radar dark area is shown but not yet treated as lake area, and the SARtale team reviews the site to add it to the
 register as a measured lake (nothing promotes it automatically). The thresholds come from a survey of every clear
 scene of 15 Jun-30 Sep 2026 and of dates when the lakes were there (11 Nov 2026):

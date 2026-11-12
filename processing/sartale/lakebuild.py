@@ -11,6 +11,7 @@ from pyproj import Transformer
 from sartale import config
 from sartale.catalog import PROVISIONAL, STANDARD
 from sartale.gcov import apply_mask
+from sartale.lakecheck import ABSENCE_RULE
 from sartale.lakes import Lake
 from sartale.lakes import DEFAULT_ZONE_KM
 from sartale.lakestatus import (
@@ -354,10 +355,15 @@ def forming_share(lake: Lake) -> float | None:
 
 
 def is_forming(absence: dict | None, threshold: float | None = None) -> bool:
-    """True when the absence check found water on more than `threshold` (default config.FORMING_WATER_SHARE) of
-    the lake zone."""
+    """True when the absence check says a lake may be forming: its `forming` state, which two qualifying scenes above
+    the site's threshold set (`lakecheck.step`). Evidence without a state (older builds, hand-made rows) falls back
+    to its one scene: water on more than `threshold` (default config.FORMING_WATER_SHARE) of the lake zone."""
+    if not absence:
+        return False
+    if "forming" in absence:
+        return bool(absence["forming"])
     limit = config.FORMING_WATER_SHARE if threshold is None else threshold
-    return bool(absence) and float(absence.get("water_share") or 0.0) > limit
+    return float(absence.get("water_share") or 0.0) > limit
 
 
 def apply_absence(entry: dict, absence: dict | None) -> dict:
@@ -526,15 +532,16 @@ def absence_zone(lake: Lake) -> dict:
 def carried_absence(previous: dict | None, lake: Lake) -> dict | None:
     """The last absence check of `lake` in a previously published lakes.json, if it was made for the same zone
     (`absence_zone`: point, and radius or outline file) under the current rule. A moved site, a new radius or a
-    changed outline starts again with no evidence, and so does evidence from before snow and ice stopped counting
-    as a clear view (it has no `snow_share`)."""
+    changed outline starts again with no evidence, and so does evidence made under another rule (`rule`, e.g. from
+    before snow, ice and cloud edges stopped counting as a clear view) or for another forming threshold, since its
+    forming state was worked out with them."""
     if lake.lake_state != "no_lake" or not previous:
         return None
     old = next((lk for lk in previous.get("lakes", []) if lk.get("id") == lake.id), None)
     ev = old.get("absence_checked") if old else None
-    if not isinstance(ev, dict) or "snow_share" not in ev:
+    if not isinstance(ev, dict) or ev.get("rule") != ABSENCE_RULE:
         return None
-    if ev.get("zone") != absence_zone(lake):
+    if ev.get("zone") != absence_zone(lake) or ev.get("threshold") != forming_share(lake):
         return None
     return ev
 

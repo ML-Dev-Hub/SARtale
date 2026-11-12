@@ -336,7 +336,8 @@ def test_a_no_lake_site_keeps_its_passes_but_gets_no_verdict_and_no_water_layer(
     assert (st["track"], st["latest_date"], st["looks"]) == ("156A", "2026-07-24", 4)
     assert st["reason"] == ("No lake in recent imagery: Sentinel-2 shows a dry basin on 17 Aug 2026. "
                             "SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only "
-                            "views where the lake zone is clear of cloud, snow and ice.")
+                            "views where the lake zone is clear of cloud, snow and ice; the status changes only when two "
+                            "such views at least 5 days apart agree.")
     assert lk["absence_checked"] is None
     assert lk["lake_state"] == "no_lake" and lk["lake_state_source"] == src
     assert lk["area_label"] == NO_LAKE_LABEL
@@ -402,15 +403,21 @@ def _no_lake_site(tmp_path):
 
 
 def _ev(lake, **extra):
-    """Absence evidence of `lake` under the current rule (snow share, zone key), dry unless `extra` says otherwise."""
-    from sartale.lakebuild import absence_zone
+    """Absence evidence of `lake` under the current rule (rule, zone key, threshold, state), dry unless `extra` says
+    otherwise."""
+    from sartale.lakebuild import absence_zone, forming_share
+    from sartale.lakecheck import ABSENCE_RULE
     return {"date": "2026-08-17", "s2_id": "S2_DRY", "water_share": 0.002, "water_km2": 0.006,
-            "zone_valid_share": 1.0, "snow_share": 0.0, "checked": "2026-08-20", "searched": "2026-08-20",
-            "no_view_since": False, "source": "Sentinel-2", "zone": absence_zone(lake), **extra}
+            "zone_valid_share": 1.0, "snow_share": 0.0, "forming": False, "pending_scene": None, "confirmed": None,
+            "threshold": forming_share(lake), "checked": "2026-08-20", "searched": "2026-08-20",
+            "no_view_since": False, "rule": ABSENCE_RULE, "source": "Sentinel-2", "zone": absence_zone(lake), **extra}
 
 
 def _wet(lake):
-    return _ev(lake, date="2026-09-01", s2_id="S2_WET", water_share=0.05, water_km2=0.157)
+    pair = [{"date": "2026-08-25", "s2_id": "S2_WET0", "water_share": 0.06},
+            {"date": "2026-09-01", "s2_id": "S2_WET", "water_share": 0.05}]
+    return _ev(lake, date="2026-09-01", s2_id="S2_WET", water_share=0.05, water_km2=0.157, forming=True,
+               confirmed=pair)
 
 
 EV_WET = {"date": "2026-09-01", "s2_id": "S2_WET", "water_share": 0.05, "water_km2": 0.157, "snow_share": 0.0}
@@ -429,10 +436,12 @@ def test_a_no_lake_site_carries_its_last_absence_check_from_the_previous_build(t
     # a moved point or a new radius starts again with no evidence
     for changed in (replace(gone, lon=gone.lon + 0.001), replace(gone, zone_radius_km=0.5)):
         assert build_lakes([changed], cache, tmp_path / "out", "t", previous=first)["lakes"][0]["absence_checked"] is None
-    # evidence from before snow and ice stopped counting as clear (no snow_share) is not carried
-    old = {k: v for k, v in _ev(gone).items() if k != "snow_share"}
-    first["lakes"][0]["absence_checked"] = old
-    assert build_lakes([gone], cache, tmp_path / "out", "t", previous=first)["lakes"][0]["absence_checked"] is None
+    # evidence made under another rule (round 1 had no cloud-edge buffer and no persistence), or for another
+    # threshold, is not carried: its state was worked out with them
+    for other in (_ev(gone, rule="older rule"), {k: v for k, v in _ev(gone).items() if k != "rule"},
+                  _ev(gone, threshold=0.1)):
+        first["lakes"][0]["absence_checked"] = other
+        assert build_lakes([gone], cache, tmp_path / "out", "t", previous=first)["lakes"][0]["absence_checked"] is None
 
 
 def test_m7_an_outline_site_keeps_its_evidence_and_a_changed_outline_resets_it(tmp_path):
@@ -479,9 +488,22 @@ def test_water_in_the_absence_check_turns_no_lake_now_into_lake_may_be_forming(t
     doc["lakes"][0] = entry
     rebuilt = build_lakes([gone], cache, out, "t", previous=doc)["lakes"][0]
     assert rebuilt["status"]["status"] == LAKE_FORMING and rebuilt["images"]["water"]
-    # water gone again: back to no lake now
+    assert "Two clear, snow-free Sentinel-2 scenes at least 5 days apart" in rebuilt["status"]["reason"]
+    # one dry scene does not end it: still forming, and the reason says the next scene is being checked
+    one_dry = _wet(gone) | {"pending_scene": {"date": "2026-09-10", "s2_id": "S2_DRY1", "water_share": 0.01}}
+    still = apply_absence(rebuilt, one_dry)
+    assert still["status"]["status"] == LAKE_FORMING
+    assert "below this site's 4.0% level; SARtale is checking the next clear" in still["status"]["reason"]
+    # two dry scenes did: back to no lake now
     back = apply_absence(rebuilt, _ev(gone))
     assert back["lake_state"] == "no_lake" and back["status"]["status"] == NO_LAKE
+    # a single wet scene leaves it at no lake now, and says one scene is waiting for a second
+    pending = _ev(gone, water_share=0.07, pending_scene={"date": "2026-08-17", "s2_id": "S2_DRY", "water_share": 0.07})
+    one = apply_absence(rebuilt, pending)
+    assert one["lake_state"] == "no_lake" and one["status"]["status"] == NO_LAKE
+    assert ("One recent clear scene (17 Aug 2026, S2_DRY) showed water on 7.0% of the lake zone, above this site's "
+            "4.0% level; SARtale is checking the next clear, snow-free scene before saying a lake may be forming."
+            ) in one["status"]["reason"]
 
 
 def test_apply_absence_leaves_lakes_alone(built):

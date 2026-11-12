@@ -241,8 +241,14 @@ def cmd_lakes_absence(args) -> None:
         doc["lakes"][i] = apply_absence(doc["lakes"][i], row)
         lk = doc["lakes"][i]
         ev = lk.get("absence_checked")
-        when = (f"{ev['date']} {ev['s2_id']} water {ev['water_share']:.4f} snow {ev['snow_share']:.4f}"
-                f"{' (no clear, snow-free view since)' if ev.get('no_view_since') else ''}") if ev else "no evidence"
+        when = "no evidence"
+        if ev:
+            when = f"{ev['date']} {ev['s2_id']} water {ev['water_share']:.4f} snow {ev['snow_share']:.4f}"
+            if ev.get("no_view_since"):
+                when += " (no clear, snow-free view since)"
+            p = ev.get("pending_scene")
+            if p:
+                when += f"; one scene waits for a second: {p['date']} {p['s2_id']} water {p['water_share']:.4f}"
         print(f"{lake.id}: {lk['status']['status']} ({lk['lake_state']}); {when}")
     write_json_atomic(path, doc)
 

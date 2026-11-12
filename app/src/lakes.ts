@@ -38,6 +38,14 @@ export interface AbsenceCheck {
   searched?: string;
   /** True when no clear, snow-free scene has come for over a week since `date` (absent in older builds). */
   no_view_since?: boolean;
+  /** The site's state: two qualifying scenes at least 5 days apart above `threshold` set it (absent in older builds). */
+  forming?: boolean;
+  /** One scene on the other side of the threshold, waiting for a second before the state changes. */
+  pending_scene?: { date: string; s2_id: string; water_share: number } | null;
+  /** The two scenes that set the current state. */
+  confirmed?: { date: string; s2_id: string; water_share: number }[] | null;
+  /** The site's forming share the state was worked out with. */
+  threshold?: number;
   rule?: string;
   /** Older builds only: the open-water season the check was limited to. */
   season?: string;

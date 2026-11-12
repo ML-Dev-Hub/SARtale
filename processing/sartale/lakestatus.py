@@ -188,7 +188,8 @@ def share_text(share: float) -> str:
 
 NO_VIEW_SINCE = "no clear, snow-free Sentinel-2 view of the zone since"
 RECHECK = ("SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only views where the lake "
-           "zone is clear of cloud, snow and ice.")
+           "zone is clear of cloud, snow and ice; the status changes only when two such views at least 5 days apart "
+           "agree.")
 FORMING_NEXT = ("Its radar dark area is shown but not yet treated as lake area; the SARtale team reviews the site to add "
                 "it as a measured lake.")
 
@@ -211,13 +212,28 @@ def absence_sentence(absence: dict | None) -> str:
             f"{share_text(absence['water_share'])} of the lake zone{stale_text(absence)}.")
 
 
+def pending_sentence(absence: dict | None) -> str:
+    """What the one scene waiting for confirmation (`pending_scene`) showed, or "" when none waits. At a site with no
+    lake now it was above the site's threshold; at a site where a lake may be forming, below it."""
+    p = (absence or {}).get("pending_scene")
+    if not p:
+        return ""
+    level = f"this site's {share_text(absence['threshold'])} level" if absence.get("threshold") is not None \
+        else "this site's level"
+    seen = f"One recent clear scene ({day_text(p['date'])}, {p['s2_id']}) showed water on {share_text(p['water_share'])} " \
+           "of the lake zone"
+    if absence.get("forming"):
+        return f"{seen}, below {level}; SARtale is checking the next clear, snow-free scene before saying there is no lake."
+    return f"{seen}, above {level}; SARtale is checking the next clear, snow-free scene before saying a lake may be forming."
+
+
 def no_lake_status(computed: dict, source: str | None, absence: dict | None = None) -> dict:
     """The status of a site with no lake now: keeps the track, latest date and looks the passes give (so the site's
     picture and pass count still show), drops any change and noise, and says why, with the date of the last
-    Sentinel-2 absence check when there is one."""
+    Sentinel-2 absence check when there is one, and a scene above the threshold that waits for a second one."""
     why = f"No lake in recent imagery: {source.rstrip('.')}." if source else "No lake in recent imagery."
     checked = absence_sentence(absence)
-    reason = " ".join(t for t in (why, checked, RECHECK) if t)
+    reason = " ".join(t for t in (why, checked, pending_sentence(absence), RECHECK) if t)
     return _result(NO_LAKE, computed["track"], computed["latest_date"], computed["looks"], reason=reason)
 
 
@@ -225,7 +241,18 @@ def forming_status(computed: dict, absence: dict) -> dict:
     """The status of a "no lake now" site where Sentinel-2 found water: a lake may be forming. No growing or
     shrinking verdict; the track, latest date and looks are those the passes give. Nothing promotes the site to a
     measured lake automatically: the reason says that the team reviews it."""
-    reason = (f"Sentinel-2 on {day_text(absence['date'])} ({absence['s2_id']}) shows water on "
-              f"{share_text(absence['water_share'])} of the lake zone ({absence['water_km2']:.3f} km2), where recent "
-              f"imagery had no lake{stale_text(absence)}. A lake may be forming. {FORMING_NEXT}")
+    pair = absence.get("confirmed")
+    if pair:
+        level = f"above this site's {share_text(absence['threshold'])} level" if absence.get("threshold") is not None \
+            else "above this site's level"
+        seen = (f"Two clear, snow-free Sentinel-2 scenes at least 5 days apart showed water {level} where recent "
+                f"imagery had no lake: {day_text(pair[0]['date'])} ({share_text(pair[0]['water_share'])} of the lake "
+                f"zone) and {day_text(pair[1]['date'])} ({share_text(pair[1]['water_share'])}). Latest: "
+                f"{day_text(absence['date'])} ({absence['s2_id']}), water on {share_text(absence['water_share'])} "
+                f"({absence['water_km2']:.3f} km2){stale_text(absence)}.")
+    else:
+        seen = (f"Sentinel-2 on {day_text(absence['date'])} ({absence['s2_id']}) shows water on "
+                f"{share_text(absence['water_share'])} of the lake zone ({absence['water_km2']:.3f} km2), where recent "
+                f"imagery had no lake{stale_text(absence)}.")
+    reason = " ".join(t for t in (seen, pending_sentence(absence), f"A lake may be forming. {FORMING_NEXT}") if t)
     return _result(LAKE_FORMING, computed["track"], computed["latest_date"], computed["looks"], reason=reason)
