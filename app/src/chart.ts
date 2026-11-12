@@ -20,6 +20,9 @@ const axis = (label: string): uPlot.Axis => ({
 });
 
 export const FROZEN_GREY = "#8d9aa5";
+const BAND_EDGE = "#6f8798";
+const BAND_FILL = "rgba(125, 216, 242, 0.12)";
+export const LEVEL_RING = "#ffd23f";
 const TRACK_COLORS =["#7dd8f2", "#ffc46b", "#9db8ff", "#e58bd0", "#b6d96b", "#ff8a7a"];
 
 /** The uPlot options for the lake area chart: one line per track, then a markers-only series for excluded passes. */
@@ -27,7 +30,13 @@ export function lakeChartOptions(width: number, data: LakeChartData): uPlot.Opti
   let k = 0;
   const series: uPlot.Series[] = [{ label: "Date" }];
   for (const s of data.series) {
-    if (s.frozen) {
+    if (s.band) {
+      // The status track's baseline ± 2 × noise: thin dashed edges, shaded between them (bands below).
+      series.push({ label: s.label, stroke: BAND_EDGE, width: 1, dash: [4, 4], spanGaps: true, points: { show: false } });
+    } else if (s.level) {
+      // The passes that set a level: large ringed markers in the level colour, no line.
+      series.push({ label: s.label, stroke: LEVEL_RING, width: 0, paths: () => null, points: { show: true, size: 15, width: 3, stroke: LEVEL_RING, fill: "transparent" } });
+    } else if (s.frozen) {
       // Grey markers, no line: taken while the lake was probably frozen, so not an open-water reading.
       series.push({ label: s.label, stroke: FROZEN_GREY, width: 0, paths: () => null, points: { show: true, size: 8, width: 2, stroke: FROZEN_GREY, fill: "#53606b" } });
     } else if (s.excluded) {
@@ -39,12 +48,17 @@ export function lakeChartOptions(width: number, data: LakeChartData): uPlot.Opti
       series.push({ label: s.label, stroke: c, width: 2, spanGaps: true, points: { show: true, size: 7, fill: c } });
     }
   }
+  // Shade between the band's upper and lower edges (uPlot series indices count the x series as 0).
+  const hi = data.series.findIndex((s) => s.band === "hi");
+  const lo = data.series.findIndex((s) => s.band === "lo");
+  const bands: uPlot.Band[] = hi >= 0 && lo >= 0 ? [{ series: [hi + 1, lo + 1], fill: BAND_FILL }] : [];
   return {
     width,
     height: HEIGHT,
     tzDate: utcTzDate,
     scales: { x: { time: true } },
     series,
+    bands,
     axes: [axis("Date"), axis("Water area (km²)")],
     cursor: { drag: { x: false, y: false, setScale: false }, points: { size: 11 } },
     legend: { show: true },

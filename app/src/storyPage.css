@@ -132,8 +132,16 @@
 .sp-lake-status { font-size: 13px; font-weight: 600; }
 .sp-lake-area { font-size: 13px; color: #c6d5de; font-variant-numeric: tabular-nums; }
 .sp-st-stable { color: var(--sp-accent); }
-.sp-st-change { color: var(--sp-warm); }
+.sp-st-change, .sp-st-watch { color: var(--sp-warm); }
+.sp-st-decrease { color: #c4d3ff; }
+/* Alert: growing: a solid pill with a mark, never colour alone */
+.sp-st-alert { padding: 0 8px; border-radius: 999px; background: #ffd23f; color: #1a1203; font-weight: 800; }
+.sp-st-alert::before { content: "▲ "; font-size: 0.75em; }
 .sp-st-other { color: var(--sp-muted); }
+/* The banner at the top of the story page when any lake is at Alert: growing. */
+.sp-alert-banner { position: relative; z-index: 2; margin: 0; padding: 14px 20px; border-bottom: 3px solid #ffd23f; background: #1a1203; color: var(--sp-text); }
+.sp-alert-banner p { margin: 0 auto 6px; max-width: 1100px; }
+.sp-alert-banner strong { color: #ffd23f; }
 .sp-lake-area-frozen { color: var(--sp-muted); opacity: 0.85; font-size: 12px; max-width: 16em; text-align: right; }
 
 /* 06 */

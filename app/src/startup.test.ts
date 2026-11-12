@@ -17,7 +17,7 @@ describe("startup", () => {
   test("mounts the app and shows no error", () => {
     const el = root();
     expect(mountOrShowError(el, { lakes: fixtureLakes })).not.toBeNull();
-    expect(el.querySelector('[role="alert"]')).toBeNull();
+    expect(el.querySelector(".startup-error")).toBeNull();
     expect(el.querySelector(".shell")).not.toBeNull();
   });
 
