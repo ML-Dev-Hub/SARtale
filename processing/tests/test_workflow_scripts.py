@@ -45,9 +45,10 @@ def comment(body, assoc, kind="User"):
 class FakeGh:
     """Answers `gh api ...` calls from a table of paths; records every call."""
 
-    def __init__(self, pages, comments=None, single=None, events=None):
+    def __init__(self, pages, comments=None, single=None, events=None, permissions=None):
         self.pages, self.comments, self.calls = pages, comments or {}, []
         self.single, self.events = single, events or []
+        self.permissions = permissions or {}  # login -> permission; anyone else is "admin"
 
     def __call__(self, args):
         assert isinstance(args, list) and all(isinstance(a, str) for a in args)
@@ -57,6 +58,9 @@ class FakeGh:
         if "/comments" in path:
             number = int(path.split("/issues/")[1].split("/")[0])
             return json.dumps(self.comments.get(number, []))
+        if "/collaborators/" in path:
+            login = path.split("/collaborators/")[1].split("/")[0]
+            return json.dumps({"permission": self.permissions.get(login, "admin")})
         if "/events" in path:
             half = len(self.events) // 2  # two pages, as --paginate prints them
             return json.dumps(self.events[:half]) + json.dumps(self.events[half:])
@@ -815,8 +819,9 @@ APPROVED_AT = "2026-11-05T11:00:00Z"
 
 
 def live_gh(body=BODY, state="open", labels=("lake-request", "searched", "accepted"),
-            events=(labeled("accepted", "owner-1", APPROVED_AT),)):
-    return FakeGh("", single=issue(7, state=state, labels=labels, body=body), events=list(events))
+            events=(labeled("accepted", "owner-1", APPROVED_AT),), permissions=None):
+    return FakeGh("", single=issue(7, state=state, labels=labels, body=body), events=list(events),
+                  permissions=permissions)
 
 
 def built_hash(body=BODY):
@@ -864,6 +869,32 @@ def test_live_recheck_refuses_an_approver_or_time_change(events):
     assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=gh) == live_approval.OTHER_APPROVAL
 
 
+@pytest.mark.parametrize("perm", ["read", "triage", "none"])
+def test_live_recheck_refuses_an_approver_who_lost_write_access(perm):
+    """M2: the approver was a team member at the gate but was demoted during the rebuild."""
+    gh = live_gh(permissions={"owner-1": perm})
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=gh) == live_approval.NOT_TEAM
+    assert ["api", "repos/o/r/collaborators/owner-1/permission"] in gh.calls
+
+
+@pytest.mark.parametrize("perm", ["admin", "maintain", "write"])
+def test_live_recheck_keeps_an_approver_with_write_access(perm):
+    gh = live_gh(permissions={"owner-1": perm})
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=gh) is None
+
+
+def test_live_recheck_fails_closed_when_the_permission_lookup_fails():
+    gh = live_gh()
+
+    def broken(args):
+        if "/collaborators/" in args[1]:
+            raise RuntimeError("gh api failed")
+        return gh(args)
+
+    with pytest.raises(RuntimeError):
+        live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=broken)
+
+
 def test_live_main_writes_the_reason_and_exits_7(tmp_path, monkeypatch):
     monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
     art = tmp_path / "lake-data" / "app" / "public" / "data"
@@ -876,8 +907,14 @@ def test_live_main_writes_the_reason_and_exits_7(tmp_path, monkeypatch):
     assert not why.exists()
     with pytest.raises(SystemExit) as e:
         live_approval.main(args, runner=live_gh(body=BODY.replace("New pond", "Other pond")))
-    assert e.value.code == 7 and why.read_text("utf-8").strip() == live_approval.EDITED
+    assert e.value.code == 8 and why.read_text("utf-8").strip() == live_approval.EDITED  # void: drop accepted
     assert "Other pond" not in why.read_text("utf-8")
+    with pytest.raises(SystemExit) as e:
+        live_approval.main(args, runner=live_gh(permissions={"owner-1": "read"}))
+    assert e.value.code == 8 and why.read_text("utf-8").strip() == live_approval.NOT_TEAM
+    with pytest.raises(SystemExit) as e:
+        live_approval.main(args, runner=live_gh(state="closed"))
+    assert e.value.code == 7 and why.read_text("utf-8").strip() == live_approval.NOT_OPEN  # nothing to remove
 
 
 def test_accept_workflow_rechecks_live_before_it_commits():
@@ -891,6 +928,11 @@ def test_accept_workflow_rechecks_live_before_it_commits():
     assert "steps.live.outputs.result == 'ok'" in steps[commit]["if"]
     assert "steps.live.outputs.result == 'ok'" in steps[names.index("Comment and close the issue")]["if"]
     assert "live_approval.py" in steps[live]["run"]
+    # M3: a void approval (exit 8: edited, or the approver lost access) also loses `accepted`, as the changed path does
+    run = steps[live]["run"]
+    eight = run.index("8) ")
+    assert "--remove-label accepted" in run[eight:] and "--remove-label accepted" not in run[:eight]
+    assert "result=withdrawn" in run[eight:]
     assert wf["jobs"]["gate"]["outputs"]["approver"]
 
 

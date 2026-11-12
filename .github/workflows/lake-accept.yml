@@ -288,8 +288,10 @@ jobs:
           esac
 
       - name: Re-read the issue live just before publishing
-        # still open and accepted, by the same approver at the same time, with the values the rebuild used;
-        # otherwise nothing is published and the issue says why (a fixed sentence, never issue text)
+        # still open and accepted, by the same approver at the same time, who still has write access, with the
+        # values the rebuild used; otherwise nothing is published and the issue says why (a fixed sentence, never
+        # issue text). When the approval itself is void (values edited, approver lost access; exit 8), `accepted`
+        # is removed as well, as for a request refused as changed, so adding it again starts a new check.
         id: live
         if: steps.install.outputs.result == 'ok'
         env:
@@ -306,6 +308,9 @@ jobs:
             0) echo "result=ok" >> "$GITHUB_OUTPUT" ;;
             7) echo "result=withdrawn" >> "$GITHUB_OUTPUT"
                gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/live.md" ;;
+            8) echo "result=withdrawn" >> "$GITHUB_OUTPUT"
+               gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/live.md"
+               gh issue edit "$ISSUE" --remove-label accepted ;;
             *) exit "$code" ;;
           esac
 

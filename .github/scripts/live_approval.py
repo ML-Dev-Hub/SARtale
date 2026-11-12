@@ -7,11 +7,15 @@ away or give it again. The publish job runs this script just before it commits, 
   - the issue is still open and carries `lake-request` and `accepted`;
   - the last account to add `accepted` is the same approver the gate checked, at the same time (within
     TIME_SLACK_S: for a label event the gate records the issue's update time, which GitHub sets with the event);
+  - that approver still has write, maintain or admin permission on the repository (the gate's own rule), so an
+    approver who lost access during the rebuild publishes nothing;
   - the issue's values (name, latitude, longitude, source) still hash to the values the rebuild used
     (`values_sha256` of the issue's entry in the rebuilt requests.json).
 
-Otherwise it writes one fixed sentence (never issue text) to --why and exits 7. Any other failure (gh, a malformed
-artifact) exits non-zero as well, so the check fails closed.
+Otherwise it writes one fixed sentence (never issue text) to --why and exits 7, or 8 when the approval itself no
+longer stands (the values were edited, or the approver lost access) and the workflow must also take `accepted` away,
+as it does for a request refused as changed. Any other failure (gh, a malformed artifact, a permission lookup that
+fails) exits non-zero as well, so the check fails closed.
 
 This script runs on the runner's own python3, without the `sartale` package, so it keeps a copy of the hash rule of
 sartale.lake_issues.issue_values_sha256; test_workflow_scripts checks that the two agree.
@@ -33,7 +37,9 @@ from pathlib import Path
 from approver import approval, NotWaiting
 from fetch_issues import run_gh
 
-CHANGED = 7
+CHANGED = 7  # withdrawn: publish nothing, comment
+DROP_ACCEPTED = 8  # withdrawn, and the approval is void: publish nothing, comment, remove `accepted`
+TEAM = ("admin", "maintain", "write")  # the gate's rule (lake-accept.yml, "Check the approver")
 TIME_SLACK_S = 120
 REQUESTS = "app/public/data/requests.json"
 FIELDS = {"Lake name": "name", "Latitude (°N)": "lat", "Longitude (°E)": "lon",
@@ -44,6 +50,8 @@ NOT_OPEN = "This request was closed or lost the accepted label while the lake da
 OTHER_APPROVAL = ("The approval of this request changed while the lake data were rebuilt (accepted was removed or "
                   "added again), so nothing was published. A team member can accept it again.")
 EDITED = "This request changed after it was approved. A team member must accept it again."
+NOT_TEAM = ("The account that accepted this request no longer has write access to the repository, so nothing was "
+            "published. A team member must accept it again.")
 
 
 # --- a copy of sartale.lake_issues.issue_values_sha256 (and the helpers it uses) ---------------------------------
@@ -111,6 +119,16 @@ def built_values(artifact: Path, number: int) -> str:
     return digest
 
 
+def permission(repo: str, login: str, runner=run_gh) -> str:
+    """The login's permission on the repository, as the gate reads it. A failed lookup raises (fail closed)."""
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]*", login or ""):
+        raise ValueError("not a GitHub login")
+    found = json.loads(runner(["api", f"repos/{repo}/collaborators/{login}/permission"])).get("permission")
+    if not isinstance(found, str):
+        raise ValueError("the permission lookup gave no permission")
+    return found
+
+
 def recheck(repo: str, number: int, approver: str, approved_at: str, values: str, runner=run_gh) -> str | None:
     """None when the approval still stands; else the fixed sentence that says why it does not."""
     try:
@@ -122,6 +140,8 @@ def recheck(repo: str, number: int, approver: str, approved_at: str, values: str
     login, when = found
     if login != approver or abs((_when(when) - _when(approved_at)).total_seconds()) > TIME_SLACK_S:
         return OTHER_APPROVAL
+    if permission(repo, login, runner) not in TEAM:
+        return NOT_TEAM
     issue = json.loads(runner(["api", f"repos/{repo}/issues/{int(number)}"]))
     if issue_values_sha256(issue) != values:
         return EDITED
@@ -141,7 +161,7 @@ def main(argv=None, runner=run_gh) -> None:
     if why:
         Path(args.why).write_text(why + "\n", encoding="utf-8")
         print(f"issue #{args.issue}: {why}", file=sys.stderr)
-        raise SystemExit(CHANGED)
+        raise SystemExit(DROP_ACCEPTED if why in (EDITED, NOT_TEAM) else CHANGED)
     print(f"issue #{args.issue}: the approval still stands")
 
 
