@@ -1,5 +1,5 @@
-"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-build, lakes-check, lakes-diff, lake-issues,
-lake-issue-accept."""
+"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-build, lakes-check, lakes-absence, lakes-diff,
+lake-issues, lake-issue-accept."""
 import argparse
 import json
 import os
@@ -10,7 +10,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from sartale.lake_catalog import Pass, coverage_report, search_lake_passes, select_lake_passes
-from sartale.lakebuild import PASSES_JSON, attabad_gate, build_lakes, read_listed, unlisted_windows
+from sartale.lakebuild import (
+    PASSES_JSON,
+    apply_absence,
+    attabad_gate,
+    build_lakes,
+    carried_absence,
+    read_listed,
+    unlisted_windows,
+)
 from sartale.lakecheck import check_lake
 from sartale.lake_requests import RequestError
 from sartale.lakes import load_lakes
@@ -137,7 +145,9 @@ def cmd_lakes_build(args) -> None:
         gone = unlisted_windows(Path(args.cache) / lake.id, listed.get(lake.id, set()))
         if gone:
             print(f"{lake.id}: ignoring {len(gone)} cached window(s) the catalogue no longer lists: {', '.join(gone)}")
-    doc = build_lakes(lakes, Path(args.cache), out, built, checks)
+    previous_path = Path(args.previous) if args.previous else out / "lakes.json"
+    previous = _read_json(previous_path) if previous_path.is_file() else None
+    doc = build_lakes(lakes, Path(args.cache), out, built, checks, previous=previous)
     write_json_atomic(out / "lakes.json", doc)
     for gone in prune_lake_images(out, doc):
         print(f"removed stale {gone.relative_to(out)}")
@@ -192,6 +202,55 @@ def cmd_lakes_check(args) -> None:
     doc["checks"] = rows
     write_json_atomic(path, doc)
     print(f"{len(rows)} checks -> {args.checks} and {path}")
+
+
+def cmd_lakes_absence(args) -> None:
+    """Re-check every site the register holds as "no lake now" with Sentinel-2, all year, and write the dated
+    evidence into lakes.json (`absence_checked`): the newest scene whose lake zone is clear of cloud, snow and ice
+    (`lakecheck.absence_check`). Water on more than the site's forming share turns it into "Lake may be forming".
+    When no scene qualifies, or the search fails, the last evidence stands with the date of this search, and the
+    site says that no clear, snow-free view has come since; neither fails the run.
+
+    The rebuild runs it before lakes-build, on the published lakes.json, so the build that follows uses the new
+    evidence (and keeps the radar water layer of a site where a lake may be forming). A site the published file does
+    not list yet is skipped then; `--only-missing`, after the build, checks just the sites still without evidence."""
+    from sartale.lakecheck import absence_check
+
+    today = args.today or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    path = Path(args.out) / "lakes.json"
+    if not path.is_file():
+        print(f"no {path}: nothing to re-check yet (lakes-build writes it)")
+        return
+    doc = _read_json(path)
+    by_id = {lk["id"]: i for i, lk in enumerate(doc["lakes"])}
+    for lake in load_lakes(Path(args.lakes_in)):
+        if lake.lake_state != "no_lake":
+            continue
+        if lake.id not in by_id:
+            print(f"{lake.id}: not in {path.name} yet; checked after the build")
+            continue
+        i = by_id[lake.id]
+        prior = carried_absence(doc, lake)
+        if args.only_missing and prior is not None:
+            continue
+        try:
+            row = absence_check(lake, today, prior)
+        except Exception as e:  # noqa: BLE001 - keep the last evidence; the app shows its date
+            print(f"{lake.id}: absence check failed ({type(e).__name__}); the last evidence stands")
+            row = prior
+        doc["lakes"][i] = apply_absence(doc["lakes"][i], row)
+        lk = doc["lakes"][i]
+        ev = lk.get("absence_checked")
+        when = "no evidence"
+        if ev:
+            when = f"{ev['date']} {ev['s2_id']} water {ev['water_share']:.4f} snow {ev['snow_share']:.4f}"
+            if ev.get("no_view_since"):
+                when += " (no clear, snow-free view since)"
+            p = ev.get("pending_scene")
+            if p:
+                when += f"; one scene waits for a second: {p['date']} {p['s2_id']} water {p['water_share']:.4f}"
+        print(f"{lake.id}: {lk['status']['status']} ({lk['lake_state']}); {when}")
+    write_json_atomic(path, doc)
 
 
 def cmd_lakes_diff(args) -> None:
@@ -297,6 +356,9 @@ def build_parser() -> argparse.ArgumentParser:
     lb.add_argument("--out", default=str(REPO_ROOT / "app" / "public" / "data"))
     lb.add_argument("--checks", default=str(REPO_ROOT / "processing" / "lake_checks.json"),
                     help="rows written by lakes-check, merged into lakes.json when the file exists")
+    lb.add_argument("--previous", default=None,
+                    help="the lakes.json this build replaces, for each no-lake site's last absence check "
+                         "(default: the lakes.json in --out)")
     lb.add_argument("--allow-gate-fail", action="store_true",
                     help="exit 0 even when the Attabad gate fails (default: exit 1)")
     lb.set_defaults(func=cmd_lakes_build)
@@ -308,6 +370,15 @@ def build_parser() -> argparse.ArgumentParser:
     lc.add_argument("--lakes", default=None,
                     help="comma-separated lake ids (default: every register lake except those with no lake now)")
     lc.set_defaults(func=cmd_lakes_check)
+
+    la = sub.add_parser("lakes-absence", help="re-check the sites with no lake now with Sentinel-2 (all year; clear, "
+                                              "snow-free scenes only)")
+    la.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    la.add_argument("--out", default=str(REPO_ROOT / "app" / "public" / "data"), help="folder holding lakes.json")
+    la.add_argument("--today", default=None, help="YYYY-MM-DD (default: today, UTC)")
+    la.add_argument("--only-missing", action="store_true",
+                    help="check only the sites without carried evidence (after lakes-build, for new sites)")
+    la.set_defaults(func=cmd_lakes_absence)
 
     ld = sub.add_parser("lakes-diff", help="compare a previous lakes.json with the new one, pass by pass")
     ld.add_argument("--old", required=True, help="the previously published lakes.json")

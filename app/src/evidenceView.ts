@@ -34,10 +34,24 @@ export function fillTokens(text: string, tokens: Record<string, string>): string
   return text.replace(/\{(\w+)\}/g, (whole, key: string) => tokens[key] ?? whole);
 }
 
+/** True when `text` still holds a {token} (its figure comes from lake data that is not there). */
+export function hasToken(text: string): boolean {
+  return /\{\w+\}/.test(text);
+}
+
+export const NO_DATA_NOTE = "No lake data in this build, so the figures that come from it (looks, constants, checks) are left out of this page.";
+
 export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions): EvidenceViewHandle {
   const lakes = opts.lakes ?? null;
   const tokens = lakes ? lakeTokens(lakes) : {};
   const fill = (t: string): string => fillTokens(t, tokens);
+  /** Filled text, or null when a figure it needs is missing: such a sentence is left out, never shown with {gaps}. */
+  const filled = (t: string): string | null => {
+    const out = fill(t);
+    return hasToken(out) ? null : out;
+  };
+  const items = (list: string[]): HTMLLIElement[] =>
+    list.map(filled).filter((t): t is string => t !== null).map((t) => el("li", undefined, t));
 
   const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] => {
     const e = document.createElement(tag);
@@ -60,19 +74,26 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
   const main = el("div", "evidence-main");
   const head = el("header", "evidence-head");
   const title = el("h2", "evidence-title", evidenceCopy.title);
-  head.append(title, el("p", "evidence-lede", fill(evidenceCopy.lede)));
+  const lede = filled(evidenceCopy.lede);
+  head.append(title);
+  if (lede !== null) head.append(el("p", "evidence-lede", lede));
+  if (!lakes) {
+    const note = el("p", "evidence-nodata", NO_DATA_NOTE);
+    note.dataset.role = "evidence-nodata";
+    head.append(note);
+  }
   head.append(el("p", "evidence-status", "Provisional NISAR data up to 21 Oct 2026, which NASA expects to reprocess; later passes are NASA's standard product."));
 
   const verdict = el("div", "evidence-verdict");
   const can = el("section", "verdict-can");
   can.append(el("h3", undefined, "What the evidence supports"));
   const canList = el("ul");
-  canList.append(...evidenceCopy.can.map((t) => el("li", undefined, fill(t))));
+  canList.append(...items(evidenceCopy.can));
   can.append(canList);
   const cannot = el("section", "verdict-cannot");
   cannot.append(el("h3", undefined, "What it cannot do"));
   const cannotList = el("ul");
-  cannotList.append(...evidenceCopy.cannot.map((t) => el("li", undefined, fill(t))));
+  cannotList.append(...items(evidenceCopy.cannot));
   cannot.append(cannotList);
   verdict.append(can, cannot);
 
@@ -119,11 +140,14 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
     const h = el("h3", undefined, sec.title);
     h.id = `${s.id}-h`;
     s.append(h);
-    for (const p of sec.paragraphs ?? []) s.append(el("p", undefined, fill(p)));
+    for (const p of sec.paragraphs ?? []) {
+      const t = filled(p);
+      if (t !== null) s.append(el("p", undefined, t));
+    }
     if (sec.list) {
       const ul = el("ul", "evidence-list");
-      ul.append(...sec.list.map((t) => el("li", undefined, fill(t))));
-      s.append(ul);
+      ul.append(...items(sec.list));
+      if (ul.childElementCount) s.append(ul);
     }
     if (sec.table) {
       const table = el("table", "evidence-table");
@@ -137,6 +161,7 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
       thead.append(hr);
       const tbody = el("tbody");
       for (const row of sec.table.rows) {
+        if (row.some((cell) => hasToken(fill(cell)))) continue; // a row whose figure is missing is left out
         const tr = el("tr");
         row.forEach((cell, i) => {
           const c = i === 0 ? el("th", undefined, fill(cell)) : el("td", undefined, fill(cell));
@@ -158,7 +183,10 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
         s.append(wrap);
       }
     }
-    for (const p of sec.afterTable ?? []) s.append(el("p", undefined, fill(p)));
+    for (const p of sec.afterTable ?? []) {
+      const t = filled(p);
+      if (t !== null) s.append(el("p", undefined, t));
+    }
     main.append(s);
 
     const li = el("li");

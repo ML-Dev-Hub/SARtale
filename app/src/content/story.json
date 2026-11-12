@@ -33,7 +33,7 @@
         "body": [
           "Calm water acts like a mirror for radar. The beam bounces away from the satellite, so little comes back and the lake looks dark.",
           "Steep mountains can look dark too. Where a slope faces away from the satellite, the radar cannot see the ground behind the ridge, and that radar shadow is dark.",
-          "NISAR looks at the same ground from two directions on different passes, ascending and descending. A shadow falls on a different side of a ridge from each direction, but water stays dark from both. So we first mark shadow-prone pixels: dark in one direction's season median image but not in the other's. Then, in each pass, a dark pixel inside the lake zone counts as water unless it is shadow-prone.",
+          "NISAR looks at the same ground from two directions on different passes, ascending and descending. A shadow falls on a different side of a ridge from each direction, but water stays dark from both. So we first mark shadow-prone pixels: dark in one direction's season median image and seen, not dark, in the other's. Then, in each pass, a dark pixel inside the lake zone counts as water unless it is shadow-prone.",
           "The cost is that a lake whose shore lies in shadow loses some of its area in our count. How we know gives the thresholds."
         ]
       },

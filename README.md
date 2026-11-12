@@ -26,7 +26,7 @@ Both videos play on the [site](https://saeedahmad.me/SARtale/#videos) and in the
 
 ## Why
 
-Pakistan has more than 3,000 glacial lakes (UNDP GLOF-II), and SUPARCO tracks 131 of them as potentially dangerous, mostly with optical satellites. The lakes fill in summer, and summer brings cloud. SUPARCO's [2 July 2026 update](https://space4climate.gov.pk/glof-status-update/) says:
+Over 3,000 glacial lakes have developed in Gilgit-Baltistan and Khyber Pakhtunkhwa ([UNDP GLOF-II](https://www.undp.org/sites/g/files/zskgke326/files/2023-04/GLOF%20II%20Project%20%28Dec%202022%29_Project%20Brief_2023.pdf)), and SUPARCO tracks 131 of them as potentially dangerous, mostly with optical satellites. The lakes fill in summer, and summer brings cloud. SUPARCO's [2 July 2026 update](https://space4climate.gov.pk/glof-status-update/) says:
 
 > "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days."
 
@@ -34,7 +34,7 @@ Radar sees through cloud, day or night. From 17 June to 4 August 2026, while clo
 
 ## What it does
 
-- **Gives each watched lake one plain status:** Growing, Stable, Shrinking, Change not confirmed yet, Not seen this pass, Not observable, Not enough NISAR looks yet, or No lake now (a site, such as a drained ice-dammed lake's basin, with no lake in recent imagery, kept to watch for a lake forming). The site shows the current status of each.
+- **Gives each watched lake one plain status:** Growing, Stable, Shrinking, Change not confirmed yet, Not seen this pass, Not observable, Not enough NISAR looks yet, or No lake now (a site, such as a drained ice-dammed lake's basin, with no lake in recent imagery, kept to watch for a lake forming), which becomes Lake may be forming when a clear, snow-free Sentinel-2 view shows water there (the SARtale team then reviews the site to add it as a measured lake). The site shows the current status of each.
 - **Shows the evidence:** the latest radar picture with the water read from it, a chart and a table of every pass, and each pass left out, with the reason.
 - **Prints a one-page brief** per lake: dates, looks, noise and limits.
 - **Takes requests for new lakes through GitHub issues.** A visitor fills in the website's form, which opens a pre-filled "Add a lake" issue (a GitHub sign-in is needed). A workflow checks the point, counts the NISAR passes over it and comments; a team member adds the `accepted` label to start the rebuild, or closes the issue to reject it. See [Lake requests](docs/guide/lake-requests.html). The repository is private for now, so only collaborators can open request issues until it is made public.
@@ -45,7 +45,11 @@ Radar sees through cloud, day or night. From 17 June to 4 August 2026, while clo
 
 ![How SARtale works: six pipeline steps from NISAR passes to a status, the web app, and the lake request loop](media/workflow.jpg)
 
-For every lake and every NISAR pass, SARtale reads a 6 km window straight from NASA's archive. It marks pixels at least 3 dB darker than the window in both HH and HV, removes radar shadow by comparing the two viewing directions, and measures water inside the lake's zone. It then compares the result only with that lake's earlier passes on the same track: a change counts only if it beats twice the lake's own noise. For example, Attabad on 23 October 2026 held 2.08 km², a change of +0.25 km² against a noise of 0.52 km², so it reads **Stable**.
+For every lake and every NISAR pass, SARtale reads a 6 km window straight from NASA's archive. It marks pixels at least 3 dB darker than the window in both HH and HV, removes radar shadow by comparing the two viewing directions, and measures water inside the lake's zone. It then compares the result only with that lake's earlier passes on the same track: a change counts only if it beats twice the lake's own noise.
+
+<!-- worked-example:start -->
+For example, Attabad on 9 November 2026 held 2.64 km² on track 055A, a change of -0.09 km² against a noise of 0.12 km², so it reads **Stable** (from the lake data built 12 Nov 2026; the app shows the current numbers).
+<!-- worked-example:end -->
 
 The full method, with every constant, is in the [guide](docs/guide/method.html).
 

@@ -21,7 +21,7 @@ def make_lake(lid, lon=74.86, lat=36.33, role="watch"):
                 role=role, downstream=None, downstream_source=None)
 
 
-def write_pass(cache, lake, date, key, bright_db=0.0, dx=0, dy=0, crid="P05023", water_m=500.0):
+def write_pass(cache, lake, date, key, bright_db=0.0, dx=0, dy=0, crid="P05023", water_m=500.0, mask=None):
     """A window with a dark disc (water, radius `water_m`) at the lake point; dx/dy shift the window in pixels."""
     cx, cy = Transformer.from_crs(4326, EPSG, always_xy=True).transform(lake.lon, lake.lat)
     x = cx - (N // 2) * PX + (np.arange(N) + dx) * PX
@@ -34,7 +34,7 @@ def write_pass(cache, lake, date, key, bright_db=0.0, dx=0, dy=0, crid="P05023",
     d = Path(cache) / lake.id
     d.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(d / f"{date}_{key}_{crid}.npz", hh=hh, hv=hv, looks=np.ones((N, N)),
-                        mask=np.ones((N, N), np.uint8), x=x, y=y, epsg=EPSG)
+                        mask=np.ones((N, N), np.uint8) if mask is None else mask, x=x, y=y, epsg=EPSG)
 
 
 @pytest.fixture
@@ -96,6 +96,10 @@ def test_build_lists_excluded_passes_with_reason(built):
     assert [e["pass"] for e in beta["excluded"]] == ["2026-07-12_055A"]
     assert "dB" in beta["excluded"][0]["reason"]
     assert any(p["excluded"] and p["area_km2"] is None for p in beta["series"])
+    # C07: the left-out pass keeps what it read for the chart marker; used passes carry no diagnostic value
+    out = next(p for p in beta["series"] if p["excluded"])
+    assert isinstance(out["diagnostic_km2"], float) and out["diagnostic_km2"] >= 0
+    assert all("diagnostic_km2" not in p for p in beta["series"] if not p["excluded"])
     assert "single viewing direction" in beta["limits"]
 
 
@@ -331,7 +335,10 @@ def test_a_no_lake_site_keeps_its_passes_but_gets_no_verdict_and_no_water_layer(
     assert (st["change_km2"], st["noise_km2"]) == (None, None)
     assert (st["track"], st["latest_date"], st["looks"]) == ("156A", "2026-07-24", 4)
     assert st["reason"] == ("No lake in recent imagery: Sentinel-2 shows a dry basin on 17 Aug 2026. "
-                            "SARtale keeps the site to watch for a lake forming.")
+                            "SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only "
+                            "views where the lake zone is clear of cloud, snow and ice; the status changes only when two "
+                            "such views at least 5 days apart agree.")
+    assert lk["absence_checked"] is None
     assert lk["lake_state"] == "no_lake" and lk["lake_state_source"] == src
     assert lk["area_label"] == NO_LAKE_LABEL
     assert len(lk["series"]) == 4 and lk["cloud_window_looks"] == 4  # passes are still read and counted
@@ -369,3 +376,138 @@ def test_a_smaller_zone_radius_measures_a_smaller_circle(tmp_path):
     # the 900 m water disc fills the whole 300 m circle: about pi * 0.3^2 km2
     assert b["series"][0]["area_km2"] == pytest.approx(3.14159 * 0.09, rel=0.1)
     assert 2.0 < a["series"][0]["area_km2"] < 2.8  # the 900 m disc inside the 1 km circle
+
+
+def test_a_window_cached_under_the_old_mask_rule_is_masked_again(tmp_path):
+    """C01: a cached production window whose clip holds only mask 0 (the old rule kept those samples finite) is
+    read as having no valid sample, so the pass is excluded and counts no area."""
+    cache, out = tmp_path / "cache", tmp_path / "out"
+    a = make_lake("alpha")
+    dates = ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24"]
+    for d in dates:
+        write_pass(cache, a, d, "156A")
+    write_pass(cache, a, "2026-08-05", "156A", mask=np.zeros((N, N), np.uint8))
+    doc = build_lakes([a], cache, out, "2026-11-02T00:00:00Z")
+    row = next(p for p in lake(doc, "alpha")["series"] if p["date"] == "2026-08-05")
+    assert row["area_km2"] is None and row["observable_share"] == 0.0
+    assert row["excluded"] == "window has no valid HH pixels"
+
+
+def _no_lake_site(tmp_path):
+    from dataclasses import replace
+    cache = tmp_path / "cache"
+    base = make_lake("basin")
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24", "2026-09-04"]:
+        write_pass(cache, base, d, "156A")
+    return cache, replace(base, lake_state="no_lake", lake_state_source="a dry basin")
+
+
+def _ev(lake, **extra):
+    """Absence evidence of `lake` under the current rule (rule, zone key, threshold, state), dry unless `extra` says
+    otherwise."""
+    from sartale.lakebuild import absence_zone, forming_share
+    from sartale.lakecheck import ABSENCE_RULE
+    return {"date": "2026-08-17", "s2_id": "S2_DRY", "water_share": 0.002, "water_km2": 0.006,
+            "zone_valid_share": 1.0, "snow_share": 0.0, "forming": False, "pending_scene": None, "confirmed": None,
+            "threshold": forming_share(lake), "checked": "2026-08-20", "searched": "2026-08-20",
+            "no_view_since": False, "rule": ABSENCE_RULE, "source": "Sentinel-2", "zone": absence_zone(lake), **extra}
+
+
+def _wet(lake):
+    pair = [{"date": "2026-08-25", "s2_id": "S2_WET0", "water_share": 0.06},
+            {"date": "2026-09-01", "s2_id": "S2_WET", "water_share": 0.05}]
+    return _ev(lake, date="2026-09-01", s2_id="S2_WET", water_share=0.05, water_km2=0.157, forming=True,
+               confirmed=pair)
+
+
+EV_WET = {"date": "2026-09-01", "s2_id": "S2_WET", "water_share": 0.05, "water_km2": 0.157, "snow_share": 0.0}
+
+
+def test_a_no_lake_site_carries_its_last_absence_check_from_the_previous_build(tmp_path):
+    from dataclasses import replace
+
+    from sartale.lakestatus import NO_LAKE
+    cache, gone = _no_lake_site(tmp_path)
+    first = build_lakes([gone], cache, tmp_path / "out", "t")
+    first["lakes"][0]["absence_checked"] = _ev(gone)
+    again = build_lakes([gone], cache, tmp_path / "out", "t", previous=first)["lakes"][0]
+    assert again["absence_checked"] == _ev(gone) and again["status"]["status"] == NO_LAKE
+    assert "Last checked 17 Aug 2026" in again["status"]["reason"]
+    # a moved point or a new radius starts again with no evidence
+    for changed in (replace(gone, lon=gone.lon + 0.001), replace(gone, zone_radius_km=0.5)):
+        assert build_lakes([changed], cache, tmp_path / "out", "t", previous=first)["lakes"][0]["absence_checked"] is None
+    # evidence made under another rule (round 1 had no cloud-edge buffer and no persistence), or for another
+    # threshold, is not carried: its state was worked out with them
+    for other in (_ev(gone, rule="older rule"), {k: v for k, v in _ev(gone).items() if k != "rule"},
+                  _ev(gone, threshold=0.1)):
+        first["lakes"][0]["absence_checked"] = other
+        assert build_lakes([gone], cache, tmp_path / "out", "t", previous=first)["lakes"][0]["absence_checked"] is None
+
+
+def test_m7_an_outline_site_keeps_its_evidence_and_a_changed_outline_resets_it(tmp_path):
+    """M7: an outline site's lakes.json entry has zone_radius_km None; the evidence carries the zone key (outline path
+    and file hash) instead, so it is kept from build to build, and dropped when the outline file changes."""
+    from dataclasses import replace
+
+    from sartale.lakebuild import absence_zone, carried_absence
+    cache, gone = _no_lake_site(tmp_path)
+    d = 0.004
+    ring = [[gone.lon + sx * d, gone.lat + sy * d] for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))]
+    poly = tmp_path / "basin.geojson"
+    poly.write_text(json.dumps({"type": "Polygon", "coordinates": [ring]}), encoding="utf-8")
+    outlined = replace(gone, outline=str(poly))
+    zone = absence_zone(outlined)
+    assert zone["outline"] == str(poly) and len(zone["outline_sha256"]) == 64 and "radius_km" not in zone
+    first = build_lakes([outlined], cache, tmp_path / "out", "t")
+    assert first["lakes"][0]["zone_radius_km"] is None
+    first["lakes"][0]["absence_checked"] = _ev(outlined)
+    kept = build_lakes([outlined], cache, tmp_path / "out", "t", previous=first)["lakes"][0]
+    assert kept["absence_checked"] == _ev(outlined)
+    assert carried_absence(first, outlined) == _ev(outlined)
+    # the same path with other contents: a new zone, no evidence
+    ring2 = [[x + 0.001, y] for x, y in ring]
+    poly.write_text(json.dumps({"type": "Polygon", "coordinates": [ring2]}), encoding="utf-8")
+    assert carried_absence(first, outlined) is None
+    assert build_lakes([outlined], cache, tmp_path / "out", "t", previous=first)["lakes"][0]["absence_checked"] is None
+    # nor does the circle's evidence carry to the outline, or back
+    first["lakes"][0]["absence_checked"] = _ev(gone)
+    assert carried_absence(first, outlined) is None
+
+
+def test_water_in_the_absence_check_turns_no_lake_now_into_lake_may_be_forming(tmp_path):
+    from sartale.lakebuild import FORMING_LABEL, FORMING_STATE, apply_absence
+    from sartale.lakestatus import LAKE_FORMING, NO_LAKE
+    cache, gone = _no_lake_site(tmp_path)
+    out = tmp_path / "out"
+    doc = build_lakes([gone], cache, out, "t")
+    entry = apply_absence(doc["lakes"][0], _wet(gone))
+    assert entry["lake_state"] == FORMING_STATE and entry["status"]["status"] == LAKE_FORMING
+    assert entry["area_label"] == FORMING_LABEL and entry["absence_checked"] == _wet(gone)
+    assert entry["status"]["change_km2"] is None
+    # the next build keeps the water layer once the pictured pass is no older than the wet scene
+    doc["lakes"][0] = entry
+    rebuilt = build_lakes([gone], cache, out, "t", previous=doc)["lakes"][0]
+    assert rebuilt["status"]["status"] == LAKE_FORMING and rebuilt["images"]["water"]
+    assert "Two clear, snow-free Sentinel-2 scenes at least 5 days apart" in rebuilt["status"]["reason"]
+    # one dry scene does not end it: still forming, and the reason says the next scene is being checked
+    one_dry = _wet(gone) | {"pending_scene": {"date": "2026-09-10", "s2_id": "S2_DRY1", "water_share": 0.01}}
+    still = apply_absence(rebuilt, one_dry)
+    assert still["status"]["status"] == LAKE_FORMING
+    assert "below this site's 4.0% level; SARtale is checking the next clear" in still["status"]["reason"]
+    # two dry scenes did: back to no lake now
+    back = apply_absence(rebuilt, _ev(gone))
+    assert back["lake_state"] == "no_lake" and back["status"]["status"] == NO_LAKE
+    # a single wet scene leaves it at no lake now, and says one scene is waiting for a second
+    pending = _ev(gone, water_share=0.07, pending_scene={"date": "2026-08-17", "s2_id": "S2_DRY", "water_share": 0.07})
+    one = apply_absence(rebuilt, pending)
+    assert one["lake_state"] == "no_lake" and one["status"]["status"] == NO_LAKE
+    assert ("One recent clear scene (17 Aug 2026, S2_DRY) showed water on 7.0% of the lake zone, above this site's "
+            "4.0% level; SARtale is checking the next clear, snow-free scene before saying a lake may be forming."
+            ) in one["status"]["reason"]
+
+
+def test_apply_absence_leaves_lakes_alone(built):
+    from sartale.lakebuild import apply_absence
+    doc, _ = built
+    lk = doc["lakes"][0]
+    assert apply_absence(lk, EV_WET) is lk

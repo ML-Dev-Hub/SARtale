@@ -49,6 +49,12 @@ describe("How we know", () => {
     expect(root.querySelector(".evidence-title")!.textContent).toBe("How we know");
   });
 
+  test("C10: without lake data no raw {token} is shown, and the page says why figures are missing", () => {
+    const { root } = open(null);
+    expect(root.textContent).not.toMatch(/\{\w+\}/);
+    expect(root.querySelector('[data-role="evidence-nodata"]')?.textContent).toContain("No lake data in this build");
+  });
+
   test("a build with two processing versions names both, and says which part is provisional", () => {
     const text = open({ ...realLakes, crid: "P05023, P05036" }).text;
     expect(text).toContain("this build uses processing versions P05023 and P05036");
@@ -84,7 +90,7 @@ describe("How we know", () => {
 
   test("states the two-view rule, the search circle and the data file's own note", () => {
     const { text } = withLakes();
-    expect(text).toMatch(/dark in one viewing direction's season median image \(ascending or descending\) but not in the other's/);
+    expect(text).toMatch(/dark in one viewing direction's season median image \(ascending or descending\) but seen and not dark in the other's/);
     expect(text).toContain("inside the lake zone, not shadow-prone, and valid");
     expect(text).toMatch(/robust z-score above 3\.5/);
     expect(text).toMatch(/that is radar shadow, not water/);

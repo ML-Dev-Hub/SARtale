@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { fixtureLakes } from "./fixtures";
-import { cloudHeadline, lakeTokens, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
+import realLakes from "../public/data/lakes.json";
+import frozenLakes from "./frozen/lakes.json";
+import { droppedLine, isLake, isLakesFile } from "./lakes";
+import { absenceLine, cloudHeadline, hasLakeNow, lakeTokens, mayBeForming, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -20,7 +23,53 @@ describe("loadLakes", () => {
   test("asks the server each time, so a weekly update shows on the next load", async () => {
     const fetchFn = vi.fn(async () => new Response(JSON.stringify(fixtureLakes))) as unknown as typeof fetch;
     await loadLakes("data/lakes.json", fetchFn);
-    expect(fetchFn).toHaveBeenCalledWith("data/lakes.json", { cache: "no-cache" });
+    expect(fetchFn).toHaveBeenCalledWith("data/lakes.json", expect.objectContaining({ cache: "no-cache" }));
+  });
+
+  test("R01: gives up after the timeout instead of waiting forever", async () => {
+    const stall = vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((_, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    })) as unknown as typeof fetch;
+    expect(await loadLakes("data/lakes.json", stall, 20)).toBeNull();
+  });
+
+  test("C09: a file whose shape the views cannot draw takes the no-data path", async () => {
+    const bad = [
+      { lakes: [{ id: "x", status: {} }], checks: [] },
+      { ...fixtureLakes, constants: { ...fixtureLakes.constants, change_factor: "2" } },
+      { ...fixtureLakes, cloud_window: ["2026-06-17"] },
+      { ...fixtureLakes, lakes: "x" },
+      { ...fixtureLakes, checks: null },
+    ];
+    for (const b of bad) {
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => b })));
+      expect(await loadLakes("data/lakes.json"), JSON.stringify(b).slice(0, 80)).toBeNull();
+    }
+  });
+
+  test("M6: a lake the page cannot read is dropped and named; the other lakes stay", async () => {
+    const [first, ...rest] = fixtureLakes.lakes;
+    const cases = [
+      { ...first, status: { ...first.status, status: "Alert level 2" } }, // a status from a newer pipeline
+      { ...first, lon: null },
+      { ...first, series: [{ date: "x", track: "1A" }] },
+    ];
+    for (const broken of cases) {
+      const file = { ...fixtureLakes, lakes: [broken, ...rest] };
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => file })));
+      const out = await loadLakes("data/lakes.json");
+      expect(out, JSON.stringify(broken).slice(0, 80)).not.toBeNull();
+      expect(out!.lakes.map((l) => l.id)).toEqual(rest.map((l) => l.id));
+      expect(out!.dropped_lakes).toEqual([first.name]);
+      expect(droppedLine(out!)).toBe(`1 site in the data (${first.name}) could not be shown by this version of the page. Reload the page to see it.`);
+    }
+  });
+
+  test("C09: the shipped and the frozen lakes.json pass the check, every lake included", () => {
+    expect(isLakesFile(realLakes)).toBe(true);
+    expect(isLakesFile(frozenLakes)).toBe(true);
+    expect(realLakes.lakes.every(isLake)).toBe(true);
+    expect(frozenLakes.lakes.every(isLake)).toBe(true);
   });
 
   test("test_loadLakes_returns_null_on_404", async () => {
@@ -55,7 +104,7 @@ describe("sortLakes", () => {
   });
   test("status order is the documented one", () => {
     expect(STATUS_ORDER).toEqual([
-      "Growing", "Shrinking", "Change not confirmed yet", "Not seen this pass", "Stable", "Not enough NISAR looks yet", "Not observable", "No lake now",
+      "Lake may be forming", "Growing", "Shrinking", "Change not confirmed yet", "Not seen this pass", "Stable", "Not enough NISAR looks yet", "Not observable", "No lake now",
     ]);
   });
   test("does not mutate its input", () => {
@@ -156,6 +205,24 @@ describe("sites with no lake now", () => {
     expect(t.watch_list).toBe("6 lakes and 1 site with no lake now");
     expect(watchList(fixtureLakes)).toBe("7 lakes");
     expect(cloudHeadline(f)).toContain("NISAR made 42 valid looks across 6 lakes.");
+  });
+
+  test("carry the dated Sentinel-2 check, and water in it makes a site where a lake may be forming", () => {
+    const f = file();
+    const hidden = f.lakes.find((l) => l.id === "hidden")!;
+    const dry = { ...hidden, absence_checked: { date: "2026-08-17", s2_id: "S2B_X", water_share: 0.0004, water_km2: 0.001, zone_valid_share: 1, checked: "2026-11-11" } };
+    expect(absenceLine(dry)).toBe("Last checked 17 Aug 2026 with Sentinel-2 (S2B_X): water on 0.04% of the lake zone.");
+    expect(absenceLine({ ...hidden, absence_checked: null })).toBeNull();
+    // I1/I2: no clear, snow-free view since: said, so an old view never reads as a recent check
+    const stale = { ...hidden, absence_checked: { ...dry.absence_checked, snow_share: 0, searched: "2026-11-12", no_view_since: true } };
+    expect(absenceLine(stale)).toBe("Last checked 17 Aug 2026 with Sentinel-2 (S2B_X): water on 0.04% of the lake zone; no clear, snow-free Sentinel-2 view of the zone since (searched to 12 Nov 2026).");
+    const wet = { ...dry, lake_state: "lake_forming_check" as const, status: { ...hidden.status, status: "Lake may be forming" as const } };
+    expect(hasLakeNow(wet) || !mayBeForming(wet)).toBe(false);
+    const g = { ...f, lakes: f.lakes.map((l) => (l.id === "hidden" ? wet : l)) };
+    expect(watchList(g)).toBe("6 lakes and 1 site where a lake may be forming");
+    expect(sortLakes(g.lakes)[0].id).toBe("hidden");
+    const both = { ...g, lakes: [...g.lakes, { ...dry, id: "dry" }] };
+    expect(watchList(both)).toBe("6 lakes, 1 site with no lake now and 1 site where a lake may be forming");
   });
 
   test("sort after every other status", () => {

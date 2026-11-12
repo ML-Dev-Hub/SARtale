@@ -4,6 +4,8 @@ Per-pass water (ruling R2) is: dark in this pass, inside the lake zone, not shad
 Shadow-prone pixels come from each track's season-median image: dark in one viewing direction
 but not in the opposite one (radar shadow, not water).
 """
+import warnings
+
 import numpy as np
 from pyproj import Transformer
 from rasterio.features import geometry_mask
@@ -43,10 +45,12 @@ def screen_passes(hh_db_by_pass: dict[str, np.ndarray]) -> dict[str, str]:
 
     Returns excluded pass id -> reason. A badly calibrated pass (e.g. +25 dB) is never read as change.
     """
-    medians = {k: float(np.nanmedian(v)) for k, v in hh_db_by_pass.items()}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)  # a window with no valid pixel has a NaN median
+        medians = {k: float(np.nanmedian(v)) for k, v in hh_db_by_pass.items()}
     finite = [m for m in medians.values() if np.isfinite(m)]
-    if not finite:
-        return {}
+    if not finite:  # no pass of the track has a valid pixel (e.g. the window lies in mask-0 coverage)
+        return {k: "window has no valid HH pixels" for k in medians}
     track_median = float(np.median(finite))
     excluded = {}
     for k, m in medians.items():
@@ -119,19 +123,29 @@ def dark_mask(hh_db: np.ndarray, hv_db: np.ndarray, drop_db: float = DROP_DB) ->
     return dark, valid
 
 
-def shadow_prone(median_dark_by_track: dict[str, np.ndarray], directions: dict[str, str]) -> np.ndarray | None:
-    """Pixels dark in some view's median but not dark in any view of the opposite direction.
+def shadow_prone(median_dark_by_track: dict[str, np.ndarray], directions: dict[str, str],
+                 median_valid_by_track: dict[str, np.ndarray] | None = None) -> np.ndarray | None:
+    """Pixels dark in some view's median and seen, valid and not dark, in the opposite direction.
 
-    Returns None when only one viewing direction exists (the lake is "single viewing direction").
+    A pixel the opposite direction never measured (NaN, outside its swath) is not shadow: missing coverage is no
+    evidence of anything, so it keeps whatever the view that does see it says. `median_valid_by_track` gives each
+    track's valid median pixels (default: every pixel valid). Returns None when only one viewing direction exists
+    (the lake is "single viewing direction").
     """
-    by_dir: dict[str, np.ndarray] = {}
+    dark_by: dict[str, np.ndarray] = {}
+    valid_by: dict[str, np.ndarray] = {}
     for track, dark in median_dark_by_track.items():
         d = directions[track]
-        by_dir[d] = by_dir[d] | dark if d in by_dir else dark.copy()
-    if len(by_dir) < 2:
+        valid = (np.ones(dark.shape, bool) if median_valid_by_track is None
+                 else np.asarray(median_valid_by_track[track], bool))
+        dark_by[d] = dark_by[d] | dark if d in dark_by else dark.copy()
+        valid_by[d] = valid_by[d] | valid if d in valid_by else valid.copy()
+    if len(dark_by) < 2:
         return None
-    asc, desc = by_dir["A"], by_dir["D"]
-    return (asc & ~desc) | (desc & ~asc)
+    asc, desc = dark_by["A"], dark_by["D"]
+    seen_light_asc = valid_by["A"] & ~asc
+    seen_light_desc = valid_by["D"] & ~desc
+    return (asc & seen_light_desc) | (desc & seen_light_asc)
 
 
 def _ring(outline_polygon) -> list:
@@ -163,6 +177,15 @@ def lake_zone(shape, x, y, epsg, lake: Lake, outline_polygon=None, half_km: floa
     transform = Affine(dx, 0, x[0] - dx / 2, 0, dy, y[0] - dy / 2)
     poly = {"type": "Polygon", "coordinates": [ring]}
     inside = geometry_mask([poly], out_shape=tuple(shape), transform=transform, invert=True)
+    if not inside.any():
+        # An outline narrower than a pixel can hold no pixel centre and still lie on the grid: take every pixel it
+        # touches instead (the 200 m buffer below dwarfs the difference).
+        inside = geometry_mask([poly], out_shape=tuple(shape), transform=transform, invert=True, all_touched=True)
+    if not inside.any():
+        # With no outline pixel on the grid the distance transform measures from nothing and draws a phantom zone
+        # in a corner. An outline that misses the window (an old outline after the point moved) is an error.
+        raise ValueError(f"{lake.id}: the outline does not cover any pixel of the radar window; check that the "
+                         "outline belongs to the lake point")
     dist = distance_transform_edt(~inside, sampling=(abs(dy), abs(dx)))
     return dist <= OUTLINE_BUFFER_M
 
@@ -178,8 +201,10 @@ def outline_window_share(x, y, epsg, outline_polygon) -> float:
     if area == 0:
         return 0.0
     transform = Affine(dx, 0, x[0] - dx / 2, 0, dy, y[0] - dy / 2)
-    inside = geometry_mask([{"type": "Polygon", "coordinates": [ring]}], out_shape=(len(y), len(x)),
-                           transform=transform, invert=True)
+    poly = {"type": "Polygon", "coordinates": [ring]}
+    inside = geometry_mask([poly], out_shape=(len(y), len(x)), transform=transform, invert=True)
+    if not inside.any():  # narrower than a pixel: as lake_zone, count the pixels it touches
+        inside = geometry_mask([poly], out_shape=(len(y), len(x)), transform=transform, invert=True, all_touched=True)
     return min(1.0, float(inside.sum()) * abs(dx * dy) / area)
 
 

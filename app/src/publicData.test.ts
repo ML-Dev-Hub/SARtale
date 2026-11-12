@@ -2,7 +2,8 @@ import { describe, expect, test } from "vitest";
 import lakesJson from "../public/data/lakes.json";
 import { findBannedClaims } from "./content";
 import { MATURITY } from "./app";
-import type { LakesFile } from "./lakes";
+import { hasLakeNow, type LakesFile } from "./lakes";
+import { lakeChartData } from "./lakeWatchView";
 
 const lakes = lakesJson as unknown as LakesFile;
 // Paths relative to app/public/data, listed by Vite so no Node typings are needed.
@@ -36,5 +37,16 @@ describe("the data the app ships (app/public/data)", () => {
 
   test("has no banned claims", () => {
     expect(findBannedClaims(JSON.stringify(lakesJson))).toEqual([]);
+  });
+
+  test("T01: every left-out pass the pipeline measured becomes a hollow chart marker; none enters a trend", () => {
+    for (const l of lakes.lakes) {
+      for (const p of l.series.filter((q) => q.excluded !== null)) expect(p.area_km2, `${l.id} ${p.date}`).toBeNull();
+      if (!hasLakeNow(l)) continue; // no chart at a site with no lake now
+      // one marker column per date (two left-out passes on one date share it)
+      const marked = new Set(l.series.filter((p) => p.excluded !== null && typeof p.diagnostic_km2 === "number").map((p) => p.date)).size;
+      const markers = lakeChartData(l, lakes.constants.min_observable).series.find((s) => s.excluded);
+      expect(markers?.values.filter((v) => v !== null).length ?? 0, l.id).toBe(marked);
+    }
   });
 });

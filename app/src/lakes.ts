@@ -8,10 +8,49 @@ export type LakeStatusName =
   | "Not seen this pass"
   | "Not observable"
   | "Not enough NISAR looks yet"
-  | "No lake now";
+  | "No lake now"
+  | "Lake may be forming";
 
-/** What recent imagery shows at a site: a lake, a dark area not confirmed as a lake, or no lake now (absent in older builds: a lake). */
-export type LakeState = "lake" | "unconfirmed" | "no_lake";
+/**
+ * What recent imagery shows at a site: a lake, a dark area not confirmed as a lake, no lake now, or (at a site with no
+ * lake) water in the latest Sentinel-2 check, so a lake may be forming. Absent in older builds: a lake.
+ */
+export type LakeState = "lake" | "unconfirmed" | "no_lake" | "lake_forming_check";
+
+/**
+ * The dated Sentinel-2 check of a site with no lake now: the newest scene whose lake zone was clear of cloud, snow and
+ * ice, and how much of the zone held water.
+ */
+export interface AbsenceCheck {
+  /** Date of the Sentinel-2 scene. */
+  date: string;
+  s2_id: string;
+  /** Share of the lake zone's clear pixels that were water, 0 to 1. */
+  water_share: number;
+  water_km2: number;
+  /** Share of the zone seen clear of cloud, shadow, snow and ice. */
+  zone_valid_share: number;
+  /** Share of the zone under snow or ice (absent in older builds). */
+  snow_share?: number;
+  /** The run that found the scene. */
+  checked: string;
+  /** The last run that searched (absent in older builds). */
+  searched?: string;
+  /** True when no clear, snow-free scene has come for over a week since `date` (absent in older builds). */
+  no_view_since?: boolean;
+  /** The site's state: two qualifying scenes at least 5 days apart above `threshold` set it (absent in older builds). */
+  forming?: boolean;
+  /** One scene on the other side of the threshold, waiting for a second before the state changes. */
+  pending_scene?: { date: string; s2_id: string; water_share: number } | null;
+  /** The two scenes that set the current state. */
+  confirmed?: { date: string; s2_id: string; water_share: number }[] | null;
+  /** The site's forming share the state was worked out with. */
+  threshold?: number;
+  rule?: string;
+  /** Older builds only: the open-water season the check was limited to. */
+  season?: string;
+  source?: string;
+}
 
 export interface LakeStatus {
   status: LakeStatusName;
@@ -33,6 +72,11 @@ export interface LakeSeriesPoint {
   excluded: string | null;
   /** NISAR processing version (composite release ID) of the pass, e.g. "P05036" (absent in older builds). */
   crid?: string;
+  /**
+   * For a pass left out of the trend: the area it read, so the chart can mark it (area_km2 is null for such a pass).
+   * Null when the pass had no valid pixel in the zone; absent on passes that were used and in older builds.
+   */
+  diagnostic_km2?: number | null;
 }
 
 export interface Lake {
@@ -48,6 +92,8 @@ export interface Lake {
   lake_state?: LakeState;
   /** What shows the lake state and when; set unless lake_state is "lake". */
   lake_state_source?: string | null;
+  /** For a site with no lake now: the last Sentinel-2 check (absent in older builds; null before the first check). */
+  absence_checked?: AbsenceCheck | null;
   downstream: string | null;
   downstream_source: string | null;
   status: LakeStatus;
@@ -137,9 +183,12 @@ export interface LakesFile {
   checks: LakeCheck[];
   /** Check rows without measurements; filled by splitChecks. */
   check_notes?: LakeCheckNote[];
+  /** Names of the sites the file lists but this version of the page cannot show; filled by keepValidLakes. */
+  dropped_lakes?: string[];
 }
 
 export const STATUS_ORDER: LakeStatusName[] = [
+  "Lake may be forming",
   "Growing",
   "Shrinking",
   "Change not confirmed yet",
@@ -155,9 +204,35 @@ export function lakeState(l: Lake): LakeState {
   return l.lake_state ?? "lake";
 }
 
-/** True unless recent imagery shows no lake at the site (an empty ice-dammed basin kept to watch for a lake forming). */
+/**
+ * True for a site that holds a lake now (confirmed or not). False for an empty basin kept to watch for a lake forming,
+ * and for one where Sentinel-2 has just shown water: that may be a lake forming, but it is not a measured lake until
+ * the SARtale team reviews the site and adds it.
+ */
 export function hasLakeNow(l: Lake): boolean {
-  return lakeState(l) !== "no_lake";
+  const s = lakeState(l);
+  return s !== "no_lake" && s !== "lake_forming_check";
+}
+
+/** True for a site with no lake now where the latest Sentinel-2 check found water. */
+export function mayBeForming(l: Lake): boolean {
+  return lakeState(l) === "lake_forming_check";
+}
+
+/**
+ * "Last checked 17 Aug 2026 with Sentinel-2 (scene): water on 0.04% of the lake zone.", or null without a check. When no
+ * clear, snow-free scene has come since, it says so (the pipeline's lakestatus.absence_sentence, word for word).
+ */
+export function absenceLine(l: Lake): string | null {
+  const a = l.absence_checked;
+  if (!a) return null;
+  const pct = a.water_share * 100;
+  const shown = pct === 0 ? "0%" : pct < 1 ? `${pct.toFixed(2)}%` : `${pct.toFixed(1)}%`;
+  const searched = a.searched ?? a.checked;
+  const since = a.no_view_since
+    ? `; no clear, snow-free Sentinel-2 view of the zone since${searched ? ` (searched to ${formatDate(searched)})` : ""}`
+    : "";
+  return `Last checked ${formatDate(a.date)} with Sentinel-2 (${a.s2_id}): water on ${shown} of the lake zone${since}.`;
 }
 
 /** The sites that hold a lake now: what the lake counts and the cloud-window looks are made of. */
@@ -175,32 +250,109 @@ export function cloudLakes(file: LakesFile): number {
   return lakesNow(file).filter((l) => l.cloud_window_looks > 0).length;
 }
 
-/** "7 lakes", or "5 lakes and 2 sites with no lake now" when the list keeps empty basins. */
+/**
+ * "7 lakes", or "5 lakes and 2 sites with no lake now" when the list keeps empty basins, with "1 site where a lake may
+ * be forming" when a check found water at one.
+ */
 export function watchList(file: LakesFile): string {
   const lakes = lakesNow(file).length;
-  const empty = file.lakes.length - lakes;
-  const head = `${lakes} ${lakes === 1 ? "lake" : "lakes"}`;
-  return empty ? `${head} and ${empty} ${empty === 1 ? "site" : "sites"} with no lake now` : head;
+  const forming = file.lakes.filter(mayBeForming).length;
+  const empty = file.lakes.length - lakes - forming;
+  const sites = (n: number) => `${n} ${n === 1 ? "site" : "sites"}`;
+  const parts = [`${lakes} ${lakes === 1 ? "lake" : "lakes"}`];
+  if (empty) parts.push(`${sites(empty)} with no lake now`);
+  if (forming) parts.push(`${sites(forming)} where a lake may be forming`);
+  return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
 
-function isLakesFile(v: unknown): v is LakesFile {
-  const f = v as LakesFile;
-  return !!f && Array.isArray(f.lakes) && Array.isArray(f.checks) && f.lakes.every((l) => !!l && typeof l.id === "string" && !!l.status);
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const isStr = (v: unknown): v is string => typeof v === "string";
+const isNumOrNull = (v: unknown): boolean => v === null || isNum(v);
+const isStrOrNull = (v: unknown): boolean => v === null || isStr(v);
+const isIso = (v: unknown): boolean => isStr(v) && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
+function isPoint(p: unknown): boolean {
+  return isObj(p) && isIso(p.date) && isStr(p.track) && isNumOrNull(p.area_km2)
+    && (p.observable_share === null || isNum(p.observable_share)) && isStrOrNull(p.excluded)
+    && (p.diagnostic_km2 === undefined || isNumOrNull(p.diagnostic_km2));
+}
+
+function isStatus(s: unknown): boolean {
+  return isObj(s) && STATUS_ORDER.includes(s.status as LakeStatusName) && isStrOrNull(s.track)
+    && (s.latest_date === null || isIso(s.latest_date)) && isNum(s.looks) && isNumOrNull(s.change_km2)
+    && isNumOrNull(s.noise_km2) && isStr(s.reason);
+}
+
+/** True for a lake entry with every field the views read (and a status this version of the page knows). */
+export function isLake(l: unknown): boolean {
+  if (!isObj(l)) return false;
+  const images = l.images;
+  const bounds = l.bounds;
+  return isStr(l.id) && isStr(l.name) && isNum(l.lon) && isNum(l.lat) && ["watch", "control", "story"].includes(l.role as string)
+    && isStr(l.coord_source) && isStr(l.area_label) && isStatus(l.status) && isNum(l.cloud_window_looks)
+    && Array.isArray(l.directions) && Array.isArray(l.limits) && l.limits.every(isStr)
+    && Array.isArray(l.series) && l.series.every(isPoint)
+    && Array.isArray(l.excluded) && l.excluded.every((x) => isObj(x) && isStr(x.pass) && isStr(x.reason))
+    && (images === null || (isObj(images) && isStrOrNull(images.latest_hh ?? null) && isStrOrNull(images.water ?? null)))
+    && (bounds === null || (Array.isArray(bounds) && bounds.length === 4 && bounds.every(isNum)));
 }
 
 /**
- * Loads data/lakes.json. Returns null if it is absent or unusable; Lake Watch then says "No lake data in this build".
- * `no-cache` makes the browser check with the server every time (a cheap ETag check), so a weekly data update shows
- * up on the next load instead of after the browser's cache runs out.
+ * True when `v` has the file-level parts of lakes.json the views read, with finite numbers where they compute: version,
+ * build time, notes, processing versions, cloud window, the method constants, and a list of lakes and of checks. A file
+ * without them takes the "no lake data" path instead of breaking the whole page while it draws. Each lake is checked on
+ * its own (`keepValidLakes`), so one entry this page cannot read (say a status from a newer pipeline) drops that lake
+ * only.
  */
-export async function loadLakes(url: string, fetchFn: typeof fetch = (...a) => fetch(...a)): Promise<LakesFile | null> {
+export function isLakesFile(v: unknown): v is LakesFile {
+  if (!isObj(v)) return false;
+  const c = v.constants;
+  const w = v.cloud_window;
+  return isNum(v.version) && isStr(v.built) && isStr(v.notes) && isStr(v.crid)
+    && Array.isArray(w) && w.length === 2 && w.every(isIso)
+    && isObj(c) && ["drop_db", "min_looks", "min_observable", "noise_floor_km2", "change_factor", "speckle_box"].every((k) => isNum(c[k]))
+    && Array.isArray(v.lakes) && Array.isArray(v.checks);
+}
+
+/** Keeps the lakes the views can draw and lists the others by name (or id) in `dropped_lakes`. */
+export function keepValidLakes(f: LakesFile): LakesFile {
+  const all = f.lakes as unknown[];
+  const kept = all.filter(isLake) as Lake[];
+  const dropped = all
+    .filter((l) => !isLake(l))
+    .map((l, i) => {
+      const o = isObj(l) ? l : {};
+      return isStr(o.name) ? o.name : isStr(o.id) ? o.id : `entry ${i + 1}`;
+    });
+  return dropped.length ? { ...f, lakes: kept, dropped_lakes: dropped } : { ...f, lakes: kept };
+}
+
+/** "1 site in the data could not be shown ...", or null when nothing was dropped. */
+export function droppedLine(f: LakesFile): string | null {
+  const n = f.dropped_lakes?.length ?? 0;
+  if (!n) return null;
+  const which = f.dropped_lakes!.join(", ");
+  return `${n} ${n === 1 ? "site" : "sites"} in the data (${which}) could not be shown by this version of the page. Reload the page to see ${n === 1 ? "it" : "them"}.`;
+}
+
+/**
+ * Loads data/lakes.json. Returns null if it is absent, unusable or slower than `timeoutMs`; Lake Watch then says "No
+ * lake data in this build". `no-cache` makes the browser check with the server every time (a cheap ETag check), so a
+ * weekly data update shows up on the next load instead of after the browser's cache runs out.
+ */
+export async function loadLakes(url: string, fetchFn: typeof fetch = (...a) => fetch(...a), timeoutMs = 20_000): Promise<LakesFile | null> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const res = await fetchFn(url, { cache: "no-cache" });
+    const res = await fetchFn(url, { cache: "no-cache", signal: ctl.signal });
     if (!res.ok) return null;
     const json: unknown = await res.json();
-    return isLakesFile(json) ? splitChecks(json) : null;
+    return isLakesFile(json) ? splitChecks(keepValidLakes(json)) : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

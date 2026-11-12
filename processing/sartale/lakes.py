@@ -29,6 +29,11 @@ class Lake:
     zone_radius_km: float = DEFAULT_ZONE_KM  # circle zone radius when there is no outline
     lake_state: Literal["lake", "unconfirmed", "no_lake"] = "lake"
     lake_state_source: str | None = None  # what shows the state and when; required unless lake_state is "lake"
+    # For a "no_lake" site: water share of the zone above which the Sentinel-2 absence check says a lake may be
+    # forming (default config.FORMING_WATER_SHARE); set where the empty zone holds other water. Needs a source.
+    forming_share: float | None = None
+    forming_share_source: str | None = None
+    limits: tuple[str, ...] = ()  # the site's own sourced limits, shown with the lake (e.g. a past partial drainage)
 
 
 def load_lakes(path: Path) -> list[Lake]:
@@ -53,12 +58,25 @@ def load_lakes(path: Path) -> list[Lake]:
             raise ValueError(f"Lake {lake_id}: lake_state must be one of {LAKE_STATES}, got {state!r}")
         if state != "lake" and not str(row.get("lake_state_source") or "").strip():
             raise ValueError(f"Lake {lake_id}: lake_state {state!r} needs a lake_state_source")
+        forming = row.get("forming_share")
+        if forming is not None:
+            if isinstance(forming, bool) or not isinstance(forming, (int, float)) or not 0 < forming < 1:
+                raise ValueError(f"Lake {lake_id}: forming_share must be a number between 0 and 1, got {forming!r}")
+            if state != "no_lake":
+                raise ValueError(f"Lake {lake_id}: forming_share applies only to a no_lake site")
+            if not str(row.get("forming_share_source") or "").strip():
+                raise ValueError(f"Lake {lake_id}: forming_share needs a forming_share_source")
+        limits = row.get("limits", [])
+        if not isinstance(limits, list) or not all(isinstance(t, str) and t.strip() for t in limits):
+            raise ValueError(f"Lake {lake_id}: limits must be a list of non-empty strings")
         seen.add(lake_id)
         lakes.append(Lake(
             id=lake_id, name=row["name"], lon=float(row["lon"]), lat=float(row["lat"]),
             coord_source=row["coord_source"], outline=row.get("outline"), role=row["role"],
             downstream=row.get("downstream"), downstream_source=row.get("downstream_source"),
             zone_radius_km=float(radius), lake_state=state, lake_state_source=row.get("lake_state_source"),
+            forming_share=None if forming is None else float(forming),
+            forming_share_source=row.get("forming_share_source"), limits=tuple(limits),
         ))
     return lakes
 

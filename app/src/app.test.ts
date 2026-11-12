@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test } from "vitest";
 import lakesJson from "../public/data/lakes.json";
-import { mountApp, routeFromHash, type AppOptions } from "./app";
+import { fragmentId, mountApp, routeFromHash, type AppOptions } from "./app";
+import { mountOrShowError } from "./startup";
+import type { LakeRequest } from "./lakeRequests";
 import { findBannedClaims } from "./content";
 import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
 import { featuredLake, type LakesFile } from "./lakes";
@@ -303,5 +305,26 @@ describe("after an accept adds a 12th lake", () => {
     expect($("home-root").querySelectorAll(".sp-pin:not(.sp-pin-request)")).toHaveLength(realLakes.lakes.length + 1);
     expect(root.textContent).not.toMatch(/NaN|undefined/);
     window.history.replaceState(null, "", "/");
+  });
+});
+
+
+describe("startup robustness", () => {
+  test("C11: a malformed fragment does not stop the app", () => {
+    expect(fragmentId("#%")).toBeNull();
+    expect(fragmentId("#videos")).toBe("videos");
+    history.replaceState(null, "", "#%");
+    const el = document.createElement("div");
+    document.body.append(el);
+    expect(mountOrShowError(el, { lakes: realLakes })).not.toBeNull();
+    expect(el.querySelector(".startup-error")).toBeNull();
+    history.replaceState(null, "", "#");
+  });
+
+  test("R01: the app mounts without the request list and shows it when it arrives", () => {
+    const { app, root } = setup({ lakes: realLakes, requests: [] });
+    expect(root.querySelectorAll(".sp-request").length).toBe(0);
+    app.setRequests([{ issue: 7, name: "Asked-for pond", lat: 36.0, lon: 72.5, state: "searched", passes: 4, tracks: ["084A"], first: "2026-07-01", last: "2026-10-30", reason: null, lake_id: null, created: "2026-11-04T10:00:00Z" } as LakeRequest]);
+    expect(root.querySelectorAll(".sp-request").length).toBe(1);
   });
 });

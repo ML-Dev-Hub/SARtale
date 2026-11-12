@@ -52,6 +52,33 @@ def test_shadow_prone_is_one_direction_only():
     assert sp[STRIP].all() and not sp[LAKE].any()
 
 
+def test_missing_opposite_view_is_not_shadow():
+    """C02: a real water patch seen only by the ascending view (the descending one has no data there) stays
+    observable water; it does not become shadow because the other view is missing."""
+    hh, hv = scene()
+    a_dark, a_valid = dark_mask(hh, hv)
+    hh2, hv2 = hh.copy(), hv.copy()
+    hh2[LAKE], hv2[LAKE] = np.nan, np.nan
+    d_dark, d_valid = dark_mask(hh2, hv2)
+    sp = shadow_prone({"156A": a_dark, "063D": d_dark}, {"156A": "A", "063D": "D"},
+                      {"156A": a_valid, "063D": d_valid})
+    assert not sp[LAKE].any()
+    out = pass_water(hh, hv, LAKE.copy(), sp, pixel_m=10.0)
+    assert out["observable_share"] == pytest.approx(1.0)
+    assert out["area_km2"] == pytest.approx(LAKE.sum() * 100 / 1e6)
+
+
+def test_shadow_needs_the_opposite_view_to_see_the_pixel_light():
+    hh, hv = scene()
+    a_dark, a_valid = dark_mask(hh, hv)
+    hh2, hv2 = hh.copy(), hv.copy()
+    hh2[STRIP], hv2[STRIP] = -7.0, -14.0  # the descending view sees the strip as land
+    d_dark, d_valid = dark_mask(hh2, hv2)
+    sp = shadow_prone({"156A": a_dark, "063D": d_dark}, {"156A": "A", "063D": "D"},
+                      {"156A": a_valid, "063D": d_valid})
+    assert sp[STRIP].all() and not sp[LAKE].any()
+
+
 def test_shadow_prone_none_with_single_direction():
     hh, hv = scene()
     dark, _ = dark_mask(hh, hv)
@@ -92,6 +119,12 @@ def test_screen_passes_drops_bright_outlier():
     assert list(ex) == ["c"] and "dB" in ex["c"]
 
 
+def test_screen_passes_excludes_every_pass_of_a_track_with_no_valid_pixel():
+    """C01 follow-up: a track whose every window lies in invalid coverage is excluded, never read as 0 km2."""
+    nan = np.full((20, 20), np.nan)
+    assert screen_passes({"a": nan, "b": nan}) == {"a": "window has no valid HH pixels", "b": "window has no valid HH pixels"}
+
+
 def test_screen_passes_ignores_nan_pixels():
     land = np.full((20, 20), -7.0)
     nanny = land.copy()
@@ -114,6 +147,33 @@ def test_lake_zone_polygon_buffered_200m():
     assert zone[50, 75]  # ~15 px = 150 m beyond the edge, inside the 200 m buffer
     assert not zone[50, 90]  # ~300 m beyond
     assert not zone[5, 5]
+
+
+def test_an_outline_outside_the_window_fails_instead_of_drawing_a_phantom_zone():
+    """C04: a polygon 5 km beyond the grid has no pixel on it; the zone must not appear in a corner."""
+    to_ll = Transformer.from_crs(EPSG, 4326, always_xy=True)
+    off = 5000.0
+    corners = [(X[40] + off, Y[40]), (X[60] + off, Y[40]), (X[60] + off, Y[60]), (X[40] + off, Y[60]),
+               (X[40] + off, Y[40])]
+    ring = [to_ll.transform(cx, cy) for cx, cy in corners]
+    with pytest.raises(ValueError, match="does not cover any pixel"):
+        lake_zone((100, 100), X, Y, EPSG, centre_lake(), outline_polygon=ring)
+
+
+def test_an_outline_narrower_than_a_pixel_still_makes_a_zone():
+    """M10: a 4 m sliver between pixel centres holds no centre, but it lies on the grid: the pixels it touches are
+    taken (all_touched) and buffered, instead of failing the whole rebuild."""
+    to_ll = Transformer.from_crs(EPSG, 4326, always_xy=True)
+    x0, y0 = X[50] + 3.0, Y[50] - 3.0  # 3 m off a pixel centre, so the sliver holds none
+    corners = [(x0, y0), (x0 + 4.0, y0), (x0 + 4.0, y0 - 4.0), (x0, y0 - 4.0), (x0, y0)]
+    ring = [to_ll.transform(cx, cy) for cx, cy in corners]
+    zone = lake_zone((100, 100), X, Y, EPSG, centre_lake(), outline_polygon=ring)
+    assert zone[50, 50]
+    assert 0 < zone.sum() < 100 * 100
+    # about the 200 m buffer around one pixel: pi * 20^2 pixels of 10 m
+    assert zone.sum() == pytest.approx(np.pi * 20 ** 2, rel=0.1)
+    from sartale.lakewater import outline_window_share
+    assert outline_window_share(X, Y, EPSG, ring) == 1.0  # on the grid: no "runs past the window" limit
 
 
 def test_despeckle_constant_field_unchanged():

@@ -67,16 +67,24 @@ function isRequest(x: unknown): x is LakeRequest {
   );
 }
 
-/** Reads requests.json; any failure or unexpected shape is an empty list. */
-export async function loadRequests(url = "data/requests.json", fetchFn: typeof fetch = (...a) => fetch(...a)): Promise<LakeRequest[]> {
+/** Reads requests.json; any failure, a response slower than `timeoutMs`, or an unexpected shape is an empty list. */
+export async function loadRequests(
+  url = "data/requests.json",
+  fetchFn: typeof fetch = (...a) => fetch(...a),
+  timeoutMs = 10_000,
+): Promise<LakeRequest[]> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const res = await fetchFn(url, { cache: "no-cache" });
+    const res = await fetchFn(url, { cache: "no-cache", signal: ctl.signal });
     if (!res.ok) return [];
     const json: unknown = await res.json();
     const list = json && typeof json === "object" ? (json as { requests?: unknown }).requests : null;
     return Array.isArray(list) ? list.filter(isRequest) : [];
   } catch {
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
 

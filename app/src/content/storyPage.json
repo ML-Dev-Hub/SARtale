@@ -18,8 +18,8 @@
   "risk": {
     "label": "01 · THE RISK",
     "title": "One lake, one bridge, one morning",
-    "body": "On 7 May 2022 the ice-dammed lake below Shisper glacier burst. Its flood ran 6.6 km down the Hassanabad gorge and destroyed the Karakoram Highway bridge, Hunza's link to the rest of the country.",
-    "source": "Sources: Radio Pakistan, 7 May 2022. The 6.6 km is the straight line from the register point at the lake basin to OpenStreetMap way 651792498.",
+    "body": "On 7 May 2022 the ice-dammed lake beside Shisper glacier burst. The flood destroyed the Karakoram Highway bridge at Hassanabad, 6.6 km from the lake basin in a straight line, and cut the road between central and upper Hunza.",
+    "source": "Sources: Dawn, 7 May 2022 (dawn.com/news/1688466) and 8 May 2022 (dawn.com/news/1688567). The 6.6 km is the straight line from the register point at the lake basin to the bridge (OpenStreetMap way 651792498), not the flood's path down the gorge.",
     "facts": [
       { "value": "131", "label": "potentially dangerous lakes on SUPARCO's watch", "source": "SUPARCO, GLOF Status Update, 2 July 2026" },
       { "value": "16 Jun", "label": "the last image SUPARCO's 2 Jul update could use", "source": "SUPARCO, GLOF Status Update, 2 July 2026" }
@@ -60,9 +60,9 @@
       ],
       "sourcesLead": "Radar shadow and layover are among the main limits of SAR lake mapping in the Himalaya (",
       "sources": [
-        { "text": "arXiv 2512.24117", "url": "https://arxiv.org/abs/2512.24117", "after": "); comparing ascending and descending passes suppresses shadow errors (" },
-        { "text": "a 2025 study in Norway, Cambridge University Press", "url": "https://www.cambridge.org/core/product/DCA97C3F4AF86441028995F9A1656879/core-reader", "after": "); terrain shadow also causes errors in optical lake maps (" },
-        { "text": "Int. J. Remote Sensing, 2018", "url": "https://informahealthcare.com/doi/full/10.1080/01431161.2018.1516314", "after": ")." }
+        { "text": "arXiv 2512.24117, a preprint", "url": "https://arxiv.org/abs/2512.24117", "after": "); comparing ascending and descending passes suppresses shadow errors (" },
+        { "text": "a 2026 study in Norway, Journal of Glaciology", "url": "https://doi.org/10.1017/jog.2026.10131", "after": "); terrain shadow also causes errors in optical lake maps (" },
+        { "text": "Int. J. Remote Sensing, 2018", "url": "https://doi.org/10.1080/01431161.2018.1516314", "after": ")." }
       ]
     }
   },
@@ -94,6 +94,7 @@
     "mapCredit": "Base map: NASA MODIS Terra, 5 Oct 2026",
     "keyWatched": "Watched lake",
     "keyNoLake": "No lake now",
+    "keyForming": "Lake may be forming",
     "keyRequested": "Requested lake"
   },
   "add": {

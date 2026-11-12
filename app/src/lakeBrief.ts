@@ -69,25 +69,55 @@ ${list(methodLimits(file))}${lakeLimits}
 /** Puts the brief at the end of <body>, replacing any earlier one, and opens the print dialog. Print CSS hides everything else. */
 export function printBrief(lake: Lake, file: LakesFile, win: Window = window): void {
   const doc = win.document;
-  doc.querySelectorAll(".lake-brief").forEach((e) => e.remove());
+  doc.querySelectorAll(".lake-brief, .lake-brief-notice").forEach((e) => e.remove());
   const host = doc.createElement("div");
   host.innerHTML = briefHtml(lake, file, new Date());
   doc.body.append(...host.children);
   win.print();
 }
 
+/** Shows a short notice in place of a brief (no print): used when the newest data cannot be loaded or no longer list
+ * the lake. */
+function showNotice(text: string, win: Window): void {
+  const doc = win.document;
+  doc.querySelectorAll(".lake-brief, .lake-brief-notice").forEach((e) => e.remove());
+  const p = doc.createElement("p");
+  p.className = "lake-brief-notice";
+  p.setAttribute("role", "alert");
+  p.textContent = text;
+  doc.body.append(p);
+}
+
+/** What printLatestBrief did: printed the newest data, refused because the newest data could not be loaded, or
+ * refused a removed lake. */
+export type BriefOutcome = "fresh" | "unavailable" | "removed";
+
+export const BRIEF_UNAVAILABLE =
+  "The latest lake data could not be loaded, so no brief is printed. Check the connection and try again, or reload the page.";
+
 /**
  * Prints from the newest data on the server, so a tab left open across a weekly update still prints today's numbers.
- * Falls back to the data the page loaded when the server cannot be reached or no longer lists the lake.
+ * When the newest data cannot be loaded (no connection, a timeout, or a file this page cannot read), prints nothing
+ * and says so: the page's own copy may be out of date, or list a site the newest data removed. When the newest data no
+ * longer list the lake (a site removed from the register), prints nothing and says so too: a removed site must never
+ * get a newly dated brief.
  */
 export async function printLatestBrief(
   lake: Lake,
-  loaded: LakesFile,
   load: () => Promise<LakesFile | null> = () => loadLakes("data/lakes.json"),
   win: Window = window,
-): Promise<void> {
+): Promise<BriefOutcome> {
   const fresh = await load();
-  const freshLake = fresh?.lakes.find((l) => l.id === lake.id);
-  if (fresh && freshLake) printBrief(freshLake, fresh, win);
-  else printBrief(lake, loaded, win);
+  if (!fresh) {
+    showNotice(BRIEF_UNAVAILABLE, win);
+    return "unavailable";
+  }
+  const freshLake = fresh.lakes.find((l) => l.id === lake.id);
+  if (!freshLake) {
+    const built = fresh.built ? formatDate(fresh.built.slice(0, 10)) : "the newest build";
+    showNotice(`${lake.name} is not in SARtale's data built ${built}: the site was removed or renamed, so no brief is printed. Reload the page to see the current list.`, win);
+    return "removed";
+  }
+  printBrief(freshLake, fresh, win);
+  return "fresh";
 }

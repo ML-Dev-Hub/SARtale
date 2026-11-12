@@ -136,7 +136,8 @@ def test_without_crids_or_on_the_same_version_the_usual_rule_applies():
 
 def test_the_status_names_list_every_status():
     from sartale.lakestatus import STATUS_NAMES
-    assert len(STATUS_NAMES) == 8 and "Change not confirmed yet" in STATUS_NAMES and STATUS_NAMES[-1] == "No lake now"
+    assert len(STATUS_NAMES) == 9 and "Change not confirmed yet" in STATUS_NAMES and STATUS_NAMES[-1] == "No lake now"
+    assert STATUS_NAMES[0] == "Lake may be forming"
 
 
 def test_the_app_lists_the_same_statuses_and_styles_the_unconfirmed_one_as_neutral():
@@ -157,3 +158,30 @@ def test_the_app_lists_the_same_statuses_and_styles_the_unconfirmed_one_as_neutr
         pin = next(line for line in css if f'.lw-marker[data-status="{slug}"]' in line)
         assert "border-style: dashed" in chip and "--warm" not in chip
         assert "background: transparent" in pin and "--warm" not in pin
+
+
+def test_no_lake_status_carries_the_dated_absence_check():
+    from sartale.lakestatus import NO_LAKE, no_lake_status
+    computed = {"track": "156A", "latest_date": "2026-11-04", "looks": 6}
+    ev = {"date": "2026-08-17", "s2_id": "S2B_43SFA_20260817_0_L2A", "water_share": 0.0004, "water_km2": 0.0012}
+    s = no_lake_status(computed, "a dry basin", ev)
+    assert s["status"] == NO_LAKE and s["change_km2"] is None
+    assert "Last checked 17 Aug 2026 with Sentinel-2 (S2B_43SFA_20260817_0_L2A): water on 0.04% of the lake zone." in s["reason"]
+    assert "at every data refresh, all year" in s["reason"] and "open-water season" not in s["reason"]
+    # I1/I2: when no clear, snow-free view has come since, the site says so instead of implying a recent check
+    stale = no_lake_status(computed, "a dry basin", {**ev, "searched": "2026-11-12", "no_view_since": True})
+    assert ("Last checked 17 Aug 2026 with Sentinel-2 (S2B_43SFA_20260817_0_L2A): water on 0.04% of the lake zone; "
+            "no clear, snow-free Sentinel-2 view of the zone since (searched to 12 Nov 2026).") in stale["reason"]
+
+
+def test_forming_status_says_a_lake_may_be_forming_without_a_verdict():
+    from sartale.lakestatus import LAKE_FORMING, forming_status
+    computed = {"track": "156A", "latest_date": "2026-09-04", "looks": 6}
+    ev = {"date": "2026-09-01", "s2_id": "S2A_X", "water_share": 0.05, "water_km2": 0.157}
+    s = forming_status(computed, ev)
+    assert s["status"] == LAKE_FORMING and s["change_km2"] is None and s["noise_km2"] is None
+    assert s["reason"].startswith("Sentinel-2 on 1 Sep 2026 (S2A_X) shows water on 5.0% of the lake zone (0.157 km2)")
+    # I3: says what happens; nothing measures the site automatically
+    assert "next NISAR pass" not in s["reason"] and "measures it" not in s["reason"]
+    assert s["reason"].endswith("A lake may be forming. Its radar dark area is shown but not yet treated as lake "
+                                "area; the SARtale team reviews the site to add it as a measured lake.")

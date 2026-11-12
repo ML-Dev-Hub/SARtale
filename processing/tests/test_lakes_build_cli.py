@@ -142,3 +142,72 @@ def test_lakes_check_defaults_to_every_lake_that_holds_a_lake_now():
              replace(base, id="maybe", lake_state="unconfirmed", lake_state_source="s")]
     assert check_ids(lakes, None) == ["a", "maybe"]
     assert check_ids(lakes, " gone , a ") == ["gone", "a"]
+
+
+# --- M8: the absence check runs before the build -------------------------------------------------------------------
+
+def _absence_site(tmp_path):
+    from dataclasses import replace
+
+    from test_lakebuild import make_lake, write_pass
+    cache = tmp_path / "cache"
+    base = make_lake("basin")
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24", "2026-09-04"]:
+        write_pass(cache, base, d, "156A")
+    return cache, replace(base, lake_state="no_lake", lake_state_source="a dry basin")
+
+
+def _wet_evidence(lake, today):
+    from sartale.lakebuild import absence_zone, forming_share
+    from sartale.lakecheck import ABSENCE_RULE
+    pair = [{"date": "2026-08-25", "s2_id": "S2_WET0", "water_share": 0.07},
+            {"date": "2026-09-01", "s2_id": "S2_WET", "water_share": 0.08}]
+    return {"date": "2026-09-01", "s2_id": "S2_WET", "water_share": 0.08, "water_km2": 0.25, "zone_valid_share": 1.0,
+            "snow_share": 0.0, "forming": True, "pending_scene": None, "confirmed": pair,
+            "threshold": forming_share(lake), "checked": today, "searched": today, "no_view_since": False,
+            "rule": ABSENCE_RULE, "source": "S2", "zone": absence_zone(lake)}
+
+
+def test_m8_absence_before_the_build_shows_the_forming_water_layer_in_the_same_refresh(tmp_path, monkeypatch):
+    from sartale import lakecheck
+    from sartale.lakebuild import build_lakes
+    from sartale.lakestatus import LAKE_FORMING
+    cache, gone = _absence_site(tmp_path)
+    out = tmp_path / "out"
+    write_json_atomic(out / "lakes.json", build_lakes([gone], cache, out, "published"))  # the published file
+    calls = []
+    monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: [gone])
+    monkeypatch.setattr(lakecheck, "absence_check", lambda lake, today, prior: calls.append(prior) or _wet_evidence(lake, today))
+    run_pipeline.main(["lakes-absence", "--out", str(out), "--today", "2026-09-08"])
+    assert calls == [None]
+    # lakes-build then reads that lakes.json as `previous` (its default) and keeps the new evidence
+    previous = json.loads((out / "lakes.json").read_text(encoding="utf-8"))
+    lk = build_lakes([gone], cache, out, "new", previous=previous)["lakes"][0]
+    assert lk["status"]["status"] == LAKE_FORMING and lk["absence_checked"]["s2_id"] == "S2_WET"
+    assert lk["images"]["water"] and (out / lk["images"]["water"]).is_file()
+
+
+def test_lakes_absence_only_missing_checks_just_the_sites_without_evidence(tmp_path, monkeypatch):
+    from sartale import lakecheck
+    from sartale.lakebuild import build_lakes
+    cache, gone = _absence_site(tmp_path)
+    out = tmp_path / "out"
+    doc = build_lakes([gone], cache, out, "t")
+    write_json_atomic(out / "lakes.json", doc)
+    calls = []
+    monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: [gone])
+    monkeypatch.setattr(lakecheck, "absence_check", lambda lake, today, prior: calls.append(prior) or _wet_evidence(lake, today))
+    run_pipeline.main(["lakes-absence", "--out", str(out), "--today", "2026-09-08", "--only-missing"])
+    assert calls == [None]  # no evidence yet: checked
+    run_pipeline.main(["lakes-absence", "--out", str(out), "--today", "2026-09-15", "--only-missing"])
+    assert len(calls) == 1  # evidence now: skipped
+    run_pipeline.main(["lakes-absence", "--out", str(out), "--today", "2026-09-15"])
+    assert len(calls) == 2 and calls[1]["s2_id"] == "S2_WET"  # a normal run re-checks from the evidence
+
+
+def test_lakes_absence_without_lakes_json_does_nothing(tmp_path, monkeypatch, capsys):
+    from sartale import lakecheck
+    monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: pytest.fail("no lakes.json: nothing to read"))
+    monkeypatch.setattr(lakecheck, "absence_check", lambda *a: pytest.fail("no lakes.json: no check"))
+    run_pipeline.main(["lakes-absence", "--out", str(tmp_path / "none")])
+    assert "nothing to re-check yet" in capsys.readouterr().out

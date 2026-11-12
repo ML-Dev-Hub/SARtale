@@ -43,12 +43,13 @@
 <p>The rebuild runs in separate jobs so that no job holds both the Earthdata login and a write token:</p>
 <ul>
   <li><b>Rebuild</b> has the Earthdata login (the <code>earthdata</code> environment) and read-only access. It adds the lake, searches, fetches, builds and runs the tests, then hands the data over as an artifact.</li>
-  <li><b>Publish</b> has a write token and no Earthdata login. It checks the artifact, commits the data, redeploys, comments and closes the issue.</li>
+  <li><b>Publish</b> has a write token and no Earthdata login. It checks the artifact, commits the data, redeploys, comments and closes the issue. It refuses data built from other method code, configuration, outlines, Sentinel-2 check rows, environment or rebuild steps than main has now, and starts the accept again instead. It checks this twice: when it installs the data, and again after it rebases its commit onto the newest main, just before it pushes.</li>
 </ul>
 <p>Only one rebuild runs at a time, shared with the <a href="deploy.html#weekly-refresh">weekly refresh</a>. A second accept waits and is started when the first is done. If the data on <code>main</code> change during a rebuild, it starts itself again, at most 3 runs in all.</p>
 
 <h3>If the request changes after approval</h3>
 <p>An approval covers the name, coordinates and source the team saw. If the visitor edits the issue afterwards, the approval is withdrawn: the workflow removes <code>accepted</code> and comments "This request changed after it was approved. A team member must accept it again."</p>
+<p>The rebuild takes a while, so just before it publishes, the workflow reads the issue again. It publishes only if the issue is still open, still carries <code>accepted</code> from the same team member at the same time, that person still has write access to the repository, and the issue still has the values the rebuild used. If not, nothing is published and the issue gets a comment saying which of these changed. When the values were edited or the approver lost access, <code>accepted</code> is removed too, so a team member adding it again starts a fresh check.</p>
 <p>A request labelled <code>accepted</code> before this system was deployed is refused once, with "This request was approved before the new check existed. A team member must accept it again."</p>
 
 <h2>Rejecting</h2>

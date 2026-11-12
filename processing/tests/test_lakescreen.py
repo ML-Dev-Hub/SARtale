@@ -62,8 +62,8 @@ def test_screen_all_excludes_a_dark_share_outlier_and_keeps_it_out_of_the_season
     # (median of a column dark in 3/7 passes is not dark), so check against an explicit exclusion
     # of all three, where including them would flip columns 8..13 to dark.
     three = {"156A": good[:2] + bad}
-    with_bad = season_dark(three, {})["156A"]
-    without = season_dark(three, {p["id"]: "test" for p in bad})["156A"]
+    with_bad = season_dark(three, {})["156A"][0]
+    without = season_dark(three, {p["id"]: "test" for p in bad})["156A"][0]
     assert with_bad[:, 8:14].mean() > 0.9
     assert without[:, 8:14].mean() < 0.05
 

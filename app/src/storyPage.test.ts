@@ -22,7 +22,7 @@ function render(file: LakesFile | null) {
 }
 
 describe("storyNumbers", () => {
-  it("reads every number from the file", () => {
+  it("reads every number from the frozen 11-lake file (historical fixture, latest pass 23 Oct 2026)", () => {
     const n = storyNumbers(frozen);
     expect(n.lakes).toBe("11");
     expect(n.cloudLooks).toBe("60");
@@ -37,8 +37,17 @@ describe("storyNumbers", () => {
 
   it("reads the shipped file's own totals, whatever it holds", () => {
     const n = storyNumbers(real);
-    expect(real.lakes.length).toBeGreaterThanOrEqual(7);
-    expect(real.lakes.some((l) => l.id === "attabad")).toBe(true);
+    // Invariants, not a catalogue size: a justified retirement must not fail this test. Ids are unique, the
+    // Attabad control (the gate's lake) is there and holds a lake, and every site sits inside its own window.
+    const ids = real.lakes.map((l) => l.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const attabad = real.lakes.find((l) => l.id === "attabad");
+    expect(attabad && hasLakeNow(attabad) && attabad.role === "control").toBe(true);
+    for (const l of real.lakes) {
+      if (!l.bounds) continue;
+      const [w, s, e, nn] = l.bounds;
+      expect(w <= l.lon && l.lon <= e && s <= l.lat && l.lat <= nn, l.id).toBe(true);
+    }
     const now = real.lakes.filter(hasLakeNow);
     expect(n.sites).toBe(String(real.lakes.length));
     expect(n.lakes).toBe(String(now.length));
@@ -102,8 +111,8 @@ describe("renderStoryPage", () => {
     expect(view.querySelector(".sp-shadow")?.textContent).toContain("Mountains cast shadows too");
     expect([...view.querySelectorAll(".sp-shadow a")].map((a) => a.getAttribute("href"))).toEqual([
       "https://arxiv.org/abs/2512.24117",
-      "https://www.cambridge.org/core/product/DCA97C3F4AF86441028995F9A1656879/core-reader",
-      "https://informahealthcare.com/doi/full/10.1080/01431161.2018.1516314",
+      "https://doi.org/10.1017/jog.2026.10131",
+      "https://doi.org/10.1080/01431161.2018.1516314",
     ]);
   });
 

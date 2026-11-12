@@ -5,11 +5,15 @@
   accept --repo R --from D --issue N --actions A
                                                (publish job, after unpack) mark issue N accepted in R's
                                                requests.json and write the accept comment for apply-actions.sh
+  verify --repo R --from D --rev REV           (commit-data.sh, after the rebase, before the push) check that REV
+                                               still holds the BASE and SCIENCE inputs the data were built from
 
 Allowed paths: processing/lakes_in.json, app/public/data/lakes.json, app/public/data/requests.json and
 app/public/data/lakes/**. `unpack` refuses symlinks, paths outside those, files missing from the manifest or
 not matching its SHA-256, and data rebuilt on an older main than the publish checkout (the manifest records
-the git object ids of the inputs it started from). It never writes requests.json: the publish job's copy may
+the git object ids of the inputs it started from). The same holds for the scientific inputs (SCIENCE): data built
+with other method code, configuration, outlines, Sentinel-2 check rows, environment or rebuild action than the
+publish checkout's are refused too, so a method fix made during a rebuild is never published with older numbers. It never writes requests.json: the publish job's copy may
 have newer entries, so `accept` changes only the accepted issue's entry, and only if the values the team
 approved are still those of the current entry.
 
@@ -32,6 +36,11 @@ REQUESTS = "app/public/data/requests.json"
 PICTURES = "app/public/data/lakes"
 FILES = (LAKES_IN, LAKES_JSON, REQUESTS)
 BASE = (LAKES_IN, LAKES_JSON, PICTURES)  # inputs that only the rebuild jobs change
+# What the numbers are computed with, besides the register: the method code (config.py included), the outlines,
+# the Sentinel-2 check rows lakes-build merges in, the Python environment and the rebuild steps. Recorded as git
+# object ids (a folder's tree id covers every file in it) of the commit the rebuild started from.
+SCIENCE = ("processing/sartale", "processing/outlines", "processing/lake_checks.json", "environment.yml",
+           ".github/actions/rebuild/action.yml")
 MANIFEST = "manifest.json"
 SEGMENT = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9._-]*$")
 LAKE_ID = re.compile(r"^[a-z0-9_]+$")
@@ -61,9 +70,22 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def git_object(repo: Path, path: str) -> str | None:
-    r = subprocess.run(["git", "rev-parse", f"HEAD:{path}"], cwd=repo, capture_output=True, text=True)
+def git_object(repo: Path, path: str, rev: str = "HEAD") -> str | None:
+    r = subprocess.run(["git", "rev-parse", f"{rev}:{path}"], cwd=repo, capture_output=True, text=True)
     return r.stdout.strip() if r.returncode == 0 else None
+
+
+def compare_inputs(repo: Path, manifest: dict, rev: str = "HEAD") -> None:
+    """Refuse (exit 6) unless `rev` holds the same BASE and SCIENCE inputs the data were built from."""
+    for path in BASE:
+        if manifest["base"].get(path) != git_object(repo, path, rev):
+            raise Refused(f"main changed {path} while the data were rebuilt", 6)
+    science = manifest.get("science")
+    if not isinstance(science, dict) or set(science) != set(SCIENCE):
+        raise Refused("the manifest does not say which method code built the data")
+    for path in SCIENCE:
+        if science[path] != git_object(repo, path, rev):
+            raise Refused(f"the data were built with another {path} than main has now", 6)
 
 
 def _walk(root: Path):
@@ -92,7 +114,8 @@ def pack(repo: Path, out: Path) -> dict:
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(src, dst)
         files[rel] = sha256(dst)
-    manifest = {"version": 1, "base": {p: git_object(repo, p) for p in BASE}, "files": files}
+    manifest = {"version": 1, "base": {p: git_object(repo, p) for p in BASE},
+                "science": {p: git_object(repo, p) for p in SCIENCE}, "files": files}
     (out / MANIFEST).write_text(json.dumps(manifest, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     return manifest
 
@@ -132,9 +155,7 @@ def _target(repo: Path, rel: str) -> Path:
 
 def unpack(repo: Path, src: Path) -> list[str]:
     manifest = check(src)
-    for path in BASE:
-        if manifest["base"].get(path) != git_object(repo, path):
-            raise Refused(f"main changed {path} while the data were rebuilt", 6)
+    compare_inputs(repo, manifest)
     files = manifest["files"]
     copied = []
     for rel in sorted(files):
@@ -179,16 +200,25 @@ def accept(repo: Path, src: Path, number: int) -> list[dict]:
              "dispatch": False}]
 
 
+def verify(repo: Path, src: Path, rev: str) -> None:
+    """After commit-data.sh rebased the data commit onto the newest main (`rev`, the fetched main), refuse (exit 6)
+    if that main no longer holds the inputs the data were built from: method code or data pushed between the
+    publish checkout and the push would otherwise land under numbers built without it."""
+    compare_inputs(repo, check(src), rev)
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = p.add_subparsers(dest="command", required=True)
-    for name in ("pack", "unpack", "accept"):
+    for name in ("pack", "unpack", "accept", "verify"):
         s = sub.add_parser(name)
         s.add_argument("--repo", default=".")
         s.add_argument("--out" if name == "pack" else "--from", dest="dir", required=True)
         if name == "accept":
             s.add_argument("--issue", type=int, required=True)
             s.add_argument("--actions", required=True)
+        if name == "verify":
+            s.add_argument("--rev", required=True, help="the commit the data commit now sits on, e.g. FETCH_HEAD")
     args = p.parse_args(argv)
     repo, folder = Path(args.repo).resolve(), Path(args.dir)
     try:
@@ -196,6 +226,9 @@ def main(argv=None) -> None:
             print(f"packed {len(pack(repo, folder)['files'])} files")
         elif args.command == "unpack":
             print(f"installed {len(unpack(repo, folder))} files")
+        elif args.command == "verify":
+            verify(repo, folder, args.rev)
+            print(f"{args.rev} still holds the inputs the data were built from")
         else:
             actions = accept(repo, folder, args.issue)
             Path(args.actions).write_text(json.dumps(actions, indent=1) + "\n", encoding="utf-8")

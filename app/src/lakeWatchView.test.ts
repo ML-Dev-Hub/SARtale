@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { findBannedClaims } from "./content";
 import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
 import { sortLakes, type Lake, type LakesFile } from "./lakes";
-import { checkLine, createLakeWatchView, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
+import { checkLine, createLakeWatchView, FORMING_LAYER, FORMING_NO_LAYER, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
 
 function setup(file: LakesFile | null = fixtureLakes, extra: Partial<Parameters<typeof createLakeWatchView>[1]> = {}) {
   const root = document.createElement("div");
@@ -118,7 +118,8 @@ describe("Lake Watch", () => {
     const pt = (date: string, track: string, area: number | null, excluded: string | null) => ({ date, track, area_km2: area, observable_share: 1, excluded });
     const lake: Lake = {
       ...fixtureLakes.lakes[2],
-      series: [pt("2026-07-01", "156A", 1.0, null), pt("2026-07-02", "64D", 2.0, null), pt("2026-07-13", "156A", 9.0, "bright"), pt("2026-07-25", "156A", 1.1, null)],
+      // the producer's shape: an excluded pass has area_km2 null and keeps what it read as diagnostic_km2
+      series: [pt("2026-07-01", "156A", 1.0, null), pt("2026-07-02", "64D", 2.0, null), { ...pt("2026-07-13", "156A", null, "bright"), diagnostic_km2: 9.0 }, pt("2026-07-25", "156A", 1.1, null), { ...pt("2026-07-30", "156A", null, "window has no valid HH pixels"), diagnostic_km2: null }],
     };
     const d = lakeChartData(lake);
     expect(d.series.filter((s) => !s.excluded).map((s) => s.label)).toEqual(["156A", "64D"]);
@@ -219,6 +220,17 @@ describe("Lake Watch", () => {
     const { root } = setup(null);
     expect(root.textContent).toContain("No lake data in this build");
   });
+
+  test("M6: names the sites the page could not read, and still shows the rest", () => {
+    const { root } = setup({ ...fixtureLakes, dropped_lakes: ["Future lake"] });
+    const note = root.querySelector<HTMLElement>('[data-role="lw-dropped"]')!;
+    expect(note.hidden).toBe(false);
+    expect(note.textContent).toContain("Future lake");
+    expect(note.textContent).toContain("Reload the page");
+    expect(rowIds(root)).toHaveLength(fixtureLakes.lakes.length);
+    const plain = setup(fixtureLakes).root.querySelector<HTMLElement>('[data-role="lw-dropped"]')!;
+    expect(plain.hidden).toBe(true);
+  });
 });
 
 describe("Lake Watch after an accept", () => {
@@ -289,6 +301,36 @@ describe("Lake Watch: a site with no lake now", () => {
     expect(detail.textContent).toContain("No water layer: there is no lake at this site now.");
     expect(detail.textContent).not.toContain("No radar picture yet for the water pixels");
     expect(findBannedClaims(detail.textContent ?? "")).toEqual([]);
+  });
+
+  test("I3: a site where a lake may be forming says what happens next, and promises no automatic measurement", () => {
+    const forming = (water: string | null): Lake => ({
+      ...basin,
+      lake_state: "lake_forming_check",
+      images: { ...basin.images!, water },
+      status: { ...basin.status, status: "Lake may be forming", reason: "Sentinel-2 on 1 Oct 2026 (S2_WET) shows water on 8.0% of the lake zone (0.250 km2), where recent imagery had no lake. A lake may be forming. Its radar dark area is shown but not yet treated as lake area; the SARtale team reviews the site to add it as a measured lake." },
+    });
+    for (const [water, note] of [[null, FORMING_NO_LAYER], ["lakes/basin/water.webp", FORMING_LAYER]] as const) {
+      const { root, view } = setup({ ...fixtureLakes, lakes: [...fixtureLakes.lakes, forming(water)] });
+      view.select("basin");
+      const text = root.querySelector('[data-role="lw-detail"]')!.textContent ?? "";
+      expect(text).toContain(note);
+      expect(text).toContain("the SARtale team reviews the site to add it as a measured lake");
+      expect(text).not.toMatch(/next NISAR pass|measures it/);
+      expect(findBannedClaims(text)).toEqual([]);
+    }
+  });
+
+  test("C06: its table calls the dark pixels dark area, not water, and never says a pass was used", () => {
+    const { root, view } = setup(file);
+    view.select("basin");
+    const table = root.querySelector('[data-role="lw-readings"] table')!;
+    expect(table.querySelector("caption")?.textContent).toContain("dark radar area by date and track");
+    expect(table.querySelector("caption")?.textContent).not.toContain("water area");
+    expect([...table.querySelectorAll("th")].map((th) => th.textContent)).toContain("Dark area (km²)");
+    const used = [...table.querySelectorAll("tbody tr")].map((tr) => tr.children[4].textContent);
+    expect(used).toEqual(["No: not lake water", "No: not lake water", "No: not lake water"]);
+    expect(used).not.toContain("Yes");
   });
 });
 

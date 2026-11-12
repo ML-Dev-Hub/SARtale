@@ -45,9 +45,10 @@ def comment(body, assoc, kind="User"):
 class FakeGh:
     """Answers `gh api ...` calls from a table of paths; records every call."""
 
-    def __init__(self, pages, comments=None, single=None, events=None):
+    def __init__(self, pages, comments=None, single=None, events=None, permissions=None):
         self.pages, self.comments, self.calls = pages, comments or {}, []
         self.single, self.events = single, events or []
+        self.permissions = permissions or {}  # login -> permission; anyone else is "admin"
 
     def __call__(self, args):
         assert isinstance(args, list) and all(isinstance(a, str) for a in args)
@@ -57,6 +58,9 @@ class FakeGh:
         if "/comments" in path:
             number = int(path.split("/issues/")[1].split("/")[0])
             return json.dumps(self.comments.get(number, []))
+        if "/collaborators/" in path:
+            login = path.split("/collaborators/")[1].split("/")[0]
+            return json.dumps({"permission": self.permissions.get(login, "admin")})
         if "/events" in path:
             half = len(self.events) // 2  # two pages, as --paginate prints them
             return json.dumps(self.events[:half]) + json.dumps(self.events[half:])
@@ -253,6 +257,8 @@ def make_repo(tmp_path, name="repo"):
     for rel, text in {"processing/lakes_in.json": "[]\n", "app/public/data/lakes.json": '{"built": "a"}\n',
                       "app/public/data/requests.json": json.dumps(ACCEPTED_FEED) + "\n",
                       "app/public/data/lakes/attabad/old.webp": "old", "app/public/data/lakes/attabad/keep.webp": "k",
+                      "processing/sartale/config.py": "DROP_DB = 3.0\n",
+                      "processing/outlines/a.geojson": "{}\n", "environment.yml": "name: sartale\n",
                       "README.md": "hi\n"}.items():
         (repo / rel).parent.mkdir(parents=True, exist_ok=True)
         (repo / rel).write_text(text, encoding="utf-8")
@@ -291,6 +297,8 @@ def test_pack_lists_every_allowed_output_and_the_base(tmp_path):
     assert set(manifest["base"]) == {"processing/lakes_in.json", "app/public/data/lakes.json",
                                      "app/public/data/lakes"}
     assert all(len(v) == 40 for v in manifest["base"].values())
+    assert set(manifest["science"]) == set(data_artifact.SCIENCE)
+    assert len(manifest["science"]["processing/sartale"]) == 40
     assert not (out / "README.md").exists()
 
 
@@ -777,6 +785,76 @@ def test_commit_data_fails_after_three_push_attempts(tmp_path):
     assert gh_calls(env) == []
 
 
+def artifact_for(work: Path, art: Path) -> Path:
+    """A rebuild artifact whose manifest records the inputs of `work`'s HEAD, as pack would."""
+    for rel in (data_artifact.LAKES_IN, data_artifact.LAKES_JSON):
+        (art / rel).parent.mkdir(parents=True, exist_ok=True)
+        (art / rel).write_text("{}\n", encoding="utf-8")
+    manifest = {"version": 1,
+                "base": {p: data_artifact.git_object(work, p) for p in data_artifact.BASE},
+                "science": {p: data_artifact.git_object(work, p) for p in data_artifact.SCIENCE},
+                "files": {rel: data_artifact.sha256(art / rel)
+                          for rel in (data_artifact.LAKES_IN, data_artifact.LAKES_JSON)}}
+    (art / data_artifact.MANIFEST).write_text(json.dumps(manifest), encoding="utf-8")
+    return art
+
+
+def push_from_other(tmp_path, origin, rel, text):
+    other = tmp_path / "other"
+    git("clone", str(origin), str(other), cwd=tmp_path)
+    git("config", "user.name", "x", cwd=other)
+    git("config", "user.email", "x@example.com", cwd=other)
+    (other / rel).parent.mkdir(parents=True, exist_ok=True)
+    (other / rel).write_text(text, encoding="utf-8")
+    git("add", ".", cwd=other)
+    git("commit", "-m", f"change {rel}", cwd=other)
+    git("push", "origin", "HEAD:main", cwd=other)
+
+
+@needs_bash
+@pytest.mark.parametrize("rel", ["processing/sartale/config.py", "processing/lakes_in.json",
+                                 ".github/actions/rebuild/action.yml"])
+def test_commit_data_refuses_when_main_changed_the_inputs_before_the_push(tmp_path, rel):
+    """M4: unpack checked the inputs against the publish checkout; a push of method code or data before our push
+    is caught after the rebase, and nothing is pushed (exit 6, stale)."""
+    env = fake_env(tmp_path)
+    origin, work = make_clone(tmp_path)
+    env["DATA_ARTIFACT"] = str(artifact_for(work, tmp_path / "lake-data"))
+    push_from_other(tmp_path, origin, rel, "changed\n")
+    before = git("rev-parse", "main", cwd=origin)
+    (work / "data" / "a.json").write_text("6\n", encoding="utf-8")
+    r = bash(SCRIPTS / "commit-data.sh", ["Weekly data refresh", "data"], env, work)
+    assert r.returncode == 6, r.stderr + r.stdout
+    assert "nothing was pushed" in r.stderr
+    assert git("rev-parse", "main", cwd=origin) == before
+    assert gh_calls(env) == [], "no deploy"
+
+
+@needs_bash
+def test_commit_data_pushes_when_main_changed_only_other_files(tmp_path):
+    env = fake_env(tmp_path)
+    origin, work = make_clone(tmp_path)
+    env["DATA_ARTIFACT"] = str(artifact_for(work, tmp_path / "lake-data"))
+    push_from_other(tmp_path, origin, "docs/guide/pages/faq.html", "<p>new</p>\n")
+    (work / "data" / "a.json").write_text("7\n", encoding="utf-8")
+    r = bash(SCRIPTS / "commit-data.sh", ["Weekly data refresh", "data"], env, work)
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert git("show", "main:data/a.json", cwd=origin) == "7\n"
+
+
+def test_verify_compares_the_inputs_at_the_given_commit(tmp_path):
+    origin, work = make_clone(tmp_path)
+    art = artifact_for(work, tmp_path / "lake-data")
+    data_artifact.verify(work, art, "HEAD")
+    (work / "environment.yml").write_text("name: x\n", encoding="utf-8")
+    git("add", ".", cwd=work)
+    git("commit", "-m", "env", cwd=work)
+    with pytest.raises(data_artifact.Refused) as e:
+        data_artifact.verify(work, art, "HEAD")
+    assert e.value.code == 6 and "environment.yml" in str(e.value)
+    data_artifact.verify(work, art, "HEAD~1")
+
+
 @needs_bash
 def test_every_run_block_is_valid_bash():
     import re
@@ -800,3 +878,163 @@ def test_the_accept_comment_has_one_wording():
 
     assert data_artifact.ACCEPTED_COMMENT == lake_issues.ACCEPTED_COMMENT
     assert data_artifact.SITE == lake_issues.SITE_LAKE
+
+
+# --- W01: the live re-check just before an accepted lake is published --------------------------------------------
+
+live_approval = load_script("live_approval")
+BODY = ("### Lake name\n\nNew pond\n\n### Latitude (°N)\n\n36.2\n\n### Longitude (°E)\n\n74.1 °E\n\n"
+        "### Where the coordinates come from\n\nA survey, 2026\n")
+APPROVED_AT = "2026-11-05T11:00:00Z"
+
+
+def live_gh(body=BODY, state="open", labels=("lake-request", "searched", "accepted"),
+            events=(labeled("accepted", "owner-1", APPROVED_AT),), permissions=None):
+    return FakeGh("", single=issue(7, state=state, labels=labels, body=body), events=list(events),
+                  permissions=permissions)
+
+
+def built_hash(body=BODY):
+    from sartale.lake_issues import issue_values_sha256
+    return issue_values_sha256({"body": body})
+
+
+def test_live_hash_rule_matches_the_pipeline():
+    from sartale.lake_issues import issue_values_sha256
+    bodies = [BODY, BODY.replace("36.2", "36.20"), BODY.replace("74.1 °E", "74.1"), BODY.replace("New pond", "  New pond  "),
+              BODY.replace("36.2", "3.6e1"), BODY.replace("New pond", "N"), BODY.replace("New pond", "New​pond"),
+              BODY.replace("### Lake name", "### Name"), BODY.replace("A survey, 2026", "_No response_"), "", "\r\n".join(BODY.split("\n"))]
+    for b in bodies:
+        assert live_approval.issue_values_sha256({"body": b}) == issue_values_sha256({"body": b}), b
+
+
+def test_live_recheck_passes_when_nothing_changed():
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=live_gh()) is None
+    # a label event's recorded time may be the issue's update time a few seconds off the event itself
+    assert live_approval.recheck("o/r", 7, "owner-1", "2026-11-05T11:00:03Z", built_hash(), runner=live_gh()) is None
+
+
+def test_live_recheck_refuses_a_revoked_approval():
+    gh = live_gh(labels=("lake-request", "searched"))
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=gh) == live_approval.NOT_OPEN
+
+
+def test_live_recheck_refuses_a_closed_issue():
+    gh = live_gh(state="closed")
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=gh) == live_approval.NOT_OPEN
+
+
+def test_live_recheck_refuses_edited_values():
+    gh = live_gh(body=BODY.replace("74.1 °E", "74.2 °E"))
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=gh) == live_approval.EDITED
+
+
+@pytest.mark.parametrize("events", [
+    [labeled("accepted", "owner-1", APPROVED_AT), labeled("accepted", "owner-2", "2026-11-05T12:00:00Z")],  # someone else
+    [labeled("accepted", "owner-1", "2026-11-05T13:00:00Z")],   # removed and added again later
+    [],                                                         # no approval event
+])
+def test_live_recheck_refuses_an_approver_or_time_change(events):
+    gh = live_gh(events=events)
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=gh) == live_approval.OTHER_APPROVAL
+
+
+@pytest.mark.parametrize("perm", ["read", "triage", "none"])
+def test_live_recheck_refuses_an_approver_who_lost_write_access(perm):
+    """M2: the approver was a team member at the gate but was demoted during the rebuild."""
+    gh = live_gh(permissions={"owner-1": perm})
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=gh) == live_approval.NOT_TEAM
+    assert ["api", "repos/o/r/collaborators/owner-1/permission"] in gh.calls
+
+
+@pytest.mark.parametrize("perm", ["admin", "maintain", "write"])
+def test_live_recheck_keeps_an_approver_with_write_access(perm):
+    gh = live_gh(permissions={"owner-1": perm})
+    assert live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=gh) is None
+
+
+def test_live_recheck_fails_closed_when_the_permission_lookup_fails():
+    gh = live_gh()
+
+    def broken(args):
+        if "/collaborators/" in args[1]:
+            raise RuntimeError("gh api failed")
+        return gh(args)
+
+    with pytest.raises(RuntimeError):
+        live_approval.recheck("o/r", 7, "owner-1", APPROVED_AT, built_hash(), runner=broken)
+
+
+def test_live_main_writes_the_reason_and_exits_7(tmp_path, monkeypatch):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    art = tmp_path / "lake-data" / "app" / "public" / "data"
+    art.mkdir(parents=True)
+    (art / "requests.json").write_text(json.dumps({"requests": [{"issue": 7, "values_sha256": built_hash()}]}), "utf-8")
+    why = tmp_path / "why.md"
+    args = ["--issue", "7", "--approver", "owner-1", "--approved-at", APPROVED_AT, "--from", str(tmp_path / "lake-data"),
+            "--why", str(why)]
+    live_approval.main(args, runner=live_gh())
+    assert not why.exists()
+    with pytest.raises(SystemExit) as e:
+        live_approval.main(args, runner=live_gh(body=BODY.replace("New pond", "Other pond")))
+    assert e.value.code == 8 and why.read_text("utf-8").strip() == live_approval.EDITED  # void: drop accepted
+    assert "Other pond" not in why.read_text("utf-8")
+    with pytest.raises(SystemExit) as e:
+        live_approval.main(args, runner=live_gh(permissions={"owner-1": "read"}))
+    assert e.value.code == 8 and why.read_text("utf-8").strip() == live_approval.NOT_TEAM
+    with pytest.raises(SystemExit) as e:
+        live_approval.main(args, runner=live_gh(state="closed"))
+    assert e.value.code == 7 and why.read_text("utf-8").strip() == live_approval.NOT_OPEN  # nothing to remove
+
+
+def test_accept_workflow_rechecks_live_before_it_commits():
+    import yaml
+    wf = yaml.safe_load((SCRIPTS.parents[0] / "workflows" / "lake-accept.yml").read_text(encoding="utf-8"))
+    steps = wf["jobs"]["publish"]["steps"]
+    names = [s.get("name", "") for s in steps]
+    live = names.index("Re-read the issue live just before publishing")
+    commit = names.index("Commit the new lake and start the deploy")
+    assert live < commit
+    assert "steps.live.outputs.result == 'ok'" in steps[commit]["if"]
+    assert "steps.live.outputs.result == 'ok'" in steps[names.index("Comment and close the issue")]["if"]
+    assert "live_approval.py" in steps[live]["run"]
+    # M3: a void approval (exit 8: edited, or the approver lost access) also loses `accepted`, as the changed path does
+    run = steps[live]["run"]
+    eight = run.index("8) ")
+    assert "--remove-label accepted" in run[eight:] and "--remove-label accepted" not in run[:eight]
+    assert "result=withdrawn" in run[eight:]
+    assert wf["jobs"]["gate"]["outputs"]["approver"]
+
+
+
+@pytest.mark.parametrize("path, text", [
+    ("processing/sartale/config.py", "DROP_DB = 2.5\n"),          # a method constant changed
+    ("processing/sartale/lakewater.py", "# new rule\n"),           # method code added
+    ("processing/outlines/a.geojson", '{"type": "Polygon"}\n'),    # an outline changed
+    ("environment.yml", "name: sartale\ndependencies: [numpy]\n"),
+    ("processing/lake_checks.json", "[]\n"),                       # check rows the build merges in
+])
+def test_w02_unpack_refuses_data_built_with_other_method_inputs(tmp_path, path, text):
+    repo, out, _ = rebuilt(tmp_path)
+    (repo / path).parent.mkdir(parents=True, exist_ok=True)
+    (repo / path).write_text(text, encoding="utf-8")
+    git("add", ".", cwd=repo)
+    git("commit", "-q", "-m", "method fix", cwd=repo)
+    with pytest.raises(data_artifact.Refused) as e:
+        data_artifact.unpack(repo, out)
+    assert e.value.code == 6 and "another" in str(e.value)
+
+
+def test_w02_unpack_refuses_a_manifest_without_the_method_identity(tmp_path):
+    repo, out, _ = rebuilt(tmp_path)
+    _rewrite_manifest(out, lambda m: m.pop("science"))
+    with pytest.raises(data_artifact.Refused) as e:
+        data_artifact.unpack(repo, out)
+    assert e.value.code == 2
+
+
+def test_w02_a_change_outside_the_science_still_publishes(tmp_path):
+    repo, out, _ = rebuilt(tmp_path)
+    (repo / "README.md").write_text("changed\n", encoding="utf-8")
+    git("commit", "-q", "-am", "docs", cwd=repo)
+    data_artifact.unpack(repo, out)

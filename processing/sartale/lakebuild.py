@@ -1,4 +1,5 @@
 """Build lakes.json and the per-lake images from the cached windows."""
+import hashlib
 import json
 import warnings
 from pathlib import Path
@@ -9,9 +10,18 @@ from pyproj import Transformer
 
 from sartale import config
 from sartale.catalog import PROVISIONAL, STANDARD
+from sartale.gcov import apply_mask
+from sartale.lakecheck import ABSENCE_RULE
 from sartale.lakes import Lake
 from sartale.lakes import DEFAULT_ZONE_KM
-from sartale.lakestatus import SeriesPoint, cloud_window_looks, is_valid, lake_status, no_lake_status
+from sartale.lakestatus import (
+    SeriesPoint,
+    cloud_window_looks,
+    forming_status,
+    is_valid,
+    lake_status,
+    no_lake_status,
+)
 from sartale.lakewater import (
     dark_mask,
     despeckle,
@@ -29,6 +39,10 @@ from sartale.radiometry import to_db
 POINT_LABEL = "water area in the search window"
 OUTLINE_LABEL = "water area in the lake outline (buffered 200 m)"
 NO_LAKE_LABEL = "dark radar area in the search circle; there is no lake here now, so it is not lake area"
+FORMING_LABEL = ("dark radar area in the search circle; Sentinel-2 shows water where there was no lake, so a lake may "
+                 "be forming; this dark area is not treated as lake area until the SARtale team reviews the site and "
+                 "adds it as a measured lake")
+FORMING_STATE = "lake_forming_check"  # lakes.json lake_state of a no-lake site where the absence check found water
 WATER_RGBA = (0x2b, 0x8c, 0xff, 200)
 SHADOW_RGBA = (128, 128, 128, 120)
 NOTES = ("Areas are water within a lake's outline (buffered 200 m) or, without one, a search circle (1 km unless "
@@ -44,17 +58,19 @@ def _nanmedian0(stack: np.ndarray) -> np.ndarray:
         return np.nanmedian(stack, axis=0)
 
 
-def _outline_feature(lake: Lake) -> dict | None:
-    """The outline as a GeoJSON Feature if `lake.outline` is a readable local GeoJSON file, else None.
-
-    A relative path is read from the processing folder (where lakes_in.json lives), wherever the command runs.
-    """
+def _outline_path(lake: Lake) -> Path | None:
+    """The outline file of `lake` (a relative path is read from the processing folder, where lakes_in.json lives,
+    wherever the command runs), or None without an outline."""
     if not lake.outline:
         return None
     p = Path(lake.outline)
-    if not p.is_absolute():
-        p = OUTLINE_ROOT / p
-    if not p.is_file():
+    return p if p.is_absolute() else OUTLINE_ROOT / p
+
+
+def _outline_feature(lake: Lake) -> dict | None:
+    """The outline as a GeoJSON Feature if `lake.outline` is a readable local GeoJSON file, else None."""
+    p = _outline_path(lake)
+    if p is None or not p.is_file():
         return None
     doc = json.loads(p.read_text(encoding="utf-8"))
     if doc.get("type") == "FeatureCollection":
@@ -119,10 +135,24 @@ def _read_cache(lake_dir: Path, limits: list[str], listed: set[tuple[str, str, s
         for other in sorted(set(by_crid) - {crid}):
             limits.append(f"ignored {by_crid[other].name}: the same pass is cached as {crid}")
         with np.load(by_crid[crid]) as z:
+            hh, hv = remask(z, crid)
             passes.append({"date": date, "key": key, "id": f"{date}_{key}", "crid": crid,
-                           "hh": z["hh"], "hv": z["hv"], "x": np.asarray(z["x"], float),
+                           "hh": hh, "hv": hv, "x": np.asarray(z["x"], float),
                            "y": np.asarray(z["y"], float), "epsg": int(z["epsg"])})
     return passes
+
+
+def remask(z, crid: str) -> tuple[np.ndarray, np.ndarray]:
+    """HH and HV of a cached window with the GCOV validity rule applied again from the raw mask it stores.
+
+    Windows cached before the rule was fixed kept mask-0 samples when the clip held no subswath number; applying
+    `gcov.apply_mask` again (by the pass's own CRID) makes them invalid, so the build never depends on the rule
+    in force when a window was fetched."""
+    hh, hv = np.asarray(z["hh"], float), np.asarray(z["hv"], float)
+    if "mask" not in z.files or z["mask"].shape != hh.shape:
+        return hh, hv
+    mask = np.asarray(z["mask"])
+    return apply_mask(hh, mask, crid), apply_mask(hv, mask, crid)
 
 
 def read_collections(passes_json: Path) -> dict[str, str]:
@@ -268,15 +298,16 @@ def screen_all(by_track: dict[str, list[dict]], manual: dict[str, str] | None = 
     return excluded
 
 
-def season_dark(by_track: dict[str, list[dict]], excluded: dict[str, str]) -> dict[str, np.ndarray]:
-    """Dark mask of each track's season-median image (two-view rule, R2), from non-excluded passes only."""
+def season_dark(by_track: dict[str, list[dict]], excluded: dict[str, str]) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+    """(dark, valid) masks of each track's season-median image (two-view rule, R2), from non-excluded passes only.
+    `valid` is kept so that a pixel a track never measured is not read as "not dark" there."""
     out = {}
     for k, ps in by_track.items():
         ok = [p for p in ps if p["id"] not in excluded]
         if ok:
             med_hh = _nanmedian0(np.stack([p["hh_db"] for p in ok]))
             med_hv = _nanmedian0(np.stack([p["hv_db"] for p in ok]))
-            out[k] = dark_mask(med_hh, med_hv)[0]
+            out[k] = dark_mask(med_hh, med_hv)
     return out
 
 
@@ -296,7 +327,8 @@ def _analyse(passes: list[dict], xs, ys, limits: list[str]):
     excluded = screen_all(by_track)
     medians_dark = season_dark(by_track, excluded)
     directions = {k: k[-1] for k in by_track}
-    shadow = shadow_prone(medians_dark, directions) if medians_dark else None
+    shadow = (shadow_prone({k: v[0] for k, v in medians_dark.items()}, directions,
+                           {k: v[1] for k, v in medians_dark.items()}) if medians_dark else None)
     if shadow is None:
         limits.append("single viewing direction")
     return epsg, px, by_track, excluded, directions, shadow
@@ -313,6 +345,40 @@ def pictured_pass(series: list[SeriesPoint], track: str | None) -> str | None:
         return None
     p = max(pool, key=lambda q: (q["date"], q["track"]))
     return f"{p['date']}_{p['track']}"
+
+
+def forming_share(lake: Lake) -> float | None:
+    """The water share of the zone above which a no-lake site may be forming a lake; None for other sites."""
+    if lake.lake_state != "no_lake":
+        return None
+    return lake.forming_share if lake.forming_share is not None else config.FORMING_WATER_SHARE
+
+
+def is_forming(absence: dict | None, threshold: float | None = None) -> bool:
+    """True when the absence check says a lake may be forming: its `forming` state, which two qualifying scenes above
+    the site's threshold set (`lakecheck.step`). Evidence without a state (older builds, hand-made rows) falls back
+    to its one scene: water on more than `threshold` (default config.FORMING_WATER_SHARE) of the lake zone."""
+    if not absence:
+        return False
+    if "forming" in absence:
+        return bool(absence["forming"])
+    limit = config.FORMING_WATER_SHARE if threshold is None else threshold
+    return float(absence.get("water_share") or 0.0) > limit
+
+
+def apply_absence(entry: dict, absence: dict | None) -> dict:
+    """A built lakes.json entry of a site the register holds as "no lake now", with its absence evidence applied:
+    `absence_checked` set, and the state, status and area label of "no lake now" or, when Sentinel-2 found water,
+    "lake may be forming" (FORMING_STATE). Other entries are returned unchanged. The radar water layer is not
+    restored here; the next lakes-build draws it."""
+    if entry.get("lake_state") not in ("no_lake", FORMING_STATE):
+        return entry
+    st = entry["status"]
+    if is_forming(absence, entry.get("forming_share")):
+        return {**entry, "lake_state": FORMING_STATE, "absence_checked": absence, "area_label": FORMING_LABEL,
+                "status": forming_status(st, absence)}
+    return {**entry, "lake_state": "no_lake", "absence_checked": absence, "area_label": NO_LAKE_LABEL,
+            "status": no_lake_status(st, entry.get("lake_state_source"), absence)}
 
 
 def area_label(lake: Lake, has_outline: bool) -> str:
@@ -340,19 +406,18 @@ def _no_looks() -> dict:
             "change_km2": None, "noise_km2": None, "reason": NO_LOOKS_REASON, "new_crid": None}
 
 
-def _empty(entry: dict, limits: list[str], lake: Lake) -> dict:
-    status = _no_looks()
-    if lake.lake_state == "no_lake":
-        status = no_lake_status(status, lake.lake_state_source)
-    return {**entry, "status": status, "cloud_window_looks": 0, "directions": [], "limits": limits,
-            "series": [], "excluded": [], "images": {"latest_hh": None, "water": None, "date": None, "track": None},
-            "bounds": None}
+def _empty(entry: dict, limits: list[str], lake: Lake, absence: dict | None = None) -> dict:
+    out = {**entry, "status": _no_looks(), "cloud_window_looks": 0, "directions": [], "limits": limits,
+           "series": [], "excluded": [], "images": {"latest_hh": None, "water": None, "date": None, "track": None},
+           "bounds": None}
+    return apply_absence(out, absence)
 
 
 def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str, str] | None = None,
-               listed: set[tuple[str, str, str]] | None = None) -> dict:
-    """`listed`: the (date, key, CRID) of the passes lakes-search listed for this lake; None reads every window."""
-    limits: list[str] = state_limits(lake)
+               listed: set[tuple[str, str, str]] | None = None, absence: dict | None = None) -> dict:
+    """`listed`: the (date, key, CRID) of the passes lakes-search listed for this lake; None reads every window.
+    `absence`: the last Sentinel-2 absence check of a site with no lake now (`lakecheck.absence_check`)."""
+    limits: list[str] = state_limits(lake) + list(lake.limits)
     feature = _outline_feature(lake)
     outline = feature["geometry"] if feature else None
     if lake.outline and outline is None:
@@ -362,16 +427,18 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         "coord_source": lake.coord_source,
         "outline_source": (feature["properties"].get("source") or lake.outline) if feature else None,
         "area_label": area_label(lake, outline is not None),
+        "zone_radius_km": None if outline is not None else lake.zone_radius_km,
+        "forming_share": forming_share(lake), "forming_share_source": lake.forming_share_source,
         "lake_state": lake.lake_state, "lake_state_source": lake.lake_state_source,
         "downstream": lake.downstream, "downstream_source": lake.downstream_source,
     }
     lake_dir = Path(cache_dir) / lake.id
     if not lake_dir.is_dir():
-        return _empty(entry, limits + ["no NISAR windows fetched yet"], lake)
+        return _empty(entry, limits + ["no NISAR windows fetched yet"], lake, absence)
     raw = _read_cache(lake_dir, limits, listed)
     passes, xs, ys = _align(raw, limits, lake) if raw else ([], None, None)
     if not passes:
-        return _empty(entry, limits + ["no usable NISAR window"], lake)
+        return _empty(entry, limits + ["no usable NISAR window"], lake, absence)
 
     epsg, px, by_track, excluded, directions, shadow = _analyse(passes, xs, ys, limits)
     zone = lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline)
@@ -384,9 +451,12 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
     for p in sorted(passes, key=lambda q: (q["date"], q["key"])):
         w = pass_water(p["hh_db"], p["hv_db"], zone, shadow, px)
         reason = excluded.get(p["id"])
-        series.append({"date": p["date"], "track": p["key"],
-                       "area_km2": None if reason else w["area_km2"],
-                       "observable_share": w["observable_share"], "excluded": reason, "crid": p["crid"]})
+        point = {"date": p["date"], "track": p["key"], "area_km2": None if reason else w["area_km2"],
+                 "observable_share": w["observable_share"], "excluded": reason, "crid": p["crid"]}
+        if reason:
+            # What the left-out pass read, so the chart can mark it; never used by the status (area_km2 is null).
+            point["diagnostic_km2"] = w["area_km2"] if w["valid"] else None
+        series.append(point)
 
     latest_expected: dict[str, str] = {}  # R-P2: newest cached pass per track, excluded or not
     for p in passes:
@@ -405,16 +475,19 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         images = {**_write_images(Path(out_dir) / "lakes" / lake.id, good, latest, zone, shadow, ys),
                   "date": latest["date"], "track": latest["key"]}
     if lake.lake_state == "no_lake":
-        # No verdict, and no blue "water" layer: the dark pixels at an empty basin are not a lake.
-        status = no_lake_status(status, lake.lake_state_source)
-        if images["water"]:
+        # No verdict, and no blue "water" layer: the dark pixels at an empty basin are not a lake. Where Sentinel-2
+        # has since found water (a lake may be forming), the layer stays once the pictured pass is no older than
+        # that scene.
+        keep = is_forming(absence, forming_share(lake)) and images["date"] is not None and images["date"] >= absence["date"]
+        if images["water"] and not keep:
             (Path(out_dir) / images["water"]).unlink(missing_ok=True)
             images = {**images, "water": None}
-    return {**entry, "status": status,
-            "cloud_window_looks": cloud_window_looks(series),
-            "directions": sorted(set(directions.values())), "limits": limits, "series": series,
-            "excluded": [{"pass": k, "reason": v} for k, v in sorted(excluded.items())],
-            "images": images, "bounds": _bounds(xs, ys, epsg, px)}
+    out = {**entry, "status": status,
+           "cloud_window_looks": cloud_window_looks(series),
+           "directions": sorted(set(directions.values())), "limits": limits, "series": series,
+           "excluded": [{"pass": k, "reason": v} for k, v in sorted(excluded.items())],
+           "images": images, "bounds": _bounds(xs, ys, epsg, px)}
+    return apply_absence(out, absence)
 
 
 def _track_medians(lk: dict) -> dict[str, float]:
@@ -445,16 +518,46 @@ def attabad_gate(doc: dict) -> dict:
             "attabad_cloud_window_looks": cw, "pass": ok}
 
 
+def absence_zone(lake: Lake) -> dict:
+    """The key of the zone an absence check measures: the lake point with the circle's radius, or with the outline
+    (its path in the register and the SHA-256 of the file) when the lake has a readable outline, as `build_lake`
+    uses it. The evidence stores it, and is carried only while the lake's key is the same."""
+    key = {"lon": lake.lon, "lat": lake.lat}
+    if _outline_feature(lake) is not None:
+        digest = hashlib.sha256(_outline_path(lake).read_bytes()).hexdigest()
+        return {**key, "outline": lake.outline, "outline_sha256": digest}
+    return {**key, "radius_km": lake.zone_radius_km}
+
+
+def carried_absence(previous: dict | None, lake: Lake) -> dict | None:
+    """The last absence check of `lake` in a previously published lakes.json, if it was made for the same zone
+    (`absence_zone`: point, and radius or outline file) under the current rule. A moved site, a new radius or a
+    changed outline starts again with no evidence, and so does evidence made under another rule (`rule`, e.g. from
+    before snow, ice and cloud edges stopped counting as a clear view) or for another forming threshold, since its
+    forming state was worked out with them."""
+    if lake.lake_state != "no_lake" or not previous:
+        return None
+    old = next((lk for lk in previous.get("lakes", []) if lk.get("id") == lake.id), None)
+    ev = old.get("absence_checked") if old else None
+    if not isinstance(ev, dict) or ev.get("rule") != ABSENCE_RULE:
+        return None
+    if ev.get("zone") != absence_zone(lake) or ev.get("threshold") != forming_share(lake):
+        return None
+    return ev
+
+
 def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, checks: list[dict] | None = None,
-                collections: dict[str, str] | None = None) -> dict:
+                collections: dict[str, str] | None = None, previous: dict | None = None) -> dict:
     """`checks` are the Sentinel-2 cross-check rows from `lakes-check`, merged in as the `checks` block.
     `collections` maps CRID -> CMR short name (default: read from `cache_dir`/passes.json). Only the passes that
-    `cache_dir`/passes.json lists are built; without that file every cached window is read."""
+    `cache_dir`/passes.json lists are built; without that file every cached window is read. `previous` is the
+    lakes.json this build replaces: each no-lake site keeps its last Sentinel-2 absence check from it."""
     if collections is None:
         collections = read_collections(Path(cache_dir) / PASSES_JSON)
     listed = read_listed(Path(cache_dir) / PASSES_JSON)
     built_lakes = [build_lake(lake, Path(cache_dir), Path(out_dir), collections,
-                              None if listed is None else listed.get(lake.id, set())) for lake in lakes]
+                              None if listed is None else listed.get(lake.id, set()),
+                              carried_absence(previous, lake)) for lake in lakes]
     crids = sorted({p["crid"] for lk in built_lakes for p in lk["series"]})
     return {
         "version": 1, "built": built, "notes": NOTES,

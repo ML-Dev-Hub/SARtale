@@ -39,3 +39,51 @@ def test_guide_relative_links_resolve():
             else:
                 target = guide / href
             assert target.exists(), f"{page.name}: {href}"
+
+
+def test_d03_worked_example_is_reproducible_from_the_lake_data_it_names():
+    """The README and guide state which build their Attabad example comes from. When that is the shipped
+    lakes.json, every number must be what build.py computes from it now; after a later data refresh the example is
+    a dated snapshot of an older build and must say so (its date is older than the shipped build)."""
+    import json
+    from datetime import datetime
+    build = _load(ROOT / "docs" / "guide" / "build.py", "guide_build")
+    doc = json.loads(build.LAKES_JSON.read_text(encoding="utf-8"))
+    ex = build.worked_example(doc)
+    method = (ROOT / "docs" / "guide" / "method.html").read_text(encoding="utf-8")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    stated = set(re.findall(r"lake data built (\d{1,2} \w{3} \d{4})", method + readme))
+    assert len(stated) == 1, stated
+    (when,) = stated
+    if when == ex["EX_BUILT"]:
+        assert build.readme_example(ex) in readme
+        i = [p[0] for p in build.PAGES].index("method")
+        assert method.replace("\r\n", "\n") == build.page(i, ex).replace("\r\n", "\n")
+        assert "{{EX_" not in method
+    else:
+        assert datetime.strptime(when, "%d %b %Y") < datetime.strptime(ex["EX_BUILT"], "%d %b %Y")
+
+
+def test_m9_worked_example_fails_clearly_without_a_measured_attabad_status():
+    import copy
+    import json
+
+    import pytest
+    build = _load(ROOT / "docs" / "guide" / "build.py", "guide_build")
+    doc = json.loads(build.LAKES_JSON.read_text(encoding="utf-8"))
+    attabad = next(lk for lk in doc["lakes"] if lk["id"] == "attabad")
+
+    def with_status(**changes):
+        d = copy.deepcopy(doc)
+        next(lk for lk in d["lakes"] if lk["id"] == "attabad")["status"].update(changes)
+        return d
+
+    for broken, words in [
+        (with_status(status="Not enough NISAR looks yet", change_km2=None, noise_km2=None), "change_km2, noise_km2"),
+        (with_status(status="Not observable", track=None, latest_date=None, change_km2=None, noise_km2=None), "track"),
+        ({**doc, "lakes": [lk for lk in doc["lakes"] if lk["id"] != "attabad"]}, "no Attabad entry"),
+        (with_status(latest_date="1999-01-01"), "0 valid pass"),
+    ]:
+        with pytest.raises(build.WorkedExampleError, match=words):
+            build.worked_example(broken)
+    assert build.worked_example(doc)["EX_TRACK"] == attabad["status"]["track"]

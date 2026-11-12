@@ -4,7 +4,7 @@ import "./storyPage.css";
 import copyJson from "./content/storyPage.json";
 import { dataUrl, formatDate } from "./format";
 import { mountAddLake, requestLine, shownRequests, type LakeRequest } from "./lakeRequests";
-import { cloudLooks, hasLakeNow, iouRange, lakesNow, opticalOverlapPhrase, type Lake, type LakesFile } from "./lakes";
+import { cloudLooks, hasLakeNow, iouRange, lakesNow, mayBeForming, opticalOverlapPhrase, type Lake, type LakesFile } from "./lakes";
 
 const copy = copyJson;
 const DASH = "—";
@@ -281,7 +281,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   for (const l of lakes) {
     const pos = mapPin(l.lon, l.lat);
     if (pos) {
-      const pin = el("span", hasLakeNow(l) ? "sp-pin" : "sp-pin sp-pin-nolake");
+      const pin = el("span", hasLakeNow(l) ? "sp-pin" : mayBeForming(l) ? "sp-pin sp-pin-nolake sp-pin-forming" : "sp-pin sp-pin-nolake");
       pin.style.left = pos.left;
       pin.style.top = pos.top;
       pin.title = hasLakeNow(l) ? l.name : `${l.name}: ${l.status.status}`;
@@ -299,11 +299,15 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   }
   const mapCredit = text("figcaption", "sp-map-credit", w.mapCredit);
   const mapKey = el("figcaption", "sp-map-key", el("span", "sp-key-pin"), ` ${w.keyWatched} `);
-  if (file?.lakes.some((l) => !hasLakeNow(l))) mapKey.append(el("span", "sp-key-pin sp-key-nolake"), ` ${w.keyNoLake} `);
+  if (file?.lakes.some((l) => !hasLakeNow(l) && !mayBeForming(l))) mapKey.append(el("span", "sp-key-pin sp-key-nolake"), ` ${w.keyNoLake} `);
+  if (file?.lakes.some(mayBeForming)) mapKey.append(el("span", "sp-key-pin sp-key-nolake sp-key-forming"), ` ${w.keyForming} `);
   mapKey.append(el("span", "sp-key-pin sp-key-request"), ` ${w.keyRequested}`);
   mapEl.append(mapKey, mapCredit);
   const requestEls: HTMLElement[] = [];
+  // Shared with the add-a-lake form, so a refreshed list is what the form checks a new request against.
+  const addDeps = { watched: file?.lakes ?? [], requests: [] as LakeRequest[] };
   const setRequests = (list: LakeRequest[]): void => {
+    addDeps.requests = list;
     for (const e of requestEls) e.remove();
     requestEls.length = 0;
     for (const r of shownRequests(list, file?.lakes ?? [])) {
@@ -385,9 +389,8 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const ft = copy.footer;
   const footer = el("footer", "sp-footer", text("span", undefined, ft.team), text("span", undefined, ft.event), el("span", "sp-grow"), text("span", undefined, ft.data));
 
-  const requests = opts.requests ?? [];
-  setRequests(requests);
-  const addLake = mountAddLake(addLakeEl, { watched: file?.lakes ?? [], requests });
+  setRequests(opts.requests ?? []);
+  const addLake = mountAddLake(addLakeEl, addDeps);
 
   page.append(cover, risk, gap, view, measure, watch, add, videos, closing, footer);
   root.replaceChildren(page);
