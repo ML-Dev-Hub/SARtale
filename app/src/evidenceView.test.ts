@@ -170,7 +170,7 @@ describe("How we know", () => {
   test("uses no praise words, no banned claims and no Peshawar chapter", () => {
     const { text } = withLakes();
     expect(text).not.toMatch(/accurate/i);
-    expect(text).not.toMatch(/(?<!not )validated/i);
+    expect(text).not.toMatch(/(?<!not )(?<!not yet )validated/i); // "Not yet validated against Sentinel-2" is a status name
     expect(findBannedClaims(text)).toEqual([]);
     expect(text).not.toMatch(/detect/i);
     expect(text).not.toMatch(/Peshawar|Tarbela|OPERA/);
