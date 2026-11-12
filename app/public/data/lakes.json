@@ -1,6 +1,6 @@
 {
  "version": 1,
- "built": "2026-11-12T14:37:51Z",
+ "built": "2026-11-12T14:56:14Z",
  "notes": "Areas are water within a lake's outline (buffered 200 m) or, without one, a search circle (1 km unless the lake sets a smaller one), and underestimate lakes whose shores sit in radar shadow; images are crops on the UTM grid, north up; they are pictures, not map overlays.",
  "crid": "P05023, P05036",
  "collections": [
@@ -463,11 +463,11 @@
    },
    "freeze": {
     "state": "open",
-    "since": null,
+    "since": "2026-06-18",
     "temp_through": "2026-11-09",
     "checked": "2026-11-12",
     "cold_run_days": 0,
-    "warm_run_days": 70,
+    "warm_run_days": 237,
     "fdd_since_sep": 0.0,
     "t2m_mean_7d": 2.1,
     "t2m_min_mean_7d": -3.3,
@@ -478,8 +478,9 @@
     "frozen_passes": 0,
     "radar_assessed": true,
     "in_season": true,
+    "held_over_sep": false,
     "source": "NASA POWER daily T2M and T2M_MIN (MERRA-2 based), moved to the lake's height at -6.5 C/km",
-    "reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been above 0 \u00b0C for 70 days in a row, with 0 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,359 m). No clear Sentinel-2 view of the lake zone in the last 7 days."
+    "reason": "Open again since 18 Jun 2026 by the air-temperature rule (14 days in a row above 0 \u00b0C and a radar pass back within its summer range), so the usual assessment applies. The daily mean air temperature at the lake has been above 0 \u00b0C for 237 days in a row, with 0 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,359 m). No clear Sentinel-2 view of the lake zone in the last 7 days."
    }
   },
   {
@@ -1192,7 +1193,7 @@
    },
    "freeze": {
     "state": "open",
-    "since": null,
+    "since": "2026-06-18",
     "temp_through": "2026-11-09",
     "checked": "2026-11-12",
     "cold_run_days": 3,
@@ -1206,15 +1207,17 @@
      "s2_id": "S2B_43SDA_20261110_1_L2A",
      "clear_share": 1.0,
      "snow_share": 0.0,
-     "water_share": 0.125
+     "water_share": 0.138,
+     "water_over": "lake outline"
     },
     "s2_searched": true,
     "breakup_pass": null,
     "frozen_passes": 0,
     "radar_assessed": true,
     "in_season": true,
+    "held_over_sep": false,
     "source": "NASA POWER daily T2M and T2M_MIN (MERRA-2 based), moved to the lake's height at -6.5 C/km",
-    "reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 6 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,551 m). Clearest Sentinel-2 view of the last 7 days: 10 Nov 2026 (S2B_43SDA_20261110_1_L2A), snow or ice on 0% and water on 12% of the lake zone seen clear."
+    "reason": "Open again since 18 Jun 2026 by the air-temperature rule (14 days in a row above 0 \u00b0C and a radar pass back within its summer range), so the usual assessment applies. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 6 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,551 m). Clearest Sentinel-2 view of the last 7 days: 10 Nov 2026 (S2B_43SDA_20261110_1_L2A), snow or ice on 0% of the lake zone seen clear, water on 14% of the lake outline seen clear."
    }
   },
   {
@@ -1922,7 +1925,7 @@
    },
    "freeze": {
     "state": "open",
-    "since": null,
+    "since": "2026-06-25",
     "temp_through": "2026-11-09",
     "checked": "2026-11-12",
     "cold_run_days": 3,
@@ -1937,8 +1940,9 @@
     "frozen_passes": 0,
     "radar_assessed": true,
     "in_season": true,
+    "held_over_sep": false,
     "source": "NASA POWER daily T2M and T2M_MIN (MERRA-2 based), moved to the lake's height at -6.5 C/km",
-    "reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 14 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,856 m). No clear Sentinel-2 view of the lake zone in the last 7 days."
+    "reason": "Open again since 25 Jun 2026 by the air-temperature rule (14 days in a row above 0 \u00b0C and a radar pass back within its summer range), so the usual assessment applies. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 14 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,856 m). No clear Sentinel-2 view of the lake zone in the last 7 days."
    }
   },
   {
@@ -2257,7 +2261,7 @@
      "core_contrast_hh_db": -4.159,
      "core_contrast_hv_db": -3.825,
      "core_dark_share": 0.651,
-     "frozen": false
+     "frozen": true
     },
     {
      "date": "2026-07-02",
@@ -2269,7 +2273,7 @@
      "core_contrast_hh_db": -3.316,
      "core_contrast_hv_db": -3.245,
      "core_dark_share": 0.442,
-     "frozen": false
+     "frozen": true
     },
     {
      "date": "2026-07-14",
@@ -2282,7 +2286,7 @@
      "core_contrast_hh_db": -8.057,
      "core_contrast_hv_db": -6.829,
      "core_dark_share": 0.897,
-     "frozen": false
+     "frozen": true
     },
     {
      "date": "2026-07-19",
@@ -2493,13 +2497,15 @@
      "s2_id": "S2C_43SBV_20261108_0_L2A",
      "clear_share": 1.0,
      "snow_share": 1.0,
-     "water_share": 0.0
+     "water_share": 0.0,
+     "water_over": "lake outline"
     },
     "s2_searched": true,
     "breakup_pass": null,
-    "frozen_passes": 3,
+    "frozen_passes": 6,
     "radar_assessed": true,
     "in_season": true,
+    "held_over_sep": false,
     "source": "NASA POWER daily T2M and T2M_MIN (MERRA-2 based), moved to the lake's height at -6.5 C/km",
     "reason": "Snow or ice covers 100% of the lake zone seen clear in a Sentinel-2 scene of 8 Nov 2026 (S2C_43SBV_20261108_0_L2A). By the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep) the lake has probably been frozen since 18 Oct 2026. The daily mean air temperature at the lake has been below 0 \u00b0C for 29 days in a row, with 171 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 4,188 m). Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so SARtale gives no growing or shrinking verdict while the lake is frozen."
    }
