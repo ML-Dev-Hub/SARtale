@@ -8,6 +8,7 @@ import pytest
 from pyproj import Transformer
 
 from sartale import config
+from sartale.demmask import NO_DEM_LIMIT
 from sartale.lakebuild import POINT_LABEL, build_lakes
 from sartale.lakes import Lake
 
@@ -66,8 +67,15 @@ def test_build_writes_schema_keys(built):
         assert keys <= set(lk)
     alpha = lake(doc, "alpha")
     assert alpha["directions"] == ["A", "D"]
-    assert alpha["status"]["status"] == "Stable"
+    assert alpha["status"]["status"] == "No change" and alpha["status"]["level"] == "No change"
     assert alpha["status"]["looks"] == 5
+    # the method that made the numbers is recorded with them
+    assert doc["method"]["id"] == "D17" and doc["method"]["lee_box"] == 7 and doc["method"]["polarisation"] == "HH"
+    assert doc["constants"]["cusum_h"] == 4.0 and doc["constants"]["min_validation_iou"] == 0.4
+    # every compared pass carries its z, baseline, noise and the level it set
+    compared = [p for p in alpha["series"] if p.get("z") is not None]
+    assert len(compared) == 4 and all(p["level_contrib"] == "No change" and p["noise_km2"] >= 0.005 for p in compared)
+    assert alpha["validation"] is None
     assert 0.7 < alpha["series"][0]["area_km2"] < 0.9
     assert alpha["cloud_window_looks"] == 8  # 4 dates in the window, 2 tracks
     lo, la, hi, ha = alpha["bounds"]
@@ -132,7 +140,7 @@ def test_build_crops_offset_windows(tmp_path):
     assert len(lk["series"]) == 6
     assert lk["status"]["looks"] == 3
     assert all(0.6 < p["area_km2"] < 0.9 for p in lk["series"])
-    assert lk["limits"] == []
+    assert lk["limits"] == [NO_DEM_LIMIT]  # the tests run without the Copernicus DEM
 
 
 def test_build_drops_track_with_no_overlap(tmp_path):
@@ -303,7 +311,7 @@ def test_radar_water_masks_ignores_a_pass_the_catalogue_no_longer_lists(tmp_path
         radar_water_masks(a, cache, "2026-10-23_156A")
 
 
-def test_a_first_pass_on_a_new_processing_version_does_not_confirm_a_change(tmp_path):
+def test_a_first_pass_on_a_new_processing_version_can_watch_but_not_alert(tmp_path):
     cache, out = tmp_path / "c", tmp_path / "o"
     a = make_lake("alpha")
     old = ["2026-09-05", "2026-09-17", "2026-09-29", "2026-10-11"]
@@ -312,8 +320,10 @@ def test_a_first_pass_on_a_new_processing_version_does_not_confirm_a_change(tmp_
     write_pass(cache, a, "2026-10-23", "156A", crid="P05036", water_m=560.0)
     lk = build_lakes([a], cache, out, "t", collections=COLLECTIONS)["lakes"][0]
     st = lk["status"]
-    assert st["status"] == "Change not confirmed yet" and st["change_km2"] > 0 and st["new_crid"] == "P05036"
-    assert "first pass on NISAR processing version P05036" in st["reason"]
+    assert st["status"] == "Watch" and st["change_km2"] > 0 and st["alerts_paused"]["crid"] == "P05036"
+    assert "first 156A pass on NISAR processing version P05036" in st["reason"]
+    assert st["message"]["title"] == "Watch: one radar pass of Alpha is beyond 2× noise."
+    assert lk["series"][-1]["new_version"] is True
 
 
 def test_a_no_lake_site_keeps_its_passes_but_gets_no_verdict_and_no_water_layer(tmp_path):
@@ -354,11 +364,11 @@ def test_an_unconfirmed_lake_keeps_its_status_and_carries_a_limit(tmp_path):
 
     cache, out = tmp_path / "cache", tmp_path / "out"
     base = make_lake("strip")
-    for d in ["2026-06-18", "2026-06-30", "2026-07-12"]:
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24"]:
         write_pass(cache, base, d, "156A")
     lk = build_lakes([replace(base, lake_state="unconfirmed", lake_state_source="narrow ice and water strip.")],
                      cache, out, "2026-11-10T00:00:00Z")["lakes"][0]
-    assert lk["status"]["status"] == "Stable" and lk["lake_state"] == "unconfirmed"
+    assert lk["status"]["status"] == "No change" and lk["lake_state"] == "unconfirmed"
     assert lk["limits"][0] == "Lake not confirmed in recent imagery: narrow ice and water strip."
     assert lk["images"]["water"]
 
@@ -605,3 +615,38 @@ def test_the_build_carries_the_last_freeze_check_and_keeps_its_frozen_passes_out
     assert flagged == [("2026-06-18", "156A")]
     assert alpha["summer_ref"]["156A"]["passes"] == 4 and alpha["summer_ref"]["063D"]["passes"] == 5
     assert alpha["status"]["status"] != "Not seen this pass"
+
+
+def test_with_the_dem_kept_in_the_cache_the_build_masks_the_window_statistics(tmp_path):
+    from sartale.demmask import grid_key
+    from sartale.lakebuild import _align, _read_cache
+    cache, out = tmp_path / "c", tmp_path / "o"
+    a = make_lake("alpha")
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24"]:
+        write_pass(cache, a, d, "156A")
+    _, xs, ys = _align(_read_cache(cache / "alpha", []), [], a)
+    margin = int(round(config.DEM_MARGIN_M / PX))
+    (cache / "alpha" / "dem").mkdir()
+    np.savez_compressed(cache / "alpha" / "dem" / f"glo30_{grid_key(xs, ys, EPSG)}.npz",
+                        dem=np.zeros((len(ys) + 2 * margin, len(xs) + 2 * margin), np.float32))
+    lk = build_lakes([a], cache, out, "t")["lakes"][0]
+    assert NO_DEM_LIMIT not in lk["limits"]
+    assert 0.7 < lk["series"][0]["area_km2"] < 0.9  # flat ground: nothing in layover or shadow, the same water
+
+
+def test_a_sentinel2_check_under_0_4_iou_gives_the_lake_no_level(tmp_path):
+    cache, out = tmp_path / "c", tmp_path / "o"
+    a = make_lake("alpha")
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24"]:
+        write_pass(cache, a, d, "156A")
+    row = {"lake": "alpha", "nisar_date": "2026-07-12", "nisar_track": "156A", "s2_date": "2026-07-12", "s2_id": "S2X",
+           "iou": 0.25, "radar_km2": 0.1, "optical_km2": 0.4}
+    lk = build_lakes([a], cache, out, "t", checks=[row])["lakes"][0]
+    assert lk["validation"] == {"iou": 0.25, "nisar_date": "2026-07-12", "nisar_track": "156A",
+                                "s2_date": "2026-07-12", "s2_id": "S2X"}
+    assert lk["status"]["status"] == "Not measurable" and lk["status"]["level"] is None
+    assert "IoU 0.25, under the 0.4 SARtale needs to give a level" in lk["status"]["reason"]
+    ok = build_lakes([a], cache, out, "t", checks=[{**row, "iou": 0.6}])["lakes"][0]
+    assert ok["status"]["status"] == "No change"
+    note = build_lakes([a], cache, out, "t", checks=[{"lake": "alpha", "note": "no clear scene"}])["lakes"][0]
+    assert note["validation"] is None and note["status"]["status"] == "No change"

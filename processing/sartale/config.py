@@ -3,7 +3,18 @@
 # picked up without a code change. lakes.json lists the CRIDs used.
 
 # Lake Watch method constants (docs: global-constraints in the Lake Watch plan).
-DROP_DB = 3.0  # dark = HH and HV both at least this far below the window median
+# Lake water is method D17 (.superpowers/sdd/post-merge/method-study.md): a Lee filter on linear HH power, then water =
+# valid and HH at least DROP_DB below the window-median HH. HV is not used for water; it stays in the pass screens.
+METHOD_ID = "D17"
+DROP_DB = 3.0  # water: HH at least this far below the window-median HH (the screens' dark share: HH and HV both)
+LEE_BOX = 7  # Lee filter window (pixels) on linear HH power, before dB
+LEE_ENL = 4.0  # equivalent number of looks of the Lee filter (the median GCOV numberOfLooks is 4.5-5)
+# The window-median HH that water is measured against leaves out radar layover and shadow, from the Copernicus GLO-30
+# DEM, the look azimuth fitted to GCOV's numberOfLooks layer (NISAR looks left) and an incidence angle of DEM_INCIDENCE_DEG.
+# Inside the lake zone nothing is masked: a flat lake surface is almost never in layover or shadow.
+DEM_LOOK_AZIMUTH_DEG = {"A": 255.0, "D": 105.0}  # ground azimuth of the look, from north, clockwise
+DEM_INCIDENCE_DEG = 40.0
+DEM_MARGIN_M = 3000.0  # DEM read this far past the window, so terrain outside it can cast shadow into it
 BRIGHT_PASS_DB = 3.0  # a pass whose window-median HH is further than this from its track median is excluded
 # Second per-track screen (ruling R-F1): robust z-score, (value - track median) / max(1.4826 * MAD, floor),
 # of each pass's window dark-pixel share and window-median HV. |z| > OUTLIER_Z excludes the pass.
@@ -14,11 +25,21 @@ OUTLIER_MIN_PASSES = 4  # fewer passes on a track: no robust screen
 # Passes excluded by hand, with the reason shown in each affected lake's `excluded` list. Applied to every
 # lake that has the pass and has not already excluded it by a computed screen.
 MANUAL_EXCLUSIONS = {"2026-09-05_156A": "anomalous over Hunza lakes; spec §5"}
-MIN_LOOKS = 3  # valid same-track passes needed for a trend
+MIN_LOOKS = 3  # earlier valid passes on its own track a pass needs before it is compared (gets a z)
 MIN_OBSERVABLE = 0.5  # share of the lake zone that must be observable
 NOISE_FLOOR_KM2 = 0.005
-CHANGE_FACTOR = 2.0
-SPECKLE_BOX = 3  # boxcar width (pixels) applied to linear power before dB
+# Alert levels (lakestatus.assess). Every valid pass, on any track, is compared with the median of up to BASELINE_PASSES
+# earlier valid passes on its own track: z = (area - baseline) / noise, where noise is the track's pass-to-pass noise on
+# up to NOISE_PASSES of those passes, floored at max(NOISE_FLOOR_KM2, NOISE_REL_FLOOR x baseline).
+BASELINE_PASSES = 6
+NOISE_PASSES = 8
+NOISE_REL_FLOOR = 0.02
+CHANGE_FACTOR = 2.0  # |z| at least this: one pass is a Watch; two passes in a row (same sign) an Alert or a Decrease noted
+CUSUM_K = 0.5  # CUSUM over the z stream: allowance per pass ...
+CUSUM_H = 4.0  # ... and the sum that makes a Watch
+AFTER_OPEN_PASSES = 2  # after a frozen spell, this many valid passes per track only rebuild the baseline
+MIN_VALIDATION_IOU = 0.4  # a lake whose Sentinel-2 check (lakes-check) overlaps less than this gets no level
+SPECKLE_BOX = 3  # boxcar width (pixels) applied to linear power before dB, for the pass screens and the pictures
 CLOUD_WINDOW = ("2026-06-17", "2026-08-04")  # inclusive; headline cloud count
 # Open-water season for the Sentinel-2 cross-check of lakes (lakes-check), as (month, day) pairs, inclusive, in any
 # year. Outside it a lake can be frozen or snow-covered (Shazore was open 26 Jun-9 Oct 2026 and frozen by 19 Oct;

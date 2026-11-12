@@ -19,7 +19,9 @@ from sartale.lakebuild import (
     pass_images,
     read_listed,
     unlisted_windows,
+    validation_of,
 )
+from sartale.freeze import restatus
 from sartale.lakecheck import check_lake
 from sartale.lake_requests import RequestError
 from sartale.lakes import load_lakes
@@ -202,6 +204,16 @@ def cmd_lakes_check(args) -> None:
                   f"optical {row['window_optical_km2']:.3f}, IoU {row['window_iou']}")
     write_json_atomic(Path(args.checks), rows)
     doc["checks"] = rows
+    # A new check can change whether a lake gets a level (IoU under config.MIN_VALIDATION_IOU: "Not measurable"), so
+    # each checked lake's status is set again from what lakes.json holds.
+    by_row = {r["lake"]: r for r in rows}
+    for i, lk in enumerate(doc["lakes"]):
+        if lk["id"] in by_row:
+            entry = {**lk, "validation": validation_of(by_row[lk["id"]])}
+            doc["lakes"][i] = restatus(entry)
+            before, after = (lk.get("status") or {}).get("status"), (doc["lakes"][i].get("status") or {}).get("status")
+            if before != after:
+                print(f"{lk['id']}: status {before} -> {after}")
     write_json_atomic(path, doc)
     print(f"{len(rows)} checks -> {args.checks} and {path}")
 

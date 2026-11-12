@@ -14,8 +14,12 @@ from sartale.gcov import apply_mask
 from sartale.lakecheck import ABSENCE_RULE, in_season
 from sartale.lakes import Lake
 from sartale.lakes import DEFAULT_ZONE_KM
+from sartale import demmask
 from sartale.lakestatus import (
+    NOT_ENOUGH,
     SeriesPoint,
+    _result,
+    assess,
     cloud_window_looks,
     forming_status,
     is_valid,
@@ -26,12 +30,14 @@ from sartale.lakewater import (
     dark_mask,
     despeckle,
     lake_zone,
+    lee_filter,
     outline_mask,
     outline_window_share,
     pass_water,
     screen_outliers,
     screen_passes,
     shadow_prone,
+    water_mask,
     window_stats,
 )
 from sartale.render import render_frame, shared_stretch
@@ -45,10 +51,42 @@ FORMING_LABEL = ("dark radar area in the search circle; Sentinel-2 shows water w
                  "adds it as a measured lake")
 FORMING_STATE = "lake_forming_check"  # lakes.json lake_state of a no-lake site where the absence check found water
 WATER_RGBA = (0x2b, 0x8c, 0xff, 200)
-SHADOW_RGBA = (128, 128, 128, 120)
 NOTES = ("Areas are water within a lake's outline (buffered 200 m) or, without one, a search circle (1 km unless "
-         "the lake sets a smaller one), and underestimate lakes whose shores sit in radar shadow; images are crops "
-         "on the UTM grid, north up; they are pictures, not map overlays.")
+         "the lake sets a smaller one), by method D17 (Lee-filtered HH at least 3 dB below the window median); wet "
+         "shore and sediment flats read as water, so a lake drawing down onto them barely changes its radar area; "
+         "images are crops on the UTM grid, north up; they are pictures, not map overlays.")
+# Method D17, recorded in lakes.json `method` so a published number can be traced to the rule that made it.
+METHOD = {
+    "id": config.METHOD_ID,
+    "water": (f"valid and HH at least {config.DROP_DB:g} dB below the window-median HH, after a {config.LEE_BOX}x"
+              f"{config.LEE_BOX} Lee filter (ENL {config.LEE_ENL:g}) on linear HH power; HV is not used for water"),
+    "lee_box": config.LEE_BOX, "lee_enl": config.LEE_ENL, "drop_db": config.DROP_DB, "polarisation": "HH",
+    "zone": "the mapped outline buffered 200 m, or a circle around the lake point; no shadow rule inside it",
+    "window_statistics": ("the window-median HH leaves out radar layover and shadow from the Copernicus GLO-30 DEM "
+                          f"(look azimuth {config.DEM_LOOK_AZIMUTH_DEG['A']:g} degrees ascending, "
+                          f"{config.DEM_LOOK_AZIMUTH_DEG['D']:g} descending, incidence {config.DEM_INCIDENCE_DEG:g} "
+                          "degrees)"),
+    "dem": demmask.SOURCE, "dem_look_azimuth_deg": dict(config.DEM_LOOK_AZIMUTH_DEG),
+    "dem_incidence_deg": config.DEM_INCIDENCE_DEG,
+    "screens": (f"as before: window-median HH within {config.BRIGHT_PASS_DB:g} dB of its track, robust outliers "
+                f"(|z| > {config.OUTLIER_Z:g}) in the window dark share (HH and HV, {config.SPECKLE_BOX}x"
+                f"{config.SPECKLE_BOX} boxcar) and median HV, and the hand list"),
+    "noise": (f"per track: 1.4826 x the median pass-to-pass difference of up to {config.NOISE_PASSES} earlier valid "
+              f"passes, at least max({config.NOISE_FLOOR_KM2:g} km2, {config.NOISE_REL_FLOOR:.0%} of the baseline)"),
+    "baseline": f"median of up to {config.BASELINE_PASSES} earlier valid passes on the same track",
+    "levels": {
+        "Alert: growing": (f"two valid passes in a row, on any tracks, with z >= +{config.CHANGE_FACTOR:g}; neither a "
+                           "track's first pass on a processing version its baseline lacks, nor flagged frozen, nor one "
+                           f"of the first {config.AFTER_OPEN_PASSES} passes per track after the lake opened"),
+        "Watch": (f"one valid pass with |z| >= {config.CHANGE_FACTOR:g}, or a CUSUM over the z values (k = "
+                  f"{config.CUSUM_K:g}) reaching {config.CUSUM_H:g}"),
+        "Decrease noted": f"the two-pass rule with z <= -{config.CHANGE_FACTOR:g}; information only, never an Alert",
+        "No change": "none of the above",
+    },
+    "not_measurable": (f"no level when under {config.MIN_OBSERVABLE:.0%} of the zone is observable or the lake's "
+                       f"Sentinel-2 check (lakes-check) has IoU under {config.MIN_VALIDATION_IOU:g}"),
+    "study": "method study of 11 Nov 2026 (38 radar-optical pairs at Attabad, Passu, Karambar and Shazore)",
+}
 NO_LOOKS_REASON = "No valid NISAR pass yet."
 OUTLINE_ROOT = Path(__file__).resolve().parents[1]  # processing/
 
@@ -259,19 +297,16 @@ def _save_webp(arr: np.ndarray, path: Path) -> None:
     Image.fromarray(np.ascontiguousarray(arr), "RGBA").save(path, "WEBP", lossless=True, method=6)
 
 
-def _write_images(lake_out: Path, good: list[dict], latest: dict, zone, shadow, ys, prefix: str = "") -> dict:
+def _write_images(lake_out: Path, good: list[dict], latest: dict, zone, ys, prefix: str = "",
+                  stat_mask: np.ndarray | None = None) -> dict:
     stretch = shared_stretch(np.stack([p["hh_db"] for p in good]))
     grey = render_frame(latest["hh_db"], stretch)
     rgba = np.dstack([grey, grey, grey, np.where(grey > 0, 255, 0).astype(np.uint8)])
     _save_webp(_north_up(rgba, ys), lake_out / f"{prefix}latest_hh.webp")
 
-    dark, valid = dark_mask(latest["hh_db"], latest["hv_db"])
+    # The water the area counts (D17): no shadow rule inside the zone, so no hatching.
     water = np.zeros(zone.shape + (4,), np.uint8)
-    not_shadow = np.ones(zone.shape, bool) if shadow is None else ~shadow
-    if shadow is not None:
-        rows, cols = np.indices(zone.shape)
-        water[shadow & (((rows + cols) % 4) < 2)] = SHADOW_RGBA  # diagonal hatching
-    water[dark & valid & zone & not_shadow] = WATER_RGBA
+    water[water_mask(latest["hh_w"], latest["w_valid"], stat_mask) & zone] = WATER_RGBA
     _save_webp(_north_up(water, ys), lake_out / f"{prefix}water.webp")
     rel = f"lakes/{lake_out.name}"
     return {"latest_hh": f"{rel}/{prefix}latest_hh.webp", "water": f"{rel}/{prefix}water.webp"}
@@ -292,13 +327,15 @@ def pass_images(lake: Lake, cache_dir: Path, out_dir: Path, pass_id: str, prefix
     passes, xs, ys = _align(raw, limits, lake) if raw else ([], None, None)
     if not passes:
         return None
-    epsg, px, _, excluded, _, shadow = _analyse(passes, xs, ys, limits)
+    epsg, px, _, excluded, directions, _ = _analyse(passes, xs, ys, limits)
     good = [p for p in passes if p["id"] not in excluded]
     chosen = next((p for p in good if p["id"] == pass_id), None)
     if chosen is None:
         return None
     zone = lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=_load_outline(lake))
-    return _write_images(Path(out_dir) / "lakes" / lake.id, good, chosen, zone, shadow, ys, prefix)
+    masks = demmask.stat_masks(lake_dir, xs, ys, epsg, set(directions.values()))
+    return _write_images(Path(out_dir) / "lakes" / lake.id, good, chosen, zone, ys, prefix,
+                         stat_mask_of(masks, chosen["key"]))
 
 
 def screen_all(by_track: dict[str, list[dict]], manual: dict[str, str] | None = None) -> dict[str, str]:
@@ -336,8 +373,15 @@ def season_dark(by_track: dict[str, list[dict]], excluded: dict[str, str]) -> di
     return out
 
 
+def stat_mask_of(masks: dict[str, np.ndarray] | None, key: str) -> np.ndarray | None:
+    """The layover/shadow mask (`demmask.stat_masks`) of a pass on track `key` ("156A": the ascending one), or None."""
+    return (masks or {}).get(key[-1])
+
+
 def _analyse(passes: list[dict], xs, ys, limits: list[str]):
-    """Despeckle, screen, and apply the two-view rule. Adds hh_db/hv_db to each pass in place.
+    """Despeckle, screen, and apply the two-view rule. Adds to each pass in place: hh_db/hv_db (3x3 boxcar, for the
+    screens, the pictures and the freeze check's core), and hh_w/w_valid (D17: Lee-filtered HH in dB, and the pixels
+    valid after the Lee filter in both HH and HV), from which water is measured.
 
     Returns (epsg, px, by_track, excluded, directions, shadow).
     """
@@ -345,6 +389,8 @@ def _analyse(passes: list[dict], xs, ys, limits: list[str]):
     px = float(abs(xs[1] - xs[0])) if len(xs) > 1 else 1.0
     for p in passes:
         p["hh_db"], p["hv_db"] = to_db(despeckle(p["hh"])), to_db(despeckle(p["hv"]))
+        p["hh_w"] = to_db(lee_filter(p["hh"]))
+        p["w_valid"] = np.isfinite(p["hh_w"]) & np.isfinite(lee_filter(p["hv"]))
     by_track: dict[str, list[dict]] = {}
     for p in passes:
         by_track.setdefault(p["key"], []).append(p)
@@ -478,21 +524,31 @@ def state_limits(lake: Lake) -> list[str]:
 
 
 def _no_looks() -> dict:
-    return {"status": "Not enough NISAR looks yet", "track": None, "latest_date": None, "looks": 0,
-            "change_km2": None, "noise_km2": None, "reason": NO_LOOKS_REASON, "new_crid": None}
+    return _result(NOT_ENOUGH, reason=NO_LOOKS_REASON)
 
 
 def _empty(entry: dict, limits: list[str], lake: Lake, absence: dict | None = None) -> dict:
-    out = {**entry, "status": _no_looks(), "cloud_window_looks": 0, "directions": [], "limits": limits,
+    out = {**entry, "status": _no_looks(), "validation": entry.get("validation"), "cloud_window_looks": 0,
+           "directions": [], "limits": limits,
            "series": [], "excluded": [], "images": {"latest_hh": None, "water": None, "date": None, "track": None},
            "bounds": None, "summer_ref": {}}
     return apply_absence(out, absence)
 
 
+def validation_of(check: dict | None) -> dict | None:
+    """The part of a lakes-check row the level needs (`lakestatus.assess`): its IoU and which pair it came from. None
+    for a row without an IoU (a note: no clear scene, no open-water-season pair)."""
+    if not check or not isinstance(check.get("iou"), (int, float)):
+        return None
+    return {"iou": round(float(check["iou"]), 4), "nisar_date": check.get("nisar_date"),
+            "nisar_track": check.get("nisar_track"), "s2_date": check.get("s2_date"), "s2_id": check.get("s2_id")}
+
+
 def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str, str] | None = None,
                listed: set[tuple[str, str, str]] | None = None, absence: dict | None = None,
-               prior: dict | None = None) -> dict:
+               prior: dict | None = None, check: dict | None = None) -> dict:
     """`listed`: the (date, key, CRID) of the passes lakes-search listed for this lake; None reads every window.
+    `check`: the lake's Sentinel-2 check row (lakes-check); its IoU decides whether the lake can be given a level.
     `absence`: the last Sentinel-2 absence check of a site with no lake now (`lakecheck.absence_check`).
     `prior`: the lake's last freeze check ({"freeze": the freeze object, "flags": {(date, track): frozen}}, from
     `carried_freeze`): the passes it flagged keep their flag and stay out of the summer core and level, and the freeze
@@ -512,6 +568,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         "lake_state": lake.lake_state, "lake_state_source": lake.lake_state_source,
         "downstream": lake.downstream, "downstream_source": lake.downstream_source,
         "elevation_m": lake.elevation_m, "elevation_source": lake.elevation_source,
+        "validation": validation_of(check) if lake.lake_state != "no_lake" else None,
     }
     lake_dir = Path(cache_dir) / lake.id
     if not lake_dir.is_dir():
@@ -531,9 +588,12 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
     flags = (prior or {}).get("flags") or {}
     frozen_ids = {f"{d}_{k}" for (d, k), v in flags.items() if v}
     cores = summer_cores(by_track, excluded, zone, shadow, frozen_ids)
+    masks = demmask.stat_masks(lake_dir, xs, ys, epsg, set(directions.values()))
+    if masks is None:
+        limits.append(demmask.NO_DEM_LIMIT)
     series: list[SeriesPoint] = []
     for p in sorted(passes, key=lambda q: (q["date"], q["key"])):
-        w = pass_water(p["hh_db"], p["hv_db"], zone, shadow, px)
+        w = pass_water(p["hh_w"], p["w_valid"], zone, px, stat_mask_of(masks, p["key"]))
         reason = excluded.get(p["id"])
         point = {"date": p["date"], "track": p["key"], "area_km2": None if reason else w["area_km2"],
                  "observable_share": w["observable_share"], "excluded": reason, "crid": p["crid"]}
@@ -553,7 +613,10 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
             latest_expected[p["key"]] = max(latest_expected.get(p["key"], ""), p["date"])
 
     good = [p for p in passes if p["id"] not in excluded]
-    status = lake_status(series, latest_expected)
+    if lake.lake_state == "no_lake":
+        status = lake_status(series, latest_expected)  # only its track, date and looks are kept (apply_absence)
+    else:
+        status, series = assess(series, latest_expected, entry["validation"], lake.name)
     if status["track"]:
         track_crids = sorted({p["crid"] for p in series if p["track"] == status["track"]})
         if len(track_crids) > 1:
@@ -562,7 +625,8 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
     pictured = pictured_pass(series, status["track"])
     if good and pictured:
         latest = next(p for p in good if p["id"] == pictured)
-        images = {**_write_images(Path(out_dir) / "lakes" / lake.id, good, latest, zone, shadow, ys),
+        images = {**_write_images(Path(out_dir) / "lakes" / lake.id, good, latest, zone, ys,
+                                  stat_mask=stat_mask_of(masks, latest["key"])),
                   "date": latest["date"], "track": latest["key"]}
     if lake.lake_state == "no_lake":
         # No verdict, and no blue "water" layer: the dark pixels at an empty basin are not a lake. Where Sentinel-2
@@ -660,18 +724,25 @@ def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, c
     if collections is None:
         collections = read_collections(Path(cache_dir) / PASSES_JSON)
     listed = read_listed(Path(cache_dir) / PASSES_JSON)
+    rows = {c.get("lake"): c for c in (checks or [])}
     built_lakes = [build_lake(lake, Path(cache_dir), Path(out_dir), collections,
                               None if listed is None else listed.get(lake.id, set()),
-                              carried_absence(previous, lake), carried_freeze(previous, lake)) for lake in lakes]
+                              carried_absence(previous, lake), carried_freeze(previous, lake), rows.get(lake.id))
+                   for lake in lakes]
     crids = sorted({p["crid"] for lk in built_lakes for p in lk["series"]})
     return {
-        "version": 1, "built": built, "notes": NOTES,
+        "version": 1, "built": built, "notes": NOTES, "method": METHOD,
         "crid": ", ".join(crids),  # every processing version used, e.g. "P05023, P05036"
         "collections": sorted({collections[c] for c in crids if c in collections}),
         "cloud_window": list(config.CLOUD_WINDOW),
         "constants": {"drop_db": config.DROP_DB, "min_looks": config.MIN_LOOKS,
                       "min_observable": config.MIN_OBSERVABLE, "noise_floor_km2": config.NOISE_FLOOR_KM2,
                       "change_factor": config.CHANGE_FACTOR, "speckle_box": config.SPECKLE_BOX,
+                      "lee_box": config.LEE_BOX, "lee_enl": config.LEE_ENL,
+                      "baseline_passes": config.BASELINE_PASSES, "noise_passes": config.NOISE_PASSES,
+                      "noise_rel_floor": config.NOISE_REL_FLOOR, "cusum_k": config.CUSUM_K,
+                      "cusum_h": config.CUSUM_H, "after_open_passes": config.AFTER_OPEN_PASSES,
+                      "min_validation_iou": config.MIN_VALIDATION_IOU,
                       "bright_pass_db": config.BRIGHT_PASS_DB, "outlier_z": config.OUTLIER_Z,
                       "outlier_share_floor": config.OUTLIER_SHARE_FLOOR,
                       "outlier_hv_floor_db": config.OUTLIER_HV_FLOOR_DB,
@@ -693,10 +764,9 @@ def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, c
 def radar_water_masks(lake: Lake, cache_dir: Path, pass_id: str) -> dict:
     """Radar water of one cached pass, by the same rule `build_lake` counts area with.
 
-    `pass_id` is `<date>_<key>`. Returns {"window": dark, valid, non-shadow mask over the whole window,
-    "zone_mask": the same limited to the lake zone, "zone": the zone itself (outline if the lake has a
-    readable one, else the 1 km circle), "x", "y", "epsg"}. KeyError if the pass is not usable,
-    ValueError if the screen excluded it.
+    `pass_id` is `<date>_<key>`. Returns {"window": D17 water over the whole window, "zone_mask": the same limited
+    to the lake zone, "zone": the zone itself (outline if the lake has a readable one, else the 1 km circle), "x",
+    "y", "epsg"}. KeyError if the pass is not usable, ValueError if the screen excluded it.
     """
     limits: list[str] = []
     outline = _load_outline(lake)
@@ -707,12 +777,12 @@ def radar_water_masks(lake: Lake, cache_dir: Path, pass_id: str) -> dict:
     passes, xs, ys = _align(raw, limits, lake) if raw else ([], None, None)
     if pass_id not in {p["id"] for p in passes}:
         raise KeyError(f"{lake.id}: no usable cached pass {pass_id}")
-    epsg, px, _, excluded, _, shadow = _analyse(passes, xs, ys, limits)
+    epsg, px, _, excluded, directions, _ = _analyse(passes, xs, ys, limits)
     if pass_id in excluded:
         raise ValueError(f"{lake.id} {pass_id} was excluded: {excluded[pass_id]}")
     p = next(q for q in passes if q["id"] == pass_id)
-    dark, valid = dark_mask(p["hh_db"], p["hv_db"])
-    window = dark & valid & (np.ones(dark.shape, bool) if shadow is None else ~shadow)
+    masks = demmask.stat_masks(lake_dir, xs, ys, epsg, set(directions.values()))
+    window = water_mask(p["hh_w"], p["w_valid"], stat_mask_of(masks, p["key"]))
     zone = lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline)
     return {"window": window, "zone_mask": window & zone, "zone": zone, "x": xs, "y": ys, "epsg": epsg}
 

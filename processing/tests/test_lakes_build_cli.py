@@ -211,3 +211,29 @@ def test_lakes_absence_without_lakes_json_does_nothing(tmp_path, monkeypatch, ca
     monkeypatch.setattr(lakecheck, "absence_check", lambda *a: pytest.fail("no lakes.json: no check"))
     run_pipeline.main(["lakes-absence", "--out", str(tmp_path / "none")])
     assert "nothing to re-check yet" in capsys.readouterr().out
+
+
+def test_lakes_check_sets_the_status_again_from_the_new_check(tmp_path, monkeypatch):
+    """A new Sentinel-2 check can take a lake's level away (IoU under 0.4) or give it back."""
+    out = tmp_path / "out"
+    out.mkdir()
+    series = [{"date": f"2026-09-{d:02d}", "track": "156A", "area_km2": a, "observable_share": 1.0, "excluded": None}
+              for d, a in zip(range(1, 8), [1.0, 1.02, 0.99, 1.01, 1.0, 1.5, 1.5])]
+    lk = {"id": "attabad", "name": "Attabad", "lake_state": "lake", "series": series, "validation": None,
+          "status": {"status": "Alert: growing"}}
+    (out / "lakes.json").write_text(json.dumps({"lakes": [lk], "checks": []}), encoding="utf-8")
+    monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: [type("L", (), {"id": "attabad"})()])
+    row = {"lake": "attabad", "nisar_date": "2026-09-01", "nisar_track": "156A", "s2_date": "2026-09-01", "s2_id": "S",
+           "iou": 0.2, "days_apart": 0, "radar_km2": 1.0, "optical_km2": 2.0, "area_error_pct": -50.0,
+           "window_radar_km2": 1.0, "window_optical_km2": 2.0, "window_iou": 0.2}
+    monkeypatch.setattr(run_pipeline, "check_lake", lambda lake, cache, series: row)
+    args = ["lakes-check", "--out", str(out), "--cache", str(tmp_path), "--checks", str(tmp_path / "c.json"),
+            "--lakes", "attabad"]
+    run_pipeline.main(args)
+    got = json.loads((out / "lakes.json").read_text(encoding="utf-8"))["lakes"][0]
+    assert got["validation"]["iou"] == 0.2 and got["status"]["status"] == "Not measurable"
+    monkeypatch.setattr(run_pipeline, "check_lake", lambda lake, cache, series: {**row, "iou": 0.7})
+    run_pipeline.main(args)
+    got = json.loads((out / "lakes.json").read_text(encoding="utf-8"))["lakes"][0]
+    assert got["status"]["status"] == "Alert: growing" and got["status"]["message"]["level"] == "Alert: growing"
+    assert got["series"][-1]["level_contrib"] == "Alert: growing"
