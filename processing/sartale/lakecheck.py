@@ -383,7 +383,7 @@ def absence_check(lake, today: str, prior: dict | None = None, log=print, max_sc
         log(f"{lake.id} absence vs {scene['id']} ({scene['date']}): zone seen clear "
             f"{100 * w['zone_valid_share']:.1f}%, snow/ice {100 * w['snow_share']:.2f}%, water "
             f"{100 * w['water_share']:.2f}% of the clear zone ({w['water_km2']:.4f} km2): "
-            f"{'used' if ok else 'not clear and snow-free'}")
+            f"{'used' if ok else 'skipped (the zone is not both clear and snow-free)'}")
         if ok:
             return {"date": scene["date"], "s2_id": scene["id"], "water_share": round(w["water_share"], 4),
                     "water_km2": round(w["water_km2"], 4), "zone_valid_share": round(w["zone_valid_share"], 3),
