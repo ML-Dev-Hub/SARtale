@@ -1,4 +1,4 @@
-import { cloudHeadline, droppedLine, FROZEN_AREA, freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, isFrozen, isTrendPass, mayBeForming, methodLimits, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
+import { cloudHeadline, droppedLine, FROZEN_AREA, freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, isFrozen, isTrendPass, mayBeForming, methodLimits, picturedPassFrozen, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
 import { dataUrl, formatDate } from "./format";
 import { statusSlug } from "./lakeLocator";
 
@@ -195,7 +195,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   function thumb(lake: Lake): HTMLElement {
     const t = el("span", "lw-thumb");
     t.setAttribute("aria-hidden", "true");
-    const water = isFrozen(lake) ? null : lake.images?.water; // a frozen lake's dark area is not open water
+    const water = isFrozen(lake) || picturedPassFrozen(lake) ? null : lake.images?.water; // not open water then
     for (const [path, cls] of [[lake.images?.latest_hh, "lw-thumb-hh"], [water, "lw-thumb-water"]] as const) {
       if (!path) continue;
       const i = el("img", cls);
@@ -212,7 +212,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     const wrap = el("div", "lw-pictures");
     const hh = lake.images?.latest_hh ?? null;
     // While the lake is frozen the dark pixels are no open-water measurement: the water layer is not drawn.
-    const hidden = isFrozen(lake) && !!lake.images?.water;
+    const hidden = (isFrozen(lake) || picturedPassFrozen(lake)) && !!lake.images?.water;
     const water = hidden ? null : lake.images?.water ?? null;
     if (!hh && !water) {
       wrap.append(el("p", "lw-none", "No radar picture yet"));

@@ -12,8 +12,9 @@ const dataFiles = Object.keys(import.meta.glob("../public/data/**/*", { query: "
 describe("the data the app ships (app/public/data)", () => {
   test("is lakes.json, requests.json and the lake images lakes.json names, nothing else", () => {
     // Derived from lakes.json, so a rebuild with more lakes keeps passing.
+    // a frozen lake also ships the pictures of its last open-water pass (last_open.images)
     const images = lakes.lakes
-      .flatMap((l) => (l.images ? [l.images.latest_hh, l.images.water] : []))
+      .flatMap((l) => [l.images, l.last_open?.images].flatMap((im) => (im ? [im.latest_hh, im.water] : [])))
       .filter((p): p is string => typeof p === "string");
     expect(dataFiles.sort()).toEqual(["lakes.json", "requests.json", ...images].sort());
   });

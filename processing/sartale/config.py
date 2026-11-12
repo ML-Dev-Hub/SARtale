@@ -41,7 +41,7 @@ LAPSE_C_PER_KM = -6.5
 FREEZE_COLD_RUN_DAYS = 7  # Frozen (likely): daily mean below 0 C on at least this many days in a row ...
 FREEZE_FDD = 30.0  # ... and at least this many freezing degree-days (sum of -T2M on days below 0 C) since 1 Sep
 BREAKUP_WARM_RUN_DAYS = 7  # Break-up likely: a frozen lake with daily mean above 0 C on this many days in a row
-THAW_WARM_RUN_DAYS = 14  # Open again: this many warm days in a row plus one radar pass back within its summer range
+THAW_WARM_RUN_DAYS = 14  # Released (no longer counted as frozen): this many warm days in a row plus one radar pass back within its summer range
 # Radar break-up signature: the lake core at least this much brighter against its window than its summer level, in
 # both HH and HV, and its dark share at least BREAKUP_DARK_DROP below its summer level (Shazore, 25 Jun and 2 Jul 2026).
 BREAKUP_CONTRAST_DB = 2.0

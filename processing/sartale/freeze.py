@@ -33,7 +33,7 @@ import numpy as np
 import requests
 
 from sartale import config
-from sartale.lakestatus import FREEZE_STATUS, day_text, frozen_status, lake_status, open_water_status
+from sartale.lakestatus import FREEZE_STATUS, day_text, frozen_status, is_valid, lake_status, open_water_status
 
 POWER_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
 DEFAULT_CACHE = Path(__file__).resolve().parents[2] / "data" / "lakes"  # the NISAR window cache lakes-fetch fills
@@ -542,7 +542,41 @@ def refreshed_summer_ref(series: list[dict], summer_ref: dict) -> dict:
     return summer_reference(series, {k: v.get("core_px", 0) for k, v in (summer_ref or {}).items()})
 
 
+def needs_last_open(entry: dict) -> bool:
+    """True when the lake is frozen or breaking up, or its pictured pass was taken while it was: then no view may
+    present that pass as a water measurement, and `last_open` gives the pass they show instead."""
+    if ((entry.get("freeze") or {}).get("state")) in FROZEN_STATES:
+        return True
+    im = entry.get("images") or {}
+    return any(p.get("frozen") and p["date"] == im.get("date") and p["track"] == im.get("track")
+               for p in entry.get("series", []))
+
+
+def last_open(entry: dict) -> dict | None:
+    """The lake's latest open-water pass on its status track (valid, not flagged frozen) with the assessment it had
+    then (`lake_status` of that track's open-water passes up to it): {"date", "track", "crid", "area_km2", "status",
+    "change_km2", "noise_km2", "looks", "ref_km2", "images": None}; lakes-freeze draws its pictures. None without one."""
+    track = (entry.get("status") or {}).get("track") or (entry.get("images") or {}).get("track")
+    pts = sorted((p for p in entry.get("series", []) if p["track"] == track and is_valid(p)), key=lambda p: p["date"])
+    if not pts:
+        return None
+    p = pts[-1]
+    st = lake_status(pts)
+    change = st["change_km2"]
+    return {"date": p["date"], "track": p["track"], "crid": p.get("crid"), "area_km2": p["area_km2"],
+            "status": st["status"], "change_km2": change, "noise_km2": st["noise_km2"], "looks": st["looks"],
+            "ref_km2": None if change is None else round(p["area_km2"] - change, 6), "images": None}
+
+
 def freeze_lake(lake, entry: dict, today: str, power=None, s2_check=None, log=print) -> dict:
+    """`_freeze_lake`, then `last_open` when a view must not show the newest pass as water (`needs_last_open`)."""
+    out = {k: v for k, v in _freeze_lake(lake, entry, today, power, s2_check, log).items() if k != "last_open"}
+    if out.get("freeze") is not None and needs_last_open(out):
+        out["last_open"] = last_open(out)
+    return out
+
+
+def _freeze_lake(lake, entry: dict, today: str, power=None, s2_check=None, log=print) -> dict:
     """A built lakes.json entry with its freeze state (`freeze`), each pass's `frozen` flag, its summer level and its
     status again.
 

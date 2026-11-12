@@ -434,10 +434,15 @@ describe("a frozen lake's radar picture", () => {
     expect(detail.querySelector(".lw-img-hh")).not.toBeNull();
     expect(detail.querySelector('[data-role="lw-water-hidden"]')?.textContent).toBe("Water layer hidden: not an open-water measurement while frozen.");
     expect(root.querySelector('[data-lake-id="ice"] .lw-thumb-water')).toBeNull();
-    // an open lake keeps its layer
-    const open = { ...ice, id: "warm", status: fixtureLakes.lakes.find((l) => l.id === "stable")!.status };
-    const two = setup({ ...fixtureLakes, lakes: [...fixtureLakes.lakes, open] });
+    // an open lake keeps its layer, unless its pictured pass was itself taken while frozen (review m2)
+    const stable = fixtureLakes.lakes.find((l) => l.id === "stable")!.status;
+    const open = { ...ice, id: "warm", status: stable, images: { ...ice.images!, date: "2026-09-18", track: "084A" } };
+    const flaggedPicture = { ...ice, id: "edge", status: stable };
+    const two = setup({ ...fixtureLakes, lakes: [...fixtureLakes.lakes, open, flaggedPicture] });
     two.view.select("warm");
     expect(two.root.querySelector('[data-role="lw-detail"] .lw-img-water')).not.toBeNull();
+    two.view.select("edge");
+    expect(two.root.querySelector('[data-role="lw-detail"] .lw-img-water')).toBeNull();
+    expect(two.root.querySelector('[data-role="lw-water-hidden"]')).not.toBeNull();
   });
 });

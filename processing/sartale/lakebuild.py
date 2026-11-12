@@ -259,11 +259,11 @@ def _save_webp(arr: np.ndarray, path: Path) -> None:
     Image.fromarray(np.ascontiguousarray(arr), "RGBA").save(path, "WEBP", lossless=True, method=6)
 
 
-def _write_images(lake_out: Path, good: list[dict], latest: dict, zone, shadow, ys) -> dict:
+def _write_images(lake_out: Path, good: list[dict], latest: dict, zone, shadow, ys, prefix: str = "") -> dict:
     stretch = shared_stretch(np.stack([p["hh_db"] for p in good]))
     grey = render_frame(latest["hh_db"], stretch)
     rgba = np.dstack([grey, grey, grey, np.where(grey > 0, 255, 0).astype(np.uint8)])
-    _save_webp(_north_up(rgba, ys), lake_out / "latest_hh.webp")
+    _save_webp(_north_up(rgba, ys), lake_out / f"{prefix}latest_hh.webp")
 
     dark, valid = dark_mask(latest["hh_db"], latest["hv_db"])
     water = np.zeros(zone.shape + (4,), np.uint8)
@@ -272,9 +272,33 @@ def _write_images(lake_out: Path, good: list[dict], latest: dict, zone, shadow, 
         rows, cols = np.indices(zone.shape)
         water[shadow & (((rows + cols) % 4) < 2)] = SHADOW_RGBA  # diagonal hatching
     water[dark & valid & zone & not_shadow] = WATER_RGBA
-    _save_webp(_north_up(water, ys), lake_out / "water.webp")
+    _save_webp(_north_up(water, ys), lake_out / f"{prefix}water.webp")
     rel = f"lakes/{lake_out.name}"
-    return {"latest_hh": f"{rel}/latest_hh.webp", "water": f"{rel}/water.webp"}
+    return {"latest_hh": f"{rel}/{prefix}latest_hh.webp", "water": f"{rel}/{prefix}water.webp"}
+
+
+OPEN_PREFIX = "open_"  # the pictures of a frozen lake's last open-water pass (lakes-freeze, `pass_images`)
+
+
+def pass_images(lake: Lake, cache_dir: Path, out_dir: Path, pass_id: str, prefix: str = OPEN_PREFIX) -> dict | None:
+    """Write the radar picture and water layer of one pass (`<date>_<key>`), the way the build draws the pictured
+    pass (same stretch over the non-excluded passes, same water rule), as `<prefix>latest_hh.webp` and
+    `<prefix>water.webp` in the lake's folder. Returns their paths, or None when the pass is not cached and usable."""
+    limits: list[str] = []
+    lake_dir = Path(cache_dir) / lake.id
+    listed = read_listed(Path(cache_dir) / PASSES_JSON)
+    mine = None if listed is None else listed.get(lake.id, set())
+    raw = _read_cache(lake_dir, limits, mine) if lake_dir.is_dir() else []
+    passes, xs, ys = _align(raw, limits, lake) if raw else ([], None, None)
+    if not passes:
+        return None
+    epsg, px, _, excluded, _, shadow = _analyse(passes, xs, ys, limits)
+    good = [p for p in passes if p["id"] not in excluded]
+    chosen = next((p for p in good if p["id"] == pass_id), None)
+    if chosen is None:
+        return None
+    zone = lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=_load_outline(lake))
+    return _write_images(Path(out_dir) / "lakes" / lake.id, good, chosen, zone, shadow, ys, prefix)
 
 
 def screen_all(by_track: dict[str, list[dict]], manual: dict[str, str] | None = None) -> dict[str, str]:

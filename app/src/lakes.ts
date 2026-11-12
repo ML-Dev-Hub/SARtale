@@ -24,7 +24,7 @@ export type FreezeState = "open" | "frozen_likely" | "frozen_s2" | "breakup_like
  */
 export interface LakeFreeze {
   state: FreezeState | string;
-  /** When the current state began (freeze-up, break-up, open again, or the Sentinel-2 scene); null when not known. */
+  /** When the current state began (freeze-up, break-up, release, or the Sentinel-2 scene); null when not known. */
   since: string | null;
   /** The newest day of NASA POWER air temperature used. */
   temp_through: string | null;
@@ -142,6 +142,15 @@ export interface Lake {
   absence_checked?: AbsenceCheck | null;
   /** The lake's freeze check (absent in older builds and at sites with no lake now). */
   freeze?: LakeFreeze | null;
+  /**
+   * While the lake is frozen (or its pictured pass was taken while it was): its latest open-water pass on the status
+   * track, with the assessment it had then and its own pictures (null when they could not be drawn). Absent otherwise.
+   */
+  last_open?: {
+    date: string; track: string; crid?: string | null; area_km2: number; status: string; change_km2: number | null;
+    noise_km2: number | null; looks: number; ref_km2?: number | null;
+    images: { latest_hh: string | null; water: string | null; date?: string; track?: string } | null;
+  } | null;
   /** Height of the lake surface in metres, and where it comes from (absent in older builds). */
   elevation_m?: number | null;
   elevation_source?: string | null;
@@ -200,6 +209,13 @@ export const FROZEN_STATUSES: LakeStatusName[] = ["Frozen (likely)", "Frozen (se
 /** True when the lake's status is one of the frozen statuses. */
 export function isFrozen(l: Lake): boolean {
   return FROZEN_STATUSES.includes(l.status.status);
+}
+
+/** True when the lake's pictured pass was taken while the lake was probably frozen (its water layer is then hidden). */
+export function picturedPassFrozen(l: Lake): boolean {
+  const im = l.images;
+  if (!im?.date) return false;
+  return l.series.some((p) => !!p.frozen && p.date === im.date && p.track === im.track);
 }
 
 /** What a radar area of a frozen lake is not (shown greyed beside it). */
@@ -464,6 +480,15 @@ function isFreeze(f: unknown): boolean {
     && isBreakupPass(f.breakup_pass);
 }
 
+/** The last open-water pass the story page shows while a lake is frozen: absent, null, or with the numbers it draws. */
+function isLastOpen(v: unknown): boolean {
+  if (v === undefined || v === null) return true;
+  if (!isObj(v)) return false;
+  const im = v.images;
+  return isIso(v.date) && isStr(v.track) && isNum(v.area_km2) && isStr(v.status) && isNumOrNull(v.noise_km2)
+    && (im === null || im === undefined || (isObj(im) && isStrOrNull(im.latest_hh ?? null) && isStrOrNull(im.water ?? null)));
+}
+
 function isS2(s2: unknown): boolean {
   return s2 === null || s2 === undefined || (isObj(s2) && isIso(s2.date) && isNum(s2.snow_share) && isNum(s2.water_share));
 }
@@ -490,7 +515,7 @@ export function isLake(l: unknown): boolean {
     && Array.isArray(l.directions) && Array.isArray(l.limits) && l.limits.every(isStr)
     && Array.isArray(l.series) && l.series.every(isPoint)
     && Array.isArray(l.excluded) && l.excluded.every((x) => isObj(x) && isStr(x.pass) && isStr(x.reason))
-    && isFreeze(l.freeze)
+    && isFreeze(l.freeze) && isLastOpen(l.last_open)
     && (images === null || (isObj(images) && isStrOrNull(images.latest_hh ?? null) && isStrOrNull(images.water ?? null)))
     && (bounds === null || (Array.isArray(bounds) && bounds.length === 4 && bounds.every(isNum)));
 }

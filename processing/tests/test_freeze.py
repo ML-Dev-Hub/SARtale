@@ -553,6 +553,24 @@ def test_the_summer_level_leaves_out_the_passes_flagged_frozen():
     assert unflagged_ref["passes"] == 5 and unflagged_ref["core_dark_share"] == 0.95
 
 
+def test_a_frozen_lake_records_its_last_open_water_pass():
+    """Review N1: while frozen, the views show the latest open-water pass on the status track, with the assessment
+    it had then; an open lake whose pictured pass is not frozen gets none."""
+    out = _first_check()
+    lo = out["last_open"]
+    assert (lo["date"], lo["track"], lo["area_km2"], lo["status"]) == ("2026-09-18", "084A", 0.159, "Stable")
+    assert lo["looks"] == 5 and lo["noise_km2"] == 0.005 and lo["ref_km2"] == pytest.approx(0.1605)
+    assert lo["images"] is None  # the CLI draws them from the cache
+    warm = freeze_lake(SHAZORE, shazore_entry(), "2026-11-12", power=power_like([6.0] * 71),
+                       s2_check=lambda *a, **k: None, log=lambda m: None)
+    assert "last_open" not in warm
+    # an open lake whose pictured pass was flagged frozen still gets one
+    from sartale.freeze import needs_last_open
+    flagged = {**warm, "images": {"date": "2026-10-30", "track": "084A"},
+               "series": [{**p, "frozen": p["date"] >= "2026-10-18"} for p in warm["series"]]}
+    assert needs_last_open(flagged) and not needs_last_open({**flagged, "images": {"date": "2026-09-18", "track": "084A"}})
+
+
 def test_power_start_reaches_back_to_the_season_each_pass_needs():
     # a June pass needs the winter before it: a lake frozen then may still be frozen in June
     series = [{"date": "2026-06-20"}, {"date": "2026-10-18"}]
@@ -603,7 +621,8 @@ def test_the_lakes_freeze_command_sets_each_lake_again_and_is_idempotent(tmp_pat
     (out / "lakes.json").write_text(json.dumps({"lakes": [shazore_entry(), dry]}), encoding="utf-8")
     monkeypatch.setattr(freeze, "fetch_power", power_like(SHAZORE_AIR))
     monkeypatch.setattr(freeze, "s2_scene_check", lambda lake, today, log, **k: S2_SNOW)
-    args = ["lakes-freeze", "--lakes-in", str(lakes_in), "--out", str(out), "--today", "2026-11-12"]
+    args = ["lakes-freeze", "--lakes-in", str(lakes_in), "--out", str(out), "--cache", str(tmp_path / "cache"),
+            "--today", "2026-11-12"]
     run_pipeline.main(args)
     first = (out / "lakes.json").read_text(encoding="utf-8")
     doc = json.loads(first)

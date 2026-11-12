@@ -16,6 +16,7 @@ from sartale.lakebuild import (
     attabad_gate,
     build_lakes,
     carried_absence,
+    pass_images,
     read_listed,
     unlisted_windows,
 )
@@ -112,9 +113,10 @@ def prune_lake_images(out: Path, doc: dict) -> list[Path]:
     keep = set()
     for lk in doc["lakes"]:
         for key in ("latest_hh", "water"):
-            rel = (lk.get("images") or {}).get(key)
-            if rel:
-                keep.add((Path(out) / rel).resolve())
+            for block in (lk.get("images"), (lk.get("last_open") or {}).get("images")):
+                rel = (block or {}).get(key)
+                if rel:
+                    keep.add((Path(out) / rel).resolve())
     keep_dirs = {k.parent for k in keep}
     removed = []
     for item in sorted(root.rglob("*"), key=lambda q: len(q.parts), reverse=True):
@@ -288,9 +290,22 @@ def cmd_lakes_freeze(args) -> None:
         if lake.id not in by_id:
             continue
         i = by_id[lake.id]
-        doc["lakes"][i] = freeze.freeze_lake(lake, doc["lakes"][i], today, s2_check=s2_check)
-        print(freeze_line(doc["lakes"][i]), flush=True)
+        doc["lakes"][i] = lk = freeze.freeze_lake(lake, doc["lakes"][i], today, s2_check=s2_check)
+        lo = lk.get("last_open")
+        if lo:
+            # The pictures of the last open-water pass, which the story page shows while the lake is frozen.
+            try:
+                pics = pass_images(lake, Path(args.cache), Path(args.out), f"{lo['date']}_{lo['track']}")
+            except Exception as e:  # noqa: BLE001 - without them the views hide the water layer instead
+                print(f"{lake.id}: last open-water pictures not drawn ({type(e).__name__})")
+                pics = None
+            lo["images"] = {**pics, "date": lo["date"], "track": lo["track"]} if pics else None
+            print(f"{lake.id}: last open-water pass {lo['date']} {lo['track']} {lo['area_km2']:.3f} km2 "
+                  f"({lo['status']}), pictures {'drawn' if pics else 'not drawn'}")
+        print(freeze_line(lk), flush=True)
     write_json_atomic(path, doc)
+    for gone in prune_lake_images(Path(args.out), doc):
+        print(f"removed stale {gone.relative_to(Path(args.out))}")
 
 
 def cmd_lakes_elevation(args) -> None:

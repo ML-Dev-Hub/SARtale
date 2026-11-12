@@ -54,7 +54,7 @@
       ],
       "list": [
         "Winter radar is untested. The radar data so far end in early November, just after freeze-up; whether these lakes brighten on radar in mid-winter is not known, and new ice under dry snow can read as dark as open water, so a radar pass \"back within its summer range\" in late winter or early spring may not mean the ice has gone. The rule will be tested again with late-January data, these two points included.",
-        "Without a clear Sentinel-2 image the rule can be one to two weeks late: at Shazore the air met it on 18 October 2026, while Sentinel-2 showed the lake open on 9 October and under snow and ice on 19 October; in July 2026 the rule released Shazore on 19 July, about two weeks after Sentinel-2 showed it partly open.",
+        "Without a clear Sentinel-2 image the rule can be one to two weeks late: in July 2026 it released Shazore on 19 July, about two weeks after Sentinel-2 showed the lake partly open on 6 July. At freeze-up it was on time there: the air met the rule on 18 October 2026, between a Sentinel-2 view of open water on 9 October and one of snow and ice on 19 October.",
         "The air temperature is an estimate, not a measurement at the lake: a reanalysis value for a cell about 50 km across, moved to the lake's height with one lapse rate, while Karakoram valley lapse rates vary between about 4 and 8 °C per km.",
         "Frozen describes the lake surface from air temperature or an optical image. The radar does not show the ice, and Lake Watch says nothing about how thick it is.",
         "Air temperature alone never shows open water; only a clear Sentinel-2 image can."

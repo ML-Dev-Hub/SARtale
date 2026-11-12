@@ -64,6 +64,40 @@ def test_d03_worked_example_is_reproducible_from_the_lake_data_it_names():
         assert datetime.strptime(when, "%d %b %Y") < datetime.strptime(ex["EX_BUILT"], "%d %b %Y")
 
 
+def test_the_worked_example_never_quotes_a_frozen_pass_as_water():
+    """Review N1: when Attabad is frozen the README and guide quote its last open-water pass and say so."""
+    import copy
+    import json
+
+    import pytest
+    build = _load(ROOT / "docs" / "guide" / "build.py", "guide_build")
+    doc = json.loads(build.LAKES_JSON.read_text(encoding="utf-8"))
+    d = copy.deepcopy(doc)
+    a = next(lk for lk in d["lakes"] if lk["id"] == "attabad")
+    track = a["status"]["track"]
+    on_track = sorted((p for p in a["series"] if p["track"] == track and p["excluded"] is None
+                       and p["area_km2"] is not None), key=lambda p: p["date"])
+    newest, before = on_track[-1], on_track[-2]
+    newest["frozen"] = True
+    a["status"] = {**a["status"], "status": "Frozen (likely)", "change_km2": None, "noise_km2": None}
+    a["freeze"] = {"state": "frozen_likely", "since": "2027-01-08", "freeze_up": "2027-01-08", "reason": "r"}
+    a["last_open"] = {"date": before["date"], "track": track, "area_km2": before["area_km2"], "status": "Stable",
+                      "change_km2": 0.012, "noise_km2": 0.1, "looks": len(on_track) - 1, "images": None}
+    ex = build.worked_example(d)
+    assert ex["EX_DATE"] == build._day(before["date"]) and ex["EX_AREA"] == f"{before['area_km2']:.3f}"
+    assert ex["EX_EARLIER"] == str(len(on_track) - 2) and ex["EX_STATUS"] == "Stable"
+    assert ex["EX_FROZEN"] == " Attabad Lake is frozen now (since 8 January 2027); this was its last open-water pass."
+    assert ex["EX_FROZEN"] in build.readme_example(ex)
+    i = [p[0] for p in build.PAGES].index("method")
+    assert ex["EX_FROZEN"] in build.page(i, ex)
+    # without a last open-water pass the example refuses, rather than quote the frozen one
+    a["last_open"] = None
+    with pytest.raises(build.WorkedExampleError, match="frozen"):
+        build.worked_example(d)
+    # an open Attabad has no note
+    assert build.worked_example(doc)["EX_FROZEN"] == ""
+
+
 def test_m9_worked_example_fails_clearly_without_a_measured_attabad_status():
     import copy
     import json
