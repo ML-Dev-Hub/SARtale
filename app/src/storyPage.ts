@@ -4,7 +4,7 @@ import "./storyPage.css";
 import copyJson from "./content/storyPage.json";
 import { dataUrl, formatDate } from "./format";
 import { mountAddLake, requestLine, shownRequests, type LakeRequest } from "./lakeRequests";
-import { cloudLooks, hasLakeNow, iouRange, lakesNow, mayBeForming, opticalOverlapPhrase, type Lake, type LakesFile } from "./lakes";
+import { cloudLooks, FROZEN_AREA, hasLakeNow, iouRange, isFrozen, lakesNow, mayBeForming, opticalOverlapPhrase, picturedPassFrozen, type Lake, type LakesFile } from "./lakes";
 
 const copy = copyJson;
 const DASH = "—";
@@ -58,6 +58,58 @@ function attabad(file: LakesFile | null): Lake | null {
   return file?.lakes.find((l) => l.id === "attabad") ?? null;
 }
 
+/** What the measure section shows of a lake: a pass, its picture, water layer, area and noise, and any line on ice. */
+export interface MeasureView {
+  date: string | null;
+  track: string | null;
+  area: number | null;
+  noise: number | null;
+  hh: string | null;
+  water: string | null;
+  /** A line under the picture when the newest pass is not an open-water reading. */
+  note: string | null;
+  /** True when the area shown was read while the lake was frozen (no open-water pass to show instead). */
+  greyed: boolean;
+  /**
+   * Set when the picture is the newest pass, taken while frozen, drawn without its water layer: its date and track
+   * (the open-water pass has no picture of its own, or there is no open-water pass).
+   */
+  frozenPicture: { date: string | null; track: string | null } | null;
+}
+
+/**
+ * The pass the measure section shows. While the lake is frozen (or its pictured pass was taken while it was), never
+ * that pass as water: its last open-water pass on the status track instead (lakes.json `last_open`, with its own
+ * picture, water layer, area and noise) and a line that says so; without one, the newest picture with no water layer
+ * and the area greyed as not an open-water measurement.
+ */
+export function measureView(a: Lake | null): MeasureView {
+  if (!a) return { date: null, track: null, area: null, noise: null, hh: null, water: null, note: null, greyed: false, frozenPicture: null };
+  const name = a.name.split(" (")[0];
+  const frozen = isFrozen(a) || picturedPassFrozen(a);
+  if (!frozen) {
+    return { date: a.images?.date ?? a.status.latest_date, track: a.status.track, area: latestArea(a), noise: a.status.noise_km2,
+      hh: a.images?.latest_hh ?? null, water: a.images?.water ?? null, note: null, greyed: false, frozenPicture: null };
+  }
+  const newest = { date: a.images?.date ?? a.status.latest_date, track: a.images?.track ?? a.status.track };
+  const lo = a.last_open;
+  if (lo) {
+    const since = a.freeze?.freeze_up ?? a.freeze?.since ?? null;
+    const note = isFrozen(a)
+      ? `${name} is frozen now${since ? ` (since ${formatDate(since)})` : ""}; this is its last open-water pass.`
+      : `${name}'s newest pass was taken while it was frozen; this is its last open-water pass.`;
+    // Its own picture and water layer when lakes-freeze drew them; else the newest picture with no water layer.
+    const own = !!lo.images?.latest_hh;
+    return { date: lo.date, track: lo.track, area: lo.area_km2, noise: lo.noise_km2,
+      hh: own ? lo.images!.latest_hh : a.images?.latest_hh ?? null, water: own ? lo.images!.water ?? null : null, note,
+      greyed: false, frozenPicture: own ? null : newest };
+  }
+  const p = a.series.find((x) => x.date === a.images?.date && x.track === a.images?.track)
+    ?? a.series.find((x) => x.date === a.status.latest_date && x.track === a.status.track);
+  return { date: newest.date, track: newest.track, area: p?.area_km2 ?? null, noise: null, hh: a.images?.latest_hh ?? null,
+    water: null, note: `Water layer hidden: ${FROZEN_AREA}.`, greyed: true, frozenPicture: newest };
+}
+
 /** Every number on the page, read from lakes.json. "—" for anything missing. */
 export function storyNumbers(file: LakesFile | null): StoryNumbers {
   if (!file) {
@@ -66,16 +118,17 @@ export function storyNumbers(file: LakesFile | null): StoryNumbers {
   const a = attabad(file);
   const dates = file.lakes.map((l) => l.status.latest_date).filter((d): d is string => !!d);
   const latest = dates.length ? dates.reduce((x, y) => (x > y ? x : y)) : null;
-  const noise = a?.status.noise_km2;
+  const view = measureView(a);
+  const noise = view.noise;
   return {
     lakes: String(lakesNow(file).length),
     sites: String(file.lakes.length),
     cloudLooks: String(cloudLooks(file)),
     passes: String(file.lakes.reduce((n, l) => n + l.series.length, 0)),
-    attabadArea: a ? areaText(latestArea(a)) : DASH,
+    attabadArea: a ? areaText(view.area) : DASH,
     attabadNoise: noise === null || noise === undefined ? DASH : `±${noise.toFixed(2)}`,
     attabadLooks: a ? String(a.status.looks) : DASH,
-    attabadTrack: a?.status.track ?? DASH,
+    attabadTrack: view.track ?? DASH,
     iou: iouRange(file.checks) ?? DASH,
     latest: latest ? formatDate(latest) : DASH,
   };
@@ -108,7 +161,7 @@ function shareWord(v: number | undefined): string {
 
 function tokensFor(file: LakesFile | null): Record<string, string> {
   const a = attabad(file);
-  const date = a?.images?.date ?? a?.status.latest_date ?? null;
+  const date = measureView(a).date;
   return {
     ...storyNumbers(file),
     minLooks: countWord(file?.constants.min_looks),
@@ -256,19 +309,35 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const a = attabad(file);
   const steps = el("ol", "sp-steps");
   m.steps.forEach((s, i) => steps.append(el("li", undefined, text("span", "sp-step-n", String(i + 1)), text("span", undefined, s))));
+  const mv = measureView(a);
   const nums = el("div", "sp-numbers");
-  for (const n of m.numbers) nums.append(el("div", undefined, text("div", `sp-num-value${"accent" in n ? " sp-accent" : ""}`, f(n.value)), text("div", "sp-stat-label", f(n.label))));
+  m.numbers.forEach((n, i) => {
+    // The area tile of a frozen lake with no open-water pass to show: greyed, and labelled with what it is not.
+    const grey = i === 0 && mv.greyed;
+    const value = text("div", `sp-num-value${"accent" in n ? " sp-accent" : ""}${grey ? " sp-num-frozen" : ""}`, f(n.value));
+    nums.append(el("div", undefined, value, text("div", "sp-stat-label", grey ? FROZEN_AREA : f(n.label))));
+  });
   const measure = section("04 The measure", "sp-section sp-measure");
-  if (a?.images?.latest_hh) {
+  if (mv.hh) {
     const fig = el("figure", "sp-overlay");
-    const stack = el("div", "sp-overlay-stack", img(dataUrl(a.images.latest_hh), f(m.imageAlt)));
-    if (a.images.water) {
-      const w = img(dataUrl(a.images.water), m.waterAlt);
+    const fp = mv.frozenPicture;
+    const when = (d: string | null) => (d ? formatDate(d) : DASH);
+    const alt = fp ? `${a!.name.split(" (")[0]} in NISAR radar on ${when(fp.date)}, while the lake was frozen; no water layer` : f(m.imageAlt);
+    const stack = el("div", "sp-overlay-stack", img(dataUrl(mv.hh), alt));
+    if (mv.water) {
+      const w = img(dataUrl(mv.water), m.waterAlt);
       w.className = "sp-water";
       stack.append(w);
     }
-    fig.append(stack, text("figcaption", undefined, f(m.caption)));
+    const caption = fp ? `${when(fp.date)}, track ${fp.track ?? DASH}. Water layer hidden: ${FROZEN_AREA}.` : f(m.caption);
+    fig.append(stack, text("figcaption", undefined, caption));
     measure.append(fig);
+  }
+  if (mv.note && !mv.greyed) {
+    // the frozen picture's own caption already says the water layer is hidden; this says what the numbers are
+    const note = text("p", "sp-frozen-note", mv.note);
+    note.dataset.role = "sp-frozen-note";
+    measure.append(note);
   }
   measure.append(el("div", "sp-measure-text", eyebrow(m.label), text("h2", undefined, m.title), steps, nums));
 
@@ -288,12 +357,17 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
       mapEl.append(pin);
     }
     const meta = [l.status.track, l.status.latest_date ? formatDate(l.status.latest_date) : null].filter(Boolean).join(" · ");
+    // A frozen lake's area is greyed and says what it is not.
+    const area = latestArea(l);
+    const areaEl = isFrozen(l) && area !== null
+      ? text("div", "sp-lake-area sp-lake-area-frozen", `${areaText(area)}, ${FROZEN_AREA}`)
+      : text("div", "sp-lake-area", areaText(area));
     listEl.append(
       el(
         "div",
         "sp-lake",
         el("div", "sp-lake-name", text("div", "sp-lake-title", l.name), text("div", "sp-lake-meta", meta || DASH)),
-        el("div", "sp-lake-right", text("div", `sp-lake-status ${statusClass(l.status.status)}`, l.status.status), text("div", "sp-lake-area", areaText(latestArea(l)))),
+        el("div", "sp-lake-right", text("div", `sp-lake-status ${statusClass(l.status.status)}`, l.status.status), areaEl),
       ),
     );
   }

@@ -134,6 +134,7 @@
 .sp-st-stable { color: var(--sp-accent); }
 .sp-st-change { color: var(--sp-warm); }
 .sp-st-other { color: var(--sp-muted); }
+.sp-lake-area-frozen { color: var(--sp-muted); opacity: 0.85; font-size: 12px; max-width: 16em; text-align: right; }
 
 /* 06 */
 .sp-section:has(.sp-add) { padding-bottom: 88px; }
@@ -189,3 +190,5 @@
 @media (max-width: 860px) {
   .sp-videos { grid-template-columns: 1fr; }
 }
+.sp-num-frozen { color: var(--sp-muted); opacity: 0.85; }
+.sp-frozen-note { color: var(--sp-muted); font-size: 14px; margin: 8px 0 0; }

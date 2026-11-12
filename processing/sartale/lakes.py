@@ -34,6 +34,10 @@ class Lake:
     forming_share: float | None = None
     forming_share_source: str | None = None
     limits: tuple[str, ...] = ()  # the site's own sourced limits, shown with the lake (e.g. a past partial drainage)
+    # Height of the lake surface in metres, measured once (lakes-elevation); the freeze check moves the air temperature
+    # to it. Needs a source.
+    elevation_m: float | None = None
+    elevation_source: str | None = None
 
 
 def load_lakes(path: Path) -> list[Lake]:
@@ -69,6 +73,12 @@ def load_lakes(path: Path) -> list[Lake]:
         limits = row.get("limits", [])
         if not isinstance(limits, list) or not all(isinstance(t, str) and t.strip() for t in limits):
             raise ValueError(f"Lake {lake_id}: limits must be a list of non-empty strings")
+        elev = row.get("elevation_m")
+        if elev is not None:
+            if isinstance(elev, bool) or not isinstance(elev, (int, float)) or not -500 < elev < 9000:
+                raise ValueError(f"Lake {lake_id}: elevation_m must be a height in metres, got {elev!r}")
+            if not str(row.get("elevation_source") or "").strip():
+                raise ValueError(f"Lake {lake_id}: elevation_m needs an elevation_source")
         seen.add(lake_id)
         lakes.append(Lake(
             id=lake_id, name=row["name"], lon=float(row["lon"]), lat=float(row["lat"]),
@@ -77,6 +87,7 @@ def load_lakes(path: Path) -> list[Lake]:
             zone_radius_km=float(radius), lake_state=state, lake_state_source=row.get("lake_state_source"),
             forming_share=None if forming is None else float(forming),
             forming_share_source=row.get("forming_share_source"), limits=tuple(limits),
+            elevation_m=None if elev is None else float(elev), elevation_source=row.get("elevation_source"),
         ))
     return lakes
 

@@ -234,8 +234,10 @@ def grid_scene(scene: dict, raw: dict, x, y, epsg: int, buffer_m: float = None) 
     snow = present & (sfrac >= 0.5)
     seen = inside > 0.5
     cloud_share = float(np.clip(bad[seen] / inside[seen], 0, 1).mean()) if seen.any() else 1.0
-    return {"water": (wfrac >= 0.5) & valid, "valid": valid, "snow": snow, "window_cloud_share": cloud_share,
-            "invalid_share": float(1 - valid.mean())}
+    # Clear of cloud, shadow, no data and the cloud edge, snow or not: what the freeze check (lakes-freeze) counts as seen.
+    clear = present & (unclear < 0.5)
+    return {"water": (wfrac >= 0.5) & valid, "valid": valid, "snow": snow, "clear": clear,
+            "window_cloud_share": cloud_share, "invalid_share": float(1 - valid.mean())}
 
 
 def optical_on_grid(scene: dict, x: np.ndarray, y: np.ndarray, epsg: int) -> dict:
@@ -245,8 +247,9 @@ def optical_on_grid(scene: dict, x: np.ndarray, y: np.ndarray, epsg: int) -> dic
     the NISAR grid: a NISAR pixel is optical water when at least half of it is, and unusable when at
     least half of it is cloud/shadow/no-data/snow/ice, within CLOUD_EDGE_BUFFER_M of cloud or cloud shadow, or lies
     outside the scene. Snow and ice are never water and never clear. Returns water, valid and snow (bool grids on the
-    NISAR window: snow where at least half the pixel is snow or ice), window_cloud_share (SCL cloud share over the
-    whole window, without the buffer) and invalid_share.
+    NISAR window: snow where at least half the pixel is snow or ice), clear (present and less than half cloud, shadow,
+    no data or cloud edge, snow or not), window_cloud_share (SCL cloud share over the whole window, without the buffer)
+    and invalid_share.
     """
     return grid_scene(scene, read_scene(scene, x, y, epsg), x, y, epsg)
 

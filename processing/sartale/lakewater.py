@@ -154,6 +154,24 @@ def _ring(outline_polygon) -> list:
     return list(outline_polygon)
 
 
+def outline_mask(shape, x, y, epsg, outline_polygon) -> np.ndarray:
+    """The outline itself, without the buffer, rasterised on the window grid (pixel centres inside it; an outline
+    narrower than a pixel takes every pixel it touches). Empty when the outline misses the grid."""
+    x, y = np.asarray(x, float), np.asarray(y, float)
+    dx = float(x[1] - x[0]) if len(x) > 1 else 1.0
+    dy = float(y[1] - y[0]) if len(y) > 1 else -1.0
+    to_utm = Transformer.from_crs(4326, epsg, always_xy=True)
+    ring = [to_utm.transform(lon, lat) for lon, lat in _ring(outline_polygon)]
+    transform = Affine(dx, 0, x[0] - dx / 2, 0, dy, y[0] - dy / 2)
+    poly = {"type": "Polygon", "coordinates": [ring]}
+    inside = geometry_mask([poly], out_shape=tuple(shape), transform=transform, invert=True)
+    if not inside.any():
+        # An outline narrower than a pixel can hold no pixel centre and still lie on the grid: take every pixel it
+        # touches instead (the 200 m buffer of the zone dwarfs the difference).
+        inside = geometry_mask([poly], out_shape=tuple(shape), transform=transform, invert=True, all_touched=True)
+    return inside
+
+
 def lake_zone(shape, x, y, epsg, lake: Lake, outline_polygon=None, half_km: float | None = None) -> np.ndarray:
     """Boolean mask of the lake zone on the window grid.
 
@@ -173,14 +191,7 @@ def lake_zone(shape, x, y, epsg, lake: Lake, outline_polygon=None, half_km: floa
         cx, cy = to_utm.transform(lake.lon, lake.lat)
         xx, yy = np.meshgrid(x, y)
         return ((xx - cx) ** 2 + (yy - cy) ** 2) <= (half_km * 1000.0) ** 2
-    ring = [to_utm.transform(lon, lat) for lon, lat in _ring(outline_polygon)]
-    transform = Affine(dx, 0, x[0] - dx / 2, 0, dy, y[0] - dy / 2)
-    poly = {"type": "Polygon", "coordinates": [ring]}
-    inside = geometry_mask([poly], out_shape=tuple(shape), transform=transform, invert=True)
-    if not inside.any():
-        # An outline narrower than a pixel can hold no pixel centre and still lie on the grid: take every pixel it
-        # touches instead (the 200 m buffer below dwarfs the difference).
-        inside = geometry_mask([poly], out_shape=tuple(shape), transform=transform, invert=True, all_touched=True)
+    inside = outline_mask(shape, x, y, epsg, outline_polygon)
     if not inside.any():
         # With no outline pixel on the grid the distance transform measures from nothing and draws a phantom zone
         # in a corner. An outline that misses the window (an old outline after the point moved) is an error.

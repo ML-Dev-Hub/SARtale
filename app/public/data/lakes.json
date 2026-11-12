@@ -1,6 +1,6 @@
 {
  "version": 1,
- "built": "2026-11-12T03:13:58Z",
+ "built": "2026-11-12T15:35:06Z",
  "notes": "Areas are water within a lake's outline (buffered 200 m) or, without one, a search circle (1 km unless the lake sets a smaller one), and underestimate lakes whose shores sit in radar shadow; images are crops on the UTM grid, north up; they are pictures, not map overlays.",
  "crid": "P05023, P05036",
  "collections": [
@@ -21,7 +21,20 @@
   "bright_pass_db": 3.0,
   "outlier_z": 3.5,
   "outlier_share_floor": 0.01,
-  "outlier_hv_floor_db": 1.0
+  "outlier_hv_floor_db": 1.0,
+  "lapse_c_per_km": -6.5,
+  "freeze_cold_run_days": 7,
+  "freeze_fdd": 30.0,
+  "breakup_warm_run_days": 7,
+  "thaw_warm_run_days": 14,
+  "breakup_contrast_db": 2.0,
+  "breakup_dark_drop": 0.3,
+  "s2_frozen_snow_share": 0.8,
+  "s2_open_water_share": 0.5,
+  "s2_freeze_days": 7,
+  "s2_freeze_clear": 0.8,
+  "s2_target_clear": 0.5,
+  "power_stale_days": 10
  },
  "lakes": [
   {
@@ -40,6 +53,8 @@
    "lake_state_source": null,
    "downstream": null,
    "downstream_source": null,
+   "elevation_m": 2359.0,
+   "elevation_source": "Copernicus DEM GLO-30 (Copernicus_DSM_COG_10_N36_00_E074_00_DEM, Earth Search), 10th percentile within 1 km of the lake point",
    "status": {
     "status": "Stable",
     "track": "055A",
@@ -66,7 +81,11 @@
      "area_km2": 2.8003,
      "observable_share": 0.7116608762562082,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.422,
+     "core_contrast_hv_db": -4.949,
+     "core_dark_share": 0.93,
+     "frozen": false
     },
     {
      "date": "2026-06-25",
@@ -74,7 +93,11 @@
      "area_km2": 2.3591,
      "observable_share": 0.7190873691328374,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.716,
+     "core_contrast_hv_db": -5.456,
+     "core_dark_share": 0.918,
+     "frozen": false
     },
     {
      "date": "2026-06-30",
@@ -82,7 +105,11 @@
      "area_km2": 2.8605,
      "observable_share": 0.7115909249889244,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.438,
+     "core_contrast_hv_db": -4.953,
+     "core_dark_share": 0.941,
+     "frozen": false
     },
     {
      "date": "2026-06-30",
@@ -90,7 +117,11 @@
      "area_km2": 2.9672,
      "observable_share": 0.7139692680765733,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.986,
+     "core_contrast_hv_db": -5.329,
+     "core_dark_share": 0.946,
+     "frozen": false
     },
     {
      "date": "2026-07-07",
@@ -99,7 +130,11 @@
      "observable_share": 0.7140858535220463,
      "excluded": "window median HH 26.1 dB from the track median",
      "crid": "P05023",
-     "diagnostic_km2": 1.5166
+     "diagnostic_km2": 1.5166,
+     "core_contrast_hh_db": 0.265,
+     "core_contrast_hv_db": 0.476,
+     "core_dark_share": 0.093,
+     "frozen": false
     },
     {
      "date": "2026-07-12",
@@ -107,7 +142,11 @@
      "area_km2": 2.1679,
      "observable_share": 0.7114743395434514,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.261,
+     "core_contrast_hv_db": -3.737,
+     "core_dark_share": 0.728,
+     "frozen": false
     },
     {
      "date": "2026-07-24",
@@ -115,7 +154,11 @@
      "area_km2": 2.827,
      "observable_share": 0.7115442908107352,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.197,
+     "core_contrast_hv_db": -4.944,
+     "core_dark_share": 0.929,
+     "frozen": false
     },
     {
      "date": "2026-07-24",
@@ -123,7 +166,11 @@
      "area_km2": 2.9693,
      "observable_share": 0.7104017534450999,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.993,
+     "core_contrast_hv_db": -5.275,
+     "core_dark_share": 0.95,
+     "frozen": false
     },
     {
      "date": "2026-08-12",
@@ -131,7 +178,11 @@
      "area_km2": 2.0498,
      "observable_share": 0.7191689789446686,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -4.921,
+     "core_contrast_hv_db": -4.859,
+     "core_dark_share": 0.902,
+     "frozen": false
     },
     {
      "date": "2026-08-17",
@@ -139,7 +190,11 @@
      "area_km2": 2.779,
      "observable_share": 0.7115792664443771,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.423,
+     "core_contrast_hv_db": -4.894,
+     "core_dark_share": 0.922,
+     "frozen": false
     },
     {
      "date": "2026-08-17",
@@ -147,7 +202,11 @@
      "area_km2": 2.9251,
      "observable_share": 0.7132347797700935,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.156,
+     "core_contrast_hv_db": -5.225,
+     "core_dark_share": 0.935,
+     "frozen": false
     },
     {
      "date": "2026-08-24",
@@ -155,7 +214,11 @@
      "area_km2": 1.8182,
      "observable_share": 0.7191223447664794,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -4.536,
+     "core_contrast_hv_db": -4.805,
+     "core_dark_share": 0.822,
+     "frozen": false
     },
     {
      "date": "2026-08-29",
@@ -163,7 +226,11 @@
      "area_km2": 2.7344,
      "observable_share": 0.711381071187073,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.344,
+     "core_contrast_hv_db": -4.844,
+     "core_dark_share": 0.911,
+     "frozen": false
     },
     {
      "date": "2026-09-05",
@@ -172,7 +239,11 @@
      "observable_share": 0.7191456618555739,
      "excluded": "window dark share 23.5% is an outlier on its track (robust z +4.4, limit 3.5)",
      "crid": "P05023",
-     "diagnostic_km2": 0.8087
+     "diagnostic_km2": 0.8087,
+     "core_contrast_hh_db": 0.674,
+     "core_contrast_hv_db": 0.148,
+     "core_dark_share": 0.072,
+     "frozen": false
     },
     {
      "date": "2026-09-10",
@@ -180,7 +251,11 @@
      "area_km2": 2.6025,
      "observable_share": 0.7117075104343974,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.202,
+     "core_contrast_hv_db": -4.758,
+     "core_dark_share": 0.877,
+     "frozen": false
     },
     {
      "date": "2026-09-10",
@@ -188,7 +263,11 @@
      "area_km2": 2.846,
      "observable_share": 0.7162776598969385,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.678,
+     "core_contrast_hv_db": -5.052,
+     "core_dark_share": 0.912,
+     "frozen": false
     },
     {
      "date": "2026-09-17",
@@ -196,7 +275,11 @@
      "area_km2": 1.7217,
      "observable_share": 0.7190290764101009,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -4.793,
+     "core_contrast_hv_db": -4.692,
+     "core_dark_share": 0.799,
+     "frozen": false
     },
     {
      "date": "2026-09-22",
@@ -204,7 +287,11 @@
      "area_km2": 2.6374,
      "observable_share": 0.7115209737216406,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.223,
+     "core_contrast_hv_db": -4.847,
+     "core_dark_share": 0.888,
+     "frozen": false
     },
     {
      "date": "2026-09-29",
@@ -212,7 +299,11 @@
      "area_km2": 2.1767,
      "observable_share": 0.7189824422319118,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.362,
+     "core_contrast_hv_db": -5.383,
+     "core_dark_share": 0.899,
+     "frozen": false
     },
     {
      "date": "2026-10-04",
@@ -220,7 +311,11 @@
      "area_km2": 2.6816,
      "observable_share": 0.7114393639098096,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.31,
+     "core_contrast_hv_db": -4.851,
+     "core_dark_share": 0.885,
+     "frozen": false
     },
     {
      "date": "2026-10-04",
@@ -228,7 +323,11 @@
      "area_km2": 2.9274,
      "observable_share": 0.7148320003730734,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.905,
+     "core_contrast_hv_db": -5.179,
+     "core_dark_share": 0.926,
+     "frozen": false
     },
     {
      "date": "2026-10-11",
@@ -236,7 +335,11 @@
      "area_km2": 1.5357,
      "observable_share": 0.7190407349546483,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -4.167,
+     "core_contrast_hv_db": -4.471,
+     "core_dark_share": 0.688,
+     "frozen": false
     },
     {
      "date": "2026-10-16",
@@ -244,7 +347,11 @@
      "area_km2": 2.783,
      "observable_share": 0.7114859980879987,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.504,
+     "core_contrast_hv_db": -5.016,
+     "core_dark_share": 0.911,
+     "frozen": false
     },
     {
      "date": "2026-10-23",
@@ -252,7 +359,11 @@
      "area_km2": 2.1591,
      "observable_share": 0.7191340033110266,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -5.502,
+     "core_contrast_hv_db": -5.171,
+     "core_dark_share": 0.856,
+     "frozen": false
     },
     {
      "date": "2026-10-28",
@@ -260,7 +371,11 @@
      "area_km2": 2.6184,
      "observable_share": 0.7115792664443771,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -5.243,
+     "core_contrast_hv_db": -4.64,
+     "core_dark_share": 0.866,
+     "frozen": false
     },
     {
      "date": "2026-10-28",
@@ -268,7 +383,11 @@
      "area_km2": 2.818,
      "observable_share": 0.7138876582647422,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -5.638,
+     "core_contrast_hv_db": -4.917,
+     "core_dark_share": 0.899,
+     "frozen": false
     },
     {
      "date": "2026-11-04",
@@ -276,7 +395,11 @@
      "area_km2": 2.1577,
      "observable_share": 0.7189941007764591,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -5.206,
+     "core_contrast_hv_db": -5.183,
+     "core_dark_share": 0.856,
+     "frozen": false
     },
     {
      "date": "2026-11-09",
@@ -284,7 +407,11 @@
      "area_km2": 2.6403,
      "observable_share": 0.7115093151770933,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -5.287,
+     "core_contrast_hv_db": -4.684,
+     "core_dark_share": 0.873,
+     "frozen": false
     }
    ],
    "excluded": [
@@ -308,7 +435,60 @@
     36.305980824445186,
     74.89997561034671,
     36.36005798537268
-   ]
+   ],
+   "summer_ref": {
+    "055A": {
+     "passes": 8,
+     "core_px": 29037,
+     "assessed": true,
+     "core_contrast_hh_db": -5.303,
+     "core_contrast_hv_db": -4.87,
+     "core_dark_share": 0.917
+    },
+    "063D": {
+     "passes": 4,
+     "core_px": 31037,
+     "assessed": true,
+     "core_contrast_hh_db": -5.989,
+     "core_contrast_hv_db": -5.25,
+     "core_dark_share": 0.941
+    },
+    "156A": {
+     "passes": 5,
+     "core_px": 20573,
+     "assessed": true,
+     "core_contrast_hh_db": -4.921,
+     "core_contrast_hv_db": -4.859,
+     "core_dark_share": 0.899
+    }
+   },
+   "freeze": {
+    "state": "open",
+    "since": null,
+    "freeze_up": null,
+    "released_by": null,
+    "released_on": null,
+    "temp_through": "2026-11-09",
+    "checked": "2026-11-12",
+    "cold_run_days": 0,
+    "warm_run_days": 237,
+    "fdd_since_sep": 0.0,
+    "t2m_mean_7d": 2.1,
+    "t2m_min_mean_7d": -3.3,
+    "power_cell_elev_m": 4490.97,
+    "s2": null,
+    "s2_searched": true,
+    "s2_evidence": null,
+    "s2_events": [],
+    "breakup_pass": null,
+    "frozen_passes": 0,
+    "radar_assessed": true,
+    "in_season": true,
+    "held_over_sep": false,
+    "source": "NASA POWER daily T2M and T2M_MIN (MERRA-2 based), moved to the lake's height at -6.5 C/km",
+    "reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been above 0 \u00b0C for 237 days in a row, with 0 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,359 m). No clear Sentinel-2 view of the lake in the last 7 days.",
+    "fresh_reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been above 0 \u00b0C for 237 days in a row, with 0 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,359 m). No clear Sentinel-2 view of the lake in the last 7 days."
+   }
   },
   {
    "id": "shisper",
@@ -326,6 +506,8 @@
    "lake_state_source": "no water in the basin in Sentinel-2, 17 Aug 2026 (clearest scene of 1 Jul\u201330 Sep 2026); the lake last held water in spring 2022 and burst on 7 May 2022",
    "downstream": "Hassanabad village and the Karakoram Highway bridge",
    "downstream_source": "Dawn, 7 May 2022, https://www.dawn.com/news/1688466 (the Hassanabad bridge on the Karakoram Highway destroyed); Radio Pakistan, 9 May 2022, https://radio.gov.pk/09-05-2022/all-resources-to-be-utilized-for-rehabilitation-of-shishper-glacier-affectees-cm-gb",
+   "elevation_m": 2606.0,
+   "elevation_source": "Copernicus DEM GLO-30 (Copernicus_DSM_COG_10_N36_00_E074_00_DEM, Earth Search), 10th percentile within 1 km of the lake point",
    "status": {
     "status": "No lake now",
     "track": "156A",
@@ -351,7 +533,10 @@
      "area_km2": 0.1225,
      "observable_share": 0.8291107008721116,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -4.781,
+     "core_contrast_hv_db": -5.488,
+     "core_dark_share": 0.82
     },
     {
      "date": "2026-06-30",
@@ -359,7 +544,10 @@
      "area_km2": 0.1063,
      "observable_share": 0.8353491629002483,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.348,
+     "core_contrast_hv_db": -4.645,
+     "core_dark_share": 0.871
     },
     {
      "date": "2026-07-07",
@@ -368,7 +556,10 @@
      "observable_share": 0.8292061875358075,
      "excluded": "window median HH 22.6 dB from the track median",
      "crid": "P05023",
-     "diagnostic_km2": 0.972
+     "diagnostic_km2": 0.972,
+     "core_contrast_hh_db": -5.867,
+     "core_contrast_hv_db": -6.384,
+     "core_dark_share": 0.714
     },
     {
      "date": "2026-07-24",
@@ -376,7 +567,10 @@
      "area_km2": 0.0838,
      "observable_share": 0.8354128206760456,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.481,
+     "core_contrast_hv_db": -4.118,
+     "core_dark_share": 0.719
     },
     {
      "date": "2026-08-12",
@@ -384,7 +578,10 @@
      "area_km2": 0.1124,
      "observable_share": 0.8290788719842128,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -4.488,
+     "core_contrast_hv_db": -5.316,
+     "core_dark_share": 0.892
     },
     {
      "date": "2026-08-17",
@@ -392,7 +589,10 @@
      "area_km2": 0.0868,
      "observable_share": 0.8354764784518429,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.406,
+     "core_contrast_hv_db": -4.571,
+     "core_dark_share": 0.785
     },
     {
      "date": "2026-08-24",
@@ -400,7 +600,10 @@
      "area_km2": 0.0647,
      "observable_share": 0.8290470430963142,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -3.939,
+     "core_contrast_hv_db": -4.716,
+     "core_dark_share": 0.634
     },
     {
      "date": "2026-09-05",
@@ -409,7 +612,10 @@
      "observable_share": 0.8291107008721116,
      "excluded": "window dark share 29.7% is an outlier on its track (robust z +15.0, limit 3.5)",
      "crid": "P05023",
-     "diagnostic_km2": 0.7409
+     "diagnostic_km2": 0.7409,
+     "core_contrast_hh_db": -1.643,
+     "core_contrast_hv_db": -3.086,
+     "core_dark_share": 0.401
     },
     {
      "date": "2026-09-10",
@@ -417,7 +623,10 @@
      "area_km2": 0.0964,
      "observable_share": 0.8355083073397416,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.541,
+     "core_contrast_hv_db": -4.433,
+     "core_dark_share": 0.81
     },
     {
      "date": "2026-09-17",
@@ -425,7 +634,10 @@
      "area_km2": 0.0623,
      "observable_share": 0.8292380164237062,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -3.819,
+     "core_contrast_hv_db": -4.89,
+     "core_dark_share": 0.638
     },
     {
      "date": "2026-09-29",
@@ -433,7 +645,10 @@
      "area_km2": 0.0907,
      "observable_share": 0.8291743586479089,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -4.785,
+     "core_contrast_hv_db": -5.79,
+     "core_dark_share": 0.779
     },
     {
      "date": "2026-10-04",
@@ -441,7 +656,10 @@
      "area_km2": 0.0971,
      "observable_share": 0.8353491629002483,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.538,
+     "core_contrast_hv_db": -4.672,
+     "core_dark_share": 0.701
     },
     {
      "date": "2026-10-11",
@@ -449,7 +667,10 @@
      "area_km2": 0.1254,
      "observable_share": 0.8292380164237062,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -4.404,
+     "core_contrast_hv_db": -5.284,
+     "core_dark_share": 0.628
     },
     {
      "date": "2026-10-23",
@@ -457,7 +678,10 @@
      "area_km2": 0.0789,
      "observable_share": 0.8291107008721116,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -4.485,
+     "core_contrast_hv_db": -5.775,
+     "core_dark_share": 0.607
     },
     {
      "date": "2026-10-28",
@@ -465,7 +689,10 @@
      "area_km2": 0.1016,
      "observable_share": 0.8354128206760456,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -5.655,
+     "core_contrast_hv_db": -4.32,
+     "core_dark_share": 0.727
     },
     {
      "date": "2026-11-04",
@@ -473,7 +700,10 @@
      "area_km2": 0.0977,
      "observable_share": 0.8291743586479089,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -4.405,
+     "core_contrast_hv_db": -5.683,
+     "core_dark_share": 0.644
     }
    ],
    "excluded": [
@@ -498,6 +728,24 @@
     74.60077846392431,
     36.38521585486571
    ],
+   "summer_ref": {
+    "063D": {
+     "passes": 4,
+     "core_px": 960,
+     "assessed": true,
+     "core_contrast_hh_db": -5.444,
+     "core_contrast_hv_db": -4.502,
+     "core_dark_share": 0.798
+    },
+    "156A": {
+     "passes": 5,
+     "core_px": 489,
+     "assessed": true,
+     "core_contrast_hh_db": -4.488,
+     "core_contrast_hv_db": -5.316,
+     "core_dark_share": 0.779
+    }
+   },
    "absence_checked": {
     "date": "2026-10-28",
     "s2_id": "S2A_43SDA_20261028_0_L2A",
@@ -537,6 +785,8 @@
    "lake_state_source": null,
    "downstream": null,
    "downstream_source": null,
+   "elevation_m": 2551.0,
+   "elevation_source": "Copernicus DEM GLO-30 (Copernicus_DSM_COG_10_N36_00_E074_00_DEM, Earth Search), 10th percentile within 1 km of the lake point",
    "status": {
     "status": "Stable",
     "track": "055A",
@@ -562,7 +812,11 @@
      "area_km2": 0.0178,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.156,
+     "core_contrast_hv_db": -3.6,
+     "core_dark_share": 0.832,
+     "frozen": false
     },
     {
      "date": "2026-06-25",
@@ -570,7 +824,11 @@
      "area_km2": 0.0265,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.96,
+     "core_contrast_hv_db": -3.841,
+     "core_dark_share": 0.921,
+     "frozen": false
     },
     {
      "date": "2026-06-30",
@@ -578,7 +836,11 @@
      "area_km2": 0.017,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.979,
+     "core_contrast_hv_db": -3.5,
+     "core_dark_share": 0.798,
+     "frozen": false
     },
     {
      "date": "2026-06-30",
@@ -586,7 +848,11 @@
      "area_km2": 0.0331,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.226,
+     "core_contrast_hv_db": -4.584,
+     "core_dark_share": 0.889,
+     "frozen": false
     },
     {
      "date": "2026-07-07",
@@ -595,7 +861,11 @@
      "observable_share": 0.859670216420474,
      "excluded": "window median HH 20.4 dB from the track median",
      "crid": "P05023",
-     "diagnostic_km2": 0.0143
+     "diagnostic_km2": 0.0143,
+     "core_contrast_hh_db": -0.463,
+     "core_contrast_hv_db": -0.214,
+     "core_dark_share": 0.0,
+     "frozen": false
     },
     {
      "date": "2026-07-12",
@@ -604,7 +874,11 @@
      "observable_share": 0.859670216420474,
      "excluded": "window dark share 6.4% is an outlier on its track (robust z -5.9, limit 3.5)",
      "crid": "P05023",
-     "diagnostic_km2": 0.0024
+     "diagnostic_km2": 0.0024,
+     "core_contrast_hh_db": -6.372,
+     "core_contrast_hv_db": -1.94,
+     "core_dark_share": 0.076,
+     "frozen": false
     },
     {
      "date": "2026-07-24",
@@ -612,7 +886,11 @@
      "area_km2": 0.0113,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.408,
+     "core_contrast_hv_db": -3.199,
+     "core_dark_share": 0.613,
+     "frozen": false
     },
     {
      "date": "2026-07-24",
@@ -620,7 +898,11 @@
      "area_km2": 0.031,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.503,
+     "core_contrast_hv_db": -4.195,
+     "core_dark_share": 0.81,
+     "frozen": false
     },
     {
      "date": "2026-08-12",
@@ -628,7 +910,11 @@
      "area_km2": 0.0216,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.798,
+     "core_contrast_hv_db": -3.686,
+     "core_dark_share": 0.818,
+     "frozen": false
     },
     {
      "date": "2026-08-17",
@@ -636,7 +922,11 @@
      "area_km2": 0.0135,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.844,
+     "core_contrast_hv_db": -3.217,
+     "core_dark_share": 0.597,
+     "frozen": false
     },
     {
      "date": "2026-08-17",
@@ -644,7 +934,11 @@
      "area_km2": 0.0345,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.918,
+     "core_contrast_hv_db": -4.781,
+     "core_dark_share": 0.925,
+     "frozen": false
     },
     {
      "date": "2026-08-24",
@@ -652,7 +946,11 @@
      "area_km2": 0.0151,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.345,
+     "core_contrast_hv_db": -3.239,
+     "core_dark_share": 0.612,
+     "frozen": false
     },
     {
      "date": "2026-08-29",
@@ -660,7 +958,11 @@
      "area_km2": 0.0109,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.03,
+     "core_contrast_hv_db": -3.206,
+     "core_dark_share": 0.588,
+     "frozen": false
     },
     {
      "date": "2026-09-05",
@@ -669,7 +971,11 @@
      "observable_share": 0.859670216420474,
      "excluded": "anomalous over Hunza lakes; spec \u00a75",
      "crid": "P05023",
-     "diagnostic_km2": 0.0373
+     "diagnostic_km2": 0.0373,
+     "core_contrast_hh_db": -1.501,
+     "core_contrast_hv_db": -1.102,
+     "core_dark_share": 0.005,
+     "frozen": false
     },
     {
      "date": "2026-09-10",
@@ -677,7 +983,11 @@
      "area_km2": 0.0114,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.999,
+     "core_contrast_hv_db": -3.107,
+     "core_dark_share": 0.521,
+     "frozen": false
     },
     {
      "date": "2026-09-10",
@@ -685,7 +995,11 @@
      "area_km2": 0.0295,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.182,
+     "core_contrast_hv_db": -4.485,
+     "core_dark_share": 0.819,
+     "frozen": false
     },
     {
      "date": "2026-09-17",
@@ -693,7 +1007,11 @@
      "area_km2": 0.0178,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.962,
+     "core_contrast_hv_db": -3.52,
+     "core_dark_share": 0.664,
+     "frozen": false
     },
     {
      "date": "2026-09-22",
@@ -701,7 +1019,11 @@
      "area_km2": 0.0134,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.513,
+     "core_contrast_hv_db": -3.349,
+     "core_dark_share": 0.714,
+     "frozen": false
     },
     {
      "date": "2026-09-29",
@@ -709,7 +1031,11 @@
      "area_km2": 0.0249,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.553,
+     "core_contrast_hv_db": -3.706,
+     "core_dark_share": 0.907,
+     "frozen": false
     },
     {
      "date": "2026-10-04",
@@ -717,7 +1043,11 @@
      "area_km2": 0.015,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.594,
+     "core_contrast_hv_db": -2.96,
+     "core_dark_share": 0.496,
+     "frozen": false
     },
     {
      "date": "2026-10-04",
@@ -725,7 +1055,11 @@
      "area_km2": 0.0289,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.69,
+     "core_contrast_hv_db": -4.428,
+     "core_dark_share": 0.762,
+     "frozen": false
     },
     {
      "date": "2026-10-11",
@@ -733,7 +1067,11 @@
      "area_km2": 0.0179,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.392,
+     "core_contrast_hv_db": -3.353,
+     "core_dark_share": 0.659,
+     "frozen": false
     },
     {
      "date": "2026-10-16",
@@ -741,7 +1079,11 @@
      "area_km2": 0.0045,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.514,
+     "core_contrast_hv_db": -2.327,
+     "core_dark_share": 0.185,
+     "frozen": false
     },
     {
      "date": "2026-10-23",
@@ -749,7 +1091,11 @@
      "area_km2": 0.0123,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -5.683,
+     "core_contrast_hv_db": -2.932,
+     "core_dark_share": 0.43,
+     "frozen": false
     },
     {
      "date": "2026-10-28",
@@ -757,7 +1103,11 @@
      "area_km2": 0.0078,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -6.045,
+     "core_contrast_hv_db": -2.797,
+     "core_dark_share": 0.353,
+     "frozen": false
     },
     {
      "date": "2026-10-28",
@@ -765,7 +1115,11 @@
      "area_km2": 0.025,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -5.836,
+     "core_contrast_hv_db": -3.69,
+     "core_dark_share": 0.648,
+     "frozen": false
     },
     {
      "date": "2026-11-04",
@@ -773,7 +1127,11 @@
      "area_km2": 0.0152,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -5.71,
+     "core_contrast_hv_db": -3.295,
+     "core_dark_share": 0.579,
+     "frozen": false
     },
     {
      "date": "2026-11-09",
@@ -781,7 +1139,11 @@
      "area_km2": 0.0065,
      "observable_share": 0.859670216420474,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -5.622,
+     "core_contrast_hv_db": -2.6,
+     "core_dark_share": 0.319,
+     "frozen": false
     }
    ],
    "excluded": [
@@ -809,7 +1171,68 @@
     36.430953288928045,
     74.91454197108253,
     36.48502140982702
-   ]
+   ],
+   "summer_ref": {
+    "055A": {
+     "passes": 7,
+     "core_px": 119,
+     "assessed": true,
+     "core_contrast_hh_db": -6.979,
+     "core_contrast_hv_db": -3.217,
+     "core_dark_share": 0.613
+    },
+    "063D": {
+     "passes": 4,
+     "core_px": 332,
+     "assessed": true,
+     "core_contrast_hh_db": -6.71,
+     "core_contrast_hv_db": -4.534,
+     "core_dark_share": 0.854
+    },
+    "156A": {
+     "passes": 5,
+     "core_px": 214,
+     "assessed": true,
+     "core_contrast_hh_db": -5.962,
+     "core_contrast_hv_db": -3.686,
+     "core_dark_share": 0.818
+    }
+   },
+   "freeze": {
+    "state": "open",
+    "since": null,
+    "freeze_up": null,
+    "released_by": null,
+    "released_on": null,
+    "temp_through": "2026-11-09",
+    "checked": "2026-11-12",
+    "cold_run_days": 3,
+    "warm_run_days": 0,
+    "fdd_since_sep": 5.9,
+    "t2m_mean_7d": 0.9,
+    "t2m_min_mean_7d": -4.6,
+    "power_cell_elev_m": 4490.97,
+    "s2": {
+     "date": "2026-11-10",
+     "s2_id": "S2B_43SDA_20261110_1_L2A",
+     "clear_share": 1.0,
+     "target_clear_share": 1.0,
+     "snow_share": 0.0,
+     "water_share": 0.138,
+     "water_over": "lake outline"
+    },
+    "s2_searched": true,
+    "s2_evidence": null,
+    "s2_events": [],
+    "breakup_pass": null,
+    "frozen_passes": 0,
+    "radar_assessed": true,
+    "in_season": true,
+    "held_over_sep": false,
+    "source": "NASA POWER daily T2M and T2M_MIN (MERRA-2 based), moved to the lake's height at -6.5 C/km",
+    "reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 6 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,551 m). Clearest Sentinel-2 view of the last 7 days: 10 Nov 2026 (S2B_43SDA_20261110_1_L2A), snow or ice on 0% and water on 14% of the lake outline seen clear.",
+    "fresh_reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 6 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,551 m). Clearest Sentinel-2 view of the last 7 days: 10 Nov 2026 (S2B_43SDA_20261110_1_L2A), snow or ice on 0% and water on 14% of the lake outline seen clear."
+   }
   },
   {
    "id": "khurdopin",
@@ -827,6 +1250,8 @@
    "lake_state_source": "the basin against the Khurdopin glacier tongue is a dry sediment flat in Sentinel-2, 17 Aug 2026 (clearest scene of 1 Jul\u201330 Sep 2026); the lake last formed in 2017\u20132021 (HMAGLOFDB events 2017, 2018 and 2021)",
    "downstream": null,
    "downstream_source": null,
+   "elevation_m": 3434.0,
+   "elevation_source": "Copernicus DEM GLO-30 (Copernicus_DSM_COG_10_N36_00_E075_00_DEM, Earth Search), 10th percentile within 1 km of the lake point",
    "status": {
     "status": "No lake now",
     "track": "055A",
@@ -853,7 +1278,10 @@
      "area_km2": 0.1053,
      "observable_share": 0.7796847635726795,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.632,
+     "core_contrast_hv_db": -4.589,
+     "core_dark_share": 0.858
     },
     {
      "date": "2026-06-23",
@@ -861,7 +1289,10 @@
      "area_km2": 0.1282,
      "observable_share": 0.8090431459958606,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.785,
+     "core_contrast_hv_db": -5.714,
+     "core_dark_share": 0.939
     },
     {
      "date": "2026-06-25",
@@ -878,7 +1309,10 @@
      "area_km2": 0.1109,
      "observable_share": 0.7799713421429708,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.683,
+     "core_contrast_hv_db": -4.445,
+     "core_dark_share": 0.858
     },
     {
      "date": "2026-06-30",
@@ -886,7 +1320,10 @@
      "area_km2": 0.1719,
      "observable_share": 0.8055723610889985,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.051,
+     "core_contrast_hv_db": -6.033,
+     "core_dark_share": 0.903
     },
     {
      "date": "2026-07-07",
@@ -903,7 +1340,10 @@
      "area_km2": 0.0657,
      "observable_share": 0.7800987103964336,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -4.902,
+     "core_contrast_hv_db": -3.029,
+     "core_dark_share": 0.46
     },
     {
      "date": "2026-07-17",
@@ -911,7 +1351,10 @@
      "area_km2": 0.1132,
      "observable_share": 0.8091386721859577,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.926,
+     "core_contrast_hv_db": -5.734,
+     "core_dark_share": 0.923
     },
     {
      "date": "2026-07-24",
@@ -919,7 +1362,10 @@
      "area_km2": 0.1208,
      "observable_share": 0.7797802897627766,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.423,
+     "core_contrast_hv_db": -4.302,
+     "core_dark_share": 0.826
     },
     {
      "date": "2026-07-24",
@@ -927,7 +1373,10 @@
      "area_km2": 0.1476,
      "observable_share": 0.8056997293424614,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.794,
+     "core_contrast_hv_db": -5.606,
+     "core_dark_share": 0.819
     },
     {
      "date": "2026-08-10",
@@ -935,7 +1384,10 @@
      "area_km2": 0.1082,
      "observable_share": 0.8091386721859577,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.669,
+     "core_contrast_hv_db": -5.917,
+     "core_dark_share": 0.913
     },
     {
      "date": "2026-08-12",
@@ -952,7 +1404,10 @@
      "area_km2": 0.1158,
      "observable_share": 0.7800668683330679,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.827,
+     "core_contrast_hv_db": -4.44,
+     "core_dark_share": 0.864
     },
     {
      "date": "2026-08-17",
@@ -960,7 +1415,10 @@
      "area_km2": 0.1499,
      "observable_share": 0.8058907817226556,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.182,
+     "core_contrast_hv_db": -5.675,
+     "core_dark_share": 0.843
     },
     {
      "date": "2026-08-29",
@@ -968,7 +1426,10 @@
      "area_km2": 0.1106,
      "observable_share": 0.7800987103964336,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.717,
+     "core_contrast_hv_db": -4.361,
+     "core_dark_share": 0.881
     },
     {
      "date": "2026-09-03",
@@ -976,7 +1437,10 @@
      "area_km2": 0.1172,
      "observable_share": 0.8091386721859577,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.36,
+     "core_contrast_hv_db": -5.574,
+     "core_dark_share": 0.904
     },
     {
      "date": "2026-09-10",
@@ -984,7 +1448,10 @@
      "area_km2": 0.1027,
      "observable_share": 0.7800031842063365,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.576,
+     "core_contrast_hv_db": -4.415,
+     "core_dark_share": 0.826
     },
     {
      "date": "2026-09-10",
@@ -992,7 +1459,10 @@
      "area_km2": 0.1382,
      "observable_share": 0.8055405190256328,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.907,
+     "core_contrast_hv_db": -5.529,
+     "core_dark_share": 0.793
     },
     {
      "date": "2026-09-22",
@@ -1000,7 +1470,10 @@
      "area_km2": 0.0975,
      "observable_share": 0.7800987103964336,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.787,
+     "core_contrast_hv_db": -4.497,
+     "core_dark_share": 0.801
     },
     {
      "date": "2026-09-27",
@@ -1008,7 +1481,10 @@
      "area_km2": 0.1126,
      "observable_share": 0.809106830122592,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.736,
+     "core_contrast_hv_db": -5.355,
+     "core_dark_share": 0.888
     },
     {
      "date": "2026-09-29",
@@ -1025,7 +1501,10 @@
      "area_km2": 0.1048,
      "observable_share": 0.7798758159528737,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.962,
+     "core_contrast_hv_db": -4.488,
+     "core_dark_share": 0.794
     },
     {
      "date": "2026-10-04",
@@ -1033,7 +1512,10 @@
      "area_km2": 0.1337,
      "observable_share": 0.8056678872790957,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.863,
+     "core_contrast_hv_db": -5.607,
+     "core_dark_share": 0.736
     },
     {
      "date": "2026-10-11",
@@ -1050,7 +1532,10 @@
      "area_km2": 0.103,
      "observable_share": 0.7796847635726795,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.743,
+     "core_contrast_hv_db": -4.582,
+     "core_dark_share": 0.77
     },
     {
      "date": "2026-10-21",
@@ -1058,7 +1543,10 @@
      "area_km2": 0.1111,
      "observable_share": 0.7832829167330043,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.596,
+     "core_contrast_hv_db": -5.257,
+     "core_dark_share": 0.792
     },
     {
      "date": "2026-10-28",
@@ -1066,7 +1554,10 @@
      "area_km2": 0.1122,
      "observable_share": 0.7799395000796051,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -6.041,
+     "core_contrast_hv_db": -4.6,
+     "core_dark_share": 0.801
     },
     {
      "date": "2026-10-28",
@@ -1074,7 +1565,10 @@
      "area_km2": 0.1354,
      "observable_share": 0.8058907817226556,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -5.977,
+     "core_contrast_hv_db": -5.28,
+     "core_dark_share": 0.732
     },
     {
      "date": "2026-11-09",
@@ -1082,7 +1576,10 @@
      "area_km2": 0.1064,
      "observable_share": 0.7799395000796051,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -5.896,
+     "core_contrast_hv_db": -4.442,
+     "core_dark_share": 0.781
     }
    ],
    "excluded": [
@@ -1119,6 +1616,32 @@
     75.50878599580174,
     36.371455071535934
    ],
+   "summer_ref": {
+    "055A": {
+     "passes": 8,
+     "core_px": 935,
+     "assessed": true,
+     "core_contrast_hh_db": -5.657,
+     "core_contrast_hv_db": -4.428,
+     "core_dark_share": 0.842
+    },
+    "063D": {
+     "passes": 4,
+     "core_px": 1562,
+     "assessed": true,
+     "core_contrast_hh_db": -5.979,
+     "core_contrast_hv_db": -5.64,
+     "core_dark_share": 0.831
+    },
+    "135D": {
+     "passes": 5,
+     "core_px": 966,
+     "assessed": true,
+     "core_contrast_hh_db": -6.736,
+     "core_contrast_hv_db": -5.714,
+     "core_dark_share": 0.913
+    }
+   },
    "absence_checked": {
     "date": "2026-11-10",
     "s2_id": "S2B_43SEA_20261110_1_L2A",
@@ -1158,6 +1681,8 @@
    "lake_state_source": null,
    "downstream": null,
    "downstream_source": null,
+   "elevation_m": 2856.0,
+   "elevation_source": "Copernicus DEM GLO-30 (Copernicus_DSM_COG_10_N36_00_E074_00_DEM, Earth Search), 10th percentile within 1 km of the lake point",
    "status": {
     "status": "Stable",
     "track": "156A",
@@ -1183,7 +1708,11 @@
      "area_km2": 0.0399,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.983,
+     "core_contrast_hv_db": -5.644,
+     "core_dark_share": 0.946,
+     "frozen": false
     },
     {
      "date": "2026-06-30",
@@ -1191,7 +1720,11 @@
      "area_km2": 0.0406,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.416,
+     "core_contrast_hv_db": -6.831,
+     "core_dark_share": 0.914,
+     "frozen": false
     },
     {
      "date": "2026-07-07",
@@ -1200,7 +1733,11 @@
      "observable_share": 0.8582537999293036,
      "excluded": "window median HH 34.4 dB from the track median",
      "crid": "P05023",
-     "diagnostic_km2": 0.0462
+     "diagnostic_km2": 0.0462,
+     "core_contrast_hh_db": -3.665,
+     "core_contrast_hv_db": -2.787,
+     "core_dark_share": 0.281,
+     "frozen": false
     },
     {
      "date": "2026-07-24",
@@ -1208,7 +1745,11 @@
      "area_km2": 0.0447,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -8.459,
+     "core_contrast_hv_db": -7.787,
+     "core_dark_share": 0.965,
+     "frozen": false
     },
     {
      "date": "2026-08-12",
@@ -1216,7 +1757,11 @@
      "area_km2": 0.0395,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.105,
+     "core_contrast_hv_db": -5.1,
+     "core_dark_share": 0.936,
+     "frozen": false
     },
     {
      "date": "2026-08-17",
@@ -1224,7 +1769,11 @@
      "area_km2": 0.0422,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.201,
+     "core_contrast_hv_db": -7.323,
+     "core_dark_share": 0.947,
+     "frozen": false
     },
     {
      "date": "2026-08-24",
@@ -1232,7 +1781,11 @@
      "area_km2": 0.0403,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -8.098,
+     "core_contrast_hv_db": -5.154,
+     "core_dark_share": 0.953,
+     "frozen": false
     },
     {
      "date": "2026-09-05",
@@ -1241,7 +1794,11 @@
      "observable_share": 0.8582537999293036,
      "excluded": "window dark share 26.4% is an outlier on its track (robust z +15.8, limit 3.5)",
      "crid": "P05023",
-     "diagnostic_km2": 0.0779
+     "diagnostic_km2": 0.0779,
+     "core_contrast_hh_db": -4.298,
+     "core_contrast_hv_db": -3.279,
+     "core_dark_share": 0.538,
+     "frozen": false
     },
     {
      "date": "2026-09-10",
@@ -1249,7 +1806,11 @@
      "area_km2": 0.0409,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.717,
+     "core_contrast_hv_db": -7.005,
+     "core_dark_share": 0.933,
+     "frozen": false
     },
     {
      "date": "2026-09-17",
@@ -1257,7 +1818,11 @@
      "area_km2": 0.0404,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -8.178,
+     "core_contrast_hv_db": -4.622,
+     "core_dark_share": 0.965,
+     "frozen": false
     },
     {
      "date": "2026-09-29",
@@ -1265,7 +1830,11 @@
      "area_km2": 0.0408,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -8.361,
+     "core_contrast_hv_db": -5.193,
+     "core_dark_share": 0.96,
+     "frozen": false
     },
     {
      "date": "2026-10-04",
@@ -1273,7 +1842,11 @@
      "area_km2": 0.0402,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.347,
+     "core_contrast_hv_db": -7.098,
+     "core_dark_share": 0.891,
+     "frozen": false
     },
     {
      "date": "2026-10-11",
@@ -1281,7 +1854,11 @@
      "area_km2": 0.042,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.917,
+     "core_contrast_hv_db": -4.954,
+     "core_dark_share": 0.953,
+     "frozen": false
     },
     {
      "date": "2026-10-23",
@@ -1289,7 +1866,11 @@
      "area_km2": 0.0416,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -9.08,
+     "core_contrast_hv_db": -5.527,
+     "core_dark_share": 0.96,
+     "frozen": false
     },
     {
      "date": "2026-10-28",
@@ -1297,7 +1878,11 @@
      "area_km2": 0.0393,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -7.568,
+     "core_contrast_hv_db": -6.664,
+     "core_dark_share": 0.877,
+     "frozen": false
     },
     {
      "date": "2026-11-04",
@@ -1305,7 +1890,11 @@
      "area_km2": 0.0407,
      "observable_share": 0.8582537999293036,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -7.317,
+     "core_contrast_hv_db": -5.071,
+     "core_dark_share": 0.928,
+     "frozen": false
     }
    ],
    "excluded": [
@@ -1329,7 +1918,52 @@
     36.593918811130216,
     74.1132221286845,
     36.64888618644667
-   ]
+   ],
+   "summer_ref": {
+    "063D": {
+     "passes": 4,
+     "core_px": 432,
+     "assessed": true,
+     "core_contrast_hh_db": -7.566,
+     "core_contrast_hv_db": -7.164,
+     "core_dark_share": 0.94
+    },
+    "156A": {
+     "passes": 5,
+     "core_px": 405,
+     "assessed": true,
+     "core_contrast_hh_db": -8.098,
+     "core_contrast_hv_db": -5.154,
+     "core_dark_share": 0.953
+    }
+   },
+   "freeze": {
+    "state": "open",
+    "since": null,
+    "freeze_up": null,
+    "released_by": null,
+    "released_on": null,
+    "temp_through": "2026-11-09",
+    "checked": "2026-11-12",
+    "cold_run_days": 3,
+    "warm_run_days": 0,
+    "fdd_since_sep": 13.7,
+    "t2m_mean_7d": -0.6,
+    "t2m_min_mean_7d": -5.8,
+    "power_cell_elev_m": 4210.9,
+    "s2": null,
+    "s2_searched": true,
+    "s2_evidence": null,
+    "s2_events": [],
+    "breakup_pass": null,
+    "frozen_passes": 0,
+    "radar_assessed": true,
+    "in_season": true,
+    "held_over_sep": false,
+    "source": "NASA POWER daily T2M and T2M_MIN (MERRA-2 based), moved to the lake's height at -6.5 C/km",
+    "reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 14 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,856 m). No clear Sentinel-2 view of the lake in the last 7 days.",
+    "fresh_reason": "Not frozen by the freeze rule (7 days in a row below 0 \u00b0C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open. The daily mean air temperature at the lake has been below 0 \u00b0C for 3 days in a row, with 14 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 2,856 m). No clear Sentinel-2 view of the lake in the last 7 days."
+   }
   },
   {
    "id": "rogheli",
@@ -1347,6 +1981,8 @@
    "lake_state_source": "no water in Sentinel-2 on any clear scene of 23 Jun\u201311 Sep 2026; a supraglacial pond of about 0.03 km2 formed here in late June 2019 and 2020 and drained in the 7 Jul 2019 and 13 Jul 2020 GLOFs (HMAGLOFDB GF 498, 504)",
    "downstream": null,
    "downstream_source": null,
+   "elevation_m": 4454.0,
+   "elevation_source": "Copernicus DEM GLO-30 (Copernicus_DSM_COG_10_N35_00_E071_00_DEM, Earth Search), 10th percentile within 1 km of the lake point",
    "status": {
     "status": "No lake now",
     "track": "084A",
@@ -1372,7 +2008,10 @@
      "area_km2": 0.0005,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -3.686,
+     "core_contrast_hv_db": -4.097,
+     "core_dark_share": 1.0
     },
     {
      "date": "2026-07-02",
@@ -1380,7 +2019,10 @@
      "area_km2": 0.0001,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -2.376,
+     "core_contrast_hv_db": -1.844,
+     "core_dark_share": 0.0
     },
     {
      "date": "2026-07-14",
@@ -1388,7 +2030,10 @@
      "area_km2": 0.0003,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -5.048,
+     "core_contrast_hv_db": -3.835,
+     "core_dark_share": 1.0
     },
     {
      "date": "2026-07-19",
@@ -1396,7 +2041,10 @@
      "area_km2": 0.0,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -1.302,
+     "core_contrast_hv_db": -3.226,
+     "core_dark_share": 0.0
     },
     {
      "date": "2026-07-26",
@@ -1404,7 +2052,10 @@
      "area_km2": 0.0001,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -3.159,
+     "core_contrast_hv_db": -3.134,
+     "core_dark_share": 1.0
     },
     {
      "date": "2026-08-12",
@@ -1412,7 +2063,10 @@
      "area_km2": 0.0003,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -3.735,
+     "core_contrast_hv_db": -3.541,
+     "core_dark_share": 1.0
     },
     {
      "date": "2026-08-19",
@@ -1420,7 +2074,10 @@
      "area_km2": 0.0001,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -3.112,
+     "core_contrast_hv_db": -4.097,
+     "core_dark_share": 1.0
     },
     {
      "date": "2026-08-31",
@@ -1428,7 +2085,10 @@
      "area_km2": 0.0007,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.224,
+     "core_contrast_hv_db": -5.311,
+     "core_dark_share": 1.0
     },
     {
      "date": "2026-09-05",
@@ -1436,7 +2096,10 @@
      "area_km2": 0.0006,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -3.009,
+     "core_contrast_hv_db": -4.374,
+     "core_dark_share": 1.0
     },
     {
      "date": "2026-09-12",
@@ -1444,7 +2107,10 @@
      "area_km2": 0.0,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -2.845,
+     "core_contrast_hv_db": -3.611,
+     "core_dark_share": 0.0
     },
     {
      "date": "2026-09-24",
@@ -1452,7 +2118,10 @@
      "area_km2": 0.0,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -2.216,
+     "core_contrast_hv_db": -3.329,
+     "core_dark_share": 0.0
     },
     {
      "date": "2026-09-29",
@@ -1460,7 +2129,10 @@
      "area_km2": 0.0,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": 0.097,
+     "core_contrast_hv_db": -3.82,
+     "core_dark_share": 0.0
     },
     {
      "date": "2026-10-06",
@@ -1468,7 +2140,10 @@
      "area_km2": 0.0001,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -3.001,
+     "core_contrast_hv_db": -4.388,
+     "core_dark_share": 1.0
     },
     {
      "date": "2026-10-18",
@@ -1476,7 +2151,10 @@
      "area_km2": 0.0001,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -2.611,
+     "core_contrast_hv_db": -4.952,
+     "core_dark_share": 0.0
     },
     {
      "date": "2026-10-23",
@@ -1484,7 +2162,10 @@
      "area_km2": 0.0004,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -2.834,
+     "core_contrast_hv_db": -2.46,
+     "core_dark_share": 0.0
     },
     {
      "date": "2026-10-30",
@@ -1492,7 +2173,10 @@
      "area_km2": 0.0006,
      "observable_share": 0.9901269393511989,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -6.5,
+     "core_contrast_hv_db": -6.508,
+     "core_dark_share": 1.0
     }
    ],
    "excluded": [],
@@ -1508,6 +2192,24 @@
     72.00300339168226,
     35.8824865717119
    ],
+   "summer_ref": {
+    "084A": {
+     "passes": 7,
+     "core_px": 1,
+     "assessed": true,
+     "core_contrast_hh_db": -3.112,
+     "core_contrast_hv_db": -3.611,
+     "core_dark_share": 1.0
+    },
+    "164D": {
+     "passes": 5,
+     "core_px": 1,
+     "assessed": true,
+     "core_contrast_hh_db": -3.009,
+     "core_contrast_hv_db": -3.82,
+     "core_dark_share": 1.0
+    }
+   },
    "absence_checked": {
     "date": "2026-08-30",
     "s2_id": "S2C_42SYE_20260830_0_L2A",
@@ -1547,14 +2249,16 @@
    "lake_state_source": null,
    "downstream": null,
    "downstream_source": null,
+   "elevation_m": 4188.0,
+   "elevation_source": "Copernicus DEM GLO-30 (Copernicus_DSM_COG_10_N35_00_E072_00_DEM, Earth Search), 10th percentile within 1 km of the lake point",
    "status": {
-    "status": "Stable",
+    "status": "Frozen (seen by Sentinel-2)",
     "track": "084A",
     "latest_date": "2026-10-30",
     "looks": 9,
-    "change_km2": 0.015,
-    "noise_km2": 0.010526459999999993,
-    "reason": "Track 084A: 0.114 km2 on 2026-10-30 vs median 0.099 of 8 earlier looks (noise 0.011 km2).",
+    "change_km2": null,
+    "noise_km2": null,
+    "reason": "Snow or ice covers 100% of the lake outline seen clear in a Sentinel-2 scene of 8 Nov 2026 (S2C_43SBV_20261108_0_L2A). The lake has probably been frozen since 18 Oct 2026. The daily mean air temperature at the lake has been below 0 \u00b0C for 29 days in a row, with 171 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 4,188 m). Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so SARtale gives no growing or shrinking verdict while the lake is frozen.",
     "new_crid": null
    },
    "cloud_window_looks": 4,
@@ -1573,7 +2277,11 @@
      "area_km2": 0.0754,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -3.989,
+     "core_contrast_hv_db": -3.653,
+     "core_dark_share": 0.596,
+     "frozen": true
     },
     {
      "date": "2026-07-02",
@@ -1581,7 +2289,11 @@
      "area_km2": 0.0594,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -3.307,
+     "core_contrast_hv_db": -3.241,
+     "core_dark_share": 0.438,
+     "frozen": true
     },
     {
      "date": "2026-07-14",
@@ -1590,7 +2302,11 @@
      "observable_share": 0.8,
      "excluded": "window dark share 20.0% is an outlier on its track (robust z +4.6, limit 3.5)",
      "crid": "P05023",
-     "diagnostic_km2": 0.1063
+     "diagnostic_km2": 0.1063,
+     "core_contrast_hh_db": -8.101,
+     "core_contrast_hv_db": -6.849,
+     "core_dark_share": 0.901,
+     "frozen": true
     },
     {
      "date": "2026-07-19",
@@ -1598,7 +2314,11 @@
      "area_km2": 0.0924,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.9,
+     "core_contrast_hv_db": -6.831,
+     "core_dark_share": 0.889,
+     "frozen": false
     },
     {
      "date": "2026-07-26",
@@ -1606,7 +2326,11 @@
      "area_km2": 0.0887,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.931,
+     "core_contrast_hv_db": -6.35,
+     "core_dark_share": 0.915,
+     "frozen": false
     },
     {
      "date": "2026-08-12",
@@ -1614,7 +2338,11 @@
      "area_km2": 0.0982,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.755,
+     "core_contrast_hv_db": -6.671,
+     "core_dark_share": 0.931,
+     "frozen": false
     },
     {
      "date": "2026-08-19",
@@ -1622,7 +2350,11 @@
      "area_km2": 0.0958,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.779,
+     "core_contrast_hv_db": -6.839,
+     "core_dark_share": 0.974,
+     "frozen": false
     },
     {
      "date": "2026-08-31",
@@ -1630,7 +2362,11 @@
      "area_km2": 0.1023,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -9.848,
+     "core_contrast_hv_db": -8.072,
+     "core_dark_share": 0.992,
+     "frozen": false
     },
     {
      "date": "2026-09-05",
@@ -1638,7 +2374,11 @@
      "area_km2": 0.1057,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.718,
+     "core_contrast_hv_db": -7.228,
+     "core_dark_share": 0.933,
+     "frozen": false
     },
     {
      "date": "2026-09-12",
@@ -1646,7 +2386,11 @@
      "area_km2": 0.0944,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.589,
+     "core_contrast_hv_db": -6.931,
+     "core_dark_share": 0.905,
+     "frozen": false
     },
     {
      "date": "2026-09-24",
@@ -1654,7 +2398,11 @@
      "area_km2": 0.1016,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.888,
+     "core_contrast_hv_db": -7.238,
+     "core_dark_share": 0.98,
+     "frozen": false
     },
     {
      "date": "2026-09-29",
@@ -1662,7 +2410,11 @@
      "area_km2": 0.1015,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.615,
+     "core_contrast_hv_db": -6.961,
+     "core_dark_share": 0.941,
+     "frozen": false
     },
     {
      "date": "2026-10-06",
@@ -1670,7 +2422,11 @@
      "area_km2": 0.1025,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -7.721,
+     "core_contrast_hv_db": -7.482,
+     "core_dark_share": 0.968,
+     "frozen": false
     },
     {
      "date": "2026-10-18",
@@ -1678,7 +2434,11 @@
      "area_km2": 0.1032,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05023"
+     "crid": "P05023",
+     "core_contrast_hh_db": -6.615,
+     "core_contrast_hv_db": -7.059,
+     "core_dark_share": 0.924,
+     "frozen": true
     },
     {
      "date": "2026-10-23",
@@ -1686,7 +2446,11 @@
      "area_km2": 0.0991,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -4.304,
+     "core_contrast_hv_db": -5.6,
+     "core_dark_share": 0.751,
+     "frozen": true
     },
     {
      "date": "2026-10-30",
@@ -1694,7 +2458,11 @@
      "area_km2": 0.1137,
      "observable_share": 0.8,
      "excluded": null,
-     "crid": "P05036"
+     "crid": "P05036",
+     "core_contrast_hh_db": -7.031,
+     "core_contrast_hv_db": -7.925,
+     "core_dark_share": 0.922,
+     "frozen": true
     }
    ],
    "excluded": [
@@ -1714,7 +2482,95 @@
     35.75089526903301,
     72.20924060614198,
     35.80788385715261
-   ]
+   ],
+   "summer_ref": {
+    "084A": {
+     "passes": 5,
+     "core_px": 949,
+     "assessed": true,
+     "core_contrast_hh_db": -7.779,
+     "core_contrast_hv_db": -6.931,
+     "core_dark_share": 0.974
+    },
+    "164D": {
+     "passes": 4,
+     "core_px": 1018,
+     "assessed": true,
+     "core_contrast_hh_db": -7.736,
+     "core_contrast_hv_db": -6.896,
+     "core_dark_share": 0.932
+    }
+   },
+   "freeze": {
+    "state": "frozen_s2",
+    "since": "2026-10-18",
+    "freeze_up": "2026-10-18",
+    "released_by": null,
+    "released_on": null,
+    "temp_through": "2026-11-09",
+    "checked": "2026-11-12",
+    "cold_run_days": 29,
+    "warm_run_days": 0,
+    "fdd_since_sep": 170.9,
+    "t2m_mean_7d": -8.7,
+    "t2m_min_mean_7d": -13.7,
+    "power_cell_elev_m": 3718.79,
+    "s2": {
+     "date": "2026-11-08",
+     "s2_id": "S2C_43SBV_20261108_0_L2A",
+     "clear_share": 1.0,
+     "target_clear_share": 1.0,
+     "snow_share": 1.0,
+     "water_share": 0.0,
+     "water_over": "lake outline"
+    },
+    "s2_searched": true,
+    "s2_evidence": {
+     "date": "2026-11-08",
+     "s2_id": "S2C_43SBV_20261108_0_L2A",
+     "clear_share": 1.0,
+     "target_clear_share": 1.0,
+     "snow_share": 1.0,
+     "water_share": 0.0,
+     "water_over": "lake outline"
+    },
+    "s2_events": [
+     {
+      "date": "2026-11-08",
+      "s2_id": "S2C_43SBV_20261108_0_L2A",
+      "clear_share": 1.0,
+      "target_clear_share": 1.0,
+      "snow_share": 1.0,
+      "water_share": 0.0,
+      "water_over": "lake outline"
+     }
+    ],
+    "breakup_pass": null,
+    "frozen_passes": 6,
+    "radar_assessed": true,
+    "in_season": true,
+    "held_over_sep": false,
+    "source": "NASA POWER daily T2M and T2M_MIN (MERRA-2 based), moved to the lake's height at -6.5 C/km",
+    "reason": "Snow or ice covers 100% of the lake outline seen clear in a Sentinel-2 scene of 8 Nov 2026 (S2C_43SBV_20261108_0_L2A). The lake has probably been frozen since 18 Oct 2026. The daily mean air temperature at the lake has been below 0 \u00b0C for 29 days in a row, with 171 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 4,188 m). Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so SARtale gives no growing or shrinking verdict while the lake is frozen.",
+    "fresh_reason": "Snow or ice covers 100% of the lake outline seen clear in a Sentinel-2 scene of 8 Nov 2026 (S2C_43SBV_20261108_0_L2A). The lake has probably been frozen since 18 Oct 2026. The daily mean air temperature at the lake has been below 0 \u00b0C for 29 days in a row, with 171 freezing degree-days since 1 Sep (NASA POWER to 9 Nov 2026, adjusted to the lake's height of 4,188 m). Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so SARtale gives no growing or shrinking verdict while the lake is frozen."
+   },
+   "last_open": {
+    "date": "2026-10-06",
+    "track": "084A",
+    "crid": "P05023",
+    "area_km2": 0.1025,
+    "status": "Stable",
+    "change_km2": 0.006699999999999998,
+    "noise_km2": 0.010600589999999995,
+    "looks": 6,
+    "ref_km2": 0.0958,
+    "images": {
+     "latest_hh": "lakes/shazore/open_latest_hh.webp",
+     "water": "lakes/shazore/open_water.webp",
+     "date": "2026-10-06",
+     "track": "084A"
+    }
+   }
   }
  ],
  "checks": [

@@ -99,14 +99,16 @@ jobs:
         run: |
           lakes="$(python3 .github/scripts/json_changed.py app/public/data/lakes.json built)"
           pictures="$(git status --porcelain -- app/public/data/lakes)"
-          if [ "$lakes" = same ] && [ -z "$pictures" ]; then
+          # the rebuild measures the height of a lake that has none (lakes-elevation) into the register
+          register="$(git status --porcelain -- processing/lakes_in.json)"
+          if [ "$lakes" = same ] && [ -z "$pictures" ] && [ -z "$register" ]; then
             echo "Nothing changed but the build time; nothing to publish."
             git checkout -- app/public/data/lakes.json
             exit 0
           fi
           # exit 6: main changed the data or the method code between the checkout and the push; nothing was pushed
           set +e
-          DATA_ARTIFACT="$RUNNER_TEMP/lake-data" bash .github/scripts/commit-data.sh "Weekly data refresh" app/public/data
+          DATA_ARTIFACT="$RUNNER_TEMP/lake-data" bash .github/scripts/commit-data.sh "Weekly data refresh" app/public/data processing/lakes_in.json
           code=$?
           set -e
           case "$code" in

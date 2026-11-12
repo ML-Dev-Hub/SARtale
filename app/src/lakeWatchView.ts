@@ -1,4 +1,4 @@
-import { cloudHeadline, droppedLine, hasLakeNow, isTrendPass, mayBeForming, methodLimits, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
+import { cloudHeadline, droppedLine, FROZEN_AREA, freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, isFrozen, isTrendPass, mayBeForming, methodLimits, picturedPassFrozen, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
 import { dataUrl, formatDate } from "./format";
 import { statusSlug } from "./lakeLocator";
 
@@ -9,6 +9,8 @@ export interface LakeChartSeries {
   values: (number | null)[];
   /** True for the single marker-only series that holds the passes left out of the trend. */
   excluded: boolean;
+  /** True for the marker-only series of passes taken while the lake was probably frozen (drawn grey). */
+  frozen?: boolean;
 }
 
 export interface LakeChartData {
@@ -83,6 +85,14 @@ export function lakeChartData(lake: Lake, minObservable = 0): LakeChartData {
     if (v !== null && v !== undefined) out[index.get(p.date)!] = v;
   }
   if (out.some((v) => v !== null)) series.push({ label: "Excluded passes", values: out, excluded: true });
+  // Passes taken while the lake was probably frozen keep their area but are no open-water reading: grey markers, no line.
+  const ice = blank();
+  for (const p of lake.series) {
+    if (!p.frozen || p.excluded !== null || p.area_km2 === null) continue;
+    if (p.observable_share !== null && p.observable_share < minObservable) continue;
+    ice[index.get(p.date)!] = p.area_km2;
+  }
+  if (ice.some((v) => v !== null)) series.push({ label: "Frozen passes (not open water)", values: ice, excluded: false, frozen: true });
   return { x: dates.map(utcSeconds), series };
 }
 
@@ -151,8 +161,17 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     b.dataset.control = String(lake.role === "control");
     b.setAttribute("aria-pressed", "false");
     const text = el("span", "lw-row-text");
+    const chips = el("span", "lw-chips");
+    chips.append(el("span", `lw-chip lw-status-${slug(lake.status.status)}`, lake.status.status));
+    if (isFrozen(lake)) {
+      // A frozen lake reads at a glance in the list: an "Ice" tag beside the status.
+      const ice = el("span", "lw-ice", "Ice");
+      ice.dataset.role = "lw-ice";
+      ice.title = "Probably under ice: no growing or shrinking verdict";
+      chips.append(ice);
+    }
     text.append(
-      el("span", `lw-chip lw-status-${slug(lake.status.status)}`, lake.status.status),
+      chips,
       el("span", "lw-name", lake.name),
       el("span", "lw-sentence", statusSentence(lake, file!.constants.change_factor)),
       el("span", "lw-coord", `Coordinates: ${lake.coord_source}`),
@@ -176,7 +195,8 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   function thumb(lake: Lake): HTMLElement {
     const t = el("span", "lw-thumb");
     t.setAttribute("aria-hidden", "true");
-    for (const [path, cls] of [[lake.images?.latest_hh, "lw-thumb-hh"], [lake.images?.water, "lw-thumb-water"]] as const) {
+    const water = isFrozen(lake) || picturedPassFrozen(lake) ? null : lake.images?.water; // not open water then
+    for (const [path, cls] of [[lake.images?.latest_hh, "lw-thumb-hh"], [water, "lw-thumb-water"]] as const) {
       if (!path) continue;
       const i = el("img", cls);
       i.src = dataUrl(path);
@@ -191,7 +211,9 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   function pictures(lake: Lake): HTMLElement {
     const wrap = el("div", "lw-pictures");
     const hh = lake.images?.latest_hh ?? null;
-    const water = lake.images?.water ?? null;
+    // While the lake is frozen the dark pixels are no open-water measurement: the water layer is not drawn.
+    const hidden = (isFrozen(lake) || picturedPassFrozen(lake)) && !!lake.images?.water;
+    const water = hidden ? null : lake.images?.water ?? null;
     if (!hh && !water) {
       wrap.append(el("p", "lw-none", "No radar picture yet"));
       return wrap;
@@ -225,7 +247,11 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
       wrap.append(label);
     }
     if (!hh) wrap.append(el("p", "lw-none", "No radar picture yet for the latest HH image"));
-    if (!water && hasLakeNow(lake)) wrap.append(el("p", "lw-none", "No radar picture yet for the water pixels"));
+    if (hidden) {
+      const note = el("p", "lw-note", `Water layer hidden: ${FROZEN_AREA}.`);
+      note.dataset.role = "lw-water-hidden";
+      wrap.append(note);
+    } else if (!water && hasLakeNow(lake)) wrap.append(el("p", "lw-none", "No radar picture yet for the water pixels"));
     if (!water && mayBeForming(lake)) wrap.append(el("p", "lw-note", FORMING_NO_LAYER));
     else if (water && mayBeForming(lake)) wrap.append(el("p", "lw-note", FORMING_LAYER));
     else if (!water && !hasLakeNow(lake)) wrap.append(el("p", "lw-note", "No water layer: there is no lake at this site now."));
@@ -259,9 +285,14 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
       const used = p.excluded !== null ? `Left out: ${p.excluded}`
         : !lakeNow ? "No: not lake water"
         : p.area_km2 === null ? "No reading"
+        : p.frozen ? `No: frozen, ${FROZEN_AREA}`
         : p.observable_share === null ? "Zone share unknown"
         : isTrendPass(p, minObs) ? "Yes" : "Too little of the zone seen";
       const tr = el("tr");
+      if (p.frozen) {
+        tr.className = "lw-frozen";
+        tr.dataset.frozen = "true";
+      }
       tr.append(
         el("td", undefined, formatDate(p.date)),
         el("td", undefined, p.track),
@@ -276,6 +307,35 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     wrap.append(t);
     box.append(wrap);
     return box;
+  }
+
+  /**
+   * The freeze card: the state and since when, the air-temperature run and freezing degree-days, the last Sentinel-2
+   * evidence or "none clear", and, while frozen, the latest area greyed with what it is not. Null for a site without a
+   * freeze check (older builds, sites with no lake now).
+   */
+  function freezeCard(lake: Lake): HTMLElement | null {
+    const f = lake.freeze;
+    if (!f) return null;
+    const sec = el("section", "lw-section lw-freeze");
+    sec.dataset.role = "lw-freeze";
+    sec.dataset.state = f.state;
+    sec.append(el("h3", undefined, "Lake ice"), el("p", "lw-freeze-state", freezeHeadline(f)));
+    const area = frozenAreaLine(lake);
+    if (area) {
+      const p = el("p", "lw-frozen-area", area);
+      p.dataset.role = "lw-frozen-area";
+      sec.append(p);
+    }
+    const facts = freezeFacts(lake);
+    if (facts.length) {
+      const ul = el("ul", "lw-bullets");
+      for (const t of facts) ul.append(el("li", undefined, t));
+      sec.append(ul);
+    }
+    // While frozen the status sentence already gives the reason; otherwise the card says what the check rests on.
+    if (!isFrozen(lake)) sec.append(el("p", "lw-note", f.reason));
+    return sec;
   }
 
   function section(title: string, items: string[]): HTMLElement {
@@ -293,12 +353,13 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     detail.replaceChildren();
     const head = el("header", "card-head");
     head.append(el("h2", "lw-title", lake.name), el("span", `lw-chip lw-status-${slug(lake.status.status)}`, lake.status.status));
-    detail.append(
-      head,
-      el("p", "lw-sentence-big", statusSentence(lake, file!.constants.change_factor)),
-      el("p", "lw-scope", `Measures: ${lake.area_label}. Indicative screening on provisional data. Official warnings come from PMD, NDMA, GBDMA and PDMA.`),
-      pictures(lake),
-    );
+    const frozen = isFrozen(lake);
+    const scope = el("p", "lw-scope", `Measures: ${lake.area_label}${frozen ? ` (${FROZEN_AREA})` : ""}. Indicative screening on provisional data. Official warnings come from PMD, NDMA, GBDMA and PDMA.`);
+    if (frozen) scope.dataset.frozen = "true";
+    detail.append(head, el("p", "lw-sentence-big", statusSentence(lake, file!.constants.change_factor)), scope);
+    const card = freezeCard(lake);
+    if (card) detail.append(card);
+    detail.append(pictures(lake));
 
     // With too few looks or no observable zone the earlier points are not a trend: show the reason, not a chart.
     // A site with no lake now has no area curve: its dark radar area is not lake water.
@@ -313,7 +374,10 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
       chartSec.append(el("p", "lw-none", "No area curve yet"));
     } else if (opts.createChart) {
       const host = el("div", "lw-chart");
-      chartSec.append(host, el("p", "lw-note", `One line per track. Hollow markers are passes left out of the trend, at the area they read; a left-out pass with no reading, and passes that saw less than ${Math.round(minObs * 100)}% of the lake zone, are not drawn. The table lists every pass.`));
+      const ice = data.series.some((s) => s.frozen)
+        ? ` Grey markers are passes taken while the lake was probably frozen: ${FROZEN_AREA}, and left out of the comparison.`
+        : "";
+      chartSec.append(host, el("p", "lw-note", `One line per track. Hollow markers are passes left out of the trend, at the area they read; a left-out pass with no reading, and passes that saw less than ${Math.round(minObs * 100)}% of the lake zone, are not drawn.${ice} The table lists every pass.`));
       chart = opts.createChart(host, data);
     }
     if (lake.series.length) chartSec.append(readingsTable(lake, minObs));

@@ -1,4 +1,4 @@
-import { hasLakeNow, isTrendPass, loadLakes, methodLimits, processingVersions, statusSentence, type Lake, type LakesFile } from "./lakes";
+import { freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, isFrozen, isTrendPass, loadLakes, methodLimits, processingVersions, statusSentence, type Lake, type LakesFile } from "./lakes";
 import { checkLine } from "./lakeWatchView";
 import { formatDate } from "./format";
 
@@ -34,7 +34,9 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): strin
     .filter((p) => hasLakeNow(lake) && p.track === track && isTrendPass(p, minShare))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     .slice(0, PASS_ROWS);
-  const passesHead = track ? `Latest valid passes on track ${esc(track)} (the status compares only these)` : "Latest valid passes";
+  const passesHead = !track ? "Latest valid passes"
+    : isFrozen(lake) ? `Latest open-water passes on track ${esc(track)} (no comparison while the lake is frozen)`
+    : `Latest valid passes on track ${esc(track)} (the status compares only these)`;
   const passes = valid.length
     ? `<table class="lake-brief-passes"><thead><tr><th>Date</th><th>Track</th><th>Area (km²)</th><th>Observable share</th><th>Processing version</th></tr></thead><tbody>${valid
         .map((p) => `<tr><td>${esc(formatDate(p.date))}</td><td>${esc(p.track)}</td><td>${(p.area_km2 as number).toFixed(3)}</td><td>${Math.round((p.observable_share as number) * 100)}%</td><td>${esc(p.crid ?? "")}</td></tr>`)
@@ -47,6 +49,14 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): strin
     ? `Downstream: ${esc(lake.downstream)}${lake.downstream_source ? ` (${esc(lake.downstream_source)})` : ""}`
     : "Downstream exposure: not in this build";
   const outline = lake.outline_source ? `<p>Outline: ${esc(lake.outline_source)}</p>` : "";
+  // The freeze state, as on the lake's card: the state and since when, the latest area greyed while frozen, the facts.
+  const f = lake.freeze;
+  const area = frozenAreaLine(lake);
+  const ice = f
+    ? `<h2>Lake ice</h2>
+<p class="lake-brief-freeze">${esc(freezeHeadline(f))}.</p>${area ? `<p class="lake-brief-frozen-area">${esc(area)}</p>` : ""}${list(freezeFacts(lake))}${isFrozen(lake) ? "" : `<p>${esc(f.reason)}</p>`}
+`
+    : "";
   return `<section class="lake-brief" aria-label="Lake brief">
 <h1>${esc(lake.name)}</h1>
 <p class="lake-brief-meta">Coordinates ${lake.lat.toFixed(4)}, ${lake.lon.toFixed(4)}. Source: ${esc(lake.coord_source)}</p>${outline}
@@ -54,7 +64,7 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): strin
 <p class="lake-brief-meta">${esc(dataLine(lake, file))}</p>
 <h2>Status</h2>
 <p class="lake-brief-status">${esc(statusSentence(lake, file.constants.change_factor))}</p>
-<h2>${passesHead}</h2>
+${ice}<h2>${passesHead}</h2>
 ${passes}${checks}
 <h2>Excluded passes</h2>
 ${lake.excluded.length ? list(lake.excluded.map((x) => `${x.pass}: ${x.reason}`)) : "<p>None.</p>"}

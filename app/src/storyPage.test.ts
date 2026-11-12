@@ -180,7 +180,8 @@ describe("renderStoryPage", () => {
   it("every image has alt text and a visible source line", () => {
     const { root } = render(real);
     const imgs = [...root.querySelectorAll("img")];
-    expect(imgs.length).toBeGreaterThanOrEqual(6);
+    // Not counting Attabad's water layer: it is hidden while the lake is frozen, which the weather decides.
+    expect(imgs.filter((i) => !i.classList.contains("sp-water")).length).toBeGreaterThanOrEqual(5);
     for (const img of imgs) {
       expect(img.getAttribute("alt")?.trim()).toBeTruthy();
       const holder = img.closest("figure, section")!;
@@ -295,5 +296,64 @@ describe("a site with no lake now", () => {
   it("has no key entry when every site holds a lake", () => {
     const { page } = render(frozen);
     expect(page.mapEl.querySelector(".sp-key-nolake")).toBeNull();
+  });
+});
+
+
+describe("a frozen Attabad on the story page (review N1)", () => {
+  const base = (): Lake => frozen.lakes.find((l) => l.id === "attabad")!;
+  const withLake = (a: Lake): LakesFile => ({ ...frozen, lakes: frozen.lakes.map((l) => (l.id === "attabad" ? a : l)) });
+  const frozenStatus = (a: Lake) => ({ ...a.status, status: "Frozen (likely)" as const, change_km2: null, noise_km2: null, reason: "Probably frozen since 8 Jan 2027." });
+  const flagNewest = (a: Lake) => a.series.map((p) => (p.date === a.images?.date && p.track === a.images?.track ? { ...p, frozen: true } : p));
+  const freeze = { state: "frozen_likely", since: "2027-01-08", freeze_up: "2027-01-08", temp_through: "2027-01-20", cold_run_days: 12, warm_run_days: 0, fdd_since_sep: 80, t2m_mean_7d: -4, s2: null, reason: "Probably frozen since 8 Jan 2027." };
+
+  it("shows the last open-water pass, its picture, water layer, area and noise, and says the lake is frozen now", () => {
+    const a = base();
+    const lastOpen = { date: "2026-10-16", track: "156A", area_km2: 2.0411, status: "Stable", change_km2: 0.01, noise_km2: 0.0912, looks: 6,
+      images: { latest_hh: "lakes/attabad/open_latest_hh.webp", water: "lakes/attabad/open_water.webp", date: "2026-10-16", track: "156A" } };
+    const lake: Lake = { ...a, status: frozenStatus(a), series: flagNewest(a), freeze, last_open: lastOpen };
+    const n = storyNumbers(withLake(lake));
+    expect(n.attabadArea).toBe("2.04 km²");
+    expect(n.attabadNoise).toBe("±0.09");
+    const { root } = render(withLake(lake));
+    const measure = root.querySelector('[aria-label="04 The measure"]')!;
+    const imgs = [...measure.querySelectorAll("img")].map((i) => i.getAttribute("src"));
+    expect(imgs).toEqual(["data/lakes/attabad/open_latest_hh.webp", "data/lakes/attabad/open_water.webp"]);
+    expect(measure.querySelector("figcaption")?.textContent).toContain("16 Oct 2026, track 156A. Blue: water read from radar");
+    expect(measure.querySelector('[data-role="sp-frozen-note"]')?.textContent).toBe("Attabad Lake is frozen now (since 8 Jan 2027); this is its last open-water pass.");
+    expect(measure.textContent).toContain("water on 16 Oct");
+    expect(measure.querySelector(".sp-num-frozen")).toBeNull();
+  });
+
+  it("without an open-water pass, hides the water layer and greys the area with what it is not", () => {
+    const a = base();
+    const lake: Lake = { ...a, status: frozenStatus(a), series: flagNewest(a), freeze, last_open: null };
+    const n = storyNumbers(withLake(lake));
+    expect(n.attabadNoise).toBe("—");
+    const { root } = render(withLake(lake));
+    const measure = root.querySelector('[aria-label="04 The measure"]')!;
+    expect(measure.querySelector(".sp-water")).toBeNull();
+    expect(measure.querySelector("figcaption")?.textContent).toContain("Water layer hidden: not an open-water measurement while frozen.");
+    expect(measure.querySelector("figcaption")?.textContent).not.toContain("Blue: water");
+    const area = measure.querySelector(".sp-num-frozen")!;
+    expect(area.textContent).toBe(n.attabadArea);
+    expect(area.nextElementSibling?.textContent).toBe("not an open-water measurement while frozen");
+    expect(measure.textContent).not.toMatch(/water on \d/);
+  });
+
+  it("an open Attabad whose pictured pass is flagged frozen also shows its last open-water pass", () => {
+    const a = base();
+    const lastOpen = { date: "2026-10-16", track: "156A", area_km2: 2.0411, status: "Stable", change_km2: 0.01, noise_km2: 0.0912, looks: 6, images: null };
+    const lake: Lake = { ...a, series: flagNewest(a), freeze: { ...freeze, state: "open", since: null }, last_open: lastOpen };
+    const { root } = render(withLake(lake));
+    const measure = root.querySelector('[aria-label="04 The measure"]')!;
+    expect(measure.querySelector('[data-role="sp-frozen-note"]')?.textContent).toBe("Attabad Lake's newest pass was taken while it was frozen; this is its last open-water pass.");
+    expect(measure.querySelector(".sp-water")).toBeNull();
+    expect(storyNumbers(withLake(lake)).attabadArea).toBe("2.04 km²");
+    // the open-water pass has no picture of its own: the newest picture stays, without its water layer, and says so
+    const pics = [...measure.querySelectorAll("img")];
+    expect(pics.map((i) => i.getAttribute("src"))).toEqual([`data/${a.images!.latest_hh}`]);
+    expect(pics[0].getAttribute("alt")).toContain("while the lake was frozen; no water layer");
+    expect(measure.querySelector("figcaption")?.textContent).toMatch(/track \w+\. Water layer hidden: not an open-water measurement while frozen\.$/);
   });
 });

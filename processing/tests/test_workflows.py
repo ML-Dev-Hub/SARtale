@@ -376,7 +376,17 @@ def test_rebuild_action_order():
     assert "--only-missing" not in runs[absence]
     missing = at("lakes-absence --only-missing")
     assert at("lakes-build") < missing < at("lakes-diff")
-    for i in (absence, missing):
+    # the freeze check runs after the build (it flags the built passes and sets the statuses again) and before the
+    # comparison, without the Earthdata login (NASA POWER and Earth Search need none), and never stops the run itself
+    freeze = at("lakes-freeze")
+    assert at("lakes-build") < missing < freeze < at("lakes-diff")
+    assert "continue-on-error" not in steps[freeze]
+    # a lake new to the register gets its height (lakes_in.json) before the build and the freeze check, without the
+    # Earthdata login; the step fails soft inside the command, so it carries no continue-on-error either
+    elevation = at("lakes-elevation")
+    assert at("lakes-fetch") < elevation < at("lakes-build") < freeze
+    assert "continue-on-error" not in steps[elevation]
+    for i in (absence, missing, freeze, elevation):
         assert "unset EARTHDATA_USERNAME EARTHDATA_PASSWORD" in runs[i]
     assert '> "$RUNNER_TEMP/lakes.published.json"' in runs[at("git show HEAD:app/public/data/lakes.json")]
     assert "continue-on-error" not in steps[at("lakes-diff")], "a large drop must fail the rebuild"
@@ -437,6 +447,23 @@ def test_refresh_scheduled_weekly():
     text = REFRESH.read_text(encoding="utf-8")
     assert 'commit-data.sh "Weekly data refresh" app/public/data' in text
     assert "json_changed.py app/public/data/lakes.json built" in text
+
+
+def test_both_publish_jobs_commit_the_register_when_the_rebuild_measured_a_height():
+    """I2: the rebuild may add a lake's height to processing/lakes_in.json (lakes-elevation); unpack copies it into the
+    publish checkout, so both publish jobs must commit it with the data, or the rebase before the push fails on the
+    unstaged change. The refresh also publishes when only the register changed."""
+    refresh = next(s for s in load(REFRESH)["jobs"]["publish"]["steps"] if "commit-data.sh" in (s.get("run") or ""))
+    run = refresh["run"].replace("\\\n", " ")
+    assert re.search(r'commit-data\.sh "Weekly data refresh"\s+app/public/data\s+processing/lakes_in\.json', run)
+    assert 'git status --porcelain -- processing/lakes_in.json' in run and '[ -z "$register" ]' in run
+    accept = next(s for s in accept_jobs()["publish"]["steps"] if "commit-data.sh" in (s.get("run") or ""))
+    assert "processing/lakes_in.json app/public/data" in accept["run"]
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("data_artifact", SCRIPTS / "data_artifact.py")
+    da = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(da)
+    assert da.LAKES_IN in da.BASE and da.LAKES_IN not in da.SCIENCE and da.allowed(da.LAKES_IN)
 
 
 def test_data_jobs_start_deploy_through_commit_script():

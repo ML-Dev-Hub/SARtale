@@ -511,3 +511,97 @@ def test_apply_absence_leaves_lakes_alone(built):
     doc, _ = built
     lk = doc["lakes"][0]
     assert apply_absence(lk, EV_WET) is lk
+
+
+def test_the_build_writes_the_summer_core_numbers_the_freeze_check_reads(built):
+    doc, _ = built
+    alpha = lake(doc, "alpha")
+    assert alpha["elevation_m"] is None and alpha["elevation_source"] is None
+    ref = alpha["summer_ref"]
+    assert set(ref) == {"156A", "063D"}
+    for r in ref.values():
+        # five open-water-season passes, a core of dark pixels inside the zone, core far darker than its window
+        assert r["passes"] == 5 and r["assessed"] and r["core_px"] > 100
+        assert r["core_contrast_hh_db"] < -10 and r["core_contrast_hv_db"] < -10 and r["core_dark_share"] > 0.9
+    p = alpha["series"][0]
+    assert {"core_contrast_hh_db", "core_contrast_hv_db", "core_dark_share"} <= set(p)
+    assert doc["constants"]["lapse_c_per_km"] == config.LAPSE_C_PER_KM
+    assert doc["constants"]["freeze_cold_run_days"] == 7 and doc["constants"]["freeze_fdd"] == 30.0
+    assert lake(doc, "gamma")["summer_ref"] == {}  # nothing cached
+
+
+def test_fewer_than_three_summer_passes_leave_the_radar_test_unassessed(tmp_path):
+    cache, out = tmp_path / "cache", tmp_path / "out"
+    a = make_lake("alpha")
+    for d in ["2026-06-30", "2026-07-12", "2026-10-05", "2026-10-17"]:
+        write_pass(cache, a, d, "156A")
+    ref = lake(build_lakes([a], cache, out, "2026-11-02T00:00:00Z"), "alpha")["summer_ref"]["156A"]
+    assert ref["passes"] == 2 and not ref["assessed"]
+
+
+def test_core_metrics_are_core_minus_window_so_a_calibration_shift_cancels():
+    from sartale.lakebuild import core_metrics
+    rng = np.random.default_rng(1)
+    hh = rng.normal(-10.0, 0.2, (40, 40))
+    hv = hh - 7.0
+    core = np.zeros((40, 40), bool)
+    core[15:25, 15:25] = True
+    hh[core] -= 6.0  # the lake: 6 dB darker than the ground
+    hv[core] -= 6.0
+    m = core_metrics(hh, hv, core)
+    assert m["core_contrast_hh_db"] == pytest.approx(-6.0, abs=0.2) and m["core_dark_share"] == 1.0
+    shifted = core_metrics(hh - 1.2, hv - 1.2, core)  # a processing-version change moves everything together
+    assert shifted["core_contrast_hh_db"] == pytest.approx(m["core_contrast_hh_db"], abs=1e-9)
+    assert core_metrics(hh, hv, np.zeros((40, 40), bool)) is None
+
+def test_freeze_masks_look_for_open_water_in_the_summer_radar_core_of_a_circle_lake(tmp_path):
+    from sartale.lakebuild import freeze_masks
+    cache = tmp_path / "cache"
+    a = make_lake("alpha")
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24"]:
+        write_pass(cache, a, d, "156A", water_m=300.0)
+    m = freeze_masks(a, cache)
+    assert m["target_kind"] == "summer radar water core"
+    # the zone is the 1 km circle; the core is the 300 m dark disc inside it
+    zone_m2, core_m2 = m["zone"].sum() * PX * PX, m["target"].sum() * PX * PX
+    assert 2.8e6 < zone_m2 < 3.4e6 and 0.2e6 < core_m2 < 0.4e6
+    assert not (m["target"] & ~m["zone"]).any()
+    assert freeze_masks(make_lake("nothing"), cache) is None
+
+
+def test_freeze_masks_look_for_open_water_in_the_unbuffered_outline_of_an_outline_lake(tmp_path):
+    from dataclasses import replace
+
+    from sartale.lakebuild import freeze_masks
+    cache = tmp_path / "cache"
+    base = make_lake("alpha")
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24"]:
+        write_pass(cache, base, d, "156A")
+    poly = tmp_path / "alpha.geojson"
+    poly.write_text(json.dumps(_outline_around(base, 400)), encoding="utf-8")
+    m = freeze_masks(replace(base, outline=str(poly)), cache)
+    assert m["target_kind"] == "lake outline"
+    # the outline is 800 m square (0.64 km2); the zone is it buffered by 200 m (about 1.4 km2)
+    assert 0.55e6 < m["target"].sum() * PX * PX < 0.72e6
+    assert 1.3e6 < m["zone"].sum() * PX * PX < 1.5e6
+
+
+def test_the_build_carries_the_last_freeze_check_and_keeps_its_frozen_passes_out_of_the_summer_core(built, tmp_path):
+    """M4/M6/M7: the build keeps the last check's freeze object and pass flags for lakes-freeze, and a pass it flagged
+    leaves the summer core and level."""
+    import copy
+    doc, _ = built
+    previous = copy.deepcopy(doc)
+    alpha_prev = lake(previous, "alpha")
+    alpha_prev["freeze"] = {"state": "open", "checked": "2026-11-02", "reason": "r"}
+    for p in alpha_prev["series"]:
+        p["frozen"] = p["date"] == "2026-06-18" and p["track"] == "156A"
+    cache = tmp_path / "cache"
+    a = make_lake("alpha")
+    again = build_lakes([a], cache, tmp_path / "out2", "2026-11-09T00:00:00Z", previous=previous)
+    alpha = lake(again, "alpha")
+    assert alpha["freeze"] == alpha_prev["freeze"]
+    flagged = [(p["date"], p["track"]) for p in alpha["series"] if p.get("frozen")]
+    assert flagged == [("2026-06-18", "156A")]
+    assert alpha["summer_ref"]["156A"]["passes"] == 4 and alpha["summer_ref"]["063D"]["passes"] == 5
+    assert alpha["status"]["status"] != "Not seen this pass"

@@ -97,12 +97,25 @@ def worked_example(doc: dict) -> dict[str, str]:
     if lake is None:
         raise WorkedExampleError("the lake data have no Attabad entry")
     st, c = lake["status"], doc["constants"]
+    frozen_note = ""
+    if is_frozen_now(lake):
+        # A frozen lake's newest pass is no water measurement: quote its last open-water pass (lakes-freeze's
+        # `last_open`, with the assessment it had then) and say so.
+        lo = lake.get("last_open")
+        if not lo:
+            raise WorkedExampleError("Attabad is frozen and the lake data give no last open-water pass to quote")
+        f = lake.get("freeze") or {}
+        since = f.get("freeze_up") or f.get("since")
+        frozen_note = (f" Attabad Lake is frozen now{f' (since {_day(since)})' if since else ''}; this was its last "
+                       "open-water pass.")
+        st = {**st, "status": lo["status"], "track": lo["track"], "latest_date": lo["date"],
+              "change_km2": lo["change_km2"], "noise_km2": lo["noise_km2"]}
     missing = [k for k in ("track", "latest_date", "change_km2", "noise_km2") if st.get(k) is None]
     if missing:
         raise WorkedExampleError(f"Attabad's status is {st.get('status')!r} with no {', '.join(missing)}, so there is "
                                  "no measured change to quote")
     track = st["track"]
-    pts = sorted((p for p in lake["series"] if p["track"] == track and p["excluded"] is None
+    pts = sorted((p for p in lake["series"] if p["track"] == track and p["excluded"] is None and not p.get("frozen")
                   and p["area_km2"] is not None and (p["observable_share"] or 0) >= c["min_observable"]),
                  key=lambda p: p["date"])
     pts = [p for p in pts if p["date"] <= st["latest_date"]]
@@ -120,13 +133,28 @@ def worked_example(doc: dict) -> dict[str, str]:
         "EX_STATUS": st["status"], "EX_BUILT": _day(doc["built"], short=True),
         "EX_SHARE": (f"Only {share}% of Attabad's outline falls inside the 6 km window, so its area is the part "
                      "inside the window.") if share else "All of Attabad's outline falls inside the 6 km window.",
+        "EX_FROZEN": frozen_note,
     }
+
+
+FROZEN_STATUSES = ("Frozen (likely)", "Frozen (seen by Sentinel-2)", "Break-up likely")
+
+
+def is_frozen_now(lake: dict) -> bool:
+    """True when the lake is frozen or breaking up, or its pictured pass was taken while it was (as
+    sartale.freeze.needs_last_open): its newest pass is then no water measurement."""
+    if lake["status"].get("status") in FROZEN_STATUSES:
+        return True
+    im = lake.get("images") or {}
+    return any(p.get("frozen") and p["date"] == im.get("date") and p["track"] == im.get("track")
+               for p in lake.get("series", []))
 
 
 def readme_example(ex: dict[str, str]) -> str:
     return (f"{EX_START}\nFor example, Attabad on {ex['EX_DATE']} held {ex['EX_AREA2']} km² on track {ex['EX_TRACK']}, "
             f"a change of {ex['EX_CHANGE2']} km² against a noise of {ex['EX_NOISE2']} km², so it reads "
-            f"**{ex['EX_STATUS']}** (from the lake data built {ex['EX_BUILT']}; the app shows the current numbers).\n"
+            f"**{ex['EX_STATUS']}** (from the lake data built {ex['EX_BUILT']}; the app shows the current numbers)."
+            f"{ex.get('EX_FROZEN', '')}\n"
             f"{EX_END}")
 
 

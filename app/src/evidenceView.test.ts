@@ -20,9 +20,30 @@ afterEach(() => {
 });
 
 describe("How we know", () => {
-  test("has the lake method, the Sentinel-2 check, the data, the limits and how to check it, in that order", () => {
+  test("has the lake method, the Sentinel-2 check, frozen lakes, the data, the limits and how to check it, in that order", () => {
     const ids = [...withLakes().root.querySelectorAll<HTMLElement>("[data-section]")].map((s) => s.dataset.section);
-    expect(ids).toEqual(["lake-method", "lake-checks", "data", "limits", "check"]);
+    expect(ids).toEqual(["lake-method", "lake-checks", "frozen", "data", "limits", "check"]);
+  });
+
+  test("states the freeze rule from lakes.json and its limits", () => {
+    const { root, text } = withLakes();
+    const c = realLakes.constants;
+    const sec = root.querySelector('[data-section="frozen"]')!.textContent ?? "";
+    expect(sec).toContain(`below 0 °C on at least ${c.freeze_cold_run_days} days in a row, with at least ${c.freeze_fdd} freezing degree-days since 1 Sep`);
+    expect(sec).toContain(`at ${Math.abs(c.lapse_c_per_km!)} °C per km`);
+    expect(sec).toContain("Winter radar is untested");
+    expect(sec).toContain("tested again with late-January data");
+    expect(sec).toContain("one to two weeks late");
+    expect(sec).toContain("Air temperature alone never shows open water");
+    expect(sec).toContain("No freeze signal in air temperature since");
+    expect(sec).not.toMatch(/Rogheli|melting ice brightens/);
+    expect(text).toContain("NASA POWER daily air temperature");
+    expect(text).toContain("Copernicus DEM GLO-30");
+    // an older build without the freeze constants leaves the rule's figures out instead of showing {gaps}
+    const { lapse_c_per_km: _a, freeze_fdd: _b, ...old } = c;
+    const older = open({ ...realLakes, constants: old as LakesFile["constants"] });
+    expect(older.text).not.toMatch(/\{\w+\}/);
+    expect(older.root.querySelector('[data-section="frozen"]')!.textContent).toContain("Winter radar is untested");
   });
 
   test("puts what it can and cannot do first, before the detail", () => {
@@ -36,9 +57,9 @@ describe("How we know", () => {
   test("links to every section, and a link moves focus to its heading without changing the address", () => {
     const { root } = withLakes();
     const links = [...root.querySelectorAll<HTMLAnchorElement>(".evidence-toc a")];
-    expect(links).toHaveLength(5);
+    expect(links).toHaveLength(6);
     const before = location.hash;
-    links[3].click();
+    links[4].click();
     expect(location.hash).toBe(before);
     expect(document.activeElement?.id).toBe("evidence-limits-h");
   });
