@@ -47,7 +47,7 @@ function lakesWith(rows: [string, number, string, Partial<LakesFile["lakes"][num
   };
 }
 
-const TITLE = "When clouds close in, the lakes stay in view.";
+const TITLE = "Radar sees lakes through cloud.";
 
 /** A button on the story page, found by its label. */
 function pageButton($: (r: string) => HTMLElement, label: string, nth = 0): HTMLButtonElement {
@@ -108,7 +108,7 @@ describe("views", () => {
       expect($("maturity").textContent).toBe("Provisional NISAR data");
       expect($("maturity").hidden).toBe(false);
     }
-    expect(root.querySelector(".foot")!.textContent).toMatch(/Not an official warning service: for warnings, use PMD, NDMA, GBDMA and PDMA/);
+    expect(root.querySelector(".foot")!.textContent).toMatch(/Not an official warning service\. For warnings, use PMD, NDMA, GBDMA and PDMA/);
   });
 
   test("without a lakes file Lake Watch says so", () => {
@@ -140,7 +140,7 @@ describe("the story page as the start view", () => {
   test("keeps the screening line and the old hero markup is gone", () => {
     const { root, $ } = setup();
     expect(root.querySelector(".hero")).toBeNull();
-    expect($("home-root").textContent).toContain("official warnings come from PMD, NDMA, GBDMA and PDMA");
+    expect($("home-root").textContent).toContain("Official warnings come from PMD, NDMA, GBDMA and PDMA");
   });
 
   test("Follow the story opens the beat-by-beat Story view, which stays reachable", () => {

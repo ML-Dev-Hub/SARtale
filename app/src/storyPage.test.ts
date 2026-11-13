@@ -79,13 +79,13 @@ describe("renderStoryPage without lakes.json", () => {
       return { t, shadow };
     };
     const a = body(real);
-    expect(a.t).toContain("once a track has three earlier looks to compare a new pass with");
-    expect(a.t).toContain("once a track has three earlier looks.");
+    expect(a.t).toContain("once a track has three earlier passes to compare with a new pass");
+    expect(a.t).toContain("once a track has three earlier passes.");
     expect(a.shadow).toContain("less than half of a lake's zone");
     const other = { ...real, constants: { ...real.constants, min_looks: 12, min_observable: 0.6 } } as LakesFile;
     const b = body(other);
-    expect(b.t).toContain("once a track has 12 earlier looks to compare a new pass with");
-    expect(b.t).not.toContain("three looks");
+    expect(b.t).toContain("once a track has 12 earlier passes to compare with a new pass");
+    expect(b.t).not.toContain("three passes");
     expect(b.shadow).toContain("less than 60% of a lake's zone");
   });
 
@@ -106,7 +106,7 @@ describe("renderStoryPage", () => {
   it("has the parts in order, with the shadow panel inside 03", () => {
     const { root } = render(real);
     const labels = [...root.querySelectorAll("section[aria-label]")].map((s) => s.getAttribute("aria-label"));
-    expect(labels).toEqual(["Cover", "01 The risk", "02 The gap", "03 The view", "04 The measure", "05 The watch", "06 Add a lake", "07 The videos", "Open Lake Watch"]);
+    expect(labels).toEqual(["Cover", "01 The flood", "02 The gap", "03 The view", "04 The measurement", "05 The levels", "06 Add a lake", "07 The videos", "Open Lake Watch"]);
     const view = root.querySelector('section[aria-label="03 The view"]')!;
     expect(view.querySelector(".sp-shadow")?.textContent).toContain("Mountains cast shadows too");
     expect([...view.querySelectorAll(".sp-shadow a")].map((a) => a.getAttribute("href"))).toEqual([
@@ -174,7 +174,7 @@ describe("renderStoryPage", () => {
       expect(v.querySelector("a")?.getAttribute("href")).toBe(src);
       expect(v.closest("figure")?.querySelector("figcaption h3")?.textContent).toBeTruthy();
     }
-    expect(root.querySelector('.sp-cover a[href="#videos"]')?.textContent).toBe("Watch the videos");
+    expect(root.querySelector('.sp-cover a[href="#videos"]')?.textContent).toBe("Play the videos");
   });
 
   it("every image has alt text and a visible source line", () => {
@@ -343,11 +343,11 @@ describe("a frozen Attabad on the story page (review N1)", () => {
     expect(n.attabadArea).toBe("2.04 km²");
     expect(n.attabadNoise).toBe("±0.09");
     const { root } = render(withLake(lake));
-    const measure = root.querySelector('[aria-label="04 The measure"]')!;
+    const measure = root.querySelector('[aria-label="04 The measurement"]')!;
     const imgs = [...measure.querySelectorAll("img")].map((i) => i.getAttribute("src"));
     expect(imgs).toEqual(["data/lakes/attabad/open_latest_hh.webp", "data/lakes/attabad/open_water.webp"]);
     expect(measure.querySelector("figcaption")?.textContent).toContain("16 Oct 2026, track 156A. Blue: water read from radar");
-    expect(measure.querySelector('[data-role="sp-frozen-note"]')?.textContent).toBe("Attabad Lake is frozen now (since 8 Jan 2027); this is its last open-water pass.");
+    expect(measure.querySelector('[data-role="sp-frozen-note"]')?.textContent).toBe("Attabad Lake is frozen now (since 8 Jan 2027). This is its last open-water pass.");
     expect(measure.textContent).toContain("water on 16 Oct");
     expect(measure.querySelector(".sp-num-frozen")).toBeNull();
   });
@@ -358,7 +358,7 @@ describe("a frozen Attabad on the story page (review N1)", () => {
     const n = storyNumbers(withLake(lake));
     expect(n.attabadNoise).toBe("—");
     const { root } = render(withLake(lake));
-    const measure = root.querySelector('[aria-label="04 The measure"]')!;
+    const measure = root.querySelector('[aria-label="04 The measurement"]')!;
     expect(measure.querySelector(".sp-water")).toBeNull();
     expect(measure.querySelector("figcaption")?.textContent).toContain("Water layer hidden: not an open-water measurement while frozen.");
     expect(measure.querySelector("figcaption")?.textContent).not.toContain("Blue: water");
@@ -373,8 +373,8 @@ describe("a frozen Attabad on the story page (review N1)", () => {
     const lastOpen = { date: "2026-10-16", track: "156A", area_km2: 2.0411, status: "Stable", change_km2: 0.01, noise_km2: 0.0912, looks: 6, images: null };
     const lake: Lake = { ...a, series: flagNewest(a), freeze: { ...freeze, state: "open", since: null }, last_open: lastOpen };
     const { root } = render(withLake(lake));
-    const measure = root.querySelector('[aria-label="04 The measure"]')!;
-    expect(measure.querySelector('[data-role="sp-frozen-note"]')?.textContent).toBe("Attabad Lake's newest pass was taken while it was frozen; this is its last open-water pass.");
+    const measure = root.querySelector('[aria-label="04 The measurement"]')!;
+    expect(measure.querySelector('[data-role="sp-frozen-note"]')?.textContent).toBe("Attabad Lake's newest pass was taken while it was frozen. This is its last open-water pass.");
     expect(measure.querySelector(".sp-water")).toBeNull();
     expect(storyNumbers(withLake(lake)).attabadArea).toBe("2.04 km²");
     // the open-water pass has no picture of its own: the newest picture stays, without its water layer, and says so

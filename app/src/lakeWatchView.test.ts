@@ -58,7 +58,7 @@ describe("Lake Watch", () => {
   test("test_headline_sums_cloud_window_looks", () => {
     const { root } = setup();
     const h = root.querySelector<HTMLElement>('[data-role="lw-headline"]')!;
-    expect(h.textContent).toBe("From 17 June to 4 August, while SUPARCO's updates reported cloud limiting optical imagery, NISAR made 49 valid looks across 7 lakes.");
+    expect(h.textContent).toBe("From 17 June to 4 August, SUPARCO's updates reported that cloud limited optical imagery. NISAR made 49 valid passes across 7 lakes during this period.");
     expect(h.closest("a")?.getAttribute("href") ?? h.getAttribute("href")).toBe("#cloud-gap");
   });
 

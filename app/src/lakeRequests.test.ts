@@ -132,7 +132,7 @@ describe("add a lake form", () => {
     submit(root);
     expect(open).toHaveBeenCalledWith(issueUrl(form));
     const card = root.querySelector(".sp-add-card")!;
-    expect(card.textContent).toContain("Almost done: press Submit new issue on GitHub. The team reviews every request.");
+    expect(card.textContent).toContain("Press Submit new issue on GitHub. The team reviews every request.");
     expect(card.querySelector("strong")!.textContent).toBe("Submit new issue");
     const [again, all] = [...card.querySelectorAll("a")];
     expect(again.textContent).toBe("Open the request again");

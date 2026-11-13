@@ -125,7 +125,7 @@ describe("statusSentence", () => {
   const by = (id: string) => fixtureLakes.lakes.find((l) => l.id === id)!;
   test("test_statusSentence_includes_date_looks_and_noise", () => {
     expect(statusSentence(by("grow-new"), 2)).toBe(
-      "Alert: growing: +0.031 km² (+24%) against the baseline of earlier 156A passes, z = +2.4 (noise ±0.013 km²; a level needs 2× noise), 9 looks, latest 23 Oct 2026",
+      "Alert: growing: +0.031 km² (+24%) against the baseline of earlier 156A passes, z = +2.4 (noise ±0.013 km²; a level needs 2× noise), 9 passes, latest 23 Oct 2026",
     );
     const s = statusSentence(by("shrink"), 2);
     expect(s).toContain("−0.040 km² (−31%)");
@@ -142,7 +142,7 @@ describe("statusSentence", () => {
   test("a status from a build made before the levels keeps its old wording", () => {
     const old = olderFile().lakes.find((l) => l.status.status === "Growing")!;
     expect(statusSentence(old, 2)).toBe(
-      "Growing: +0.031 km² since earlier 156A passes (noise ±0.013 km²; change must exceed 2× noise), 9 looks, latest 23 Oct 2026",
+      "Growing: +0.031 km² since earlier 156A passes (noise ±0.013 km²; change must exceed 2× noise), 9 passes, latest 23 Oct 2026",
     );
   });
   test("test_statusSentence_point_only_lake_says_search_window", () => {
@@ -183,14 +183,14 @@ describe("methodLimits", () => {
     expect(out).toEqual([
       "N.",
       "Not validated: frozen lakes, lakes under 0.05 km², and wind-roughened water.",
-      "In a same-day check against Sentinel-2, radar water overlapped optical water poorly at every lake checked (IoU 0.005–0.11); treat areas as indicative.",
+      "In a same-day check against Sentinel-2, radar water overlapped optical water poorly at every lake checked (IoU 0.005–0.11). Treat areas as indicative.",
       ...LEVEL_LIMITS,
     ]);
     // the Limits of the levels: drawdown, latency, not outburst warning, modelled rates, small lakes
     expect(LEVEL_LIMITS.join(" ")).toMatch(/nearly invisible.*5–12 days.*in Hunza.*8–12 days in Chitral.*not outburst warning.*modelled.*not observed.*one more season.*0\.05 km²/s);
     // a build made before the levels has none of them
     expect(methodLimits({ ...olderFile(), notes: "N." })).not.toContain(LEVEL_LIMITS[0]);
-    expect(opticalCheckSentence([mk(0.0138, 3)])).toBe("In checks up to 3 days apart against Sentinel-2, radar water overlapped optical water poorly at every lake checked (IoU 0.014); treat areas as indicative.");
+    expect(opticalCheckSentence([mk(0.0138, 3)])).toBe("In checks up to 3 days apart against Sentinel-2, radar water overlapped optical water poorly at every lake checked (IoU 0.014). Treat areas as indicative.");
     expect(opticalCheckSentence([mk(null)])).toBeNull();
   });
 });
@@ -224,7 +224,7 @@ describe("sites with no lake now", () => {
     expect(t.cloud_lakes).toBe("6");
     expect(t.watch_list).toBe("6 lakes and 1 site with no lake now");
     expect(watchList(fixtureLakes)).toBe("7 lakes");
-    expect(cloudHeadline(f)).toContain("NISAR made 42 valid looks across 6 lakes.");
+    expect(cloudHeadline(f)).toContain("NISAR made 42 valid passes across 6 lakes during this period.");
   });
 
   test("carry the dated Sentinel-2 check, and water in it makes a site where a lake may be forming", () => {
@@ -339,7 +339,7 @@ describe("frozen lakes, review fixes", () => {
 
   test("I3: an open lake is worded by what released it, never as open water from air temperature", () => {
     const open = { ...base(), state: "open", since: "2026-10-24", released_on: "2026-10-24" };
-    expect(freezeHeadline({ ...open, released_by: "air" })).toBe("No freeze signal in air temperature since 24 Oct 2026; open water not confirmed by radar or Sentinel-2");
+    expect(freezeHeadline({ ...open, released_by: "air" })).toBe("No freeze signal in air temperature since 24 Oct 2026. Open water not confirmed by radar or Sentinel-2");
     expect(freezeHeadline({ ...open, released_by: "radar" })).toBe("Radar back within its summer range on 24 Oct 2026");
     expect(freezeHeadline({ ...open, released_by: "s2" })).toBe("Open water seen by Sentinel-2 on 24 Oct 2026");
     expect(freezeHeadline({ ...open, released_by: null, released_on: null, since: null })).toBe("Not frozen by the air-temperature rule");

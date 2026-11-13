@@ -152,9 +152,9 @@ const slug = statusSlug;
 
 /** At a site where a lake may be forming: what the radar layer is, and what happens next (no automatic measurement). */
 export const FORMING_LAYER =
-  "Sentinel-2 shows water here. The blue layer is the radar dark area; it is shown but not yet treated as lake area. The SARtale team reviews the site to add it as a measured lake.";
+  "Sentinel-2 shows water here. The blue layer shows the radar dark area. SARtale does not yet treat it as lake area. The SARtale team reviews the site to add it as a measured lake.";
 export const FORMING_NO_LAYER =
-  "No radar water layer yet: Sentinel-2 shows water here, but no NISAR pass since that scene has been read. The SARtale team reviews the site to add it as a measured lake.";
+  "No radar water layer yet. Sentinel-2 shows water here, but no NISAR pass since that scene has been read. The SARtale team reviews the site to add it as a measured lake.";
 
 /**
  * The lake to open on: the one with the most water in its latest trend pass (clearest picture), else the first in list
@@ -348,7 +348,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     const t = el("table", "lw-table");
     t.append(el("caption", undefined, lakeNow
       ? `NISAR passes over ${lake.name}: water area by date and track`
-      : `NISAR passes over ${lake.name}: dark radar area by date and track. There is no lake here now, so this is not lake water and no pass enters a trend.`));
+      : `NISAR passes over ${lake.name}: dark radar area by date and track. There is no lake here now. This is not lake water, and no pass enters a trend.`));
     const thead = el("thead");
     const head = el("tr");
     for (const h of ["Date", "Track", lakeNow ? "Area (km²)" : "Dark area (km²)", "Zone seen", lakeNow ? "Used" : "In a trend", "Baseline (km²)", "z", "Level set", "Version"]) {
@@ -465,10 +465,10 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
         ? ` Grey markers are passes taken while the lake was probably frozen: ${FROZEN_AREA}, and left out of the comparison.`
         : "";
       const band = data.series.some((s) => s.band)
-        ? ` The shaded band is the ${lake.status.track} baseline ± ${factor} × noise, pass by pass: each pass is compared with the median of earlier passes on its own track, and one outside its band is beyond ${factor}× noise.`
+        ? ` The shaded band is the ${lake.status.track} baseline ± ${factor} × noise, pass by pass. Each pass is compared with the median of earlier passes on its own track. A pass outside its band is beyond ${factor}× noise.`
         : "";
       const set = data.series.some((s) => s.level) ? " Large ringed markers are the passes that set a Watch, an Alert or a Decrease noted." : "";
-      chartSec.append(host, el("p", "lw-note", `One line per track. Hollow markers are passes left out of the trend, at the area they read; a left-out pass with no reading, and passes that saw less than ${Math.round(minObs * 100)}% of the lake zone, are not drawn.${ice}${band}${set} The table lists every pass.`));
+      chartSec.append(host, el("p", "lw-note", `One line per track. Hollow markers show excluded passes at the area they read. Passes with no reading are not drawn. Neither are passes that saw less than ${Math.round(minObs * 100)}% of the lake zone.${ice}${band}${set} The table lists every pass.`));
       chart = opts.createChart(host, data);
     }
     if (lake.series.length) chartSec.append(readingsTable(lake, minObs));

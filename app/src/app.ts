@@ -73,7 +73,7 @@ const TEMPLATE = `
   </main>
 
   <footer class="foot">
-    <p><strong>${MATURITY}.</strong> Not an official warning service: for warnings, use PMD, NDMA, GBDMA and PDMA.</p>
+    <p><strong>${MATURITY}.</strong> Not an official warning service. For warnings, use PMD, NDMA, GBDMA and PDMA.</p>
     <details class="foot-credits" data-role="foot-credits" open>
       <summary>Data credits and team</summary>
       <p>Data: NISAR GCOV from NASA, distributed by ASF. Sentinel-2 L2A from Copernicus, via Earth Search. Glacial lake updates from SUPARCO. Team SARcastic Scientists, Islamabad Local Event, NASA Space Apps Challenge 2026.</p>

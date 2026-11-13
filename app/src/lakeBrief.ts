@@ -99,7 +99,7 @@ ${lake.excluded.length ? list(lake.excluded.map((x) => `${x.pass}: ${x.reason}`)
 ${list(methodLimits(file))}${lakeLimits}
 <h2>Downstream</h2>
 <p>${downstream}</p>
-<p class="lake-brief-footer">Indicative screening from NISAR data (${esc(processingVersions(file.crid))}). Not an official warning; official warnings come from PMD, NDMA, GBDMA and PDMA. Built ${esc(file.built)}.</p>
+<p class="lake-brief-footer">Indicative screening from NISAR data (${esc(processingVersions(file.crid))}). Not an official warning. Official warnings come from PMD, NDMA, GBDMA and PDMA. Built ${esc(file.built)}.</p>
 </section>`;
 }
 
@@ -130,7 +130,7 @@ function showNotice(text: string, win: Window): void {
 export type BriefOutcome = "fresh" | "unavailable" | "removed";
 
 export const BRIEF_UNAVAILABLE =
-  "The latest lake data could not be loaded, so no brief is printed. Check the connection and try again, or reload the page.";
+  "The latest lake data could not be loaded. No brief is printed. Check the connection. Try again or reload the page.";
 
 /**
  * Prints from the newest data on the server, so a tab left open across a weekly update still prints today's numbers.
@@ -152,7 +152,7 @@ export async function printLatestBrief(
   const freshLake = fresh.lakes.find((l) => l.id === lake.id);
   if (!freshLake) {
     const built = fresh.built ? formatDate(fresh.built.slice(0, 10)) : "the newest build";
-    showNotice(`${lake.name} is not in SARtale's data built ${built}: the site was removed or renamed, so no brief is printed. Reload the page to see the current list.`, win);
+    showNotice(`${lake.name} is not in SARtale's data built ${built}. The site was removed or renamed. No brief is printed. Reload the page to see the current list.`, win);
     return "removed";
   }
   printBrief(freshLake, fresh, win);
