@@ -215,7 +215,7 @@ def test_a_status_track_that_mixes_crids_is_built_with_a_limit(tmp_path):
     lk = doc["lakes"][0]
     assert [(p["date"], p["crid"]) for p in lk["series"]][-2:] == [("2026-10-23", "P05036"), ("2026-11-04", "P05036")]
     assert lk["status"]["track"] == "156A" and lk["status"]["latest_date"] == "2026-11-04"
-    assert ("Track 156A mixes NISAR processing versions P05023 (provisional) and P05036 (standard); a calibration "
+    assert ("Track 156A mixes NISAR processing versions P05023 (provisional) and P05036 (standard). A calibration "
             "change between them can shift areas.") in lk["limits"]
     assert doc["crid"] == "P05023, P05036"
     assert doc["collections"] == ["NISAR_L2_GCOV_PROVISIONAL_V1", "NISAR_L2_GCOV_V1"]
@@ -237,7 +237,7 @@ def test_a_pass_cached_under_two_crids_is_counted_once_from_the_later(tmp_path):
     assert [(p["date"], p["crid"]) for p in lk["series"]] == [
         ("2026-09-29", "P05023"), ("2026-10-11", "P05023"), ("2026-10-23", "P05036")]
     assert "ignored 2026-10-23_156A_P05023.npz: the same pass is cached as P05036" in lk["limits"]
-    assert "Track 156A mixes NISAR processing versions P05023 and P05036; a calibration change between them can " \
+    assert "Track 156A mixes NISAR processing versions P05023 and P05036. A calibration change between them can " \
            "shift areas." in lk["limits"]
 
 
@@ -346,8 +346,8 @@ def test_a_no_lake_site_keeps_its_passes_but_gets_no_verdict_and_no_water_layer(
     assert (st["change_km2"], st["noise_km2"]) == (None, None)
     assert (st["track"], st["latest_date"], st["looks"]) == ("156A", "2026-07-24", 4)
     assert st["reason"] == ("No lake in recent imagery: Sentinel-2 shows a dry basin on 17 Aug 2026. "
-                            "SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only "
-                            "views where the lake zone is clear of cloud, snow and ice; the status changes only when two "
+                            "SARtale checks the site with Sentinel-2 at every data refresh, all year. It uses only "
+                            "views where the lake zone is clear of cloud, snow and ice. The status changes only when two "
                             "such views at least 5 days apart agree.")
     assert lk["absence_checked"] is None
     assert lk["lake_state"] == "no_lake" and lk["lake_state_source"] == src

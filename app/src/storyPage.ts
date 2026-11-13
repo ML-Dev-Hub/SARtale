@@ -96,8 +96,8 @@ export function measureView(a: Lake | null): MeasureView {
   if (lo) {
     const since = a.freeze?.freeze_up ?? a.freeze?.since ?? null;
     const note = isFrozen(a)
-      ? `${name} is frozen now${since ? ` (since ${formatDate(since)})` : ""}; this is its last open-water pass.`
-      : `${name}'s newest pass was taken while it was frozen; this is its last open-water pass.`;
+      ? `${name} is frozen now${since ? ` (since ${formatDate(since)})` : ""}. This is its last open-water pass.`
+      : `${name}'s newest pass was taken while it was frozen. This is its last open-water pass.`;
     // Its own picture and water layer when lakes-freeze drew them; else the newest picture with no water layer.
     const own = !!lo.images?.latest_hh;
     return { date: lo.date, track: lo.track, area: lo.area_km2, noise: lo.noise_km2,
@@ -243,7 +243,7 @@ export function alertBanner(file: LakesFile | null, onOpen: () => void): HTMLEle
   const go = text("button", "sp-btn sp-btn-primary", "Open Lake Watch");
   (go as HTMLButtonElement).type = "button";
   go.addEventListener("click", onOpen);
-  box.append(el("p", undefined, "Not an outburst forecast. Check recent optical imagery or the site, and contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA. ", go));
+  box.append(el("p", undefined, "Not an outburst forecast. Check recent optical imagery or the site. Contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA. ", go));
   return box;
 }
 
@@ -300,7 +300,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const r = copy.risk;
   const facts = el("div", "sp-facts");
   for (const x of r.facts) facts.append(el("div", "sp-fact", text("div", "sp-fact-value", x.value), text("div", "sp-fact-label", x.label), text("div", "sp-src", x.source)));
-  const risk = section("01 The risk", "sp-section sp-risk");
+  const risk = section("01 The flood", "sp-section sp-risk");
   risk.append(
     el("div", undefined, eyebrow(r.label), text("h2", undefined, r.title)),
     el("div", "sp-risk-body", el("div", undefined, text("p", "sp-prose", r.body), text("p", "sp-src", r.source)), facts),
@@ -340,7 +340,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
     const value = text("div", `sp-num-value${"accent" in n ? " sp-accent" : ""}${grey ? " sp-num-frozen" : ""}`, f(n.value));
     nums.append(el("div", undefined, value, text("div", "sp-stat-label", grey ? FROZEN_AREA : f(n.label))));
   });
-  const measure = section("04 The measure", "sp-section sp-measure");
+  const measure = section("04 The measurement", "sp-section sp-measure");
   if (mv.hh) {
     const fig = el("figure", "sp-overlay");
     const fp = mv.frozenPicture;
@@ -427,7 +427,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
       requestEls.push(card);
     }
   };
-  const watch = section("05 The watch", "sp-section");
+  const watch = section("05 The levels", "sp-section");
   watch.append(
     el("div", "sp-head", el("div", undefined, eyebrow(w.label), text("h2", undefined, noData ? w.noDataTitle : f(w.title))), text("p", "sp-muted sp-head-note", noData ? w.noDataLede : f(w.lede))),
     el("div", "sp-watch", mapEl, listEl),

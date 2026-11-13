@@ -22,7 +22,7 @@ afterEach(() => {
 describe("lake brief", () => {
   test("test_brief_has_footer_and_built_date", () => {
     const html = briefHtml(lakeOf(), fixtureLakes, NOW);
-    expect(text(html)).toContain("Indicative screening from NISAR data (processing version P05023). Not an official warning; official warnings come from PMD, NDMA, GBDMA and PDMA. Built 2026-11-02T00:00:00Z.");
+    expect(text(html)).toContain("Indicative screening from NISAR data (processing version P05023). Not an official warning. Official warnings come from PMD, NDMA, GBDMA and PDMA. Built 2026-11-02T00:00:00Z.");
     expect(html).toContain("Fixture stable");
     expect(html).toContain("Coordinates");
   });
@@ -87,7 +87,7 @@ describe("lake brief", () => {
     expect(first.className).toBe("lake-brief-message");
     expect(first.textContent).toContain("This is not an outburst forecast.");
     expect(first.nextElementSibling!.tagName).toBe("H1");
-    expect(t).toContain("contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.");
+    expect(t).toContain("Contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.");
     expect(findBannedClaims(t)).toEqual([]);
     // No change carries no message: the brief starts with the lake's name
     expect(text(briefHtml(lakeOf(), fixtureLakes, NOW)).trim().startsWith("Fixture stable")).toBe(true);
@@ -110,7 +110,7 @@ describe("lake brief", () => {
     const t = text(briefHtml(lakeOf({ limits: [] }), file, NOW));
     expect(t).toContain("Areas are water within a 1 km search circle.");
     expect(t).toContain("Not validated: frozen lakes, lakes under 0.05 km², and wind-roughened water.");
-    expect(t).toContain("radar water overlapped optical water poorly at every lake checked (IoU 0.005–0.11); treat areas as indicative.");
+    expect(t).toContain("radar water overlapped optical water poorly at every lake checked (IoU 0.005–0.11). Treat areas as indicative.");
     const own = text(briefHtml(lakeOf({ limits: ["Shadow hides the north shore."] }), file, NOW));
     expect(own).toContain("Shadow hides the north shore.");
     expect(own).toContain("Not validated:");

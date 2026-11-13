@@ -107,7 +107,7 @@ def test_two_passes_in_a_row_beyond_twice_the_noise_are_an_alert_growing():
     assert s["level_since"] == "2026-09-07"
     m = s["message"]
     assert m["title"] == "Alert: growing. The radar water area of Passu Lake rose on two passes in a row."
-    assert "on the pass before, 1.500 km² on 6 Sep 2026 (156A)" in m["what"]
+    assert "On the pass before, 1.500 km² on 6 Sep 2026 (156A)" in m["what"]
     assert m["how_sure"].startswith("Two passes in a row beyond 2× their track's noise: z = +16.9 and +16.7 (noise ±0.030 and "
                                       "±0.030 km²).")
 
@@ -128,7 +128,7 @@ def test_a_decrease_on_two_passes_is_decrease_noted_and_never_an_alert():
     assert s["status"] == DECREASE == "Decrease noted"
     m = s["message"]
     assert m["title"] == "Decrease noted. The radar water area of Attabad Lake fell on two passes in a row."
-    assert m["not"].startswith("Information only, not an Alert: the radar sees a drawdown onto wet sediment at only "
+    assert m["not"].startswith("Information only, not an Alert. Radar sees a drawdown onto wet sediment at only "
                                "about a tenth to a fifth of its size")
     assert "check optical imagery" in m["not"].lower()
     # however large and however long, a falling area never makes an Alert
@@ -203,7 +203,7 @@ def test_the_first_pass_on_a_new_processing_version_can_watch_but_not_alert():
     assert s["first_on_version"] is None
     assert ("Alerts paused: every track's latest pass is its first on a new NISAR processing version (P05036)"
             in s["reason"])
-    assert ("This pass is track 084A's first on processing version P05036; it can raise a Watch but cannot count "
+    assert ("This pass is track 084A's first on processing version P05036. It can raise a Watch but cannot count "
             "toward an Alert. Other tracks can.") in s["message"]["how_sure"]
     assert s["level_passes"][0]["new_version"] is True
     # the second pass on the new version: its baseline has the version now, but its pair is the first pass: no Alert
@@ -226,7 +226,7 @@ def test_when_every_track_switches_version_alerts_wait_for_a_second_pass_on_a_tr
     assert one["alerts_paused"] is None
     assert one["first_on_version"] == {"crid": "P05036", "track": "156A", "date": "2026-09-17"}
     assert "Alerts paused" not in one["reason"]
-    assert one["reason"].endswith("This pass is track 156A's first on processing version P05036; it can raise a Watch "
+    assert one["reason"].endswith("This pass is track 156A's first on processing version P05036. It can raise a Watch "
                                   "but cannot count toward an Alert. Other tracks can.")
     more = new + [{**pt("2026-09-21", "156A", 1.5), "crid": "P05036"}, {**pt("2026-09-23", "063D", 1.5), "crid": "P05036"}]
     assert lake_status(a + b + more)["status"] == ALERT
@@ -300,7 +300,7 @@ def test_status_not_observable_when_hidden():
 def test_status_not_enough_looks():
     s = lake_status(flat("156A", [1.0, 1.1, 1.0]))
     assert s["status"] == "Not enough NISAR looks yet"
-    assert s["looks"] == 3 and "a pass is compared once its track has 3 earlier valid looks" in s["reason"]
+    assert s["looks"] == 3 and "A pass is compared once its track has 3 earlier valid looks" in s["reason"]
 
 
 def test_status_observable_but_none_valid():
@@ -402,7 +402,7 @@ def test_every_message_says_what_changed_what_it_is_not_and_what_to_do(areas):
     assert "%" in m["what"] and "baseline" in m["what"] and "z = " in m["how_sure"]
     assert "This is not an outburst forecast." in m["not"] and "12–24 days" in m["not"]  # one track
     assert "drawing down onto wet sediment poorly" in m["not"]
-    assert m["do"] == ("Check recent optical imagery (Sentinel-2 or Landsat) or the site, and contact GBDMA or PDMA. "
+    assert m["do"] == ("Check recent optical imagery (Sentinel-2 or Landsat) or the site. Contact GBDMA or PDMA. "
                        "Official warnings come from PMD, NDMA, GBDMA and PDMA.")
     assert m["text"] == " ".join(m[k] for k in ("title", "what", "how_sure", "since", "not", "do"))
     assert m["since"].startswith(f"{m['level']} since ") and "reads z = " in m["since"]
@@ -484,7 +484,7 @@ def test_forming_status_says_a_lake_may_be_forming_without_a_verdict():
     # I3: says what happens; nothing measures the site automatically
     assert "next NISAR pass" not in s["reason"] and "measures it" not in s["reason"]
     assert s["reason"].endswith("A lake may be forming. Its radar dark area is shown but not yet treated as lake "
-                                "area; the SARtale team reviews the site to add it as a measured lake.")
+                                "area. The SARtale team reviews the site to add it as a measured lake.")
 
 
 # --- the real 2026 series, replayed --------------------------------------------------------------------------------------

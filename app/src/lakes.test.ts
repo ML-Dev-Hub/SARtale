@@ -183,14 +183,14 @@ describe("methodLimits", () => {
     expect(out).toEqual([
       "N.",
       "Not validated: frozen lakes, lakes under 0.05 km², and wind-roughened water.",
-      "In a same-day check against Sentinel-2, radar water overlapped optical water poorly at every lake checked (IoU 0.005–0.11); treat areas as indicative.",
+      "In a same-day check against Sentinel-2, radar water overlapped optical water poorly at every lake checked (IoU 0.005–0.11). Treat areas as indicative.",
       ...LEVEL_LIMITS,
     ]);
     // the Limits of the levels: drawdown, latency, not outburst warning, modelled rates, small lakes
     expect(LEVEL_LIMITS.join(" ")).toMatch(/nearly invisible.*5–12 days.*in Hunza.*8–12 days in Chitral.*not outburst warning.*modelled.*not observed.*one more season.*0\.05 km²/s);
     // a build made before the levels has none of them
     expect(methodLimits({ ...olderFile(), notes: "N." })).not.toContain(LEVEL_LIMITS[0]);
-    expect(opticalCheckSentence([mk(0.0138, 3)])).toBe("In checks up to 3 days apart against Sentinel-2, radar water overlapped optical water poorly at every lake checked (IoU 0.014); treat areas as indicative.");
+    expect(opticalCheckSentence([mk(0.0138, 3)])).toBe("In checks up to 3 days apart against Sentinel-2, radar water overlapped optical water poorly at every lake checked (IoU 0.014). Treat areas as indicative.");
     expect(opticalCheckSentence([mk(null)])).toBeNull();
   });
 });
@@ -339,7 +339,7 @@ describe("frozen lakes, review fixes", () => {
 
   test("I3: an open lake is worded by what released it, never as open water from air temperature", () => {
     const open = { ...base(), state: "open", since: "2026-10-24", released_on: "2026-10-24" };
-    expect(freezeHeadline({ ...open, released_by: "air" })).toBe("No freeze signal in air temperature since 24 Oct 2026; open water not confirmed by radar or Sentinel-2");
+    expect(freezeHeadline({ ...open, released_by: "air" })).toBe("No freeze signal in air temperature since 24 Oct 2026. Open water not confirmed by radar or Sentinel-2");
     expect(freezeHeadline({ ...open, released_by: "radar" })).toBe("Radar back within its summer range on 24 Oct 2026");
     expect(freezeHeadline({ ...open, released_by: "s2" })).toBe("Open water seen by Sentinel-2 on 24 Oct 2026");
     expect(freezeHeadline({ ...open, released_by: null, released_on: null, since: null })).toBe("Not frozen by the air-temperature rule");

@@ -78,14 +78,14 @@ describe("How we know", () => {
 
   test("a build with two processing versions names both, and says which part is provisional", () => {
     const text = open({ ...realLakes, crid: "P05023, P05036" }).text;
-    expect(text).toContain("this build uses processing versions P05023 and P05036");
+    expect(text).toContain("This build uses processing versions P05023 and P05036");
     expect(text).toContain("from 17 June 2026, processing versions P05023 and P05036, read as a 6 km window");
     expect(text).toContain("Passes up to 21 Oct 2026 are the provisional release (P05023)");
     expect(text).toContain("standard GCOV product (P05036)");
     expect(text).not.toMatch(/processing version P05023, P05036/);
     expect(text).not.toMatch(/\bvalidated standard\b|standard product is validated/i);
     const one = open({ ...realLakes, crid: "P05023" }).text;
-    expect(one).toContain("this build uses processing version P05023.");
+    expect(one).toContain("This build uses processing version P05023.");
   });
 
   test("the constants are filled from lakes.json, not typed in", () => {
@@ -111,10 +111,10 @@ describe("How we know", () => {
 
   test("states the D17 water rule, the DEM mask, the levels, the search circle and the data file's own note", () => {
     const { text } = withLakes();
-    expect(text).toContain("Water rule (method D17). Each pass is first smoothed with a 7 by 7 pixel Lee filter");
+    expect(text).toContain("Water rule (method D17). SARtale first smooths each pass with a 7 by 7 pixel Lee filter");
     expect(text).toContain("A pixel is water when its HH is at least 3 dB below the median HH of the 6 km search window");
-    expect(text).toContain("Inside the lake zone nothing is masked");
-    expect(text).toContain("is no longer used");
+    expect(text).toContain("SARtale masks nothing inside the lake zone");
+    expect(text).toContain("SARtale used an earlier two-view rule");
     expect(text).not.toMatch(/that is radar shadow, not water|not shadow-prone, and valid/);
     expect(text).toMatch(/robust z-score above 3\.5/);
     expect(text).toContain("Alert: growing when two valid passes in a row, on any tracks, have z of +2 or more");
@@ -157,7 +157,7 @@ describe("How we know", () => {
     expect(text).toContain(`Radar water ${opticalOverlapPhrase(realLakes.checks)}.`);
     expect(text).toContain(iouRange(realLakes.checks)!);
     expect(text).not.toMatch(/\{\w+\}/);
-    expect(text).toMatch(/neither is a clean reference/);
+    expect(text).toMatch(/Neither is a clean reference/);
     expect(text).toMatch(/not a validation of lake extent/);
   });
 

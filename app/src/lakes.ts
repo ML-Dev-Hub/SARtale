@@ -295,7 +295,7 @@ export function openHeadline(f: LakeFreeze): string | null {
   if (!on) return null;
   if (f.released_by === "s2") return `Open water seen by Sentinel-2 on ${on}`;
   if (f.released_by === "radar") return `Radar back within its summer range on ${on}`;
-  if (f.released_by === "air") return `No freeze signal in air temperature since ${on}; open water not confirmed by radar or Sentinel-2`;
+  if (f.released_by === "air") return `No freeze signal in air temperature since ${on}. Open water not confirmed by radar or Sentinel-2`;
   return null;
 }
 
@@ -786,7 +786,7 @@ export function dayMonth(iso: string): string {
 export function cloudHeadline(file: LakesFile): string {
   const looks = cloudLooks(file);
   const watched = cloudLakes(file);
-  return `From ${dayMonth(file.cloud_window[0])} to ${dayMonth(file.cloud_window[1])}, while SUPARCO's updates reported cloud limiting optical imagery, NISAR made ${looks} valid looks across ${watched} lakes.`;
+  return `From ${dayMonth(file.cloud_window[0])} to ${dayMonth(file.cloud_window[1])}, NISAR made ${looks} valid looks across ${watched} lakes. SUPARCO's updates reported that cloud limited optical imagery in these weeks.`;
 }
 
 export const NOT_VALIDATED = "Not validated: frozen lakes, lakes under 0.05 km², and wind-roughened water.";
@@ -796,10 +796,10 @@ export const NOT_VALIDATED = "Not validated: frozen lakes, lakes under 0.05 km²
  * none of these.
  */
 export const LEVEL_LIMITS = [
-  "A lake drawing down onto wet sediment is nearly invisible to the radar: it sees about a tenth to a fifth of such a decrease.",
+  "A lake drawing down onto wet sediment is nearly invisible to the radar. Radar sees about a tenth to a fifth of such a decrease.",
   "An Alert comes 5–12 days after a change begins in Hunza (three tracks) and 8–12 days in Chitral (two tracks).",
   "This is slow-growth monitoring, not outburst warning: an outburst takes hours.",
-  "False-alarm and miss rates are modelled from one season's pass-to-pass noise, not observed: no lake grew in the 2026 data. They will be estimated again after one more season.",
+  "False-alarm and miss rates are modelled from one season's pass-to-pass noise, not observed. No lake grew in the 2026 data. They will be estimated again after one more season.",
   "Lakes below about 0.05 km² are limited by speckle.",
 ];
 
@@ -833,7 +833,7 @@ export function opticalCheckSentence(checks: LakeCheck[]): string | null {
   if (!how) return null;
   const maxDays = Math.max(...checks.filter((c) => c.iou !== null).map((c) => c.days_apart));
   const when = maxDays === 0 ? "a same-day check" : `checks up to ${maxDays} days apart`;
-  return `In ${when} against Sentinel-2, radar water ${how}; treat areas as indicative.`;
+  return `In ${when} against Sentinel-2, radar water ${how}. Treat areas as indicative.`;
 }
 
 /**

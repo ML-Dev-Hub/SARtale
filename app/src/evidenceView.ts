@@ -39,7 +39,7 @@ export function hasToken(text: string): boolean {
   return /\{\w+\}/.test(text);
 }
 
-export const NO_DATA_NOTE = "No lake data in this build, so the figures that come from it (looks, constants, checks) are left out of this page.";
+export const NO_DATA_NOTE = "No lake data in this build. This page omits figures from that data (passes, constants, checks).";
 
 export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions): EvidenceViewHandle {
   const lakes = opts.lakes ?? null;
@@ -82,7 +82,7 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
     note.dataset.role = "evidence-nodata";
     head.append(note);
   }
-  head.append(el("p", "evidence-status", "Provisional NISAR data up to 21 Oct 2026, which NASA expects to reprocess; later passes are NASA's standard product."));
+  head.append(el("p", "evidence-status", "Provisional NISAR data up to 21 Oct 2026, which NASA expects to reprocess. Later passes are NASA's standard product."));
 
   const verdict = el("div", "evidence-verdict");
   const can = el("section", "verdict-can");

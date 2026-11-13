@@ -17,7 +17,7 @@ export function fixtureMessage(level: LevelName, name: string): LevelMessage {
       ? "Information only, not an Alert: the radar sees a drawdown onto wet sediment at only about a tenth to a fifth of its size, so the real change can be much larger. Check optical imagery. This is not an outburst forecast. Radar sees a lake drawing down onto wet sediment poorly, and a change shows here 5–12 days after it begins."
       : "This is not an outburst forecast. Radar sees a lake drawing down onto wet sediment poorly, and a change shows here 5–12 days after it begins.",
     since: `${level} since 23 Oct 2026; the newest pass, 23 Oct 2026 (156A), reads z = +2.4.`,
-    do: "Check recent optical imagery (Sentinel-2 or Landsat) or the site, and contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.",
+    do: "Check recent optical imagery (Sentinel-2 or Landsat) or the site. Contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.",
     text: "",
   };
   m.text = [m.title, m.what, m.how_sure, m.since, m.not, m.do].join(" ");

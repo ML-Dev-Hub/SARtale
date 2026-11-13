@@ -45,9 +45,9 @@ from sartale.radiometry import to_db
 
 POINT_LABEL = "water area in the search window"
 OUTLINE_LABEL = "water area in the lake outline (buffered 200 m)"
-NO_LAKE_LABEL = "dark radar area in the search circle; there is no lake here now, so it is not lake area"
-FORMING_LABEL = ("dark radar area in the search circle; Sentinel-2 shows water where there was no lake, so a lake may "
-                 "be forming; this dark area is not treated as lake area until the SARtale team reviews the site and "
+NO_LAKE_LABEL = "dark radar area in the search circle. There is no lake here now, so it is not lake area"
+FORMING_LABEL = ("dark radar area in the search circle. Sentinel-2 shows water where there was no lake, so a lake may "
+                 "be forming. This dark area is not treated as lake area until the SARtale team reviews the site and "
                  "adds it as a measured lake")
 FORMING_STATE = "lake_forming_check"  # lakes.json lake_state of a no-lake site where the absence check found water
 WATER_RGBA = (0x2b, 0x8c, 0xff, 200)
@@ -223,8 +223,7 @@ def mixed_crid_limit(track: str, crids: list[str], collections: dict[str, str]) 
         word = _release_word(collections.get(c))
         named.append(f"{c} ({word})" if word else c)
     listed = ", ".join(named[:-1]) + " and " + named[-1]
-    return (f"Track {track} mixes NISAR processing versions {listed}; a calibration change between them can "
-            "shift areas.")
+    return (f"Track {track} mixes NISAR processing versions {listed}. A calibration change between them can shift areas.")
 
 
 def _common_axis(axes: list[np.ndarray]) -> np.ndarray:
@@ -597,7 +596,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
     feature = _outline_feature(lake)
     outline = feature["geometry"] if feature else None
     if lake.outline and outline is None:
-        limits.append("outline could not be read; the point circle is used")
+        limits.append("outline could not be read. The point circle is used")
     entry = {
         "id": lake.id, "name": lake.name, "lon": lake.lon, "lat": lake.lat, "role": lake.role,
         "coord_source": lake.coord_source,
@@ -623,8 +622,8 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
     if outline is not None:
         share = outline_window_share(xs, ys, epsg, outline)
         if share < 0.99:
-            limits.append(f"the outline runs past the 6 km radar window; {round(share * 100)}% of it is inside "
-                          "and only that part is counted")
+            limits.append(f"the outline runs past the 6 km radar window, and {round(share * 100)}% of it is inside, "
+                          "so only that part is counted")
     flags = (prior or {}).get("flags") or {}
     frozen_ids = {f"{d}_{k}" for (d, k), v in flags.items() if v}
     cores = summer_cores(by_track, excluded, zone, shadow, frozen_ids)
