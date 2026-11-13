@@ -400,7 +400,7 @@ def test_every_message_says_what_changed_what_it_is_not_and_what_to_do(areas):
     assert m["level"] == s["status"] and m["level"] in (ALERT, WATCH, DECREASE)
     assert "Radar water area of Attabad Lake" in m["what"] and "km²" in m["what"] and "2026" in m["what"]
     assert "%" in m["what"] and "baseline" in m["what"] and "z = " in m["how_sure"]
-    assert "This is not an outburst forecast." in m["not"] and "5–12 days" in m["not"]
+    assert "This is not an outburst forecast." in m["not"] and "12–24 days" in m["not"]  # one track
     assert "drawing down onto wet sediment poorly" in m["not"]
     assert m["do"] == ("Check recent optical imagery (Sentinel-2 or Landsat) or the site, and contact GBDMA or PDMA. "
                        "Official warnings come from PMD, NDMA, GBDMA and PDMA.")
@@ -613,3 +613,18 @@ def test_the_real_2026_series_replayed_with_levels_holding():
                                            ("2026-10-28", "055A", WATCH, "2026-10-28")]
     assert history(lakes["karambar"])[1:] == [] and history(lakes["shazore"])[1:] == []
     assert lake_status(lakes["passu"])["level_since"] == "2026-10-28"
+
+
+def test_the_message_gives_the_latency_of_the_lake_s_own_tracks():
+    """Hunza (three tracks): 5-12 days; Chitral (two tracks): 8-12 days; never a fixed 5-12 for every lake."""
+    def tracks(keys):
+        out = []
+        for k, key in enumerate(keys):
+            out += [pt(f"2026-08-{d + k:02d}", key, v) for d, v in zip((1, 5, 9, 13), (1.0, 1.02, 0.99, 1.0))]
+        return out
+    two = tracks(["084A", "164D"]) + [pt("2026-09-01", "084A", 1.5)]
+    m = lake_status(two, name="Shazore")["message"]
+    assert "with 2 tracks over this lake a change shows here 8–12 days after it begins" in m["not"]
+    assert "5–12 days" not in m["text"]
+    three = tracks(["055A", "063D", "156A"]) + [pt("2026-09-01", "055A", 1.5)]
+    assert "with 3 tracks over this lake a change shows here 5–12 days" in lake_status(three)["message"]["not"]

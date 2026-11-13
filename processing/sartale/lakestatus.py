@@ -85,9 +85,26 @@ STATUS_NAMES = (
     NO_LAKE,
 )
 # What the levels are not, and what to do: the same words in every message.
-LATENCY_TEXT = "5–12 days"
-NOT_TEXT = (f"This is not an outburst forecast. Radar sees a lake drawing down onto wet sediment poorly, and a change "
-            f"shows here {LATENCY_TEXT} after it begins.")
+LATENCY_TEXT = "5–12 days"  # three tracks (Hunza): about five passes in 24 days
+
+
+def latency_text(n_tracks: int) -> str:
+    """How long after a change begins a level can come, from the number of tracks that see the lake (method study:
+    Hunza, three tracks, 5-12 days; Chitral, two tracks, 8-12 days; one track repeats every 12 days)."""
+    if n_tracks >= 3:
+        return "5–12 days"
+    if n_tracks == 2:
+        return "8–12 days"
+    return "12–24 days"
+
+
+def not_text(n_tracks: int = 3) -> str:
+    return ("This is not an outburst forecast. Radar sees a lake drawing down onto wet sediment poorly, and with "
+            f"{n_tracks} {'track' if n_tracks == 1 else 'tracks'} over this lake a change shows here "
+            f"{latency_text(n_tracks)} after it begins.")
+
+
+NOT_TEXT = not_text(3)
 DO_TEXT = ("Check recent optical imagery (Sentinel-2 or Landsat) or the site, and contact GBDMA or PDMA. Official "
            "warnings come from PMD, NDMA, GBDMA and PDMA.")
 DRAWDOWN_TEXT = ("Information only, not an Alert: the radar sees a drawdown onto wet sediment at only about a tenth to a "
@@ -336,7 +353,7 @@ def pass_line(p: dict) -> str:
 
 
 def level_message(level: str, name: str | None, passes: list[dict], why: str | None,
-                  cusum_at: float | None = None) -> dict:
+                  cusum_at: float | None = None, n_tracks: int = 3) -> dict:
     """The initial message of a Watch, an Alert or a Decrease noted, in plain words, from the decision values: what
     changed and by how much, over which passes and dates, how sure SARtale is, what it is not, and what to do. `passes`
     are the passes that set the level, oldest first (each with date, track, crid, area_km2, baseline_km2, noise_km2, z
@@ -365,7 +382,8 @@ def level_message(level: str, name: str | None, passes: list[dict], why: str | N
         if last.get("new_version"):
             sure += " " + version_note(last["track"], last.get("crid"))
     falling = level == DECREASE or (level == WATCH and last["z"] < 0)
-    not_ = f"{DRAWDOWN_TEXT if level == DECREASE else DRAWDOWN_WATCH} {NOT_TEXT}" if falling else NOT_TEXT
+    nt = not_text(n_tracks)
+    not_ = f"{DRAWDOWN_TEXT if level == DECREASE else DRAWDOWN_WATCH} {nt}" if falling else nt
     msg = {"level": level, "title": title, "what": what, "how_sure": sure, "not": not_, "do": DO_TEXT}
     msg["text"] = " ".join(msg[k] for k in ("title", "what", "how_sure", "not", "do"))
     return msg
@@ -506,7 +524,7 @@ def assess(series: list[SeriesPoint], latest_expected: dict[str, str] | None = N
         reason += " " + unread_line
     message = None
     if level != NO_CHANGE:
-        message = level_message(level, name, level_passes, why, held.get("cusum_at"))
+        message = level_message(level, name, level_passes, why, held.get("cusum_at"), len(by_track))
         message["since"] = (f"{level} since {day_text(since)}; the newest pass, {day_text(last['date'])} ({t}), "
                             f"reads z = {_signed(last['z'], 1)}.")
         if unread_line:

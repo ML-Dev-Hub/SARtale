@@ -185,6 +185,14 @@ def check_ids(lakes, chosen: str | None) -> list[str]:
     return [lk.id for lk in lakes if lk.lake_state != "no_lake"]
 
 
+def latest_season_pass(series: list[dict]) -> str | None:
+    """"<date> <track>" of the newest valid pass in the open-water season (what lakes-check pairs), or None."""
+    from sartale.lakecheck import in_season
+    from sartale.lakestatus import is_valid
+    found = [f"{p['date']} {p['track']}" for p in series if is_valid(p) and in_season(p["date"])]
+    return max(found) if found else None
+
+
 def check_row_line(lid: str, row: dict) -> str:
     """One log line on a check row."""
     if "note" in row:
@@ -222,12 +230,22 @@ def cmd_lakes_check(args) -> None:
             rows[lid] = old[lid]
             print(f"{lid}: current check kept (IoU {old[lid]['iou']:.3f}, {old[lid].get('nisar_date')})")
             continue
+        season_pass = latest_season_pass(entry["series"])
+        prev = old.get(lid)
+        if (args.stale_only and prev and "note" in prev and not prev.get("failed") and prev.get("key") == check_key(lake)
+                and (season_pass or "") <= (prev.get("season_pass") or "")):
+            # A check that found no pair is made again only for a new open-water-season pass (or a new key)
+            rows[lid] = prev
+            print(f"{lid}: no new open-water-season pass since the last check ({prev['note']}); not checked again")
+            continue
         t = time.time()
         try:
             row = check_lake(lake, Path(args.cache), entry["series"])
         except Exception as e:  # noqa: BLE001 - one lake's failed check never stops the refresh; the lake says so
             row = {"lake": lid, "note": f"Sentinel-2 check failed ({type(e).__name__})", "failed": True}
         row = {**row, "key": check_key(lake)}
+        if "note" in row and not row.get("failed"):
+            row["season_pass"] = season_pass  # the newest pass it could pair; a newer one makes it worth trying again
         rows[lid] = row
         print(f"{check_row_line(lid, row)} [{time.time() - t:.0f} s]", flush=True)
     kept = [r for lid, r in old.items() if lid not in rows and lid in lakes]
