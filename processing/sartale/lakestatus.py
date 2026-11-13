@@ -257,6 +257,11 @@ def _rank(key: str | None) -> int:
     return next((n for n, (k, _, _) in enumerate(LEVEL_RANK) if k == key), len(LEVEL_RANK))
 
 
+def _direction(key: str | None) -> str:
+    """"up" for a rising signal (an Alert pair, a rising Watch), "down" for a falling one."""
+    return "up" if key in ("alert", "watch_up_pass", "watch_up_cusum") else "down"
+
+
 def _hold(held: dict | None, trigger: dict | None, z: float, found: set[str]) -> dict | None:
     """The level that stands after a pass. A level holds until evidence clears it: Alert: growing until two valid
     passes in a row have z < +CHANGE_FACTOR; Watch until a valid pass has |z| < CHANGE_FACTOR and the CUSUM under its
@@ -266,6 +271,11 @@ def _hold(held: dict | None, trigger: dict | None, z: float, found: set[str]) ->
     if held is None:
         return trigger
     if trigger is not None and _rank(trigger["key"]) < _rank(held["key"]) and trigger["level"] != held["level"]:
+        return trigger
+    if (trigger is not None and held["level"] in (WATCH, DECREASE)
+            and _direction(trigger["key"]) != _direction(held["key"])):
+        # A Watch or a Decrease noted restarts when the direction turns: a rising signal replaces a falling Watch or a
+        # Decrease noted, and a falling one replaces a rising Watch, with its own date and message.
         return trigger
     level = held["level"]
     held = dict(held)

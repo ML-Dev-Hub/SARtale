@@ -551,8 +551,8 @@ def test_an_alert_holds_through_one_quiet_pass_and_clears_after_two():
 def test_a_watch_holds_until_a_pass_within_twice_the_noise_with_the_cusum_under_4():
     s = lake_status(flat("156A", NOISY + [1.5, 1.01]))
     assert s["status"] == NO_CHANGE  # the next pass is within the noise, the CUSUM under 4: cleared
-    # another pass beyond 2x noise (here falling, so no Alert pair) keeps it, with its first trigger date
-    got = lake_status(flat("156A", [1.0] * 6 + [1.05, 0.955]))
+    # another rising signal (here the CUSUM, z under 2, so no Alert pair) keeps it, with its first trigger date
+    got = lake_status(flat("156A", [1.0] * 6 + [1.08, 1.039]))
     assert got["status"] == WATCH and got["level_since"] == "2026-09-07"
     # a pass within 2x noise with the CUSUM under 4 clears it; a later CUSUM Watch starts again from its own date
     series = flat("156A", [1.0] * 6 + [1.05, 1.038, 1.038])
@@ -628,3 +628,22 @@ def test_the_message_gives_the_latency_of_the_lake_s_own_tracks():
     assert "5–12 days" not in m["text"]
     three = tracks(["055A", "063D", "156A"]) + [pt("2026-09-01", "055A", 1.5)]
     assert "with 3 tracks over this lake a change shows here 5–12 days" in lake_status(three)["message"]["not"]
+
+
+def test_a_held_watch_restarts_when_its_direction_turns():
+    """The reviewer's probe: a falling Watch (-7%) then a rise (+7%) is a rising Watch from the rise, with a rising
+    message; and the reverse."""
+    base = flat("156A", [1.0, 1.0, 1.01, 0.99, 1.0, 1.0])
+    down = lake_status(base + [pt("2026-09-07", "156A", 0.93)])
+    assert down["status"] == WATCH and down["z"] < 0 and "a tenth to a fifth" in down["message"]["not"]
+    turned = lake_status(base + [pt("2026-09-07", "156A", 0.93), pt("2026-09-08", "156A", 1.07)])
+    assert turned["status"] == WATCH and turned["level_since"] == "2026-09-08"
+    assert turned["level_passes"][0]["date"] == "2026-09-08" and turned["level_passes"][0]["z"] > 2
+    assert "a tenth to a fifth" not in turned["message"]["not"] and "+" in turned["message"]["what"]
+    back = lake_status(base + [pt("2026-09-07", "156A", 1.07), pt("2026-09-08", "156A", 0.93)])
+    assert back["status"] == WATCH and back["level_since"] == "2026-09-08" and back["level_passes"][0]["z"] < -2
+    assert "a tenth to a fifth" in back["message"]["not"]
+    # a rise also replaces a standing Decrease noted
+    dec = flat("156A", NOISY + [0.5, 0.5])
+    up = lake_status(dec + [pt("2026-09-08", "156A", 1.5)])
+    assert up["status"] == WATCH and up["level_since"] == "2026-09-08" and up["z"] > 2
