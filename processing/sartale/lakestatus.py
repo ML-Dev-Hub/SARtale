@@ -354,7 +354,7 @@ def level_message(level: str, name: str | None, passes: list[dict], why: str | N
     else:
         if why == "cusum":
             title = f"Watch: small changes in the radar water area of {lake} have added up over recent passes."
-            sure = (f"No single pass is beyond {CHANGE_FACTOR:g}× noise (latest z = {_signed(last['z'], 1)}), but the "
+            sure = (f"No single pass is beyond {CHANGE_FACTOR:g}× noise (z = {_signed(last['z'], 1)} on that pass), but the "
                     f"running sum of the z values (CUSUM, k = {CUSUM_K:g}) reached {cusum_at:.1f}, at least "
                     f"{CUSUM_H:g}. Not confirmed by two passes; the next passes show whether it holds.")
         else:
