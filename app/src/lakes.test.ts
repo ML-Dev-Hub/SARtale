@@ -125,7 +125,7 @@ describe("statusSentence", () => {
   const by = (id: string) => fixtureLakes.lakes.find((l) => l.id === id)!;
   test("test_statusSentence_includes_date_looks_and_noise", () => {
     expect(statusSentence(by("grow-new"), 2)).toBe(
-      "Alert: growing: +0.031 km² (+24%) against the baseline of earlier 156A passes, z = +2.4 (noise ±0.013 km²; a level needs 2× noise), 9 passes, latest 23 Oct 2026",
+      "Alert: growing: +0.031 km² (+24%) against the baseline of earlier 156A passes, z = +2.4 (noise ±0.013 km²; a level needs 2× noise), 9 looks, latest 23 Oct 2026",
     );
     const s = statusSentence(by("shrink"), 2);
     expect(s).toContain("−0.040 km² (−31%)");
@@ -142,7 +142,7 @@ describe("statusSentence", () => {
   test("a status from a build made before the levels keeps its old wording", () => {
     const old = olderFile().lakes.find((l) => l.status.status === "Growing")!;
     expect(statusSentence(old, 2)).toBe(
-      "Growing: +0.031 km² since earlier 156A passes (noise ±0.013 km²; change must exceed 2× noise), 9 passes, latest 23 Oct 2026",
+      "Growing: +0.031 km² since earlier 156A passes (noise ±0.013 km²; change must exceed 2× noise), 9 looks, latest 23 Oct 2026",
     );
   });
   test("test_statusSentence_point_only_lake_says_search_window", () => {
@@ -224,7 +224,7 @@ describe("sites with no lake now", () => {
     expect(t.cloud_lakes).toBe("6");
     expect(t.watch_list).toBe("6 lakes and 1 site with no lake now");
     expect(watchList(fixtureLakes)).toBe("7 lakes");
-    expect(cloudHeadline(f)).toContain("NISAR made 42 valid passes across 6 lakes during this period.");
+    expect(cloudHeadline(f)).toContain("NISAR made 42 valid looks across 6 lakes.");
   });
 
   test("carry the dated Sentinel-2 check, and water in it makes a site where a lake may be forming", () => {

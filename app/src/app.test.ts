@@ -47,7 +47,7 @@ function lakesWith(rows: [string, number, string, Partial<LakesFile["lakes"][num
   };
 }
 
-const TITLE = "Radar sees lakes through cloud.";
+const TITLE = "When clouds close in, the lakes stay in view.";
 
 /** A button on the story page, found by its label. */
 function pageButton($: (r: string) => HTMLElement, label: string, nth = 0): HTMLButtonElement {

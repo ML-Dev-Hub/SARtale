@@ -87,7 +87,7 @@ describe("lake brief", () => {
     expect(first.className).toBe("lake-brief-message");
     expect(first.textContent).toContain("This is not an outburst forecast.");
     expect(first.nextElementSibling!.tagName).toBe("H1");
-    expect(t).toContain("contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.");
+    expect(t).toContain("Contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.");
     expect(findBannedClaims(t)).toEqual([]);
     // No change carries no message: the brief starts with the lake's name
     expect(text(briefHtml(lakeOf(), fixtureLakes, NOW)).trim().startsWith("Fixture stable")).toBe(true);

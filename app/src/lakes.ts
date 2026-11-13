@@ -745,9 +745,9 @@ export function statusSentence(lake: Lake, changeFactor: number): string {
       : s.first_on_version
         ? `; this pass is track ${s.first_on_version.track}'s first on processing version ${s.first_on_version.crid ?? "new"}: it cannot count toward an Alert (other tracks can)`
         : "";
-    return `${s.status}: ${signed(change)} km² (${pctText})${scope} against the baseline of earlier ${s.track} passes, z = ${signed(s.z, 1)} (noise ±${km2(noise)} km²; a level needs ${changeFactor}× noise), ${s.looks} passes${when}${since}${paused}`;
+    return `${s.status}: ${signed(change)} km² (${pctText})${scope} against the baseline of earlier ${s.track} passes, z = ${signed(s.z, 1)} (noise ±${km2(noise)} km²; a level needs ${changeFactor}× noise), ${s.looks} looks${when}${since}${paused}`;
   }
-  return `${s.status}: ${signed(change)} km²${scope} since earlier ${s.track} passes (noise ±${km2(noise)} km²; change must exceed ${changeFactor}× noise), ${s.looks} passes${when}`;
+  return `${s.status}: ${signed(change)} km²${scope} since earlier ${s.track} passes (noise ±${km2(noise)} km²; change must exceed ${changeFactor}× noise), ${s.looks} looks${when}`;
 }
 
 /**
@@ -786,7 +786,7 @@ export function dayMonth(iso: string): string {
 export function cloudHeadline(file: LakesFile): string {
   const looks = cloudLooks(file);
   const watched = cloudLakes(file);
-  return `From ${dayMonth(file.cloud_window[0])} to ${dayMonth(file.cloud_window[1])}, SUPARCO's updates reported that cloud limited optical imagery. NISAR made ${looks} valid passes across ${watched} lakes during this period.`;
+  return `From ${dayMonth(file.cloud_window[0])} to ${dayMonth(file.cloud_window[1])}, NISAR made ${looks} valid looks across ${watched} lakes. SUPARCO's updates reported that cloud limited optical imagery in these weeks.`;
 }
 
 export const NOT_VALIDATED = "Not validated: frozen lakes, lakes under 0.05 km², and wind-roughened water.";

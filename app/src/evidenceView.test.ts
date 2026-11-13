@@ -112,9 +112,9 @@ describe("How we know", () => {
   test("states the D17 water rule, the DEM mask, the levels, the search circle and the data file's own note", () => {
     const { text } = withLakes();
     expect(text).toContain("Water rule (method D17). SARtale first smooths each pass with a 7 by 7 pixel Lee filter");
-    expect(text).toContain("Water pixels have HH at least 3 dB below the median HH of the 6 km search window");
+    expect(text).toContain("A pixel is water when its HH is at least 3 dB below the median HH of the 6 km search window");
     expect(text).toContain("SARtale masks nothing inside the lake zone");
-    expect(text).toContain("SARtale does not use this rule");
+    expect(text).toContain("SARtale used an earlier two-view rule");
     expect(text).not.toMatch(/that is radar shadow, not water|not shadow-prone, and valid/);
     expect(text).toMatch(/robust z-score above 3\.5/);
     expect(text).toContain("Alert: growing when two valid passes in a row, on any tracks, have z of +2 or more");

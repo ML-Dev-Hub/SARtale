@@ -58,7 +58,7 @@ describe("Lake Watch", () => {
   test("test_headline_sums_cloud_window_looks", () => {
     const { root } = setup();
     const h = root.querySelector<HTMLElement>('[data-role="lw-headline"]')!;
-    expect(h.textContent).toBe("From 17 June to 4 August, SUPARCO's updates reported that cloud limited optical imagery. NISAR made 49 valid passes across 7 lakes during this period.");
+    expect(h.textContent).toBe("From 17 June to 4 August, NISAR made 49 valid looks across 7 lakes. SUPARCO's updates reported that cloud limited optical imagery in these weeks.");
     expect(h.closest("a")?.getAttribute("href") ?? h.getAttribute("href")).toBe("#cloud-gap");
   });
 
@@ -303,7 +303,7 @@ describe("Lake Watch: alert levels", () => {
       expect(msg.textContent).toContain(m.what);
       expect(msg.textContent).toContain("This is not an outburst forecast.");
       expect(msg.querySelector(".lw-message-since")!.textContent).toBe(m.since);
-      expect(msg.textContent).toContain("contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.");
+      expect(msg.textContent).toContain("Contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.");
       expect(findBannedClaims(msg.textContent!)).toEqual([]);
     }
     view.select("stable");
