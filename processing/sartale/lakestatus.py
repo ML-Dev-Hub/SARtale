@@ -456,8 +456,8 @@ def assess(series: list[SeriesPoint], latest_expected: dict[str, str] | None = N
         best = max(by_track, key=lambda k: (by_track[k][-1]["date"], len(by_track[k])))
         n = len(by_track[best])
         return _result(NOT_ENOUGH, best, by_track[best][-1]["date"], n, reason=(
-            f"{n} valid pass(es) on track {best}. A pass is compared once its track has {MIN_LOOKS} earlier valid "
-            "passes.")), annotated
+            f"{n} valid look(s) on track {best}. A pass is compared once its track has {MIN_LOOKS} earlier valid "
+            "looks.")), annotated
     last = stream[-1]
     t = last["track"]
     looks = len(by_track[t])

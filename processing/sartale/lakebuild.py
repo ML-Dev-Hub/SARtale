@@ -622,8 +622,8 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
     if outline is not None:
         share = outline_window_share(xs, ys, epsg, outline)
         if share < 0.99:
-            limits.append(f"the outline runs past the 6 km radar window. {round(share * 100)}% of it is inside "
-                          "and only that part is counted")
+            limits.append(f"the outline runs past the 6 km radar window. Only {round(share * 100)}% of the outline is "
+                          "inside, and only that part is counted")
     flags = (prior or {}).get("flags") or {}
     frozen_ids = {f"{d}_{k}" for (d, k), v in flags.items() if v}
     cores = summer_cores(by_track, excluded, zone, shadow, frozen_ids)

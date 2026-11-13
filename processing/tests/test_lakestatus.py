@@ -300,7 +300,7 @@ def test_status_not_observable_when_hidden():
 def test_status_not_enough_looks():
     s = lake_status(flat("156A", [1.0, 1.1, 1.0]))
     assert s["status"] == "Not enough NISAR looks yet"
-    assert s["looks"] == 3 and "A pass is compared once its track has 3 earlier valid passes" in s["reason"]
+    assert s["looks"] == 3 and "A pass is compared once its track has 3 earlier valid looks" in s["reason"]
 
 
 def test_status_observable_but_none_valid():
