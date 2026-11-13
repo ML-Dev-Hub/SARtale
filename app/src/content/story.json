@@ -33,7 +33,7 @@
         "body": [
           "Calm water acts like a mirror for radar. The beam bounces away from the satellite, so little comes back and the lake looks dark.",
           "Steep mountains can look dark too. Where a slope faces away from the satellite, the radar cannot see the ground behind the ridge. That radar shadow is dark. A slope facing the satellite folds over (layover) and looks bright.",
-          "Shadow and layover fall on the valley walls, almost never on a flat lake. SARtale smooths the speckle. Inside the lake zone, water pixels have HH at least 3 dB darker than the median of the 6 km window. A terrain model maps walls in shadow or layover. SARtale excludes these walls from that median.",
+          "Shadow and layover fall on the valley walls, almost never on a flat lake. SARtale smooths the speckle. Inside the lake zone, a pixel is water when its HH is at least 3 dB darker than the median of the 6 km window. A terrain model maps walls in shadow or layover. SARtale excludes these walls from that median.",
           "Wet shore and exposed mud read as water too. A lake drawing down onto its own flats barely changes its radar area. How we know gives the thresholds."
         ]
       },
