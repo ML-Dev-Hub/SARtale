@@ -30,7 +30,8 @@ export function dataLine(lake: Lake, file: LakesFile): string {
 export function briefMessage(lake: Lake): string {
   const m = levelMessage(lake);
   if (!m) return "";
-  const since = lake.status.level_since ? `<p>${esc(`${m.level} since ${formatDate(lake.status.level_since)}.`)}</p>` : "";
+  const since = m.since ? `<p>${esc(m.since)}</p>`
+    : lake.status.level_since ? `<p>${esc(`${m.level} since ${formatDate(lake.status.level_since)}.`)}</p>` : "";
   return `<div class="lake-brief-message" data-level="${esc(m.level)}">
 <p class="lake-brief-message-title"><strong>${esc(m.title)}</strong></p>
 <p>${esc(m.what)}</p>

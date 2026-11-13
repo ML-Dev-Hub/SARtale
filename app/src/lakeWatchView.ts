@@ -141,9 +141,10 @@ export function messageBox(lake: Lake, cls = "lw-message"): HTMLElement | null {
   add("h3", "lw-message-title", m.title);
   add("p", "lw-message-what", m.what);
   add("p", "lw-message-sure", m.how_sure);
+  if (m.since) add("p", "lw-message-since", m.since);
   add("p", "lw-message-not", m.not);
   add("p", "lw-message-do", m.do);
-  if (lake.status.level_since) add("p", "lw-note", `${m.level} since ${formatDate(lake.status.level_since)}.`);
+  if (!m.since && lake.status.level_since) add("p", "lw-note", `${m.level} since ${formatDate(lake.status.level_since)}.`);
   return box;
 }
 

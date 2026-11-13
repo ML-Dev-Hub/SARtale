@@ -86,7 +86,8 @@ def test_one_pass_beyond_twice_the_noise_is_a_watch_with_its_reason():
     s = lake_status(flat("156A", NOISY + [1.5]), name="Passu Lake")
     assert s["status"] == WATCH and s["track"] == "156A" and s["looks"] == 6 and s["latest_date"] == "2026-09-06"
     assert s["change_km2"] == pytest.approx(0.5) and s["z"] > 2
-    assert s["reason"].endswith("one pass beyond 2× noise.")
+    assert s["reason"].endswith("; Watch since 6 Sep 2026 (one pass beyond 2× noise); it holds until a pass is "
+                                "within 2× noise with the CUSUM under 4.")
     assert [p["date"] for p in s["level_passes"]] == ["2026-09-06"] and s["level_since"] == "2026-09-06"
     m = s["message"]
     assert m["level"] == WATCH and m["title"] == "Watch: one radar pass of Passu Lake is beyond 2× noise."
@@ -105,7 +106,7 @@ def test_two_passes_in_a_row_beyond_twice_the_noise_are_an_alert_growing():
     assert [p["date"] for p in s["level_passes"]] == ["2026-09-06", "2026-09-07"]
     assert s["level_since"] == "2026-09-07"
     m = s["message"]
-    assert m["title"] == "Alert: growing: the radar water area of Passu Lake rose on two passes in a row."
+    assert m["title"] == "Alert: growing. The radar water area of Passu Lake rose on two passes in a row."
     assert "on the pass before, 1.500 km² on 6 Sep 2026 (156A)" in m["what"]
     assert m["how_sure"].startswith("Two passes in a row beyond 2× their track's noise: z = +16.9 and +16.7 (noise ±0.030 and "
                                       "±0.030 km²).")
@@ -126,7 +127,7 @@ def test_a_decrease_on_two_passes_is_decrease_noted_and_never_an_alert():
     s = lake_status(flat("156A", NOISY + [0.5, 0.5]), name="Attabad Lake")
     assert s["status"] == DECREASE == "Decrease noted"
     m = s["message"]
-    assert m["title"] == "Decrease noted: the radar water area of Attabad Lake fell on two passes in a row."
+    assert m["title"] == "Decrease noted. The radar water area of Attabad Lake fell on two passes in a row."
     assert m["not"].startswith("Information only, not an Alert: the radar sees a drawdown onto wet sediment at only "
                                "about a tenth to a fifth of its size")
     assert "check optical imagery" in m["not"].lower()
@@ -353,7 +354,14 @@ def test_the_status_precedence():
     alert = flat("156A", NOISY + [1.5, 1.5])
     assert lake_status(alert)["status"] == ALERT
     expected = {"156A": "2026-09-07", "063D": "2026-09-10"}
-    assert lake_status(alert, latest_expected=expected)["status"] == "Not seen this pass"
+    # a newer unreadable pass never hides a level that stands: it is a line in the status
+    hidden = lake_status(alert, latest_expected=expected)
+    assert hidden["status"] == ALERT and hidden["newest_unread"]["track"] == "063D"
+    assert "The newest pass (10 Sep 2026, track 063D) could not be read: it is not in the data." in hidden["reason"]
+    assert "could not be read" in hidden["message"]["text"]
+    quiet = flat("156A", NOISY + [1.0])
+    assert lake_status(quiet, latest_expected={"156A": "2026-09-06", "063D": "2026-09-10"})["status"] == \
+        "Not seen this pass"
     assert lake_status(alert, validation={"iou": 0.2}, latest_expected=expected)["status"] == "Not measurable"
     assert lake_status([{**p, "observable_share": 0.2} for p in alert], validation={"iou": 0.2})["status"] == \
         "Not observable"
@@ -396,7 +404,8 @@ def test_every_message_says_what_changed_what_it_is_not_and_what_to_do(areas):
     assert "drawing down onto wet sediment poorly" in m["not"]
     assert m["do"] == ("Check recent optical imagery (Sentinel-2 or Landsat) or the site, and contact GBDMA or PDMA. "
                        "Official warnings come from PMD, NDMA, GBDMA and PDMA.")
-    assert m["text"] == " ".join(m[k] for k in ("title", "what", "how_sure", "not", "do"))
+    assert m["text"] == " ".join(m[k] for k in ("title", "what", "how_sure", "since", "not", "do"))
+    assert m["since"].startswith(f"{m['level']} since ") and "reads z = " in m["since"]
     assert find_banned_claims(m["text"]) == []
     for word in ("hazard", "risk", "predict", "safe", "danger", "early warning"):
         assert word not in m["text"].lower()
@@ -520,3 +529,87 @@ def test_without_the_2_percent_floor_attabad_would_read_decrease_noted_on_10_sep
     from sartale import lakestatus
     monkeypatch.setattr(lakestatus, "NOISE_REL_FLOOR", 0.0)
     assert ("2026-09-10", "063D", DECREASE, False) in _flags(_real_2026()["attabad"])
+
+
+# --- fix round 2: a level stands until evidence clears it; a newer unreadable pass never hides it --------------------
+
+def test_an_alert_holds_through_one_quiet_pass_and_clears_after_two():
+    """The reviewer's probe: two passes at +10% make an Alert; the next pass at +4% (z about 1, the high passes now in
+    its baseline) leaves it standing; a second quiet pass clears it."""
+    base = flat("156A", [1.0, 1.0, 1.01, 0.99, 1.0, 1.0])
+    alert = base + [pt("2026-09-07", "156A", 1.10), pt("2026-09-08", "156A", 1.10)]
+    assert lake_status(alert)["status"] == ALERT
+    one = lake_status(alert + [pt("2026-09-09", "156A", 1.04)])
+    assert one["status"] == ALERT and one["level_since"] == "2026-09-08" and one["z"] < 2
+    assert one["message"]["since"].startswith("Alert: growing since 8 Sep 2026; the newest pass, 9 Sep 2026 (156A), "
+                                              "reads z = +")
+    assert [p["date"] for p in one["level_passes"]] == ["2026-09-07", "2026-09-08"]
+    two = lake_status(alert + [pt("2026-09-09", "156A", 1.04), pt("2026-09-10", "156A", 1.04)])
+    assert two["status"] == NO_CHANGE and two["message"] is None
+
+
+def test_a_watch_holds_until_a_pass_within_twice_the_noise_with_the_cusum_under_4():
+    s = lake_status(flat("156A", NOISY + [1.5, 1.01]))
+    assert s["status"] == NO_CHANGE  # the next pass is within the noise, the CUSUM under 4: cleared
+    # another pass beyond 2x noise (here falling, so no Alert pair) keeps it, with its first trigger date
+    got = lake_status(flat("156A", [1.0] * 6 + [1.05, 0.955]))
+    assert got["status"] == WATCH and got["level_since"] == "2026-09-07"
+    # a pass within 2x noise with the CUSUM under 4 clears it; a later CUSUM Watch starts again from its own date
+    series = flat("156A", [1.0] * 6 + [1.05, 1.038, 1.038])
+    assert levels(series)[-3:] == [("2026-09-07", "156A", WATCH), ("2026-09-08", "156A", NO_CHANGE),
+                                   ("2026-09-09", "156A", WATCH)]
+    assert lake_status(series[:-1])["status"] == NO_CHANGE
+    assert lake_status(series)["level_since"] == "2026-09-09"
+
+
+def test_a_decrease_noted_holds_until_two_passes_above_minus_two():
+    base = flat("156A", NOISY + [0.5, 0.5])
+    assert lake_status(base + [pt("2026-09-08", "156A", 1.0)])["status"] == DECREASE
+    assert lake_status(base + [pt("2026-09-08", "156A", 1.0), pt("2026-09-09", "156A", 1.0)])["status"] == NO_CHANGE
+
+
+def test_the_reviewer_probe_an_excluded_pass_on_another_track_no_longer_hides_an_alert():
+    a = [pt(f"2026-07-{d:02d}", "055A", v) for d, v in zip((1, 2, 3, 4, 5, 6), (1.0, 1.0, 1.01, 0.99, 1.0, 1.0))]
+    b = [pt(f"2026-06-{d:02d}", "063D", v) for d, v in zip((1, 2, 3, 4, 5, 6), (1.0, 1.0, 1.01, 0.99, 1.0, 1.0))]
+    grow = [pt("2026-07-10", "055A", 1.10), pt("2026-07-11", "063D", 1.10)]
+    bad = pt("2026-07-15", "156A", None, 0.9, excluded="window median HH 26.1 dB from the track median")
+    s = lake_status(a + b + grow + [bad], latest_expected={"055A": "2026-07-10", "063D": "2026-07-11",
+                                                           "156A": "2026-07-15"})
+    assert s["status"] == ALERT and s["message"] is not None
+    assert s["reason"].endswith("The newest pass (15 Jul 2026, track 156A) could not be read: left out (window "
+                                "median HH 26.1 dB from the track median).")
+
+
+def test_a_frozen_spell_suspends_a_standing_level_and_the_first_two_passes_after_rebuild():
+    alert = flat("084A", NOISY + [1.5, 1.5], month="09")
+    assert lake_status(alert)["status"] == ALERT
+    after = alert + [frozen_pt("2026-10-20", "084A", 1.6), pt("2027-06-01", "084A", 1.5), pt("2027-06-13", "084A", 1.5)]
+    s = lake_status(after)
+    assert s["status"] == NO_CHANGE and "only rebuilds the baseline" in s["reason"]
+
+
+def test_the_real_2026_series_replayed_with_levels_holding():
+    """The standing level after each pass (it holds until evidence clears it): Attabad holds a Watch 10 Sep (cleared
+    the same day by the 063D pass within the noise) and 17-22 Sep; Passu a Watch from 11 Oct to 16 Oct and from 28 Oct
+    to the end of the series; Karambar and Shazore never leave No change; no Alert anywhere."""
+    def history(series):
+        out = sorted((p for p in compare_passes(series) if p.get("z") is not None), key=lambda p: (p["date"], p["track"]))
+        rows, prev = [], None
+        for p in out:
+            h = p.get("_held")
+            now = (h["level"], h["since"]) if h else (NO_CHANGE, None)
+            if now != prev:
+                rows.append((p["date"], p["track"], *now))
+            prev = now
+        return rows
+    from sartale.lakestatus import compare_passes
+    lakes = _real_2026()
+    assert history(lakes["attabad"])[1:] == [("2026-09-10", "055A", WATCH, "2026-09-10"),
+                                             ("2026-09-10", "063D", NO_CHANGE, None),
+                                             ("2026-09-17", "156A", WATCH, "2026-09-17"),
+                                             ("2026-09-29", "156A", NO_CHANGE, None)]
+    assert history(lakes["passu"])[1:] == [("2026-10-11", "156A", WATCH, "2026-10-11"),
+                                           ("2026-10-16", "055A", NO_CHANGE, None),
+                                           ("2026-10-28", "055A", WATCH, "2026-10-28")]
+    assert history(lakes["karambar"])[1:] == [] and history(lakes["shazore"])[1:] == []
+    assert lake_status(lakes["passu"])["level_since"] == "2026-10-28"

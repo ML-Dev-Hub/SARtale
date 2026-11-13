@@ -702,3 +702,37 @@ def test_a_current_check_is_reused_from_the_published_lakes_json(tmp_path):
     mine = {**good, "iou": 0.65}
     assert build_lakes([a], cache, out, "t", checks=[mine], previous={"lakes": [], "checks": [good]})[
         "lakes"][0]["validation"]["iou"] == 0.65
+
+
+def test_the_outline_key_is_the_same_for_crlf_and_lf_copies(tmp_path):
+    """The check and absence keys hash the outline's geometry, not the file's bytes: a Windows checkout (CRLF) and a
+    Linux runner (LF) must agree, or every refresh would call the committed checks stale."""
+    from dataclasses import replace
+    from sartale.lakebuild import absence_zone, check_key
+    ring = [[74.86, 36.33], [74.87, 36.33], [74.87, 36.34], [74.86, 36.33]]
+    doc = {"type": "Feature", "properties": {"source": "test"}, "geometry": {"type": "Polygon", "coordinates": [ring]}}
+    lf, crlf, spaced = tmp_path / "lf.geojson", tmp_path / "crlf.geojson", tmp_path / "spaced.geojson"
+    text = json.dumps(doc, indent=1)
+    lf.write_bytes(text.encode())
+    crlf.write_bytes(text.replace("\n", "\r\n").encode())
+    spaced.write_bytes(json.dumps({"properties": {"source": "test"}, "geometry": doc["geometry"], "type": "Feature"},
+                                  indent=4).replace("\n", "\r\n").encode())
+    keys = [absence_zone(replace(make_lake("o"), outline=str(f)))["outline_sha256"] for f in (lf, crlf, spaced)]
+    assert keys[0] == keys[1] == keys[2]
+    assert check_key(replace(make_lake("o"), outline=str(lf)))["zone"]["outline_sha256"] == keys[0]
+    moved = json.loads(text)
+    moved["geometry"]["coordinates"][0][1][0] = 74.871
+    other = tmp_path / "other.geojson"
+    other.write_text(json.dumps(moved), encoding="utf-8")
+    assert absence_zone(replace(make_lake("o"), outline=str(other)))["outline_sha256"] != keys[0]
+
+
+def test_the_committed_outlines_give_the_same_key_as_their_git_blobs():
+    """The key of each committed outline equals the key of its LF form (what a Linux checkout holds)."""
+    from pathlib import Path as P
+    from sartale.lakebuild import outline_digest
+    for f in sorted((P(__file__).resolve().parents[1] / "outlines").glob("*.geojson")):
+        raw = f.read_bytes()
+        geo = lambda b: (lambda d: d["features"][0] if d.get("type") == "FeatureCollection" else d)(json.loads(b))
+        a, b = geo(raw), geo(raw.replace(b"\r\n", b"\n"))
+        assert outline_digest(a.get("geometry", a)) == outline_digest(b.get("geometry", b)), f.name

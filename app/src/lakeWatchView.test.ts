@@ -280,7 +280,7 @@ describe("Lake Watch: alert levels", () => {
     const banner = root.querySelector<HTMLElement>('[data-role="lw-alert-banner"]')!;
     expect(banner.hidden).toBe(false);
     expect(banner.getAttribute("role")).toBe("alert");
-    expect(banner.textContent).toContain("Alert: growing at Fixture grow-new. Alert: growing: the radar water area of Fixture grow-new rose on two passes in a row.");
+    expect(banner.textContent).toContain("Alert: growing at Fixture grow-new. Alert: growing. The radar water area of Fixture grow-new rose on two passes in a row.");
     expect(banner.textContent).toContain("Official warnings come from PMD, NDMA, GBDMA and PDMA.");
     banner.querySelector<HTMLButtonElement>(".lw-alert-open")!.click();
     expect(picked).toEqual(["grow-new"]);
@@ -302,6 +302,7 @@ describe("Lake Watch: alert levels", () => {
       expect(msg.textContent).toContain(m.title);
       expect(msg.textContent).toContain(m.what);
       expect(msg.textContent).toContain("This is not an outburst forecast.");
+      expect(msg.querySelector(".lw-message-since")!.textContent).toBe(m.since);
       expect(msg.textContent).toContain("contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.");
       expect(findBannedClaims(msg.textContent!)).toEqual([]);
     }

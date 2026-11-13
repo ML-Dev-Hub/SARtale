@@ -80,7 +80,7 @@ describe("lake brief", () => {
     const alert = fixtureLakes.lakes.find((l) => l.id === "grow-new")!;
     const html = briefHtml(alert, fixtureLakes, NOW);
     const t = text(html);
-    expect(t.trim().startsWith("Alert: growing: the radar water area of Fixture grow-new rose on two passes in a row.")).toBe(true);
+    expect(t.trim().startsWith("Alert: growing. The radar water area of Fixture grow-new rose on two passes in a row.")).toBe(true);
     const d = document.createElement("div");
     d.innerHTML = html;
     const first = d.querySelector(".lake-brief")!.firstElementChild!;

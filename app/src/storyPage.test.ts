@@ -274,7 +274,7 @@ describe("story page Alert banner", () => {
     expect(banner).not.toBeNull();
     expect(root.querySelector(".sp-page")!.firstElementChild).toBe(banner);
     expect(banner.getAttribute("role")).toBe("alert");
-    expect(banner.textContent).toContain("Alert: growing at Fixture grow-new. Alert: growing: the radar water area of Fixture grow-new rose on two passes in a row.");
+    expect(banner.textContent).toContain("Alert: growing at Fixture grow-new. Alert: growing. The radar water area of Fixture grow-new rose on two passes in a row.");
     expect(banner.textContent).toContain("Not an outburst forecast.");
     expect(banner.textContent).toContain("Official warnings come from PMD, NDMA, GBDMA and PDMA.");
     expect(findBannedClaims(banner.textContent!)).toEqual([]);

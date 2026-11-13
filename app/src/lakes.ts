@@ -30,6 +30,8 @@ export interface LevelMessage {
   how_sure: string;
   not: string;
   do: string;
+  /** Since when the level stands and the newest pass's z (and a newer pass that could not be read). */
+  since?: string;
   text: string;
 }
 
@@ -151,6 +153,8 @@ export interface LakeStatus {
   alerts_paused?: { crid: string | null; track: string; date: string; tracks?: string[] } | null;
   /** Set when the latest pass alone is its track's first on a new processing version: it cannot count toward an Alert. */
   first_on_version?: { crid: string | null; track: string; date: string } | null;
+  /** A newer pass of some track that could not be read while a level stands (it never hides the level). */
+  newest_unread?: { date: string; track: string; why: string } | null;
   message?: LevelMessage | null;
 }
 

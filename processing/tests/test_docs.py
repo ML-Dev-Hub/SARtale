@@ -72,7 +72,8 @@ def test_d03_worked_example_is_reproducible_from_the_lake_data_it_names():
     import json
     from datetime import datetime
     build = _load(ROOT / "docs" / "guide" / "build.py", "guide_build")
-    doc = json.loads(shipped_lakes_path().read_text(encoding="utf-8"))
+    # Attabad open and measured, whatever the shipped file says this week (frozen, not seen, or not yet validated)
+    doc = open_attabad(json.loads(shipped_lakes_path().read_text(encoding="utf-8")))
     ex = build.worked_example(doc)
     method = (ROOT / "docs" / "guide" / "method.html").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")

@@ -715,14 +715,33 @@ def attabad_gate(doc: dict) -> dict:
             "attabad_cloud_window_looks": cw, "pass": ok}
 
 
+def _canonical(v):
+    """Coordinates rounded to 9 decimals (well under a millimetre), so the same outline always serialises the same."""
+    if isinstance(v, float):
+        return round(v, 9)
+    if isinstance(v, list):
+        return [_canonical(x) for x in v]
+    if isinstance(v, dict):
+        return {k: _canonical(x) for k, x in v.items()}
+    return v
+
+
+def outline_digest(geometry: dict) -> str:
+    """SHA-256 of an outline's geometry in a canonical form (parsed GeoJSON, keys sorted, no spaces, coordinates
+    rounded to 9 decimals): the same outline gives the same key whatever the file's line endings, spacing or property
+    order, on a Windows or a Linux checkout."""
+    text = json.dumps(_canonical(geometry), sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(text.encode("ascii")).hexdigest()
+
+
 def absence_zone(lake: Lake) -> dict:
     """The key of the zone an absence check measures: the lake point with the circle's radius, or with the outline
-    (its path in the register and the SHA-256 of the file) when the lake has a readable outline, as `build_lake`
+    (its path in the register and `outline_digest` of its geometry) when the lake has a readable outline, as `build_lake`
     uses it. The evidence stores it, and is carried only while the lake's key is the same."""
     key = {"lon": lake.lon, "lat": lake.lat}
-    if _outline_feature(lake) is not None:
-        digest = hashlib.sha256(_outline_path(lake).read_bytes()).hexdigest()
-        return {**key, "outline": lake.outline, "outline_sha256": digest}
+    feature = _outline_feature(lake)
+    if feature is not None:
+        return {**key, "outline": lake.outline, "outline_sha256": outline_digest(feature["geometry"])}
     return {**key, "radius_km": lake.zone_radius_km}
 
 

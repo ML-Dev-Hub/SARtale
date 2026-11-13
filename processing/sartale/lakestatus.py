@@ -155,11 +155,13 @@ def compare_passes(series: list[SeriesPoint]) -> list[dict]:
     since_open: dict[str, int] | None = None  # passes per track since the last frozen pass; None: never frozen
     up = down = 0.0
     prev: int | None = None  # the previous compared pass (any track)
+    held: dict | None = None  # the level that stands (`_hold`), with its trigger
     for i in order:
         p = out[i]
         if p.get("frozen"):
-            # A frozen spell: every track rebuilds its baseline after it, and the CUSUM and the pass pairs start again.
-            since_open, prev, up, down = {}, None, 0.0, 0.0
+            # A frozen spell: every track rebuilds its baseline after it, and the CUSUM, the pass pairs and any
+            # standing level start again.
+            since_open, prev, up, down, held = {}, None, 0.0, 0.0, None
             continue
         if not is_valid(p):
             continue
@@ -208,6 +210,11 @@ def compare_passes(series: list[SeriesPoint]) -> list[dict]:
             found.add("watch_down_cusum")
         level, why = pick_level(found)
         p.update(level_contrib=level, _why=why, _prev=prev if why == "pair" else None, _cusum_at=round(cusum_at, 2))
+        key = next((k for k, _, _ in LEVEL_RANK if k in found), None)
+        trigger = {"level": level, "key": key, "since": p["date"], "why": why, "cusum_at": round(cusum_at, 2),
+                   "trig": ([prev, i] if why == "pair" else [i]), "quiet": 0}
+        held = _hold(held, trigger if level != NO_CHANGE else None, z, found)
+        p["_held"] = dict(held) if held else None
         if cusum_hit:
             up = down = 0.0  # the CUSUM starts again once it has made a Watch
         p["_cusum"] = {"up": round(up, 2), "down": round(down, 2)}
@@ -227,6 +234,35 @@ LEVEL_RANK = (
     ("watch_down_pass", WATCH, "pass"),
     ("watch_down_cusum", WATCH, "cusum"),
 )
+
+
+def _rank(key: str | None) -> int:
+    return next((n for n, (k, _, _) in enumerate(LEVEL_RANK) if k == key), len(LEVEL_RANK))
+
+
+def _hold(held: dict | None, trigger: dict | None, z: float, found: set[str]) -> dict | None:
+    """The level that stands after a pass. A level holds until evidence clears it: Alert: growing until two valid
+    passes in a row have z < +CHANGE_FACTOR; Watch until a valid pass has |z| < CHANGE_FACTOR and the CUSUM under its
+    limit (no Watch signal); Decrease noted until two valid passes in a row have z > -CHANGE_FACTOR. A higher-ranked
+    signal (`LEVEL_RANK`) replaces the standing level; the same level again keeps its trigger date. When a level
+    clears, the pass's own signal (`trigger`, None for none) stands."""
+    if held is None:
+        return trigger
+    if trigger is not None and _rank(trigger["key"]) < _rank(held["key"]) and trigger["level"] != held["level"]:
+        return trigger
+    level = held["level"]
+    held = dict(held)
+    if level == ALERT:
+        held["quiet"] = held["quiet"] + 1 if z < CHANGE_FACTOR else 0
+        cleared = held["quiet"] >= 2
+    elif level == DECREASE:
+        held["quiet"] = held["quiet"] + 1 if z > -CHANGE_FACTOR else 0
+        cleared = held["quiet"] >= 2
+    else:  # Watch
+        cleared = not any(k.startswith("watch") for k in found)
+    if not cleared:
+        return held
+    return trigger
 
 
 def pick_level(found: set[str]) -> tuple[str, str | None]:
@@ -261,6 +297,7 @@ def _result(status, track=None, latest_date=None, looks=0, change=None, noise=No
         "baseline_km2": None,
         "alerts_paused": None,
         "first_on_version": None,
+        "newest_unread": None,
         "message": None,
     }
     out.update(level)
@@ -309,7 +346,7 @@ def level_message(level: str, name: str | None, passes: list[dict], why: str | N
     if level in (ALERT, DECREASE):
         first = passes[0]
         verb = "rose" if level == ALERT else "fell"
-        title = f"{level}: the radar water area of {lake} {verb} on two passes in a row."
+        title = f"{level}. The radar water area of {lake} {verb} on two passes in a row."
         what = (f"Radar water area of {lake}: {pass_line(last)} from earlier {last['track']} passes; on the pass "
                 f"before, {pass_line(first)} from earlier {first['track']} passes.")
         sure = (f"Two passes in a row beyond {CHANGE_FACTOR:g}× their track's noise: z = {_signed(first['z'], 1)} and "
@@ -398,39 +435,54 @@ def assess(series: list[SeriesPoint], latest_expected: dict[str, str] | None = N
     last = stream[-1]
     t = last["track"]
     looks = len(by_track[t])
+    held = last.get("_held")
+    level = held["level"] if held else NO_CHANGE
+    # The newest pass of some track that could not be read (excluded, unobservable or missing): with a standing level
+    # it is a line in the status; without one the status is "Not seen this pass".
+    unread = None
     if latest_expected:
         seen = {(p["track"], p["date"]) for p in valid}
-        for track in sorted(latest_expected):
-            d = latest_expected[track]
-            if d > latest["date"] and (track, d) not in seen:
-                return _result(NOT_SEEN, t, last["date"], looks,
-                               reason=f"Newest pass {track} {d} is excluded or has no valid reading."), annotated
+        newer = [(d, track) for track, d in latest_expected.items() if d > latest["date"] and (track, d) not in seen]
+        if newer:
+            d, track = max(newer)
+            unread = {"date": d, "track": track, "why": _unread_why(series, d, track)}
+    if unread and level == NO_CHANGE:
+        return _result(NOT_SEEN, t, last["date"], looks,
+                       reason=f"Newest pass {unread['track']} {unread['date']} is excluded or has no valid reading: "
+                              f"{unread['why']}."), annotated
     change = last["area_km2"] - last["baseline_km2"]
-    reason = (f"Track {t}: {last['area_km2']:.3f} km2 on {last['date']} vs baseline {last['baseline_km2']:.3f} km2 "
-              f"(median of up to {BASELINE_PASSES} earlier {t} passes), noise {last['noise_km2']:.3f} km2: "
+    reason = (f"Track {t}: {last['area_km2']:.3f} km² on {last['date']} vs baseline {last['baseline_km2']:.3f} km² "
+              f"(median of up to {BASELINE_PASSES} earlier {t} passes), noise {last['noise_km2']:.3f} km²: "
               f"z = {last['z']:+.1f}")
-    level = last.get("level_contrib") or NO_CHANGE
-    run = []
-    for p in reversed(stream):
-        if (p.get("level_contrib") or NO_CHANGE) != level:
-            break
-        run.append(p)
-    since = run[-1]["date"]
-    why = last.get("_why")
-    trig = [compared[last["_prev"]], last] if level in (ALERT, DECREASE) else [last] if level == WATCH else []
+    if held:
+        since = held["since"]
+        why = held["why"]
+        trig = [compared[j] for j in held["trig"]]
+    else:
+        run = []
+        for p in reversed(stream):
+            if p.get("_held") is not None or (p.get("after_open") and p is not last):
+                break
+            run.append(p)
+        since = run[-1]["date"] if run else last["date"]
+        why, trig = None, []
     keep = ("date", "track", "crid", "area_km2", "baseline_km2", "noise_km2", "z", "new_version")
     level_passes = [{k: p.get(k) for k in keep if k != "new_version" or p.get(k)} for p in trig]
     cusum = next((p["_cusum"] for p in reversed(stream) if "_cusum" in p), {"up": 0.0, "down": 0.0})
+    standing = f"; {level} since {day_text(since)}" if level != NO_CHANGE else ""
     if last.get("after_open"):
         reason += "; this pass only rebuilds the baseline after the lake opened, so it sets no level."
     elif level == ALERT:
-        reason += f"; two passes in a row at or above +{CHANGE_FACTOR:g}× noise."
+        reason += (f"{standing} (two passes in a row at or above +{CHANGE_FACTOR:g}× noise); it holds until two "
+                   f"passes in a row fall under +{CHANGE_FACTOR:g}× noise.")
     elif level == DECREASE:
-        reason += f"; two passes in a row at or below −{CHANGE_FACTOR:g}× noise (information only)."
-    elif level == WATCH and why == "cusum":
-        reason += f"; the CUSUM of the z values reached {last['_cusum_at']:.1f} (a Watch at {CUSUM_H:g})."
+        reason += (f"{standing} (two passes in a row at or below −{CHANGE_FACTOR:g}× noise; information only); it "
+                   f"holds until two passes in a row are above −{CHANGE_FACTOR:g}× noise.")
     elif level == WATCH:
-        reason += f"; one pass beyond {CHANGE_FACTOR:g}× noise."
+        how = (f"the CUSUM of the z values reached {held['cusum_at']:.1f} (a Watch at {CUSUM_H:g})" if why == "cusum"
+               else f"one pass beyond {CHANGE_FACTOR:g}× noise")
+        reason += (f"{standing} ({how}); it holds until a pass is within {CHANGE_FACTOR:g}× noise with the CUSUM "
+                   f"under {CUSUM_H:g}.")
     else:
         reason += f"; within {CHANGE_FACTOR:g}× noise."
     paused = first_pass = None
@@ -448,11 +500,34 @@ def assess(series: list[SeriesPoint], latest_expected: dict[str, str] | None = N
         else:
             first_pass = {"crid": last.get("crid"), "track": t, "date": last["date"]}
             reason += " " + version_note(t, last.get("crid"))
-    message = level_message(level, name, level_passes, why, last.get("_cusum_at")) if level != NO_CHANGE else None
+    unread_line = (f"The newest pass ({day_text(unread['date'])}, track {unread['track']}) could not be read: "
+                   f"{unread['why']}." if unread else None)
+    if unread_line:
+        reason += " " + unread_line
+    message = None
+    if level != NO_CHANGE:
+        message = level_message(level, name, level_passes, why, held.get("cusum_at"))
+        message["since"] = (f"{level} since {day_text(since)}; the newest pass, {day_text(last['date'])} ({t}), "
+                            f"reads z = {_signed(last['z'], 1)}.")
+        if unread_line:
+            message["since"] += " " + unread_line
+        message["text"] = " ".join(message[k] for k in ("title", "what", "how_sure", "since", "not", "do"))
     return _result(level, t, last["date"], looks, round(change, 6), last["noise_km2"], reason,
                    level=level, level_since=since, level_passes=level_passes, cusum=cusum, z=last["z"],
                    baseline_km2=last["baseline_km2"], alerts_paused=paused, first_on_version=first_pass,
-                   message=message), annotated
+                   newest_unread=unread, message=message), annotated
+
+
+def _unread_why(series: list[dict], date: str, track: str) -> str:
+    """Why the pass `date`/`track` gives no reading the status can use."""
+    p = next((q for q in series if q["date"] == date and q["track"] == track and not q.get("frozen")), None)
+    if p is None:
+        return "it is not in the data"
+    if p.get("excluded"):
+        return f"left out ({str(p['excluded']).rstrip('.')})"
+    if p.get("area_km2") is None:
+        return "it gave no area"
+    return f"only {p['observable_share']:.0%} of the lake zone was observable"
 
 
 def lake_status(series: list[SeriesPoint], latest_expected: dict[str, str] | None = None,

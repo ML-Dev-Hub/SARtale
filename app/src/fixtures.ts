@@ -4,8 +4,8 @@ const LEVEL_NAMES: string[] = ["Alert: growing", "Watch", "Decrease noted", "No 
 
 /** The message the pipeline writes for a level (lakestatus.level_message), in the fixture's own numbers. */
 export function fixtureMessage(level: LevelName, name: string): LevelMessage {
-  const title = level === "Alert: growing" ? `Alert: growing: the radar water area of ${name} rose on two passes in a row.`
-    : level === "Decrease noted" ? `Decrease noted: the radar water area of ${name} fell on two passes in a row.`
+  const title = level === "Alert: growing" ? `Alert: growing. The radar water area of ${name} rose on two passes in a row.`
+    : level === "Decrease noted" ? `Decrease noted. The radar water area of ${name} fell on two passes in a row.`
     : `Watch: one radar pass of ${name} is beyond 2× noise.`;
   const m = {
     level,
@@ -16,10 +16,11 @@ export function fixtureMessage(level: LevelName, name: string): LevelMessage {
     not: level === "Decrease noted"
       ? "Information only, not an Alert: the radar sees a drawdown onto wet sediment at only about a tenth to a fifth of its size, so the real change can be much larger. Check optical imagery. This is not an outburst forecast. Radar sees a lake drawing down onto wet sediment poorly, and a change shows here 5–12 days after it begins."
       : "This is not an outburst forecast. Radar sees a lake drawing down onto wet sediment poorly, and a change shows here 5–12 days after it begins.",
+    since: `${level} since 23 Oct 2026; the newest pass, 23 Oct 2026 (156A), reads z = +2.4.`,
     do: "Check recent optical imagery (Sentinel-2 or Landsat) or the site, and contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.",
     text: "",
   };
-  m.text = [m.title, m.what, m.how_sure, m.not, m.do].join(" ");
+  m.text = [m.title, m.what, m.how_sure, m.since, m.not, m.do].join(" ");
   return m;
 }
 
