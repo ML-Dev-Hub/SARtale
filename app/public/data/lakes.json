@@ -1,6 +1,6 @@
 {
  "version": 1,
- "built": "2026-11-12T22:12:46Z",
+ "built": "2026-11-13T11:00:00Z",
  "notes": "Areas are water within a lake's outline (buffered 200 m) or, without one, a search circle (1 km unless the lake sets a smaller one), by method D17 (Lee-filtered HH at least 3 dB below the window median); wet shore and sediment flats read as water, so a lake drawing down onto them barely changes its radar area; images are crops on the UTM grid, north up; they are pictures, not map overlays.",
  "method": {
   "id": "D17",
@@ -105,7 +105,7 @@
     "looks": 12,
     "change_km2": -0.00995,
     "noise_km2": 0.137141,
-    "reason": "Track 055A: 4.426 km2 on 2026-11-09 vs baseline 4.436 km2 (median of up to 6 earlier 055A passes), noise 0.137 km2: z = -0.1; within 2\u00d7 noise.",
+    "reason": "Track 055A: 4.426 km\u00b2 on 2026-11-09 vs baseline 4.436 km\u00b2 (median of up to 6 earlier 055A passes), noise 0.137 km\u00b2: z = -0.1; within 2\u00d7 noise.",
     "level": "No change",
     "level_since": "2026-09-29",
     "level_passes": [],
@@ -117,6 +117,7 @@
     "baseline_km2": 4.43635,
     "alerts_paused": null,
     "first_on_version": null,
+    "newest_unread": null,
     "message": null
    },
    "cloud_window_looks": 7,
@@ -630,7 +631,7 @@
     "released_by": null,
     "released_on": null,
     "temp_through": "2026-11-10",
-    "checked": "2026-11-12",
+    "checked": "2026-11-13",
     "cold_run_days": 0,
     "warm_run_days": 238,
     "fdd_since_sep": 0.0,
@@ -677,7 +678,7 @@
     "looks": 8,
     "change_km2": null,
     "noise_km2": null,
-    "reason": "No lake in recent imagery: no water in the basin in Sentinel-2, 17 Aug 2026 (clearest scene of 1 Jul\u201330 Sep 2026); the lake last held water in spring 2022 and burst on 7 May 2022. Last checked 28 Oct 2026 with Sentinel-2 (S2A_43SDA_20261028_0_L2A): water on 0.40% of the lake zone; no clear, snow-free Sentinel-2 view of the zone since (searched to 12 Nov 2026). SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only views where the lake zone is clear of cloud, snow and ice; the status changes only when two such views at least 5 days apart agree.",
+    "reason": "No lake in recent imagery: no water in the basin in Sentinel-2, 17 Aug 2026 (clearest scene of 1 Jul\u201330 Sep 2026); the lake last held water in spring 2022 and burst on 7 May 2022. Last checked 28 Oct 2026 with Sentinel-2 (S2A_43SDA_20261028_0_L2A): water on 0.40% of the lake zone; no clear, snow-free Sentinel-2 view of the zone since (searched to 13 Nov 2026). SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only views where the lake zone is clear of cloud, snow and ice; the status changes only when two such views at least 5 days apart agree.",
     "level": null,
     "level_since": null,
     "level_passes": [],
@@ -686,6 +687,7 @@
     "baseline_km2": null,
     "alerts_paused": null,
     "first_on_version": null,
+    "newest_unread": null,
     "message": null
    },
    "cloud_window_looks": 3,
@@ -928,7 +930,7 @@
     "confirmed": null,
     "threshold": 0.04,
     "checked": "2026-11-12",
-    "searched": "2026-11-12",
+    "searched": "2026-11-13",
     "no_view_since": true,
     "rule": "at least 80% of the lake zone clear of cloud, shadow, snow and ice, and snow or ice on no more than 1% of it, pixels within 100 m of cloud or cloud shadow not clear; the state changes on two such scenes at least 5 days apart",
     "source": "Sentinel-2 L2A (Earth Search), MNDWI water in the lake zone",
@@ -971,18 +973,19 @@
     "looks": 11,
     "change_km2": -0.0088,
     "noise_km2": 0.005,
-    "reason": "Track 055A: 0.133 km2 on 2026-11-09 vs baseline 0.142 km2 (median of up to 6 earlier 055A passes), noise 0.005 km2: z = -1.8; the CUSUM of the z values reached 4.6 (a Watch at 4).",
+    "reason": "Track 055A: 0.133 km\u00b2 on 2026-11-09 vs baseline 0.142 km\u00b2 (median of up to 6 earlier 055A passes), noise 0.005 km\u00b2: z = -1.8; Watch since 28 Oct 2026 (the CUSUM of the z values reached 5.3 (a Watch at 4)); it holds until a pass is within 2\u00d7 noise with the CUSUM under 4.",
     "level": "Watch",
     "level_since": "2026-10-28",
     "level_passes": [
      {
-      "date": "2026-11-09",
+      "date": "2026-10-28",
       "track": "055A",
       "crid": "P05036",
-      "area_km2": 0.1332,
-      "baseline_km2": 0.142,
+      "area_km2": 0.1351,
+      "baseline_km2": 0.1445,
       "noise_km2": 0.005,
-      "z": -1.76
+      "z": -1.88,
+      "new_version": true
      }
     ],
     "cusum": {
@@ -993,14 +996,16 @@
     "baseline_km2": 0.142,
     "alerts_paused": null,
     "first_on_version": null,
+    "newest_unread": null,
     "message": {
      "level": "Watch",
      "title": "Watch: small changes in the radar water area of Passu terminal lake have added up over recent passes.",
-     "what": "Radar water area of Passu terminal lake: 0.133 km\u00b2 on 9 Nov 2026 (055A), \u22120.009 km\u00b2 (\u22126%) against its baseline of 0.142 km\u00b2 from earlier 055A passes.",
-     "how_sure": "No single pass is beyond 2\u00d7 noise (latest z = \u22121.8), but the running sum of the z values (CUSUM, k = 0.5) reached 4.6, at least 4. Not confirmed by two passes; the next passes show whether it holds.",
+     "what": "Radar water area of Passu terminal lake: 0.135 km\u00b2 on 28 Oct 2026 (055A), \u22120.009 km\u00b2 (\u22127%) against its baseline of 0.144 km\u00b2 from earlier 055A passes.",
+     "how_sure": "No single pass is beyond 2\u00d7 noise (z = \u22121.9 on that pass), but the running sum of the z values (CUSUM, k = 0.5) reached 5.3, at least 4. Not confirmed by two passes; the next passes show whether it holds. This pass is track 055A's first on processing version P05036; it can raise a Watch but cannot count toward an Alert. Other tracks can.",
      "not": "The radar sees a drawdown onto wet sediment at only about a tenth to a fifth of its size, so a real decrease can be much larger: check optical imagery. This is not an outburst forecast. Radar sees a lake drawing down onto wet sediment poorly, and a change shows here 5\u201312 days after it begins.",
      "do": "Check recent optical imagery (Sentinel-2 or Landsat) or the site, and contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.",
-     "text": "Watch: small changes in the radar water area of Passu terminal lake have added up over recent passes. Radar water area of Passu terminal lake: 0.133 km\u00b2 on 9 Nov 2026 (055A), \u22120.009 km\u00b2 (\u22126%) against its baseline of 0.142 km\u00b2 from earlier 055A passes. No single pass is beyond 2\u00d7 noise (latest z = \u22121.8), but the running sum of the z values (CUSUM, k = 0.5) reached 4.6, at least 4. Not confirmed by two passes; the next passes show whether it holds. The radar sees a drawdown onto wet sediment at only about a tenth to a fifth of its size, so a real decrease can be much larger: check optical imagery. This is not an outburst forecast. Radar sees a lake drawing down onto wet sediment poorly, and a change shows here 5\u201312 days after it begins. Check recent optical imagery (Sentinel-2 or Landsat) or the site, and contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA."
+     "text": "Watch: small changes in the radar water area of Passu terminal lake have added up over recent passes. Radar water area of Passu terminal lake: 0.135 km\u00b2 on 28 Oct 2026 (055A), \u22120.009 km\u00b2 (\u22127%) against its baseline of 0.144 km\u00b2 from earlier 055A passes. No single pass is beyond 2\u00d7 noise (z = \u22121.9 on that pass), but the running sum of the z values (CUSUM, k = 0.5) reached 5.3, at least 4. Not confirmed by two passes; the next passes show whether it holds. This pass is track 055A's first on processing version P05036; it can raise a Watch but cannot count toward an Alert. Other tracks can. Watch since 28 Oct 2026; the newest pass, 9 Nov 2026 (055A), reads z = \u22121.8. The radar sees a drawdown onto wet sediment at only about a tenth to a fifth of its size, so a real decrease can be much larger: check optical imagery. This is not an outburst forecast. Radar sees a lake drawing down onto wet sediment poorly, and a change shows here 5\u201312 days after it begins. Check recent optical imagery (Sentinel-2 or Landsat) or the site, and contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.",
+     "since": "Watch since 28 Oct 2026; the newest pass, 9 Nov 2026 (055A), reads z = \u22121.8."
     }
    },
    "cloud_window_looks": 6,
@@ -1514,7 +1519,7 @@
     "released_by": null,
     "released_on": null,
     "temp_through": "2026-11-10",
-    "checked": "2026-11-12",
+    "checked": "2026-11-13",
     "cold_run_days": 0,
     "warm_run_days": 1,
     "fdd_since_sep": 5.9,
@@ -1578,6 +1583,7 @@
     "baseline_km2": null,
     "alerts_paused": null,
     "first_on_version": null,
+    "newest_unread": null,
     "message": null
    },
    "cloud_window_looks": 8,
@@ -1972,7 +1978,7 @@
     "confirmed": null,
     "threshold": 0.16,
     "checked": "2026-11-12",
-    "searched": "2026-11-12",
+    "searched": "2026-11-13",
     "no_view_since": false,
     "rule": "at least 80% of the lake zone clear of cloud, shadow, snow and ice, and snow or ice on no more than 1% of it, pixels within 100 m of cloud or cloud shadow not clear; the state changes on two such scenes at least 5 days apart",
     "source": "Sentinel-2 L2A (Earth Search), MNDWI water in the lake zone",
@@ -2015,7 +2021,7 @@
     "looks": 8,
     "change_km2": -0.00265,
     "noise_km2": 0.005,
-    "reason": "Track 156A: 0.074 km2 on 2026-11-04 vs baseline 0.076 km2 (median of up to 6 earlier 156A passes), noise 0.005 km2: z = -0.5; within 2\u00d7 noise.",
+    "reason": "Track 156A: 0.074 km\u00b2 on 2026-11-04 vs baseline 0.076 km\u00b2 (median of up to 6 earlier 156A passes), noise 0.005 km\u00b2: z = -0.5; within 2\u00d7 noise.",
     "level": "No change",
     "level_since": "2026-09-10",
     "level_passes": [],
@@ -2027,6 +2033,7 @@
     "baseline_km2": 0.07625,
     "alerts_paused": null,
     "first_on_version": null,
+    "newest_unread": null,
     "message": null
    },
    "cloud_window_looks": 3,
@@ -2338,7 +2345,7 @@
     "released_by": null,
     "released_on": null,
     "temp_through": "2026-11-10",
-    "checked": "2026-11-12",
+    "checked": "2026-11-13",
     "cold_run_days": 0,
     "warm_run_days": 1,
     "fdd_since_sep": 13.7,
@@ -2385,7 +2392,7 @@
     "looks": 10,
     "change_km2": null,
     "noise_km2": null,
-    "reason": "No lake in recent imagery: no water in Sentinel-2 on any clear scene of 23 Jun\u201311 Sep 2026; a supraglacial pond of about 0.03 km2 formed here in late June 2019 and 2020 and drained in the 7 Jul 2019 and 13 Jul 2020 GLOFs (HMAGLOFDB GF 498, 504). Last checked 30 Aug 2026 with Sentinel-2 (S2C_42SYE_20260830_0_L2A): water on 1.6% of the lake zone; no clear, snow-free Sentinel-2 view of the zone since (searched to 12 Nov 2026). SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only views where the lake zone is clear of cloud, snow and ice; the status changes only when two such views at least 5 days apart agree.",
+    "reason": "No lake in recent imagery: no water in Sentinel-2 on any clear scene of 23 Jun\u201311 Sep 2026; a supraglacial pond of about 0.03 km2 formed here in late June 2019 and 2020 and drained in the 7 Jul 2019 and 13 Jul 2020 GLOFs (HMAGLOFDB GF 498, 504). Last checked 30 Aug 2026 with Sentinel-2 (S2C_42SYE_20260830_0_L2A): water on 1.6% of the lake zone; no clear, snow-free Sentinel-2 view of the zone since (searched to 13 Nov 2026). SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only views where the lake zone is clear of cloud, snow and ice; the status changes only when two such views at least 5 days apart agree.",
     "level": null,
     "level_since": null,
     "level_passes": [],
@@ -2394,6 +2401,7 @@
     "baseline_km2": null,
     "alerts_paused": null,
     "first_on_version": null,
+    "newest_unread": null,
     "message": null
    },
    "cloud_window_looks": 5,
@@ -2625,7 +2633,7 @@
     "confirmed": null,
     "threshold": 0.1,
     "checked": "2026-11-12",
-    "searched": "2026-11-12",
+    "searched": "2026-11-13",
     "no_view_since": true,
     "rule": "at least 80% of the lake zone clear of cloud, shadow, snow and ice, and snow or ice on no more than 1% of it, pixels within 100 m of cloud or cloud shadow not clear; the state changes on two such scenes at least 5 days apart",
     "source": "Sentinel-2 L2A (Earth Search), MNDWI water in the lake zone",
@@ -2677,6 +2685,7 @@
     "baseline_km2": null,
     "alerts_paused": null,
     "first_on_version": null,
+    "newest_unread": null,
     "message": null
    },
    "cloud_window_looks": 4,
@@ -2970,7 +2979,7 @@
     "released_by": null,
     "released_on": null,
     "temp_through": "2026-11-10",
-    "checked": "2026-11-12",
+    "checked": "2026-11-13",
     "cold_run_days": 30,
     "warm_run_days": 0,
     "fdd_since_sep": 177.6,
@@ -3062,7 +3071,7 @@
      "lon": 74.8665,
      "lat": 36.333,
      "outline": "outlines/attabad_osm.geojson",
-     "outline_sha256": "caffcf3b06aaf6465e7d76f62d7d618d54b55c5a214bbb6f1a33be8b663350ad"
+     "outline_sha256": "fa01e9eaa65af1d22a6ef4507a5acfe4e75b68c4c283dd3f01f46b5a376c3e72"
     }
    }
   },
@@ -3091,7 +3100,7 @@
      "lon": 74.881,
      "lat": 36.458,
      "outline": "outlines/passu_osm.geojson",
-     "outline_sha256": "17056ad8a88c03bd0789450a4f4f02a651a0c818c4953ec7a9be73b63c3dd31a"
+     "outline_sha256": "4cb368039bbafa5f9d943fcad3dc525b885dbe05265302534e20fa05d9a43f73"
     }
    }
   },
@@ -3148,7 +3157,7 @@
      "lon": 72.1741,
      "lat": 35.7794,
      "outline": "outlines/shazore_s2_2026.geojson",
-     "outline_sha256": "92918af7656ebe71ee90e7eef75bd932e631409b191092639130cc500d922e4a"
+     "outline_sha256": "6a74a2ef08e8d851270a3b8f712d45a2278ecace9d71212c1da3f0fa8eb438d3"
     }
    }
   }

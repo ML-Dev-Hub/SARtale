@@ -24,7 +24,7 @@
     "lon": 74.8665,
     "lat": 36.333,
     "outline": "outlines/attabad_osm.geojson",
-    "outline_sha256": "caffcf3b06aaf6465e7d76f62d7d618d54b55c5a214bbb6f1a33be8b663350ad"
+    "outline_sha256": "fa01e9eaa65af1d22a6ef4507a5acfe4e75b68c4c283dd3f01f46b5a376c3e72"
    }
   }
  },
@@ -53,7 +53,7 @@
     "lon": 74.881,
     "lat": 36.458,
     "outline": "outlines/passu_osm.geojson",
-    "outline_sha256": "17056ad8a88c03bd0789450a4f4f02a651a0c818c4953ec7a9be73b63c3dd31a"
+    "outline_sha256": "4cb368039bbafa5f9d943fcad3dc525b885dbe05265302534e20fa05d9a43f73"
    }
   }
  },
@@ -110,7 +110,7 @@
     "lon": 72.1741,
     "lat": 35.7794,
     "outline": "outlines/shazore_s2_2026.geojson",
-    "outline_sha256": "92918af7656ebe71ee90e7eef75bd932e631409b191092639130cc500d922e4a"
+    "outline_sha256": "6a74a2ef08e8d851270a3b8f712d45a2278ecace9d71212c1da3f0fa8eb438d3"
    }
   }
  }
