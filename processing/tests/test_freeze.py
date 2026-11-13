@@ -591,7 +591,7 @@ def test_the_reason_never_claims_what_the_evidence_cannot_show():
              for s in ("frozen_likely", "breakup_likely", "open")]
     texts.append(freeze_reason({**base, "state": "frozen_s2", "s2": S2_SNOW, "s2_evidence": S2_SNOW}, 4181))
     # I3: a release is worded by what released it, never as open water from the air
-    for by, words in (("air", "No freeze signal in air temperature since 24 Oct 2026; open water not confirmed by radar "
+    for by, words in (("air", "No freeze signal in air temperature since 24 Oct 2026. Open water not confirmed by radar "
                               "or Sentinel-2"),
                       ("radar", "Radar back within its summer range on 24 Oct 2026"),
                       ("s2", "Open water seen by Sentinel-2 on 24 Oct 2026")):

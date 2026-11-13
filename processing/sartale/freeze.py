@@ -374,8 +374,7 @@ def _air_text(f: dict, elevation_m: float) -> str:
 
 RULE_TEXT = (f"the freeze rule ({config.FREEZE_COLD_RUN_DAYS} days in a row below 0 °C and {config.FREEZE_FDD:.0f} "
              "freezing degree-days since 1 Sep)")
-NO_VERDICT = ("Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so SARtale "
-              "gives no level (Watch, Alert or other) while the lake is frozen.")
+NO_VERDICT = ("Radar cannot tell new ice from open water. Frozen ground around a lake can read as water. SARtale gives no level (Watch, Alert or other) while the lake is frozen.")
 NO_OPEN_CLAIM = "Open water not confirmed by radar or Sentinel-2."
 
 
@@ -409,7 +408,7 @@ def open_headline(f: dict) -> str | None:
     if by == "radar":
         return f"Radar back within its summer range on {day_text(on)}"
     if by == "air":
-        return f"No freeze signal in air temperature since {day_text(on)}; open water not confirmed by radar or Sentinel-2"
+        return f"No freeze signal in air temperature since {day_text(on)}. Open water not confirmed by radar or Sentinel-2"
     return None
 
 
@@ -424,11 +423,9 @@ def freeze_reason(f: dict, elevation_m: float | None) -> str:
     s2 = s2_text(f)
     held = ""
     if state in FROZEN_STATES and f.get("held_over_sep"):
-        held = ("It was still frozen or breaking up on 1 Sep, which should not happen; it stays so until the break-up "
-                "and open-again rules release it.")
+        held = ("It was still frozen or breaking up on 1 Sep, which should not happen. It stays so until the break-up and open-again rules release it.")
     elif state in FROZEN_STATES and f.get("in_season") is False:
-        held = ("The freeze season ended on 31 May, but a frozen lake stays so until the break-up and open-again rules "
-                "release it.")
+        held = ("The freeze season ended on 31 May. A frozen lake stays so until the break-up and open-again rules release it.")
     if state == "frozen_s2":
         ev = f["s2_evidence"]
         lead = (f"Snow or ice covers {_pct(ev['snow_share'])} of {_where(ev)} in a Sentinel-2 scene of "
@@ -453,9 +450,7 @@ def freeze_reason(f: dict, elevation_m: float | None) -> str:
         else:
             lead = (f"Ice probably breaking up since {day_text(f['since'])}: the lake was probably frozen{froze}, and "
                     f"the air at the lake has since been above 0 °C for {config.BREAKUP_WARM_RUN_DAYS} days in a row.")
-        return " ".join(t for t in (lead, air, s2, held, "SARtale gives no level until the "
-                                    "lake is released by radar or Sentinel-2, or by the warm days where the lake has "
-                                    "no radar summer level.") if t)
+        return " ".join(t for t in (lead, air, s2, held, "SARtale gives no level until radar or Sentinel-2 releases the lake. Warm days release it only where the lake has no radar summer level.") if t)
     # open
     how = open_headline(f)
     if how:

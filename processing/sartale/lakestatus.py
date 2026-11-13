@@ -105,12 +105,10 @@ def not_text(n_tracks: int = 3) -> str:
 
 
 NOT_TEXT = not_text(3)
-DO_TEXT = ("Check recent optical imagery (Sentinel-2 or Landsat) or the site, and contact GBDMA or PDMA. Official "
+DO_TEXT = ("Check recent optical imagery (Sentinel-2 or Landsat) or the site. Contact GBDMA or PDMA. Official "
            "warnings come from PMD, NDMA, GBDMA and PDMA.")
-DRAWDOWN_TEXT = ("Information only, not an Alert: the radar sees a drawdown onto wet sediment at only about a tenth to a "
-                 "fifth of its size, so the real change can be much larger. Check optical imagery.")
-DRAWDOWN_WATCH = ("The radar sees a drawdown onto wet sediment at only about a tenth to a fifth of its size, so a real "
-                  "decrease can be much larger: check optical imagery.")
+DRAWDOWN_TEXT = ("Information only, not an Alert. Radar sees a drawdown onto wet sediment at only about a tenth to a fifth of its size. The real change can be much larger. Check optical imagery.")
+DRAWDOWN_WATCH = ("Radar sees a drawdown onto wet sediment at only about a tenth to a fifth of its size. A real decrease can be much larger. Check optical imagery.")
 # The per-pass fields `compare_passes` writes (and strips before writing them again).
 PASS_FIELDS = ("z", "baseline_km2", "noise_km2", "level_contrib", "new_version", "after_open")
 
@@ -374,7 +372,7 @@ def level_message(level: str, name: str | None, passes: list[dict], why: str | N
         first = passes[0]
         verb = "rose" if level == ALERT else "fell"
         title = f"{level}. The radar water area of {lake} {verb} on two passes in a row."
-        what = (f"Radar water area of {lake}: {pass_line(last)} from earlier {last['track']} passes; on the pass "
+        what = (f"Radar water area of {lake}: {pass_line(last)} from earlier {last['track']} passes. On the pass "
                 f"before, {pass_line(first)} from earlier {first['track']} passes.")
         sure = (f"Two passes in a row beyond {CHANGE_FACTOR:g}× their track's noise: z = {_signed(first['z'], 1)} and "
                 f"{_signed(last['z'], 1)} (noise ±{first['noise_km2']:.3f} and ±{last['noise_km2']:.3f} km²).")
@@ -383,11 +381,11 @@ def level_message(level: str, name: str | None, passes: list[dict], why: str | N
             title = f"Watch: small changes in the radar water area of {lake} have added up over recent passes."
             sure = (f"No single pass is beyond {CHANGE_FACTOR:g}× noise (z = {_signed(last['z'], 1)} on that pass), but the "
                     f"running sum of the z values (CUSUM, k = {CUSUM_K:g}) reached {cusum_at:.1f}, at least "
-                    f"{CUSUM_H:g}. Not confirmed by two passes; the next passes show whether it holds.")
+                    f"{CUSUM_H:g}. Not confirmed by two passes. The next passes show whether it holds.")
         else:
             title = f"Watch: one radar pass of {lake} is beyond {CHANGE_FACTOR:g}× noise."
             sure = (f"One pass only (z = {_signed(last['z'], 1)}, noise ±{last['noise_km2']:.3f} km²), so it is not "
-                    "confirmed; the next pass shows whether it holds.")
+                    "confirmed. The next pass shows whether it holds.")
         what = f"Radar water area of {lake}: {pass_line(last)} from earlier {last['track']} passes."
         if last.get("new_version"):
             sure += " " + version_note(last["track"], last.get("crid"))
@@ -401,7 +399,7 @@ def level_message(level: str, name: str | None, passes: list[dict], why: str | N
 
 def version_note(track: str, crid: str | None) -> str:
     """What a track's first pass on a new processing version means, in the words the status and message use."""
-    return (f"This pass is track {track}'s first on processing version {crid}; it can raise a Watch but cannot count "
+    return (f"This pass is track {track}'s first on processing version {crid}. It can raise a Watch but cannot count "
             "toward an Alert. Other tracks can.")
 
 
@@ -458,8 +456,8 @@ def assess(series: list[SeriesPoint], latest_expected: dict[str, str] | None = N
         best = max(by_track, key=lambda k: (by_track[k][-1]["date"], len(by_track[k])))
         n = len(by_track[best])
         return _result(NOT_ENOUGH, best, by_track[best][-1]["date"], n, reason=(
-            f"{n} valid look(s) on track {best}; a pass is compared once its track has {MIN_LOOKS} earlier valid "
-            "looks.")), annotated
+            f"{n} valid pass(es) on track {best}. A pass is compared once its track has {MIN_LOOKS} earlier valid "
+            "passes.")), annotated
     last = stream[-1]
     t = last["track"]
     looks = len(by_track[t])
@@ -607,11 +605,8 @@ def share_text(share: float) -> str:
 
 
 NO_VIEW_SINCE = "no clear, snow-free Sentinel-2 view of the zone since"
-RECHECK = ("SARtale re-checks the site with Sentinel-2 at every data refresh, all year, using only views where the lake "
-           "zone is clear of cloud, snow and ice; the status changes only when two such views at least 5 days apart "
-           "agree.")
-FORMING_NEXT = ("Its radar dark area is shown but not yet treated as lake area; the SARtale team reviews the site to add "
-                "it as a measured lake.")
+RECHECK = ("SARtale checks the site with Sentinel-2 at every data refresh, all year. It uses only views where the lake zone is clear of cloud, snow and ice. The status changes only when two such views at least 5 days apart agree.")
+FORMING_NEXT = ("Its radar dark area is shown but not yet treated as lake area. The SARtale team reviews the site to add it as a measured lake.")
 
 
 def stale_text(absence: dict) -> str:
