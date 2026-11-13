@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { findBannedClaims } from "./content";
-import { fixtureLakes, frozenFixture } from "./fixtures";
+import { olderFile, fixtureLakes, frozenFixture } from "./fixtures";
 import { BRIEF_UNAVAILABLE, briefHtml, dataLine, printBrief, printLatestBrief } from "./lakeBrief";
 import { loadLakes, type LakesFile } from "./lakes";
 import type { Lake, LakeSeriesPoint } from "./lakes";
@@ -58,12 +58,39 @@ describe("lake brief", () => {
     expect(t).not.toContain("No valid NISAR passes yet.");
   });
 
-  test("lists only the status track's passes, under a heading that names the track", () => {
-    const series = [pass("2026-10-01", 0.1, 0.9), pass("2026-10-02", 0.555, 0.9, null, "055A"), pass("2026-10-03", 0.3, 0.9)];
+  test("lists the latest valid passes of every track, each with its baseline, z and the level it set", () => {
+    const series = [pass("2026-10-01", 0.1, 0.9), { ...pass("2026-10-02", 0.555, 0.9, null, "055A"), z: -2.34, baseline_km2: 0.6, noise_km2: 0.02, level_contrib: "Watch" as const }, pass("2026-10-03", 0.3, 0.9)];
     const t = text(briefHtml(lakeOf({ series }), fixtureLakes, NOW));
+    expect(t).toContain("Latest valid passes (each compared with the median of earlier passes on its own track)");
+    expect(t).toContain("0.555");
+    expect(t).toContain("0.600−2.3Watch");
+    expect(t).toContain("0.300");
+  });
+
+  test("a build made before the levels lists only the status track's passes, under a heading that names the track", () => {
+    const series = [pass("2026-10-01", 0.1, 0.9), pass("2026-10-02", 0.555, 0.9, null, "055A"), pass("2026-10-03", 0.3, 0.9)];
+    const older = olderFile();
+    const t = text(briefHtml({ ...older.lakes[0], series }, older, NOW));
     expect(t).toContain("Latest valid passes on track 156A (the status compares only these)");
     expect(t).not.toContain("0.555");
     expect(t).toContain("0.300");
+  });
+
+  test("the message of a Watch, an Alert or a Decrease noted is the brief's first thing", () => {
+    const alert = fixtureLakes.lakes.find((l) => l.id === "grow-new")!;
+    const html = briefHtml(alert, fixtureLakes, NOW);
+    const t = text(html);
+    expect(t.trim().startsWith("Alert: growing. The radar water area of Fixture grow-new rose on two passes in a row.")).toBe(true);
+    const d = document.createElement("div");
+    d.innerHTML = html;
+    const first = d.querySelector(".lake-brief")!.firstElementChild!;
+    expect(first.className).toBe("lake-brief-message");
+    expect(first.textContent).toContain("This is not an outburst forecast.");
+    expect(first.nextElementSibling!.tagName).toBe("H1");
+    expect(t).toContain("contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.");
+    expect(findBannedClaims(t)).toEqual([]);
+    // No change carries no message: the brief starts with the lake's name
+    expect(text(briefHtml(lakeOf(), fixtureLakes, NOW)).trim().startsWith("Fixture stable")).toBe(true);
   });
 
   test("brief date is the reader's local date, not the UTC date", () => {

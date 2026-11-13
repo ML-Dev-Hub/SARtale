@@ -16,6 +16,9 @@
   --warm: #ffc46b;
   --warm-ink: #1a1203;
   --ice: #e2eef7; /* frozen statuses and the Ice tag: near-white, apart from the change colours */
+  --alert: #ffd23f; /* Alert: growing: a solid fill (with a mark and a heavier border), never the colour alone */
+  --alert-ink: #1a1203;
+  --decrease: #c4d3ff;
   --display: "Inter Tight Variable", "Inter Tight", system-ui, sans-serif;
   --body: "Inter Variable", "Inter", system-ui, sans-serif;
   --header-h: 76px;
@@ -127,12 +130,32 @@ a:hover { color: #b8ecfa; }
 .lw-name { font-weight: 700; }
 .lw-sentence, .lw-coord { font-size: 0.86rem; color: var(--muted); }
 .lw-chip { justify-self: start; padding: 1px 10px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 0.78rem; font-weight: 700; background: var(--panel-2); white-space: nowrap; }
+/* The levels. Alert: growing is a solid fill with a mark (▲) and a heavier border; Watch an amber outline; Decrease
+   noted a blue outline (information only); No change the cyan outline. Each pill also names its level in words. */
+.lw-status-alert-growing { background: var(--alert); border-color: var(--alert); border-width: 2px; color: var(--alert-ink); }
+.lw-status-watch { border-color: var(--warm); color: var(--warm); }
+.lw-status-decrease-noted { border-color: #5b8cff; color: var(--decrease); }
+.lw-status-no-change { border-color: var(--accent); color: var(--accent); }
+/* Statuses of builds made before the levels, shown as they were. */
 .lw-status-growing { border-color: var(--warm); color: var(--warm); }
-.lw-status-shrinking { border-color: #5b8cff; color: #c4d3ff; }
+.lw-status-shrinking { border-color: #5b8cff; color: var(--decrease); }
 .lw-status-stable { border-color: var(--accent); color: var(--accent); }
-/* A lake may be forming: no verdict yet (dashed), but in the attention colour, since it needs a look. */
+/* A lake may be forming: no level yet (dashed), but in the attention colour, since it needs a look. */
 .lw-status-lake-may-be-forming { border-style: dashed; border-color: var(--warm); color: var(--warm); }
-.lw-status-not-observable, .lw-status-not-enough-nisar-looks-yet, .lw-status-not-seen-this-pass, .lw-status-change-not-confirmed-yet, .lw-status-no-lake-now { border-style: dashed; color: var(--muted); }
+.lw-status-not-observable, .lw-status-not-enough-nisar-looks-yet, .lw-status-not-seen-this-pass, .lw-status-no-lake-now { border-style: dashed; color: var(--muted); }
+.lw-status-not-measurable, .lw-status-not-yet-validated-against-sentinel-2 { border-style: dashed; color: var(--muted); }
+.lw-chip-mark { font-size: 0.7rem; }
+/* The banner over Lake Watch when any lake is at Alert: growing, and the lake's message at the top of its view. */
+.lw-alert-banner { margin: 0 0 12px; padding: 12px 16px; border: 2px solid var(--alert); border-left-width: 8px; border-radius: 10px; background: var(--panel-2); }
+.lw-alert-line { margin: 0 0 6px; }
+.lw-alert-line strong { color: var(--alert); }
+.lw-alert-open { margin-left: 8px; }
+.lw-message { margin: 0 0 12px; padding: 12px 16px; border: 1px solid var(--warm); border-left-width: 6px; border-radius: 10px; background: var(--panel-2); }
+.lw-message[data-level="Alert: growing"] { border-color: var(--alert); border-width: 2px; border-left-width: 8px; }
+.lw-message[data-level="Decrease noted"] { border-color: #5b8cff; }
+.lw-message-title { margin: 0 0 6px; font-size: 1.05rem; }
+.lw-message p { margin: 0 0 6px; max-width: 72ch; }
+.lw-message-do { font-weight: 700; }
 /* Frozen statuses: an ice colour, never a change colour; dotted when the ice is probably breaking up. */
 .lw-status-frozen-likely, .lw-status-frozen-seen-by-sentinel-2 { border-color: var(--ice); color: var(--ice); }
 .lw-status-break-up-likely { border-style: dotted; border-color: var(--ice); color: var(--ice); }
@@ -146,13 +169,19 @@ a:hover { color: #b8ecfa; }
 .lw-locator { height: 260px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); color: var(--muted); font-size: 0.88rem; }
 .lw-town { color: var(--muted); font-size: 0.72rem; pointer-events: none; padding-top: 3px; text-shadow: 0 0 3px var(--ground); }
 .site-marker { width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 3px solid var(--ground); background: var(--muted); box-shadow: 0 0 0 2px var(--muted); cursor: pointer; }
-/* Pins carry the status colour the pills use: Stable cyan, Growing amber, Shrinking blue; anything not observed or
-   not confirmed (Change not confirmed yet), and a site with no lake now, a hollow muted ring, never the change colours. */
+/* Pins carry the status colour the pills use: No change cyan, Watch amber, Decrease noted blue, Alert: growing a
+   larger solid pin with a double ring; anything not observed or not measurable, and a site with no lake now, a hollow
+   muted ring, never a level colour. */
+.lw-marker[data-status="alert-growing"] { width: 26px; height: 26px; background: var(--alert); box-shadow: 0 0 0 3px var(--alert), 0 0 0 6px var(--ground), 0 0 0 8px var(--alert); }
+.lw-marker[data-status="watch"] { background: var(--warm); box-shadow: 0 0 0 2px var(--warm); }
+.lw-marker[data-status="decrease-noted"] { background: #5b8cff; box-shadow: 0 0 0 2px #5b8cff; }
+.lw-marker[data-status="no-change"] { background: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.lw-marker[data-status="not-measurable"], .lw-marker[data-status="not-yet-validated-against-sentinel-2"] { background: transparent; border-color: var(--muted); box-shadow: none; }
 .lw-marker[data-status="stable"] { background: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .lw-marker[data-status="growing"] { background: var(--warm); box-shadow: 0 0 0 2px var(--warm); }
 .lw-marker[data-status="shrinking"] { background: #5b8cff; box-shadow: 0 0 0 2px #5b8cff; }
 .lw-marker[data-status="lake-may-be-forming"] { background: transparent; border-color: var(--warm); box-shadow: 0 0 0 2px var(--warm); }
-.lw-marker[data-status="not-observable"], .lw-marker[data-status="not-enough-nisar-looks-yet"], .lw-marker[data-status="not-seen-this-pass"], .lw-marker[data-status="change-not-confirmed-yet"], .lw-marker[data-status="no-lake-now"] { background: transparent; border-color: var(--muted); box-shadow: none; }
+.lw-marker[data-status="not-observable"], .lw-marker[data-status="not-enough-nisar-looks-yet"], .lw-marker[data-status="not-seen-this-pass"], .lw-marker[data-status="no-lake-now"] { background: transparent; border-color: var(--muted); box-shadow: none; }
 .lw-marker[data-status="frozen-likely"], .lw-marker[data-status="frozen-seen-by-sentinel-2"] { background: var(--ice); box-shadow: 0 0 0 2px var(--ice); }
 .lw-marker[data-status="break-up-likely"] { background: transparent; border-color: var(--ice); box-shadow: 0 0 0 2px var(--ice); }
 .lw-marker[data-control="true"] { border-style: dashed; }
@@ -303,6 +332,8 @@ body > #app > .maturity { margin: 24px 40px 0; display: inline-block; }
   .lake-brief p, .lake-brief ul { margin: 0 0 4pt; }
   .lake-brief ul { padding-left: 16pt; }
   .lake-brief-meta { color: #333; font-size: 9.5pt; }
+  .lake-brief-message { margin: 0 0 8pt; padding: 6pt 8pt; border: 1.5pt solid #000; border-left-width: 5pt; }
+  .lake-brief-message[data-level="Alert: growing"] { border-width: 2.5pt; border-left-width: 8pt; }
   .lake-brief-status { font-size: 11.5pt; }
   .lake-brief-passes { width: 100%; border-collapse: collapse; margin-bottom: 4pt; }
   .lake-brief-passes th, .lake-brief-passes td { border: 0.5pt solid #888; padding: 2pt 5pt; text-align: left; }

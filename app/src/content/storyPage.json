@@ -56,7 +56,7 @@
       "cards": [
         { "label": "OPTICAL SATELLITES", "tone": "warm", "text": "The sun's shadow falls across slopes and valley floors. A shaded lake can be missed, and a shaded slope can look like water." },
         { "label": "RADAR", "tone": "warm", "text": "Radar looks sideways. Slopes facing away from the satellite fall in radar shadow, and steep slopes facing it fold over (layover). Both can hide a shoreline." },
-        { "label": "WHAT SARTALE DOES", "tone": "accent", "text": "NISAR passes over each lake from two directions. A pixel dark from only one side is shadow, not water, and is left out. If less than {minObservable} of a lake's zone can be seen, it reads Not observable instead of a guess." }
+        { "label": "WHAT SARTALE DOES", "tone": "accent", "text": "Shadow and layover fall on the valley walls, almost never on a flat lake. So SARtale masks nothing inside a lake's zone, and leaves the walls in radar shadow or layover, mapped from a terrain model, out of the window median that water is measured against. If less than {minObservable} of a lake's zone can be seen, it reads Not observable instead of a guess." }
       ],
       "sourcesLead": "Radar shadow and layover are among the main limits of SAR lake mapping in the Himalaya (",
       "sources": [
@@ -73,9 +73,9 @@
     "waterAlt": "Water pixels read from the radar image, shown in blue",
     "caption": "{attabadDate}, track {attabadTrack}. Blue: water read from radar, inside the lake outline (OpenStreetMap).",
     "steps": [
-      "Calm water reflects radar away, so it is dark in both HH and HV.",
-      "Mountain shadow is dark from one viewing direction only, so it is removed.",
-      "What is left is counted inside the lake's zone and compared with its own earlier passes."
+      "Calm water reflects radar away, so it is dark in HH, the channel that tells water from land best here.",
+      "After smoothing the speckle, a pixel is water when its HH is at least 3 dB darker than the median of its 6 km window; terrain in radar shadow or layover is left out of that median.",
+      "Water is counted inside the lake's zone, and each pass is compared with the median of earlier passes on its own track: one pass beyond twice the noise is a Watch, two in a row growing an Alert."
     ],
     "numbers": [
       { "value": "{attabadArea}", "label": "water on {attabadDay}" },
@@ -87,7 +87,7 @@
     "label": "05 · THE WATCH",
     "title": "{sites} sites, one plain status each",
     "noDataTitle": "Sites, one plain status each",
-    "lede": "Latest pass {latest}. Each status compares a lake with its own earlier passes and its own noise. A site with no lake now is kept to watch for a lake forming.",
+    "lede": "Latest pass {latest}. Each status compares a lake with its own earlier passes and its own noise: No change, Watch, Alert: growing or Decrease noted. A site with no lake now is kept to watch for a lake forming.",
     "noDataLede": "No lake data in this build.",
     "mapAlt": "Satellite map of northern Pakistan with the watched lakes marked",
     "mapImage": "story/north_map.jpg",
@@ -100,11 +100,11 @@
   "add": {
     "label": "06 · ADD A LAKE",
     "title": "Know a lake we are not watching?",
-    "body": "Give it a name, its coordinates and where they come from. SARtale searches NASA's catalogue for NISAR passes over it, reads a 6 km window from each, and gives it a status once it has {minLooks} looks on one track.",
+    "body": "Give it a name, its coordinates and where they come from. SARtale searches NASA's catalogue for NISAR passes over it, reads a 6 km window from each, and gives it a level once a track has {minLooks} earlier looks to compare a new pass with.",
     "steps": [
       "Requested: the request opens as a GitHub issue.",
       "Searched: NISAR passes over the point are counted.",
-      "Watched: once the team accepts it, a status appears after {minLooks} looks on one track."
+      "Watched: once the team accepts it, a level appears once a track has {minLooks} earlier looks."
     ],
     "form": {
       "nameLabel": "Lake name",

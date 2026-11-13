@@ -1,4 +1,4 @@
-import { freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, isFrozen, isTrendPass, loadLakes, methodLimits, processingVersions, statusSentence, type Lake, type LakesFile } from "./lakes";
+import { freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, hasLevel, isFrozen, isTrendPass, levelMessage, loadLakes, methodLimits, processingVersions, statusSentence, type Lake, type LakesFile } from "./lakes";
 import { checkLine } from "./lakeWatchView";
 import { formatDate } from "./format";
 
@@ -24,22 +24,49 @@ export function dataLine(lake: Lake, file: LakesFile): string {
   return `Data: newest NISAR pass for this lake ${newest ? formatDate(newest) : "none yet"}; data built ${built}.`;
 }
 
+/**
+ * The lake's initial message (a Watch, an Alert or a Decrease noted) as the brief's first block, or "" without one.
+ */
+export function briefMessage(lake: Lake): string {
+  const m = levelMessage(lake);
+  if (!m) return "";
+  const since = m.since ? `<p>${esc(m.since)}</p>`
+    : lake.status.level_since ? `<p>${esc(`${m.level} since ${formatDate(lake.status.level_since)}.`)}</p>` : "";
+  return `<div class="lake-brief-message" data-level="${esc(m.level)}">
+<p class="lake-brief-message-title"><strong>${esc(m.title)}</strong></p>
+<p>${esc(m.what)}</p>
+<p>${esc(m.how_sure)}</p>
+<p>${esc(m.not)}</p>
+<p><strong>${esc(m.do)}</strong></p>${since}
+</div>
+`;
+}
+
+const zText = (z: number | null | undefined): string =>
+  typeof z === "number" ? `${z > 0 ? "+" : z < 0 ? "−" : ""}${Math.abs(z).toFixed(1)}` : "–";
+
 /** The one-page brief for a lake, as an HTML fragment. Every piece of data text is escaped. */
 export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): string {
   const minShare = file.constants.min_observable;
   const track = lake.status.track;
-  // Only the status track's passes: the status sentence compares these and nothing else.
-  // A site with no lake now lists no areas: its dark radar area is not lake area; the status says why.
+  const levels = hasLevel(lake) || lake.series.some((p) => p.z !== undefined);
+  // With the levels every valid pass is compared with its own track: the latest of any track. An older build compared
+  // only the status track's passes. A site with no lake now lists no areas: its dark radar area is not lake area.
   const valid = lake.series
-    .filter((p) => hasLakeNow(lake) && p.track === track && isTrendPass(p, minShare))
-    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .filter((p) => hasLakeNow(lake) && (levels || p.track === track) && isTrendPass(p, minShare))
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.track.localeCompare(a.track)))
     .slice(0, PASS_ROWS);
-  const passesHead = !track ? "Latest valid passes"
-    : isFrozen(lake) ? `Latest open-water passes on track ${esc(track)} (no comparison while the lake is frozen)`
+  const passesHead = isFrozen(lake) ? `Latest open-water passes${!levels && track ? ` on track ${esc(track)}` : ""} (no comparison while the lake is frozen)`
+    : levels ? "Latest valid passes (each compared with the median of earlier passes on its own track)"
+    : !track ? "Latest valid passes"
     : `Latest valid passes on track ${esc(track)} (the status compares only these)`;
+  const extraHead = levels ? "<th>Baseline (km²)</th><th>z</th><th>Level set</th>" : "";
+  const extra = (p: Lake["series"][number]): string => levels
+    ? `<td>${typeof p.baseline_km2 === "number" ? p.baseline_km2.toFixed(3) : "–"}</td><td>${esc(zText(p.z))}</td><td>${esc(p.after_open ? "None (baseline rebuilding)" : p.level_contrib ?? "–")}</td>`
+    : "";
   const passes = valid.length
-    ? `<table class="lake-brief-passes"><thead><tr><th>Date</th><th>Track</th><th>Area (km²)</th><th>Observable share</th><th>Processing version</th></tr></thead><tbody>${valid
-        .map((p) => `<tr><td>${esc(formatDate(p.date))}</td><td>${esc(p.track)}</td><td>${(p.area_km2 as number).toFixed(3)}</td><td>${Math.round((p.observable_share as number) * 100)}%</td><td>${esc(p.crid ?? "")}</td></tr>`)
+    ? `<table class="lake-brief-passes"><thead><tr><th>Date</th><th>Track</th><th>Area (km²)</th><th>Observable share</th>${extraHead}<th>Processing version</th></tr></thead><tbody>${valid
+        .map((p) => `<tr><td>${esc(formatDate(p.date))}</td><td>${esc(p.track)}</td><td>${(p.area_km2 as number).toFixed(3)}</td><td>${Math.round((p.observable_share as number) * 100)}%</td>${extra(p)}<td>${esc(p.crid ?? "")}</td></tr>`)
         .join("")}</tbody></table>`
     : `<p>${esc(lake.status.reason)}</p>`;
   const lakeLimits = lake.limits.length ? `<h3>Limits for this lake</h3>${list(lake.limits)}` : "";
@@ -58,7 +85,7 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): strin
 `
     : "";
   return `<section class="lake-brief" aria-label="Lake brief">
-<h1>${esc(lake.name)}</h1>
+${briefMessage(lake)}<h1>${esc(lake.name)}</h1>
 <p class="lake-brief-meta">Coordinates ${lake.lat.toFixed(4)}, ${lake.lon.toFixed(4)}. Source: ${esc(lake.coord_source)}</p>${outline}
 <p class="lake-brief-meta">Measures: ${esc(lake.area_label)}. Brief made ${esc(formatDate(localIsoDate(generatedAt)))}.</p>
 <p class="lake-brief-meta">${esc(dataLine(lake, file))}</p>

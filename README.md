@@ -34,10 +34,10 @@ Radar sees through cloud, day or night. From 17 June to 4 August 2026, while clo
 
 ## What it does
 
-- **Gives each watched lake one plain status:** Growing, Stable, Shrinking, Change not confirmed yet, Frozen (likely), Frozen (seen by Sentinel-2), Break-up likely, Not seen this pass, Not observable, Not enough NISAR looks yet, or No lake now (a site, such as a drained ice-dammed lake's basin, with no lake in recent imagery, kept to watch for a lake forming), which becomes Lake may be forming when a clear, snow-free Sentinel-2 view shows water there (the SARtale team then reviews the site to add it as a measured lake). The site shows the current status of each.
-- **Says when a lake is probably frozen.** L-band radar cannot tell new ice from open water, and frozen ground around a lake reads as more water, so the frozen statuses come from NASA POWER air temperature at the lake's height (and a clear Sentinel-2 image when there is one), not from the radar area. A frozen lake gets no Growing or Shrinking verdict; its area is shown greyed, and passes taken while it was frozen are left out of the comparison. Winter radar is untested; the rule is re-tested with late-January data.
+- **Gives each watched lake one plain level:** No change, Watch (one pass beyond twice the lake's own noise), Alert: growing (two passes in a row growing), or Decrease noted (two in a row falling; information only). A level holds until later passes clear it, and a newer pass that could not be read never hides it. Every Watch, Alert and Decrease noted carries a short initial message: what changed, how sure, what it is not, and what to do (check recent optical imagery or the site, contact GBDMA or PDMA). A lake with no level says why: Frozen (likely), Frozen (seen by Sentinel-2), Break-up likely, Not seen this pass, Not observable, Not measurable, Not yet validated against Sentinel-2, Not enough NISAR looks yet, or No lake now (a site, such as a drained ice-dammed lake's basin, with no lake in recent imagery, kept to watch for a lake forming), which becomes Lake may be forming when a clear, snow-free Sentinel-2 view shows water there (the SARtale team then reviews the site to add it as a measured lake). The site shows the current status of each.
+- **Says when a lake is probably frozen.** L-band radar cannot tell new ice from open water, and frozen ground around a lake reads as more water, so the frozen statuses come from NASA POWER air temperature at the lake's height (and a clear Sentinel-2 image when there is one), not from the radar area. A frozen lake gets no level; its area is shown greyed, and passes taken while it was frozen are left out of the comparison. Winter radar is untested; the rule is re-tested with late-January data.
 - **Shows the evidence:** the latest radar picture with the water read from it, a chart and a table of every pass, and each pass left out, with the reason.
-- **Prints a one-page brief** per lake: dates, looks, noise and limits.
+- **Prints a one-page brief** per lake: the message first, then dates, looks, noise and limits.
 - **Takes requests for new lakes through GitHub issues.** A visitor fills in the website's form, which opens a pre-filled "Add a lake" issue (a GitHub sign-in is needed). A workflow checks the point, counts the NISAR passes over it and comments; a team member adds the `accepted` label to start the rebuild, or closes the issue to reject it. See [Lake requests](docs/guide/lake-requests.html). The repository is private for now, so only collaborators can open request issues until it is made public.
 
 ![Lake Watch: lake map, list with radar thumbnails, and Attabad's status and water picture](media/screens/lake-watch.jpg)
@@ -46,10 +46,10 @@ Radar sees through cloud, day or night. From 17 June to 4 August 2026, while clo
 
 ![How SARtale works: six pipeline steps from NISAR passes to a status, the web app, and the lake request loop](media/workflow.jpg)
 
-For every lake and every NISAR pass, SARtale reads a 6 km window straight from NASA's archive. It marks pixels at least 3 dB darker than the window in both HH and HV, removes radar shadow by comparing the two viewing directions, and measures water inside the lake's zone. It then compares the result only with that lake's earlier passes on the same track: a change counts only if it beats twice the lake's own noise.
+For every lake and every NISAR pass, SARtale reads a 6 km window straight from NASA's archive. Method D17 smooths the HH speckle with a Lee filter and marks pixels whose HH is at least 3 dB darker than the window median, leaving terrain in radar shadow and layover (from the Copernicus DEM) out of that median, and measures water inside the lake's zone. It then compares each pass only with the median of earlier passes on its own track: one pass beyond twice the lake's own noise is a Watch, two in a row growing an Alert.
 
 <!-- worked-example:start -->
-For example, Attabad on 9 November 2026 held 2.64 km² on track 055A, a change of -0.09 km² against a noise of 0.12 km², so it reads **Stable** (from the lake data built 12 Nov 2026; the app shows the current numbers).
+For example, Attabad on 9 November 2026 held 4.43 km² on track 055A, a change of −0.01 km² against the median of its earlier passes on that track and a noise of 0.14 km² (z = −0.1), so it reads **No change** (from the lake data built 13 Nov 2026; the app shows the current numbers).
 <!-- worked-example:end -->
 
 The full method, with every constant, is in the [guide](docs/guide/method.html).
@@ -104,9 +104,13 @@ On a public repository GitHub pauses scheduled workflows after 60 days without a
 ## Limits
 
 - **Indicative screening on provisional data.** Passes up to 21 Oct 2026 are NASA's provisional GCOV release (CRID `P05023`), which is not validated and will be reprocessed. Later passes are NASA's standard GCOV product (CRID `P05036`); we have no statement that it is validated, and a lake whose track spans both carries a limit because a calibration change can shift areas. A status is not a measure of volume or hazard.
-- **Optical agreement is rough.** On clear days radar water is compared with Sentinel-2 water at each lake; How we know gives the overlap from the current data. Neither is a clean reference, and radar under-reads small lakes.
-- **Zones are approximate.** Attabad, Passu and Shazore are measured in their OpenStreetMap outlines; the others in a search circle around a published coordinate. Shadowed shores are under-counted.
-- **Not a warning service.** Official warnings come from PMD, NDMA, GBDMA and PDMA.
+- **Optical agreement is rough.** On clear days radar water is compared with Sentinel-2 water at each lake; How we know gives the overlap from the current data. Neither is a clean reference. A lake whose check overlaps under IoU 0.4 gets no level (Not measurable).
+- **Zones are approximate.** Attabad and Passu are measured in their OpenStreetMap outlines and Shazore in its 2026 Sentinel-2 outline; the others in a search circle around a published coordinate. Wet shore inside the zone reads as water.
+- **Drawdown is nearly invisible.** Wet sediment flats are as dark as water, so the radar sees a lake drawing down onto them at only about a tenth to a fifth of the real decrease.
+- **Latency.** An Alert comes 5–12 days after a change begins in Hunza and 8–12 days in Chitral. This is slow-growth monitoring, not outburst warning.
+- **Modelled rates.** False-alarm and miss rates are modelled from one season's noise, not observed: no lake grew in the 2026 data. They will be estimated again after one more season. Replayed on 2026, the levels raised no growth Alert; Attabad's September drawdown shows as Watches, where the method study's replay (without the 2% noise floor) had a Decrease noted on 10 Sep.
+- **Small lakes.** Lakes below about 0.05 km² are limited by speckle.
+- **Not an official warning service.** Official warnings come from PMD, NDMA, GBDMA and PDMA.
 
 ## Repository
 

@@ -79,12 +79,12 @@ describe("renderStoryPage without lakes.json", () => {
       return { t, shadow };
     };
     const a = body(real);
-    expect(a.t).toContain("once it has three looks on one track");
-    expect(a.t).toContain("after three looks on one track");
+    expect(a.t).toContain("once a track has three earlier looks to compare a new pass with");
+    expect(a.t).toContain("once a track has three earlier looks.");
     expect(a.shadow).toContain("less than half of a lake's zone");
     const other = { ...real, constants: { ...real.constants, min_looks: 12, min_observable: 0.6 } } as LakesFile;
     const b = body(other);
-    expect(b.t).toContain("once it has 12 looks on one track");
+    expect(b.t).toContain("once a track has 12 earlier looks to compare a new pass with");
     expect(b.t).not.toContain("three looks");
     expect(b.shadow).toContain("less than 60% of a lake's zone");
   });
@@ -252,11 +252,38 @@ describe("mapPin", () => {
 });
 
 describe("story page status colours", () => {
-  it("only a confirmed change gets the change colour", () => {
+  it("each level has its own colour; the statuses without a level are other", () => {
+    expect(statusClass("Alert: growing")).toBe("sp-st-alert");
+    expect(statusClass("Watch")).toBe("sp-st-watch");
+    expect(statusClass("Decrease noted")).toBe("sp-st-decrease");
+    expect(statusClass("No change")).toBe("sp-st-stable");
+    for (const s of ["Not measurable", "Not observable", "Not seen this pass", "No lake now"]) expect(statusClass(s)).toBe("sp-st-other");
+    // statuses of builds made before the levels keep their colours
     expect(statusClass("Growing")).toBe("sp-st-change");
-    expect(statusClass("Shrinking")).toBe("sp-st-change");
     expect(statusClass("Stable")).toBe("sp-st-stable");
-    expect(statusClass("Change not confirmed yet")).toBe("sp-st-other");
+  });
+});
+
+describe("story page Alert banner", () => {
+  it("shows a banner at the top of the page when any lake is at Alert: growing, and none otherwise", () => {
+    let opened = 0;
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    renderStoryPage(root, fixtureLakes, { ...opts, onOpenLakes: () => void (opened += 1) });
+    const banner = root.querySelector<HTMLElement>('[data-role="sp-alert-banner"]')!;
+    expect(banner).not.toBeNull();
+    expect(root.querySelector(".sp-page")!.firstElementChild).toBe(banner);
+    expect(banner.getAttribute("role")).toBe("alert");
+    expect(banner.textContent).toContain("Alert: growing at Fixture grow-new. Alert: growing. The radar water area of Fixture grow-new rose on two passes in a row.");
+    expect(banner.textContent).toContain("Not an outburst forecast.");
+    expect(banner.textContent).toContain("Official warnings come from PMD, NDMA, GBDMA and PDMA.");
+    expect(findBannedClaims(banner.textContent!)).toEqual([]);
+    banner.querySelector<HTMLButtonElement>("button")!.click();
+    expect(opened).toBe(1);
+    const calm = render({ ...fixtureLakes, lakes: fixtureLakes.lakes.filter((l) => l.status.status !== "Alert: growing") }).root;
+    expect(calm.querySelector('[data-role="sp-alert-banner"]')).toBeNull();
+    // a Watch alone makes no banner
+    expect(calm.textContent).not.toContain("Alert: growing at");
   });
 });
 

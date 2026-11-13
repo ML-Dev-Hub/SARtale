@@ -33,7 +33,8 @@ import numpy as np
 import requests
 
 from sartale import config
-from sartale.lakestatus import FREEZE_STATUS, day_text, frozen_status, is_valid, lake_status, open_water_status
+from sartale.lakestatus import (FREEZE_STATUS, assess, day_text, frozen_status, is_valid, lake_status,
+                                open_water_assess)
 
 POWER_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
 DEFAULT_CACHE = Path(__file__).resolve().parents[2] / "data" / "lakes"  # the NISAR window cache lakes-fetch fills
@@ -374,7 +375,7 @@ def _air_text(f: dict, elevation_m: float) -> str:
 RULE_TEXT = (f"the freeze rule ({config.FREEZE_COLD_RUN_DAYS} days in a row below 0 °C and {config.FREEZE_FDD:.0f} "
              "freezing degree-days since 1 Sep)")
 NO_VERDICT = ("Radar cannot tell new ice from open water, and frozen ground around a lake can read as water, so SARtale "
-              "gives no growing or shrinking verdict while the lake is frozen.")
+              "gives no level (Watch, Alert or other) while the lake is frozen.")
 NO_OPEN_CLAIM = "Open water not confirmed by radar or Sentinel-2."
 
 
@@ -452,7 +453,7 @@ def freeze_reason(f: dict, elevation_m: float | None) -> str:
         else:
             lead = (f"Ice probably breaking up since {day_text(f['since'])}: the lake was probably frozen{froze}, and "
                     f"the air at the lake has since been above 0 °C for {config.BREAKUP_WARM_RUN_DAYS} days in a row.")
-        return " ".join(t for t in (lead, air, s2, held, "SARtale gives no growing or shrinking verdict until the "
+        return " ".join(t for t in (lead, air, s2, held, "SARtale gives no level until the "
                                     "lake is released by radar or Sentinel-2, or by the warm days where the lake has "
                                     "no radar summer level.") if t)
     # open
@@ -492,20 +493,38 @@ def unflagged(series: list[dict]) -> list[dict]:
 
 
 def with_status(entry: dict, series: list[dict], freeze: dict | None) -> dict:
-    """The entry with `series` (frozen flags set) and its status again: the usual one from the passes not flagged
-    frozen, or, while the lake is frozen or breaking up today, the frozen status, which takes precedence over every
-    status but "No lake now" (a no-lake site never gets here)."""
+    """The entry with `series` (frozen flags set), every pass compared again (`lakestatus.assess`: z, baseline, noise
+    and level per pass, frozen passes left out) and its status again: the level from the passes not flagged frozen, or,
+    while the lake is frozen or breaking up today, the frozen status, which takes precedence over every status but
+    "No lake now" (a no-lake site never gets here). The lake's Sentinel-2 check (`validation`) and name go in too."""
+    if not series:
+        # no pass at all: the build's own status ("Not enough NISAR looks yet") stands
+        return {**entry, "series": series, "status": entry.get("status"), "freeze": freeze}
+    status, compared = open_water_assess(series, entry.get("validation"), entry.get("name"))
     if freeze and freeze["state"] in FREEZE_STATUS:
         everything = unflagged(series)
         latest: dict[str, str] = {}
         for p in everything:
             latest[p["track"]] = max(latest.get(p["track"], ""), p["date"])
         status = frozen_status(lake_status(everything, latest), freeze)
-    elif series:
-        status = open_water_status(series)
-    else:
-        status = entry["status"]  # no pass at all: the build's own status ("Not enough NISAR looks yet") stands
-    return {**entry, "series": series, "status": status, "freeze": freeze}
+    return {**entry, "series": compared, "status": status, "freeze": freeze}
+
+
+def restatus(entry: dict) -> dict:
+    """A lake's entry with its passes compared and its status set again from what it holds (series with their frozen
+    flags, freeze state, Sentinel-2 check): after lakes-check changes the check. Sites with no lake now are returned
+    unchanged (their status comes from the absence check)."""
+    if entry.get("lake_state", "lake") not in ("lake", "unconfirmed"):
+        return entry
+    out = with_status(entry, entry.get("series", []), entry.get("freeze"))
+    if "freeze" not in entry:
+        out.pop("freeze", None)
+    if out.get("freeze") is not None and needs_last_open(out):
+        lo, old = last_open(out), entry.get("last_open") or {}
+        if lo and (old.get("date"), old.get("track")) == (lo["date"], lo["track"]):
+            lo["images"] = old.get("images")  # the pictures lakes-freeze drew of the same pass
+        out["last_open"] = lo
+    return out
 
 
 def power_start(series: list[dict], today: str) -> str:
@@ -554,18 +573,22 @@ def needs_last_open(entry: dict) -> bool:
 
 def last_open(entry: dict) -> dict | None:
     """The lake's latest open-water pass on its status track (valid, not flagged frozen) with the assessment it had
-    then (`lake_status` of that track's open-water passes up to it): {"date", "track", "crid", "area_km2", "status",
-    "change_km2", "noise_km2", "looks", "ref_km2", "images": None}; lakes-freeze draws its pictures. None without one."""
+    then (`lakestatus.assess` of every pass up to it): {"date", "track", "crid", "area_km2", "status" (the lake's status
+    then),
+    "change_km2", "noise_km2", "z", "looks", "ref_km2" (its baseline), "images": None}; lakes-freeze draws its
+    pictures. None without one."""
     track = (entry.get("status") or {}).get("track") or (entry.get("images") or {}).get("track")
     pts = sorted((p for p in entry.get("series", []) if p["track"] == track and is_valid(p)), key=lambda p: p["date"])
     if not pts:
         return None
     p = pts[-1]
-    st = lake_status(pts)
-    change = st["change_km2"]
+    upto = [q for q in entry.get("series", []) if (q["date"], q["track"]) <= (p["date"], p["track"])]
+    st, compared = assess(upto, None, entry.get("validation"), entry.get("name"))
+    mine = next(q for q in compared if q["date"] == p["date"] and q["track"] == p["track"])
+    ref = mine.get("baseline_km2")
     return {"date": p["date"], "track": p["track"], "crid": p.get("crid"), "area_km2": p["area_km2"],
-            "status": st["status"], "change_km2": change, "noise_km2": st["noise_km2"], "looks": st["looks"],
-            "ref_km2": None if change is None else round(p["area_km2"] - change, 6), "images": None}
+            "status": st["status"], "change_km2": None if ref is None else round(p["area_km2"] - ref, 6),
+            "noise_km2": mine.get("noise_km2"), "z": mine.get("z"), "looks": len(pts), "ref_km2": ref, "images": None}
 
 
 def freeze_lake(lake, entry: dict, today: str, power=None, s2_check=None, log=print) -> dict:

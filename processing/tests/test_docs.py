@@ -72,7 +72,8 @@ def test_d03_worked_example_is_reproducible_from_the_lake_data_it_names():
     import json
     from datetime import datetime
     build = _load(ROOT / "docs" / "guide" / "build.py", "guide_build")
-    doc = json.loads(shipped_lakes_path().read_text(encoding="utf-8"))
+    # Attabad open and measured, whatever the shipped file says this week (frozen, not seen, or not yet validated)
+    doc = open_attabad(json.loads(shipped_lakes_path().read_text(encoding="utf-8")))
     ex = build.worked_example(doc)
     method = (ROOT / "docs" / "guide" / "method.html").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -109,7 +110,7 @@ def test_the_worked_example_never_quotes_a_frozen_pass_as_water():
                       "change_km2": 0.012, "noise_km2": 0.1, "looks": len(on_track) - 1, "images": None}
     ex = build.worked_example(d)
     assert ex["EX_DATE"] == build._day(before["date"]) and ex["EX_AREA"] == f"{before['area_km2']:.3f}"
-    assert ex["EX_EARLIER"] == str(len(on_track) - 2) and ex["EX_STATUS"] == "Stable"
+    assert ex["EX_EARLIER"] == str(min(6, len(on_track) - 2)) and ex["EX_STATUS"] == "Stable"
     assert ex["EX_FROZEN"] == " Attabad Lake is frozen now (since 8 January 2027); this was its last open-water pass."
     assert ex["EX_FROZEN"] in build.readme_example(ex)
     i = [p[0] for p in build.PAGES].index("method")

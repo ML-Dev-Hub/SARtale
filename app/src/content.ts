@@ -18,6 +18,20 @@ export const BANNED_CLAIMS = [
   "predict",
   "safe",
   "no risk",
+  // Watch and Alert are allowed as the names of SARtale's levels only (Watch, Alert: growing), never as a flood or
+  // outburst warning, a hazard level or an issued alert.
+  "flood alert",
+  "flood watch",
+  "glof alert",
+  "glof watch",
+  "outburst alert",
+  "outburst watch",
+  "hazard alert",
+  "risk alert",
+  "red alert",
+  "alert issued",
+  "issued an alert",
+  "warning issued",
 ] as const;
 
 const BANNED_PATTERNS = BANNED_CLAIMS.map((phrase) => ({

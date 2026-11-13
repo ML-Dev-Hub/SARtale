@@ -17,6 +17,10 @@ BANNED_CLAIMS = (
     "detected flood", "flood detected", "damage", "damaged", "isolated", "risk score", "early warning",
     "detected change", "detected changes", "change detected", "changes detected", "change detection",
     "breach warning", "predict", "safe", "no risk",
+    # "Watch" and "Alert" are allowed as the names of SARtale's levels only (Watch, Alert: growing), never as a flood or
+    # outburst warning, a hazard level or an issued alert.
+    "flood alert", "flood watch", "glof alert", "glof watch", "outburst alert", "outburst watch", "hazard alert",
+    "risk alert", "red alert", "alert issued", "issued an alert", "warning issued",
 )
 # Whole words, case-insensitively, as findBannedClaims matches them (ASCII word boundaries, like JavaScript's \b)
 _BANNED = [(phrase, re.compile(r"\b" + phrase.replace(" ", r"\s+") + r"\b", re.IGNORECASE | re.ASCII))

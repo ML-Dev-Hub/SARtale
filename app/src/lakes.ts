@@ -1,18 +1,51 @@
 import { formatDate } from "./format";
 
+/** The alert levels a measured lake can have (pipeline: lakestatus.assess), highest first. */
+export type LevelName = "Alert: growing" | "Watch" | "Decrease noted" | "No change";
+
 export type LakeStatusName =
-  | "Growing"
-  | "Stable"
-  | "Shrinking"
-  | "Change not confirmed yet"
+  | LevelName
   | "Not seen this pass"
   | "Not observable"
+  | "Not measurable"
+  | "Not yet validated against Sentinel-2"
   | "Not enough NISAR looks yet"
   | "No lake now"
   | "Lake may be forming"
   | "Frozen (likely)"
   | "Frozen (seen by Sentinel-2)"
   | "Break-up likely";
+
+export const LEVELS: LevelName[] = ["Alert: growing", "Watch", "Decrease noted", "No change"];
+export const ALERT: LevelName = "Alert: growing";
+
+/**
+ * The initial message a Watch, an Alert or a Decrease noted carries, written by the pipeline from the decision values
+ * (lakestatus.level_message): what changed, how sure, what it is not, what to do. `text` joins them.
+ */
+export interface LevelMessage {
+  level: LevelName;
+  title: string;
+  what: string;
+  how_sure: string;
+  not: string;
+  do: string;
+  /** Since when the level stands and the newest pass's z (and a newer pass that could not be read). */
+  since?: string;
+  text: string;
+}
+
+/** A pass that set the lake's level, with what it was measured against. */
+export interface LevelPass {
+  date: string;
+  track: string;
+  crid?: string | null;
+  area_km2: number;
+  baseline_km2: number;
+  noise_km2: number;
+  z: number;
+  new_version?: boolean;
+}
 
 /** The freeze check's state (pipeline: sartale.freeze). Only frozen_likely, frozen_s2 and breakup_likely are statuses. */
 export type FreezeState = "open" | "frozen_likely" | "frozen_s2" | "breakup_likely" | "not_assessed";
@@ -97,15 +130,32 @@ export interface AbsenceCheck {
 }
 
 export interface LakeStatus {
-  status: LakeStatusName;
+  /** A level, or why there is none. Older builds (before the levels) used other words, shown as they are. */
+  status: LakeStatusName | string;
   track: string | null;
   latest_date: string | null;
   looks: number;
   change_km2: number | null;
   noise_km2: number | null;
   reason: string;
-  /** For "Change not confirmed yet": the processing version of the latest pass that its baseline lacks. */
-  new_crid?: string | null;
+  /** The lake's level when the status is one (absent in older builds; null otherwise). */
+  level?: LevelName | null;
+  /** The first pass of the current level. */
+  level_since?: string | null;
+  /** The passes that set the level: two for an Alert or a Decrease noted, one for a Watch. */
+  level_passes?: LevelPass[];
+  /** The CUSUM of the z values after the latest pass. */
+  cusum?: { up: number; down: number } | null;
+  /** The latest compared pass: z and the baseline it was measured against. */
+  z?: number | null;
+  baseline_km2?: number | null;
+  /** Set when every track's latest pass is its first on a processing version its baseline lacks: no Alert until a second. */
+  alerts_paused?: { crid: string | null; track: string; date: string; tracks?: string[] } | null;
+  /** Set when the latest pass alone is its track's first on a new processing version: it cannot count toward an Alert. */
+  first_on_version?: { crid: string | null; track: string; date: string } | null;
+  /** A newer pass of some track that could not be read while a level stands (it never hides the level). */
+  newest_unread?: { date: string; track: string; why: string } | null;
+  message?: LevelMessage | null;
 }
 
 export interface LakeSeriesPoint {
@@ -123,6 +173,16 @@ export interface LakeSeriesPoint {
   diagnostic_km2?: number | null;
   /** Taken while the lake was probably frozen or breaking up: its area is kept but enters no comparison (absent in older builds). */
   frozen?: boolean;
+  /** The pass against its own track: (area − baseline) / noise; null until the track has enough earlier passes. */
+  z?: number | null;
+  baseline_km2?: number | null;
+  noise_km2?: number | null;
+  /** The level this pass set (absent in older builds; null when it set none). */
+  level_contrib?: LevelName | null;
+  /** A track's first pass on a processing version its baseline lacks: it can make a Watch, not an Alert. */
+  new_version?: boolean;
+  /** One of a track's first passes after the lake opened: it only rebuilds the baseline. */
+  after_open?: boolean;
 }
 
 export interface Lake {
@@ -151,6 +211,8 @@ export interface Lake {
     noise_km2: number | null; looks: number; ref_km2?: number | null;
     images: { latest_hh: string | null; water: string | null; date?: string; track?: string } | null;
   } | null;
+  /** The Sentinel-2 check the level rests on (lakes-check): under IoU 0.4 the lake is "Not measurable". */
+  validation?: { iou: number; nisar_date?: string | null; s2_date?: string | null; s2_id?: string | null } | null;
   /** Height of the lake surface in metres, and where it comes from (absent in older builds). */
   elevation_m?: number | null;
   elevation_source?: string | null;
@@ -208,7 +270,7 @@ export const FROZEN_STATUSES: LakeStatusName[] = ["Frozen (likely)", "Frozen (se
 
 /** True when the lake's status is one of the frozen statuses. */
 export function isFrozen(l: Lake): boolean {
-  return FROZEN_STATUSES.includes(l.status.status);
+  return FROZEN_STATUSES.includes(l.status.status as LakeStatusName);
 }
 
 /** True when the lake's pictured pass was taken while the lake was probably frozen (its water layer is then hidden). */
@@ -340,6 +402,8 @@ export interface LakesFile {
   crid: string;
   /** CMR collections the passes came from (absent in older builds). */
   collections?: string[];
+  /** The water method and level rule that made the numbers, e.g. id "D17" (absent in older builds). */
+  method?: { id: string; water?: string; [k: string]: unknown };
   cloud_window: [string, string];
   constants: {
     drop_db: number;
@@ -350,6 +414,15 @@ export interface LakesFile {
     speckle_box: number;
     /** Robust z-score limit of the second pass screen (absent in older builds). */
     outlier_z?: number;
+    /** The level rule (absent in older builds). */
+    lee_box?: number;
+    baseline_passes?: number;
+    noise_passes?: number;
+    noise_rel_floor?: number;
+    cusum_k?: number;
+    cusum_h?: number;
+    after_open_passes?: number;
+    min_validation_iou?: number;
     /** The freeze rule (absent in older builds). */
     lapse_c_per_km?: number;
     freeze_cold_run_days?: number;
@@ -373,19 +446,42 @@ export interface LakesFile {
 }
 
 export const STATUS_ORDER: LakeStatusName[] = [
+  "Alert: growing",
   "Lake may be forming",
-  "Growing",
-  "Shrinking",
-  "Change not confirmed yet",
+  "Watch",
+  "Decrease noted",
   "Frozen (likely)",
   "Frozen (seen by Sentinel-2)",
   "Break-up likely",
   "Not seen this pass",
-  "Stable",
+  "No change",
   "Not enough NISAR looks yet",
+  "Not measurable",
+  "Not yet validated against Sentinel-2",
   "Not observable",
   "No lake now",
 ];
+
+/** True when the lake's status is a level (Alert: growing, Watch, Decrease noted, No change). */
+export function hasLevel(l: Lake): boolean {
+  return (LEVELS as string[]).includes(l.status.status);
+}
+
+/** True when the lake is at "Alert: growing". */
+export function isAlert(l: Lake): boolean {
+  return l.status.status === ALERT;
+}
+
+/** The lakes at "Alert: growing", for the banner. */
+export function alertLakes(file: LakesFile | null | undefined): Lake[] {
+  return (file?.lakes ?? []).filter(isAlert);
+}
+
+/** The initial message of a Watch, an Alert or a Decrease noted, or null (older builds, other statuses). */
+export function levelMessage(l: Lake): LevelMessage | null {
+  const m = l.status.message;
+  return hasLevel(l) && m && m.level === l.status.status ? m : null;
+}
 
 /** The site's lake state, "lake" for builds made before the field existed. */
 export function lakeState(l: Lake): LakeState {
@@ -464,7 +560,8 @@ function isPoint(p: unknown): boolean {
   return isObj(p) && isIso(p.date) && isStr(p.track) && isNumOrNull(p.area_km2)
     && (p.observable_share === null || isNum(p.observable_share)) && isStrOrNull(p.excluded)
     && (p.diagnostic_km2 === undefined || isNumOrNull(p.diagnostic_km2))
-    && (p.frozen === undefined || typeof p.frozen === "boolean");
+    && (p.frozen === undefined || typeof p.frozen === "boolean")
+    && ["z", "baseline_km2", "noise_km2"].every((k) => p[k] === undefined || isNumOrNull(p[k]));
 }
 
 /** A freeze object the card can read: a state and a reason, numbers or null where it shows them. Absent or null is fine. */
@@ -499,10 +596,24 @@ function isBreakupPass(b: unknown): boolean {
     && ["contrast_hh_change_db", "contrast_hv_change_db", "core_dark_share", "summer_core_dark_share"].every((k) => isNum(b[k])));
 }
 
+/** A message the views can print: every part a string. Absent or null is fine. */
+function isMessage(m: unknown): boolean {
+  if (m === undefined || m === null) return true;
+  return isObj(m) && ["level", "title", "what", "how_sure", "not", "do", "text"].every((k) => isStr(m[k]));
+}
+
+/**
+ * A status the views can show: one this page knows, or, from an older build made before the levels (no `level` key),
+ * any status text, shown as it is.
+ */
 function isStatus(s: unknown): boolean {
-  return isObj(s) && STATUS_ORDER.includes(s.status as LakeStatusName) && isStrOrNull(s.track)
+  if (!isObj(s)) return false;
+  const known = STATUS_ORDER.includes(s.status as LakeStatusName);
+  const older = !("level" in s) && isStr(s.status) && s.status.length > 0;
+  return (known || older) && isStrOrNull(s.track)
     && (s.latest_date === null || isIso(s.latest_date)) && isNum(s.looks) && isNumOrNull(s.change_km2)
-    && isNumOrNull(s.noise_km2) && isStr(s.reason);
+    && isNumOrNull(s.noise_km2) && isStr(s.reason) && isMessage(s.message)
+    && (s.level_passes === undefined || (Array.isArray(s.level_passes) && s.level_passes.every((p) => isObj(p) && isIso(p.date) && isStr(p.track) && isNum(p.z))));
 }
 
 /** True for a lake entry with every field the views read (and a status this version of the page knows). */
@@ -578,8 +689,12 @@ export async function loadLakes(url: string, fetchFn: typeof fetch = (...a) => f
   }
 }
 
+/** Where a status from an older build (before the levels) sorts: with the level it is closest to. */
+const OLDER_RANK: Record<string, LakeStatusName> = { Growing: "Watch", Shrinking: "Watch", Stable: "No change" };
+
 function rank(l: Lake): number {
-  const i = STATUS_ORDER.indexOf(l.status.status);
+  const st = l.status.status;
+  const i = STATUS_ORDER.indexOf((OLDER_RANK[st] ?? st) as LakeStatusName);
   return i < 0 ? STATUS_ORDER.length : i;
 }
 
@@ -599,7 +714,17 @@ export function sortLakes(lakes: Lake[]): Lake[] {
 
 const km2 = (v: number) => v.toFixed(3);
 
-/** One plain sentence for a lake's status. Never shows a zero area for a lake that was not measured. `changeFactor` is lakes.json constants.change_factor. */
+/** "+0.012" / "−0.012" (a true minus), rounded first so a change that rounds to zero has no sign. */
+function signed(v: number, digits = 3): string {
+  const shown = Math.abs(v).toFixed(digits);
+  return Number(shown) === 0 ? shown : `${v > 0 ? "+" : "−"}${shown}`;
+}
+
+/**
+ * One plain sentence for a lake's status. Never shows a zero area for a lake that was not measured. `changeFactor` is
+ * lakes.json constants.change_factor. A level says how the latest pass compares with its own track's baseline; a
+ * status from an older build (before the levels) keeps its old wording.
+ */
 export function statusSentence(lake: Lake, changeFactor: number): string {
   const s = lake.status;
   const measured = s.change_km2 !== null && s.noise_km2 !== null && s.track !== null;
@@ -608,14 +733,21 @@ export function statusSentence(lake: Lake, changeFactor: number): string {
     return `${s.status}: ${s.reason}${latest}`;
   }
   const scope = lake.area_label.includes("search window") ? " in the search window" : "";
-  const shown = km2(Math.abs(s.change_km2 as number));
-  // Round first, then pick the sign, so a change that rounds to zero never prints as "-0.000".
-  const sign = Number(shown) === 0 ? "" : (s.change_km2 as number) > 0 ? "+" : "-";
   const when = s.latest_date ? `, latest ${formatDate(s.latest_date)}` : "";
-  const pending = s.status === "Change not confirmed yet"
-    ? `; first pass on NISAR processing version ${s.new_crid ?? "new"}, so the change waits for a second pass on that version`
-    : "";
-  return `${s.status}: ${sign}${shown} km²${scope} since earlier ${s.track} passes (noise ±${km2(s.noise_km2 as number)} km²; change must exceed ${changeFactor}× noise), ${s.looks} looks${when}${pending}`;
+  const change = s.change_km2 as number;
+  const noise = s.noise_km2 as number;
+  if (hasLevel(lake) && typeof s.z === "number" && typeof s.baseline_km2 === "number") {
+    const pct = s.baseline_km2 ? Math.round((100 * change) / s.baseline_km2) : 0;
+    const pctText = pct === 0 ? "0%" : `${pct > 0 ? "+" : "−"}${Math.abs(pct)}%`;
+    const since = s.level_since && s.level_since !== s.latest_date ? `; since ${formatDate(s.level_since)}` : "";
+    const paused = s.alerts_paused
+      ? `; Alerts paused: every track's latest pass is its first on a new processing version`
+      : s.first_on_version
+        ? `; this pass is track ${s.first_on_version.track}'s first on processing version ${s.first_on_version.crid ?? "new"}: it cannot count toward an Alert (other tracks can)`
+        : "";
+    return `${s.status}: ${signed(change)} km² (${pctText})${scope} against the baseline of earlier ${s.track} passes, z = ${signed(s.z, 1)} (noise ±${km2(noise)} km²; a level needs ${changeFactor}× noise), ${s.looks} looks${when}${since}${paused}`;
+  }
+  return `${s.status}: ${signed(change)} km²${scope} since earlier ${s.track} passes (noise ±${km2(noise)} km²; change must exceed ${changeFactor}× noise), ${s.looks} looks${when}`;
 }
 
 /**
@@ -659,6 +791,18 @@ export function cloudHeadline(file: LakesFile): string {
 
 export const NOT_VALIDATED = "Not validated: frozen lakes, lakes under 0.05 km², and wind-roughened water.";
 
+/**
+ * What the levels cannot do, shown with every lake (method study of 11 Nov 2026). Older builds without levels show
+ * none of these.
+ */
+export const LEVEL_LIMITS = [
+  "A lake drawing down onto wet sediment is nearly invisible to the radar: it sees about a tenth to a fifth of such a decrease.",
+  "An Alert comes 5–12 days after a change begins in Hunza (three tracks) and 8–12 days in Chitral (two tracks).",
+  "This is slow-growth monitoring, not outburst warning: an outburst takes hours.",
+  "False-alarm and miss rates are modelled from one season's pass-to-pass noise, not observed: no lake grew in the 2026 data. They will be estimated again after one more season.",
+  "Lakes below about 0.05 km² are limited by speckle.",
+];
+
 /** 0.0049 -> "0.005", 0.0138 -> "0.014", 0.1137 -> "0.11": two significant figures, at least three decimals below 0.01. */
 const iouText = (v: number): string => (v < 0.01 ? v.toFixed(3) : String(Number(v.toPrecision(2))));
 
@@ -700,6 +844,7 @@ export function methodLimits(file: LakesFile): string[] {
   const out = [file.notes, NOT_VALIDATED];
   const optical = opticalCheckSentence(file.checks);
   if (optical) out.push(optical);
+  if (file.method) out.push(...LEVEL_LIMITS);
   return out.filter((t) => !!t);
 }
 
@@ -735,6 +880,25 @@ export function lakeTokens(file: LakesFile): Record<string, string> {
     iou_range: iouRange(file.checks) ?? "no IoU yet",
     optical_overlap: opticalOverlapPhrase(file.checks) ?? "has not been compared with optical water in this build",
     ...freezeTokens(c),
+    ...levelTokens(file),
+  };
+}
+
+/** The level rule's numbers, from lakes.json; none when an older build lacks them (its sentences are then left out). */
+function levelTokens(file: LakesFile): Record<string, string> {
+  const c = file.constants;
+  const need = [c.lee_box, c.baseline_passes, c.noise_passes, c.noise_rel_floor, c.cusum_k, c.cusum_h, c.after_open_passes, c.min_validation_iou];
+  if (!file.method || !need.every((v) => typeof v === "number")) return {};
+  return {
+    method_id: file.method.id,
+    lee_box: String(c.lee_box),
+    baseline_passes: String(c.baseline_passes),
+    noise_passes: String(c.noise_passes),
+    noise_rel_floor_pct: String(Math.round(c.noise_rel_floor! * 100)),
+    cusum_k: String(c.cusum_k),
+    cusum_h: String(c.cusum_h),
+    after_open_passes: String(c.after_open_passes),
+    min_validation_iou: String(c.min_validation_iou),
   };
 }
 

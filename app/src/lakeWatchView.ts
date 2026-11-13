@@ -1,4 +1,4 @@
-import { cloudHeadline, droppedLine, FROZEN_AREA, freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, isFrozen, isTrendPass, mayBeForming, methodLimits, picturedPassFrozen, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
+import { alertLakes, cloudHeadline, droppedLine, FROZEN_AREA, freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, hasLevel, isAlert, isFrozen, isTrendPass, levelMessage, mayBeForming, methodLimits, picturedPassFrozen, sortLakes, statusSentence, type Lake, type LakeCheck, type LakesFile } from "./lakes";
 import { dataUrl, formatDate } from "./format";
 import { statusSlug } from "./lakeLocator";
 
@@ -11,6 +11,10 @@ export interface LakeChartSeries {
   excluded: boolean;
   /** True for the marker-only series of passes taken while the lake was probably frozen (drawn grey). */
   frozen?: boolean;
+  /** The edges of the band baseline ± 2 × noise of the status track: "hi" and "lo" (drawn as a shaded band). */
+  band?: "hi" | "lo";
+  /** True for the marker-only series of the passes that set a Watch, an Alert or a Decrease noted. */
+  level?: boolean;
 }
 
 export interface LakeChartData {
@@ -46,6 +50,7 @@ const TEMPLATE = `
   <p class="lw-note" data-role="lw-dropped-empty" hidden></p>
 </div>
 <div class="lw-body" data-role="lw-body" hidden>
+  <div class="lw-alert-banner" data-role="lw-alert-banner" role="alert" hidden></div>
   <p class="lw-headline"><a href="#cloud-gap" data-role="lw-headline"></a></p>
   <p class="lw-screening" data-role="lw-screening">Indicative screening on provisional NISAR data. Official warnings come from PMD, NDMA, GBDMA and PDMA.</p>
   <p class="lw-note" data-role="lw-dropped" role="status" hidden></p>
@@ -62,9 +67,11 @@ const utcSeconds = (iso: string): number => Date.parse(`${iso}T00:00:00Z`) / 100
 
 /**
  * Chart columns for a lake: one series per track, never joined across tracks, plus one marker-only series for excluded
- * passes. A pass that saw less than `minObservable` of the lake zone is left off, as the status leaves it out.
+ * passes. A pass that saw less than `minObservable` of the lake zone is left off, as the status leaves it out. With a
+ * level, the status track's band (baseline ± `factor` × noise, pass by pass) and the passes that set a Watch, an Alert or
+ * a Decrease noted are added.
  */
-export function lakeChartData(lake: Lake, minObservable = 0): LakeChartData {
+export function lakeChartData(lake: Lake, minObservable = 0, factor = 2): LakeChartData {
   const dates = [...new Set(lake.series.map((p) => p.date))].sort();
   const index = new Map(dates.map((d, i) => [d, i]));
   const tracks = [...new Set(lake.series.map((p) => p.track))].sort();
@@ -93,7 +100,52 @@ export function lakeChartData(lake: Lake, minObservable = 0): LakeChartData {
     ice[index.get(p.date)!] = p.area_km2;
   }
   if (ice.some((v) => v !== null)) series.push({ label: "Frozen passes (not open water)", values: ice, excluded: false, frozen: true });
+  if (hasLevel(lake) && lake.status.track) {
+    const hi = blank();
+    const lo = blank();
+    for (const p of lake.series) {
+      if (p.track !== lake.status.track || typeof p.baseline_km2 !== "number" || typeof p.noise_km2 !== "number") continue;
+      hi[index.get(p.date)!] = p.baseline_km2 + factor * p.noise_km2;
+      lo[index.get(p.date)!] = Math.max(0, p.baseline_km2 - factor * p.noise_km2);
+    }
+    if (hi.some((v) => v !== null)) {
+      const label = `Baseline ± ${factor} × noise (${lake.status.track})`;
+      series.push({ label: `${label}, upper`, values: hi, excluded: false, band: "hi" }, { label: `${label}, lower`, values: lo, excluded: false, band: "lo" });
+    }
+    const set = blank();
+    for (const p of lake.series) {
+      if (p.level_contrib && p.level_contrib !== "No change" && p.area_km2 !== null) set[index.get(p.date)!] = p.area_km2;
+    }
+    if (set.some((v) => v !== null)) series.push({ label: "Passes that set a level", values: set, excluded: false, level: true });
+  }
   return { x: dates.map(utcSeconds), series };
+}
+
+/**
+ * The lake's initial message (a Watch, an Alert or a Decrease noted), as the pipeline wrote it: what changed, how sure,
+ * what it is not and what to do. Null without one.
+ */
+export function messageBox(lake: Lake, cls = "lw-message"): HTMLElement | null {
+  const m = levelMessage(lake);
+  if (!m) return null;
+  const box = document.createElement("section");
+  box.className = cls;
+  box.dataset.role = "lw-message";
+  box.dataset.level = m.level;
+  const add = (tag: string, c: string, t: string) => {
+    const e = document.createElement(tag);
+    e.className = c;
+    e.textContent = t;
+    box.append(e);
+  };
+  add("h3", "lw-message-title", m.title);
+  add("p", "lw-message-what", m.what);
+  add("p", "lw-message-sure", m.how_sure);
+  if (m.since) add("p", "lw-message-since", m.since);
+  add("p", "lw-message-not", m.not);
+  add("p", "lw-message-do", m.do);
+  if (!m.since && lake.status.level_since) add("p", "lw-note", `${m.level} since ${formatDate(lake.status.level_since)}.`);
+  return box;
 }
 
 const slug = statusSlug;
@@ -150,6 +202,19 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   if (!has) return { select() {}, destroy: () => void (root.innerHTML = "") };
 
   q("lw-headline").textContent = cloudHeadline(file!);
+  const alerts = alertLakes(file);
+  const banner = q("lw-alert-banner");
+  banner.hidden = !alerts.length;
+  for (const a of alerts) {
+    const p = el("p", "lw-alert-line");
+    p.append(el("strong", undefined, "Alert: growing"), ` at ${a.name}. ${levelMessage(a)?.title ?? a.status.reason} `);
+    const go = el("button", "btn lw-alert-open", `Open ${a.name}`);
+    go.type = "button";
+    go.addEventListener("click", () => choose(a.id));
+    p.append(go);
+    banner.append(p);
+  }
+  if (alerts.length) banner.append(el("p", "lw-note", "Official warnings come from PMD, NDMA, GBDMA and PDMA."));
 
   const listEl = q("lw-list");
   const rows = new Map<string, HTMLButtonElement>();
@@ -162,7 +227,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     b.setAttribute("aria-pressed", "false");
     const text = el("span", "lw-row-text");
     const chips = el("span", "lw-chips");
-    chips.append(el("span", `lw-chip lw-status-${slug(lake.status.status)}`, lake.status.status));
+    chips.append(chip(lake));
     if (isFrozen(lake)) {
       // A frozen lake reads at a glance in the list: an "Ice" tag beside the status.
       const ice = el("span", "lw-ice", "Ice");
@@ -190,6 +255,19 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   }
 
   const detail = q("lw-detail");
+
+  /** The status pill. A level carries its name in words and, for an Alert, a mark too: never colour alone. */
+  function chip(lake: Lake): HTMLElement {
+    const c = el("span", `lw-chip lw-status-${slug(lake.status.status)}`);
+    if (hasLevel(lake)) c.dataset.level = lake.status.status;
+    if (isAlert(lake)) {
+      const mark = el("span", "lw-chip-mark", "▲");
+      mark.setAttribute("aria-hidden", "true");
+      c.append(mark, " ");
+    }
+    c.append(lake.status.status);
+    return c;
+  }
 
   /** A small radar picture for a list row: latest HH with the water pixels on top. Decorative; the row text names the lake. */
   function thumb(lake: Lake): HTMLElement {
@@ -273,7 +351,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
       : `NISAR passes over ${lake.name}: dark radar area by date and track. There is no lake here now, so this is not lake water and no pass enters a trend.`));
     const thead = el("thead");
     const head = el("tr");
-    for (const h of ["Date", "Track", lakeNow ? "Area (km²)" : "Dark area (km²)", "Zone seen", lakeNow ? "Used" : "In a trend", "Version"]) {
+    for (const h of ["Date", "Track", lakeNow ? "Area (km²)" : "Dark area (km²)", "Zone seen", lakeNow ? "Used" : "In a trend", "Baseline (km²)", "z", "Level set", "Version"]) {
       const th = el("th", undefined, h);
       th.scope = "col";
       head.append(th);
@@ -299,6 +377,10 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
         el("td", undefined, p.area_km2 === null ? "–" : p.area_km2.toFixed(3)),
         el("td", undefined, p.observable_share === null ? "–" : `${Math.round(p.observable_share * 100)}%`),
         el("td", undefined, used),
+        el("td", undefined, typeof p.baseline_km2 === "number" ? p.baseline_km2.toFixed(3) : "–"),
+        el("td", undefined, typeof p.z === "number" ? `${p.z > 0 ? "+" : p.z < 0 ? "−" : ""}${Math.abs(p.z).toFixed(1)}` : "–"),
+        el("td", undefined, p.after_open ? "None: rebuilds the baseline after the lake opened"
+          : p.level_contrib ? `${p.level_contrib}${p.new_version ? " (first pass on this version: no Alert)" : ""}` : "–"),
         el("td", undefined, p.crid ?? "–"),
       );
       tbody.append(tr);
@@ -352,11 +434,15 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     chart = undefined;
     detail.replaceChildren();
     const head = el("header", "card-head");
-    head.append(el("h2", "lw-title", lake.name), el("span", `lw-chip lw-status-${slug(lake.status.status)}`, lake.status.status));
+    head.append(el("h2", "lw-title", lake.name), chip(lake));
     const frozen = isFrozen(lake);
     const scope = el("p", "lw-scope", `Measures: ${lake.area_label}${frozen ? ` (${FROZEN_AREA})` : ""}. Indicative screening on provisional data. Official warnings come from PMD, NDMA, GBDMA and PDMA.`);
     if (frozen) scope.dataset.frozen = "true";
-    detail.append(head, el("p", "lw-sentence-big", statusSentence(lake, file!.constants.change_factor)), scope);
+    // The initial message comes first, above everything else about the lake.
+    const msg = messageBox(lake);
+    detail.append(head);
+    if (msg) detail.append(msg);
+    detail.append(el("p", "lw-sentence-big", statusSentence(lake, file!.constants.change_factor)), scope);
     const card = freezeCard(lake);
     if (card) detail.append(card);
     detail.append(pictures(lake));
@@ -365,7 +451,8 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     // A site with no lake now has no area curve: its dark radar area is not lake water.
     const noTrend = lake.status.status === "Not observable" || lake.status.status === "Not enough NISAR looks yet" || !hasLakeNow(lake);
     const minObs = file!.constants.min_observable;
-    const data = lakeChartData(lake, minObs);
+    const factor = file!.constants.change_factor;
+    const data = lakeChartData(lake, minObs, factor);
     const chartSec = el("section", "lw-section");
     chartSec.append(el("h3", undefined, "Area by track"));
     if (noTrend) {
@@ -377,7 +464,11 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
       const ice = data.series.some((s) => s.frozen)
         ? ` Grey markers are passes taken while the lake was probably frozen: ${FROZEN_AREA}, and left out of the comparison.`
         : "";
-      chartSec.append(host, el("p", "lw-note", `One line per track. Hollow markers are passes left out of the trend, at the area they read; a left-out pass with no reading, and passes that saw less than ${Math.round(minObs * 100)}% of the lake zone, are not drawn.${ice} The table lists every pass.`));
+      const band = data.series.some((s) => s.band)
+        ? ` The shaded band is the ${lake.status.track} baseline ± ${factor} × noise, pass by pass: each pass is compared with the median of earlier passes on its own track, and one outside its band is beyond ${factor}× noise.`
+        : "";
+      const set = data.series.some((s) => s.level) ? " Large ringed markers are the passes that set a Watch, an Alert or a Decrease noted." : "";
+      chartSec.append(host, el("p", "lw-note", `One line per track. Hollow markers are passes left out of the trend, at the area they read; a left-out pass with no reading, and passes that saw less than ${Math.round(minObs * 100)}% of the lake zone, are not drawn.${ice}${band}${set} The table lists every pass.`));
       chart = opts.createChart(host, data);
     }
     if (lake.series.length) chartSec.append(readingsTable(lake, minObs));

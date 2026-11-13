@@ -121,11 +121,12 @@ def test_lakes_check_writes_the_rows_and_merges_them_into_lakes_json(tmp_path, m
     out = tmp_path / "out"
     out.mkdir()
     (out / "lakes.json").write_text(json.dumps({"lakes": [{"id": "attabad", "series": []}], "checks": []}), encoding="utf-8")
-    monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: [type("L", (), {"id": "attabad"})()])
+    monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: [_lake("attabad")])
     monkeypatch.setattr(run_pipeline, "check_lake", lambda lake, cache, series: {"lake": lake.id, "note": "no clear scene"})
     checks = tmp_path / "checks.json"
     run_pipeline.main(["lakes-check", "--out", str(out), "--cache", str(tmp_path), "--checks", str(checks), "--lakes", "attabad"])
-    rows = [{"lake": "attabad", "note": "no clear scene"}]
+    from sartale.lakebuild import check_key
+    rows = [{"lake": "attabad", "note": "no clear scene", "key": check_key(_lake("attabad")), "season_pass": None}]
     assert json.loads(checks.read_text(encoding="utf-8")) == rows
     assert json.loads((out / "lakes.json").read_text(encoding="utf-8"))["checks"] == rows
 
@@ -211,3 +212,117 @@ def test_lakes_absence_without_lakes_json_does_nothing(tmp_path, monkeypatch, ca
     monkeypatch.setattr(lakecheck, "absence_check", lambda *a: pytest.fail("no lakes.json: no check"))
     run_pipeline.main(["lakes-absence", "--out", str(tmp_path / "none")])
     assert "nothing to re-check yet" in capsys.readouterr().out
+
+
+def test_lakes_check_sets_the_status_again_from_the_new_check(tmp_path, monkeypatch):
+    """A new Sentinel-2 check can take a lake's level away (IoU under 0.4) or give it back."""
+    out = tmp_path / "out"
+    out.mkdir()
+    series = [{"date": f"2026-09-{d:02d}", "track": "156A", "area_km2": a, "observable_share": 1.0, "excluded": None}
+              for d, a in zip(range(1, 8), [1.0, 1.02, 0.99, 1.01, 1.0, 1.5, 1.5])]
+    lk = {"id": "attabad", "name": "Attabad", "lake_state": "lake", "series": series, "validation": None,
+          "status": {"status": "Alert: growing"}}
+    (out / "lakes.json").write_text(json.dumps({"lakes": [lk], "checks": []}), encoding="utf-8")
+    monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: [_lake("attabad")])
+    row = {"lake": "attabad", "nisar_date": "2026-09-01", "nisar_track": "156A", "s2_date": "2026-09-01", "s2_id": "S",
+           "iou": 0.2, "days_apart": 0, "radar_km2": 1.0, "optical_km2": 2.0, "area_error_pct": -50.0,
+           "window_radar_km2": 1.0, "window_optical_km2": 2.0, "window_iou": 0.2}
+    monkeypatch.setattr(run_pipeline, "check_lake", lambda lake, cache, series: row)
+    args = ["lakes-check", "--out", str(out), "--cache", str(tmp_path), "--checks", str(tmp_path / "c.json"),
+            "--lakes", "attabad"]
+    run_pipeline.main(args)
+    got = json.loads((out / "lakes.json").read_text(encoding="utf-8"))["lakes"][0]
+    assert got["validation"]["iou"] == 0.2 and got["status"]["status"] == "Not measurable"
+    assert json.loads((out / "lakes.json").read_text(encoding="utf-8"))["checks"][0]["key"]["method"] == "D17"
+    monkeypatch.setattr(run_pipeline, "check_lake", lambda lake, cache, series: {**row, "iou": 0.7})
+    run_pipeline.main(args)
+    got = json.loads((out / "lakes.json").read_text(encoding="utf-8"))["lakes"][0]
+    assert got["status"]["status"] == "Alert: growing" and got["status"]["message"]["level"] == "Alert: growing"
+    assert got["series"][-1]["level_contrib"] == "Alert: growing"
+
+
+def _lake(lid):
+    from sartale.lakes import Lake
+    return Lake(id=lid, name=lid.title(), lon=74.82, lat=36.32, coord_source="t", outline=None, role="watch",
+                downstream=None, downstream_source=None)
+
+
+def _checked_doc(out, rows):
+    series = [{"date": f"2026-09-{d:02d}", "track": "156A", "area_km2": a, "observable_share": 1.0, "excluded": None}
+              for d, a in zip(range(1, 8), [1.0, 1.02, 0.99, 1.01, 1.0, 1.5, 1.5])]
+    lakes = [{"id": lid, "name": lid.title(), "lake_state": "lake", "series": series, "status": {"status": "x"}}
+             for lid in ("fresh", "stale", "broken")]
+    out.mkdir(exist_ok=True)
+    (out / "lakes.json").write_text(json.dumps({"lakes": lakes, "checks": rows}), encoding="utf-8")
+
+
+def test_lakes_check_stale_only_reuses_current_checks_and_fails_soft(tmp_path, monkeypatch):
+    from sartale.lakebuild import check_key
+    out = tmp_path / "out"
+    good = {"lake": "fresh", "iou": 0.7, "nisar_date": "2026-09-01", "s2_date": "2026-09-01", "key": check_key(_lake("fresh"))}
+    old = {"lake": "stale", "iou": 0.7, "nisar_date": "2026-09-01", "s2_date": "2026-09-01", "key": {"method": "B0"}}
+    _checked_doc(out, [good, old])
+    monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: [_lake("fresh"), _lake("stale"), _lake("broken")])
+    asked = []
+
+    def check(lake, cache, series):
+        asked.append(lake.id)
+        if lake.id == "broken":
+            raise TimeoutError("Earth Search")
+        return {"lake": lake.id, "nisar_date": "2026-09-02", "nisar_track": "156A", "s2_date": "2026-09-02",
+                "s2_id": "S", "days_apart": 0, "iou": 0.6, "radar_km2": 1.0, "optical_km2": 1.0, "area_error_pct": 0.0,
+                "window_radar_km2": 1.0, "window_optical_km2": 1.0, "window_iou": 0.5}
+    monkeypatch.setattr(run_pipeline, "check_lake", check)
+    run_pipeline.main(["lakes-check", "--out", str(out), "--cache", str(tmp_path), "--checks", str(tmp_path / "c.json"),
+                       "--stale-only"])
+    assert sorted(asked) == ["broken", "stale"], "a current check is reused, not made again"
+    doc = json.loads((out / "lakes.json").read_text(encoding="utf-8"))
+    by = {lk["id"]: lk for lk in doc["lakes"]}
+    rows = {r["lake"]: r for r in doc["checks"]}
+    assert rows["fresh"] == good and rows["stale"]["iou"] == 0.6 and rows["stale"]["key"]["method"] == "D17"
+    assert rows["broken"]["failed"] is True and rows["broken"]["note"] == "Sentinel-2 check failed (TimeoutError)"
+    assert by["stale"]["status"]["status"] == "Alert: growing"
+    assert by["broken"]["status"]["status"] == "Not yet validated against Sentinel-2"
+    assert "could not be made (Sentinel-2 check failed (TimeoutError))" in by["broken"]["status"]["reason"]
+    assert by["fresh"]["validation"]["iou"] == 0.7 and by["fresh"]["status"]["status"] == "Alert: growing"
+    # the next refresh tries the failed one again, and only it
+    asked.clear()
+    run_pipeline.main(["lakes-check", "--out", str(out), "--cache", str(tmp_path), "--checks", str(tmp_path / "c.json"),
+                       "--stale-only"])
+    assert asked == ["broken"]
+
+
+def test_a_check_that_found_no_pair_is_retried_only_for_a_new_season_pass_or_a_new_key(tmp_path, monkeypatch):
+    from sartale.lakebuild import check_key
+    out = tmp_path / "out"
+    _checked_doc(out, [])
+    monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: [_lake("fresh")])
+    asked = []
+    monkeypatch.setattr(run_pipeline, "check_lake",
+                        lambda lake, cache, series: asked.append(lake.id) or {"lake": lake.id, "note": "no clear scene"})
+    args = ["lakes-check", "--out", str(out), "--cache", str(tmp_path), "--checks", str(tmp_path / "c.json"),
+            "--stale-only"]
+    run_pipeline.main(args)
+    row = json.loads((out / "lakes.json").read_text(encoding="utf-8"))["checks"][0]
+    assert asked == ["fresh"] and row["season_pass"] == "2026-09-07 156A" and row["key"] == check_key(_lake("fresh"))
+    run_pipeline.main(args)
+    assert asked == ["fresh"], "no new open-water-season pass: not checked again"
+    # a new in-season pass makes it worth another try
+    doc = json.loads((out / "lakes.json").read_text(encoding="utf-8"))
+    doc["lakes"][0]["series"].append({"date": "2026-09-19", "track": "156A", "area_km2": 1.0, "observable_share": 1.0,
+                                      "excluded": None})
+    (out / "lakes.json").write_text(json.dumps(doc), encoding="utf-8")
+    run_pipeline.main(args)
+    assert asked == ["fresh", "fresh"]
+    # a new key (the point moved) does too, whatever the passes
+    monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: [type(_lake("fresh"))(**{**_lake("fresh").__dict__,
+                                                                                       "lon": 74.83})])
+    run_pipeline.main(args)
+    assert asked == ["fresh", "fresh", "fresh"]
+    # an out-of-season pass alone does not
+    doc = json.loads((out / "lakes.json").read_text(encoding="utf-8"))
+    doc["lakes"][0]["series"].append({"date": "2026-11-01", "track": "156A", "area_km2": 1.0, "observable_share": 1.0,
+                                      "excluded": None})
+    (out / "lakes.json").write_text(json.dumps(doc), encoding="utf-8")
+    run_pipeline.main(args)
+    assert len(asked) == 3

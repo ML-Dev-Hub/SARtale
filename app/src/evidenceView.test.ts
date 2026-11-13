@@ -101,7 +101,7 @@ describe("How we know", () => {
     const other: LakesFile = { ...realLakes, constants: { ...c, drop_db: 6.5, min_looks: 5 } };
     const text = open(other).text;
     expect(text).toContain("6.5 dB below");
-    expect(text).toContain("at least 5 valid");
+    expect(text).toContain("at least 5 earlier valid passes");
     expect(text).not.toMatch(/\{\w+\}/);
     const mine = withLakes().text;
     expect(mine).toContain(`${c.drop_db} dB below`);
@@ -109,16 +109,30 @@ describe("How we know", () => {
     expect(mine).toContain("17 Jun 2026 to 4 Aug 2026");
   });
 
-  test("states the two-view rule, the search circle and the data file's own note", () => {
+  test("states the D17 water rule, the DEM mask, the levels, the search circle and the data file's own note", () => {
     const { text } = withLakes();
-    expect(text).toMatch(/dark in one viewing direction's season median image \(ascending or descending\) but seen and not dark in the other's/);
-    expect(text).toContain("inside the lake zone, not shadow-prone, and valid");
+    expect(text).toContain("Water rule (method D17). Each pass is first smoothed with a 7 by 7 pixel Lee filter");
+    expect(text).toContain("A pixel is water when its HH is at least 3 dB below the median HH of the 6 km search window");
+    expect(text).toContain("Inside the lake zone nothing is masked");
+    expect(text).toContain("is no longer used");
+    expect(text).not.toMatch(/that is radar shadow, not water|not shadow-prone, and valid/);
     expect(text).toMatch(/robust z-score above 3\.5/);
-    expect(text).toMatch(/that is radar shadow, not water/);
+    expect(text).toContain("Alert: growing when two valid passes in a row, on any tracks, have z of +2 or more");
+    expect(text).toContain("a CUSUM with k = 0.5) reaches 4");
+    expect(text).toContain("never below 0.005 km² or 2% of the baseline");
+    expect(text).toContain("IoU under 0.4 gets no level");
     expect(text).toContain("search circle around its coordinates, 1 km unless the lake sets a smaller one");
-    expect(text).toContain("underestimate lakes whose shores sit in radar shadow");
     expect(text).toContain(realLakes.notes);
-    expect(text).toMatch(/only with its own earlier passes from the same track/);
+    expect(text).toMatch(/compared only with earlier passes from its own track/);
+    // the Limits list states what the levels cannot do
+    for (const t of ["nearly invisible", "5–12 days after a change begins in Hunza", "8–12 days in Chitral", "not outburst warning", "modelled", "one more season", "0.05 km²"]) expect(text).toContain(t);
+  });
+
+  test("a build made before the levels leaves the level sentences out rather than show gaps", () => {
+    const { method: _m, ...older } = realLakes;
+    const text = open(older as LakesFile).text;
+    expect(text).not.toMatch(/\{\w+\}/);
+    expect(text).not.toContain("Water rule (method");
   });
 
   test("lists every Sentinel-2 cross-check row from lakes.json", () => {
@@ -156,7 +170,7 @@ describe("How we know", () => {
   test("uses no praise words, no banned claims and no Peshawar chapter", () => {
     const { text } = withLakes();
     expect(text).not.toMatch(/accurate/i);
-    expect(text).not.toMatch(/(?<!not )validated/i);
+    expect(text).not.toMatch(/(?<!not )(?<!not yet )validated/i); // "Not yet validated against Sentinel-2" is a status name
     expect(findBannedClaims(text)).toEqual([]);
     expect(text).not.toMatch(/detect/i);
     expect(text).not.toMatch(/Peshawar|Tarbela|OPERA/);

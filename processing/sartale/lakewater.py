@@ -1,8 +1,11 @@
-"""Screen bad passes and find lake water with the two-view rule.
+"""Screen bad passes and find lake water (method D17).
 
-Per-pass water (ruling R2) is: dark in this pass, inside the lake zone, not shadow-prone, valid.
-Shadow-prone pixels come from each track's season-median image: dark in one viewing direction
-but not in the opposite one (radar shadow, not water).
+Per-pass water is: valid, inside the lake zone, and HH (Lee-filtered, 7x7, on linear power) at least DROP_DB below the
+window-median HH. The window median leaves out terrain in radar layover or shadow (sartale.demmask); inside the zone
+nothing is masked. HV is not used for water. The pass screens keep the 3x3 boxcar and the HH-and-HV dark share.
+
+`shadow_prone` (the two-view rule) no longer removes water; the freeze check's summer core still leaves those pixels
+out, as it did when its break-up numbers were set (sartale.freeze).
 """
 import warnings
 
@@ -15,6 +18,8 @@ from scipy.ndimage import distance_transform_edt, uniform_filter
 from sartale.config import (
     BRIGHT_PASS_DB,
     DROP_DB,
+    LEE_BOX,
+    LEE_ENL,
     OUTLIER_HV_FLOOR_DB,
     OUTLIER_MIN_PASSES,
     OUTLIER_SHARE_FLOOR,
@@ -38,6 +43,40 @@ def despeckle(power: np.ndarray, box: int = SPECKLE_BOX) -> np.ndarray:
     with np.errstate(invalid="ignore", divide="ignore"):
         mean = total / share
     return np.where(share >= 0.5 - 1e-9, mean, np.nan)
+
+
+def lee_filter(power: np.ndarray, box: int = LEE_BOX, enl: float = LEE_ENL) -> np.ndarray:
+    """NaN-aware Lee filter of linear power: local mean m and variance v over a box x box window (finite neighbours
+    only, `despeckle`), then m + w (p - m) with w = clip(1 - (1 / enl) / (v / m^2), 0, 1). A flat (speckle-only)
+    neighbourhood gets its mean; an edge or a bright point keeps its own value.
+
+    A NaN pixel with enough finite neighbours (half the box) takes the local mean, as `despeckle` fills it; with fewer
+    it stays NaN."""
+    p = np.asarray(power, dtype=np.float64)
+    finite = np.isfinite(p)
+    m = despeckle(p, box)
+    m2 = despeckle(np.where(finite, p * p, np.nan), box)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        ci2 = (m2 - m * m) / (m * m)
+        w = np.clip(1.0 - (1.0 / enl) / ci2, 0.0, 1.0)
+        out = m + w * (np.where(finite, p, m) - m)
+    return np.where(np.isfinite(m), out, np.nan)
+
+
+def water_mask(hh_db: np.ndarray, valid: np.ndarray, stat_mask: np.ndarray | None = None,
+               drop_db: float = DROP_DB) -> np.ndarray:
+    """D17 water: `valid` and HH (dB, Lee-filtered) at least `drop_db` below the window-median HH. The median is taken
+    over the valid pixels that `stat_mask` leaves in (True = left out of the statistics: layover and shadow), or over
+    every valid pixel without one (or when it would leave none)."""
+    valid = np.asarray(valid, bool)
+    use = valid if stat_mask is None else valid & ~np.asarray(stat_mask, bool)
+    if not use.any():
+        use = valid
+    if not use.any():
+        return np.zeros(valid.shape, bool)
+    ref = float(np.median(np.asarray(hh_db)[use]))
+    with np.errstate(invalid="ignore"):
+        return valid & (hh_db <= ref - drop_db)
 
 
 def screen_passes(hh_db_by_pass: dict[str, np.ndarray]) -> dict[str, str]:
@@ -219,19 +258,20 @@ def outline_window_share(x, y, epsg, outline_polygon) -> float:
     return min(1.0, float(inside.sum()) * abs(dx * dy) / area)
 
 
-def pass_water(hh_db: np.ndarray, hv_db: np.ndarray, zone: np.ndarray, shadow: np.ndarray | None,
-               pixel_m: float) -> dict:
-    """Water in one pass: dark, inside the zone, not shadow-prone, valid.
+def pass_water(hh_db: np.ndarray, valid: np.ndarray, zone: np.ndarray, pixel_m: float,
+               stat_mask: np.ndarray | None = None) -> dict:
+    """Water in one pass (D17, `water_mask`): Lee-filtered HH `hh_db`, its `valid` pixels, the lake `zone`, and the
+    layover/shadow `stat_mask` left out of the window median.
 
-    Returns area_km2; observable_share (valid, non-shadow share of the zone pixels, 0.0 for an
-    empty zone); valid (count of observable zone pixels).
+    Returns area_km2; observable_share (valid share of the zone pixels, 0.0 for an empty zone); valid (count of
+    observable zone pixels); water (the water mask over the whole window).
     """
-    dark, valid = dark_mask(hh_db, hv_db)
-    not_shadow = np.ones(zone.shape, bool) if shadow is None else ~shadow
-    observable = zone & valid & not_shadow
+    water = water_mask(hh_db, valid, stat_mask)
+    observable = zone & np.asarray(valid, bool)
     n_zone = int(zone.sum())
     return {
-        "area_km2": float((dark & observable).sum() * pixel_m ** 2 / 1e6),
+        "area_km2": float((water & zone).sum() * pixel_m ** 2 / 1e6),
         "observable_share": float(observable.sum() / n_zone) if n_zone else 0.0,
         "valid": int(observable.sum()),
+        "water": water,
     }

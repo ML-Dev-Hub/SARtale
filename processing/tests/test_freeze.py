@@ -439,10 +439,13 @@ def test_a_clear_snow_covered_scene_makes_it_seen_by_sentinel2():
 def test_without_the_frozen_status_the_cold_passes_would_read_as_growth():
     from sartale.lakestatus import open_water_status
     entry = shazore_entry()
-    assert open_water_status(entry["series"])["status"] in ("Growing", "Change not confirmed yet")
+    # the first cold pass is also the first on P05036, so it can make a Watch but not an Alert
+    assert open_water_status(entry["series"])["status"] == "Watch"
     out = freeze_lake(SHAZORE, entry, "2026-11-12", power=power_like(SHAZORE_AIR), s2_check=lambda *a, **k: None,
                       log=lambda m: None)
-    assert open_water_status(out["series"])["status"] == "Stable"
+    assert open_water_status(out["series"])["status"] == "No change"
+    # the frozen passes carry no comparison, and the open ones keep theirs
+    assert [p.get("z") is not None for p in out["series"]] == [False] * 3 + [True, True] + [False, False]
 
 
 def test_a_warm_lake_stays_open_and_its_status_is_the_usual_one():
@@ -452,7 +455,7 @@ def test_a_warm_lake_stays_open_and_its_status_is_the_usual_one():
                       s2_check=lambda *a, **k: called.append(1), log=lambda m: None)
     f = out["freeze"]
     assert f["state"] == "open" and f["since"] is None and not f["s2_searched"] and called == []
-    assert out["status"]["status"] in ("Growing", "Change not confirmed yet")
+    assert out["status"]["status"] == "Watch" and out["status"]["message"]["level"] == "Watch"
     assert "Not frozen by the freeze rule" in f["reason"]
     assert "Air temperature alone cannot show that the lake is open." in f["reason"]
 
@@ -478,7 +481,7 @@ def test_not_assessed_keeps_the_usual_assessment(lake, power, why):
                       log=lambda m: None)
     assert out["freeze"]["state"] == "not_assessed" and why in out["freeze"]["reason"]
     assert out["freeze"]["reason"].startswith("Freeze not assessed:")
-    assert out["status"]["status"] in ("Growing", "Change not confirmed yet")
+    assert out["status"]["status"] == "Watch"
 
 
 def _first_check():
@@ -558,8 +561,9 @@ def test_a_frozen_lake_records_its_last_open_water_pass():
     it had then; an open lake whose pictured pass is not frozen gets none."""
     out = _first_check()
     lo = out["last_open"]
-    assert (lo["date"], lo["track"], lo["area_km2"], lo["status"]) == ("2026-09-18", "084A", 0.159, "Stable")
+    assert (lo["date"], lo["track"], lo["area_km2"], lo["status"]) == ("2026-09-18", "084A", 0.159, "No change")
     assert lo["looks"] == 5 and lo["noise_km2"] == 0.005 and lo["ref_km2"] == pytest.approx(0.1605)
+    assert lo["z"] == pytest.approx(-0.3) and lo["change_km2"] == pytest.approx(-0.0015)
     assert lo["images"] is None  # the CLI draws them from the cache
     warm = freeze_lake(SHAZORE, shazore_entry(), "2026-11-12", power=power_like([6.0] * 71),
                        s2_check=lambda *a, **k: None, log=lambda m: None)

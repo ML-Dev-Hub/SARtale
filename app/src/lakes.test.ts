@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { fixtureLakes, frozenFixture } from "./fixtures";
+import { olderFile, fixtureLakes, frozenFixture } from "./fixtures";
 import realLakes from "../public/data/lakes.json";
 import frozenLakes from "./frozen/lakes.json";
 import { droppedLine, isLake, isLakesFile } from "./lakes";
 import { findBannedClaims } from "./content";
-import { absenceLine, cloudHeadline, FROZEN_AREA, freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, isFrozen, isTrendPass, lakeTokens, mayBeForming, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
+import { absenceLine, cloudHeadline, LEVEL_LIMITS, FROZEN_AREA, freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, isFrozen, isTrendPass, lakeTokens, mayBeForming, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -103,12 +103,13 @@ describe("sortLakes", () => {
     const ids = sortLakes(fixtureLakes.lakes).map((l) => l.id);
     expect(ids).toEqual(["grow-new", "grow-old", "shrink", "stable", "few", "hidden", "control"]);
   });
-  test("status order is the documented one", () => {
+  test("status order is the documented one: an Alert first", () => {
     expect(STATUS_ORDER).toEqual([
-      "Lake may be forming", "Growing", "Shrinking", "Change not confirmed yet", "Frozen (likely)", "Frozen (seen by Sentinel-2)", "Break-up likely", "Not seen this pass", "Stable", "Not enough NISAR looks yet", "Not observable", "No lake now",
+      "Alert: growing", "Lake may be forming", "Watch", "Decrease noted", "Frozen (likely)", "Frozen (seen by Sentinel-2)", "Break-up likely", "Not seen this pass", "No change", "Not enough NISAR looks yet", "Not measurable", "Not yet validated against Sentinel-2", "Not observable", "No lake now",
     ]);
+    expect(STATUS_ORDER).not.toContain("Change not confirmed yet");
   });
-  test("frozen lakes sort after Change not confirmed yet and before Not seen this pass and Stable", () => {
+  test("frozen lakes sort after Decrease noted and before Not seen this pass and No change", () => {
     const lakes = [...fixtureLakes.lakes, frozenFixture("ice", "Frozen (likely)"), frozenFixture("ice-s2", "Frozen (seen by Sentinel-2)"), frozenFixture("thaw", "Break-up likely")];
     const ids = sortLakes(lakes).map((l) => l.id);
     expect(ids).toEqual(["grow-new", "grow-old", "shrink", "ice", "ice-s2", "thaw", "stable", "few", "hidden", "control"]);
@@ -124,16 +125,24 @@ describe("statusSentence", () => {
   const by = (id: string) => fixtureLakes.lakes.find((l) => l.id === id)!;
   test("test_statusSentence_includes_date_looks_and_noise", () => {
     expect(statusSentence(by("grow-new"), 2)).toBe(
-      "Growing: +0.031 km² since earlier 156A passes (noise ±0.005 km²; change must exceed 2× noise), 9 looks, latest 23 Oct 2026",
+      "Alert: growing: +0.031 km² (+24%) against the baseline of earlier 156A passes, z = +2.4 (noise ±0.013 km²; a level needs 2× noise), 9 looks, latest 23 Oct 2026",
     );
     const s = statusSentence(by("shrink"), 2);
-    expect(s).toContain("-0.040 km²");
+    expect(s).toContain("−0.040 km² (−31%)");
   });
-  test("an unconfirmed change gives its numbers and says it waits for a second pass on the new version", () => {
-    const lake = { ...by("grow-new"), status: { ...by("grow-new").status, status: "Change not confirmed yet" as const, track: "084A",
-      change_km2: 0.065, noise_km2: 0.016, latest_date: "2026-10-30", new_crid: "P05036" } };
-    expect(statusSentence(lake, 2)).toBe(
-      "Change not confirmed yet: +0.065 km² since earlier 084A passes (noise ±0.016 km²; change must exceed 2× noise), 9 looks, latest 30 Oct 2026; first pass on NISAR processing version P05036, so the change waits for a second pass on that version",
+  test("Alerts paused only when every track has switched version; otherwise the pass's own track is named", () => {
+    const g = by("grow-old");
+    const all = { ...g, status: { ...g.status, alerts_paused: { crid: "P05036", track: "084A", date: "2026-10-30", tracks: ["084A", "164D"] } } };
+    expect(statusSentence(all, 2)).toContain("; Alerts paused: every track's latest pass is its first on a new processing version");
+    const one = { ...g, status: { ...g.status, first_on_version: { crid: "P05036", track: "084A", date: "2026-10-30" } } };
+    const s = statusSentence(one, 2);
+    expect(s).toContain("this pass is track 084A's first on processing version P05036: it cannot count toward an Alert (other tracks can)");
+    expect(s).not.toContain("Alerts paused");
+  });
+  test("a status from a build made before the levels keeps its old wording", () => {
+    const old = olderFile().lakes.find((l) => l.status.status === "Growing")!;
+    expect(statusSentence(old, 2)).toBe(
+      "Growing: +0.031 km² since earlier 156A passes (noise ±0.013 km²; change must exceed 2× noise), 9 looks, latest 23 Oct 2026",
     );
   });
   test("test_statusSentence_point_only_lake_says_search_window", () => {
@@ -155,7 +164,7 @@ describe("statusSentence", () => {
     expect(s).not.toContain("-0.000");
   });
   test("uses the change factor it is given", () => {
-    expect(statusSentence(by("grow-new"), 3)).toContain("change must exceed 3× noise");
+    expect(statusSentence(by("grow-new"), 3)).toContain("a level needs 3× noise");
   });
 });
 
@@ -175,7 +184,12 @@ describe("methodLimits", () => {
       "N.",
       "Not validated: frozen lakes, lakes under 0.05 km², and wind-roughened water.",
       "In a same-day check against Sentinel-2, radar water overlapped optical water poorly at every lake checked (IoU 0.005–0.11); treat areas as indicative.",
+      ...LEVEL_LIMITS,
     ]);
+    // the Limits of the levels: drawdown, latency, not outburst warning, modelled rates, small lakes
+    expect(LEVEL_LIMITS.join(" ")).toMatch(/nearly invisible.*5–12 days.*in Hunza.*8–12 days in Chitral.*not outburst warning.*modelled.*not observed.*one more season.*0\.05 km²/s);
+    // a build made before the levels has none of them
+    expect(methodLimits({ ...olderFile(), notes: "N." })).not.toContain(LEVEL_LIMITS[0]);
     expect(opticalCheckSentence([mk(0.0138, 3)])).toBe("In checks up to 3 days apart against Sentinel-2, radar water overlapped optical water poorly at every lake checked (IoU 0.014); treat areas as indicative.");
     expect(opticalCheckSentence([mk(null)])).toBeNull();
   });
@@ -226,7 +240,7 @@ describe("sites with no lake now", () => {
     expect(hasLakeNow(wet) || !mayBeForming(wet)).toBe(false);
     const g = { ...f, lakes: f.lakes.map((l) => (l.id === "hidden" ? wet : l)) };
     expect(watchList(g)).toBe("6 lakes and 1 site where a lake may be forming");
-    expect(sortLakes(g.lakes)[0].id).toBe("hidden");
+    expect(sortLakes(g.lakes)[1].id).toBe("hidden"); // after an Alert, before every other status
     const both = { ...g, lakes: [...g.lakes, { ...dry, id: "dry" }] };
     expect(watchList(both)).toBe("6 lakes, 1 site with no lake now and 1 site where a lake may be forming");
   });

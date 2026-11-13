@@ -1,0 +1,5 @@
+# Data and outlines are read byte for byte (hashes, diffs): the same line endings on every checkout.
+processing/**/*.json text eol=lf
+processing/**/*.geojson text eol=lf
+app/public/data/**/*.json text eol=lf
+app/public/data/*.json text eol=lf

@@ -1,7 +1,8 @@
 name: Rebuild the lake data
 description: >
   Search, fetch and build every watched lake from processing/lakes_in.json, work out which lakes are frozen
-  (lakes-freeze), compare the build with the published
+  (lakes-freeze), check against Sentinel-2 the lakes without a current check (lakes-check --stale-only), compare
+  the build with the published
   lakes.json, then run the Python and app tests. Fails on any error, including the Attabad gate, a search that
   finds no pass for any lake, and a build that would drop more than a quarter of the published passes. The caller
   passes EARTHDATA_USERNAME and EARTHDATA_PASSWORD through `env:` on the step that uses this action; they are
@@ -120,6 +121,16 @@ runs:
       run: |
         unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
         python -m sartale.run_pipeline lakes-freeze
+
+    - name: Check against Sentinel-2 the lakes whose check is missing or stale
+      # After the freeze check: a lake gets a level only with a current Sentinel-2 check (made for this water method,
+      # zone and lake point; the others are reused from the published lakes.json). Needs no login (Earth Search is
+      # open). Fails soft inside the command: a failed check leaves that lake "Not yet validated against Sentinel-2".
+      shell: bash -el {0}
+      working-directory: processing
+      run: |
+        unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
+        python -m sartale.run_pipeline lakes-check --stale-only
 
     - name: Compare with the published passes (fails when too many would be dropped)
       shell: bash -el {0}

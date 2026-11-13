@@ -48,8 +48,8 @@ conda run -n sartale python -m sartale.run_pipeline lakes-freeze   <span class="
     <tr><td><code>config.py</code></td><td>Every method constant, the cloud window and the manual exclusions. No CRID is pinned: each pass keeps its own</td></tr>
     <tr><td><code>lakes.py</code>, <code>lake_catalog.py</code>, <code>catalog.py</code></td><td>The lake register, the CMR collections and search, picking passes, parsing granule names</td></tr>
     <tr><td><code>remote.py</code>, <code>gcov.py</code></td><td>HTTP range reads of remote HDF5 files, and reading a GCOV window with its mask</td></tr>
-    <tr><td><code>radiometry.py</code>, <code>lakewater.py</code></td><td>Speckle box, decibels, the dark rule, the shadow rule, pass screening and the lake zone</td></tr>
-    <tr><td><code>lakestatus.py</code></td><td>Noise and the status of each lake</td></tr>
+    <tr><td><code>radiometry.py</code>, <code>lakewater.py</code></td><td>Speckle box and Lee filter, decibels, the D17 water rule, the screens' dark rule, pass screening and the lake zone</td></tr>
+    <tr><td><code>lakestatus.py</code></td><td>Each pass against its own track (z), the alert levels, the message and the status of each lake; <code>demmask.py</code>: the GLO-30 layover and shadow mask of the window median</td></tr>
     <tr><td><code>lakebuild.py</code>, <code>render.py</code></td><td>Puts it together: <code>lakes.json</code>, the pictures and the Attabad gate</td></tr>
     <tr><td><code>lakes_diff.py</code></td><td>The pass-by-pass comparison behind <code>lakes-diff</code></td></tr>
     <tr><td><code>lakecheck.py</code></td><td>The Sentinel-2 comparison</td></tr>
@@ -61,5 +61,5 @@ conda run -n sartale python -m sartale.run_pipeline lakes-freeze   <span class="
 <ul>
   <li><b>401 or a login page from ASF:</b> the Earthdata login in <code>~/.netrc</code> is missing or wrong, or the ASF application has not been authorised in your Earthdata profile.</li>
   <li><b><code>lakes-fetch</code> exits 1:</b> some passes failed, usually because of the network. Run it again; cached windows are kept.</li>
-  <li><b>The gate fails after a change to the method:</b> read the per-track ratios it prints. A drop usually means the dark rule or the shadow rule now removes real water.</li>
+  <li><b>The gate fails after a change to the method:</b> read the per-track ratios it prints. A drop usually means the water rule now misses real water, or reads more of Shisper's empty basin as water.</li>
 </ul>

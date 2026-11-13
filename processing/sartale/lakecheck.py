@@ -280,7 +280,7 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
     zone, the area the app reports. `window_*` repeat them over the whole ~6 km window, where the radar
     side is every dark, non-shadow pixel and so includes non-lake dark ground.
     """
-    from sartale.lakebuild import radar_water_masks
+    from sartale.lakebuild import radar_water_context
     from sartale.lakes import lake_bbox
     from sartale.lakestatus import is_valid
 
@@ -305,19 +305,25 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
     cands.sort(key=lambda c: c[:4] + (c[4]["id"],))
     tried, clear = set(), []
     masks: dict[str, dict] = {}
+    radar_of = radar_water_context(lake, cache_dir)  # the windows are read and analysed once per lake
+    optical: dict[str, dict] = {}  # each scene is read once: every pass of a lake is on the same grid
     for apart, tile_cloud, d, track, scene in cands:
         pass_id = f"{d}_{track}"
         if (scene["id"], d) in tried:
             continue
         tried.add((scene["id"], d))
         if pass_id not in masks:
-            masks[pass_id] = radar_water_masks(lake, cache_dir, pass_id)
+            masks[pass_id] = radar_of(pass_id)
         radar = masks[pass_id]
         x, y, epsg = radar["x"], radar["y"], radar["epsg"]
-        try:
-            opt = optical_on_grid(scene, x, y, epsg)
-        except Exception as e:  # noqa: BLE001 - a scene that will not read is skipped, and said so
-            log(f"{lake.id} {pass_id} vs {scene['id']}: unreadable ({type(e).__name__})")
+        if scene["id"] not in optical:
+            try:
+                optical[scene["id"]] = optical_on_grid(scene, x, y, epsg)
+            except Exception as e:  # noqa: BLE001 - a scene that will not read is skipped, and said so
+                log(f"{lake.id} {pass_id} vs {scene['id']}: unreadable ({type(e).__name__})")
+                optical[scene["id"]] = None
+        opt = optical[scene["id"]]
+        if opt is None:
             continue
         pct = 100 * opt["window_cloud_share"]
         zone_valid = zone_valid_share(opt["valid"], radar["zone"])

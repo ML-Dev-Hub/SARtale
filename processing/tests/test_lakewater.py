@@ -3,7 +3,8 @@ import pytest
 from pyproj import Transformer
 
 from sartale.lakes import Lake
-from sartale.lakewater import dark_mask, lake_zone, pass_water, screen_passes, shadow_prone
+from sartale.lakewater import (dark_mask, despeckle, lake_zone, lee_filter, pass_water, screen_passes, shadow_prone,
+                                water_mask)
 
 EPSG = 32643
 X = 500000.0 + 10.0 * np.arange(100)
@@ -63,9 +64,6 @@ def test_missing_opposite_view_is_not_shadow():
     sp = shadow_prone({"156A": a_dark, "063D": d_dark}, {"156A": "A", "063D": "D"},
                       {"156A": a_valid, "063D": d_valid})
     assert not sp[LAKE].any()
-    out = pass_water(hh, hv, LAKE.copy(), sp, pixel_m=10.0)
-    assert out["observable_share"] == pytest.approx(1.0)
-    assert out["area_km2"] == pytest.approx(LAKE.sum() * 100 / 1e6)
 
 
 def test_shadow_needs_the_opposite_view_to_see_the_pixel_light():
@@ -85,32 +83,85 @@ def test_shadow_prone_none_with_single_direction():
     assert shadow_prone({"156A": dark, "157A": dark}, {"156A": "A", "157A": "A"}) is None
 
 
-def test_pass_water_area_excludes_shadow():
+def valid_of(hh):
+    return np.isfinite(hh)
+
+
+def test_d17_water_is_hh_at_least_3_db_under_the_window_median_and_ignores_hv():
     hh, hv = scene()
+    hv[LAKE] = -14.0  # HV as bright as the land: D17 does not look at HV
+    w = water_mask(hh, valid_of(hh))
+    assert w[LAKE].all() and w[STRIP].all() and not w[~(LAKE | STRIP)].any()
+    # 2.9 dB under the median is not water, 3.0 dB is
+    hh2 = np.full((100, 100), -7.0)
+    hh2[LAKE] = -9.9
+    hh2[STRIP] = -10.0
+    w2 = water_mask(hh2, valid_of(hh2))
+    assert not w2[LAKE].any() and w2[STRIP].all()
+
+
+def test_d17_window_median_leaves_out_layover_and_shadow():
+    hh = np.full((100, 100), -7.0)
+    hh[LAKE] = -10.5  # 3.5 dB under the land
+    wall = np.zeros((100, 100), bool)
+    wall[:60, :] = True
+    wall &= ~LAKE
+    hh[wall] = -4.0  # bright layover on the valley wall pulls the median up
+    valid = valid_of(hh)
+    assert np.median(hh[valid]) == -4.0  # without the mask land 3 dB under the wall reads as water
+    assert water_mask(hh, valid)[60:].all()
+    w = water_mask(hh, valid, stat_mask=wall)  # median -7 dB over the rest: only the lake is water
+    assert w[LAKE].all() and not w[~LAKE].any()
+    # a mask that would leave no pixel is ignored
+    assert (water_mask(hh, valid, stat_mask=np.ones((100, 100), bool)) == water_mask(hh, valid)).all()
+
+
+def test_pass_water_counts_d17_water_in_the_zone_with_no_shadow_rule():
+    hh, _ = scene()
     zone = np.ones((100, 100), bool)
-    sp = STRIP.copy()
-    out = pass_water(hh, hv, zone, sp, pixel_m=10.0)
-    assert out["area_km2"] == pytest.approx(LAKE.sum() * 100 / 1e6)
+    out = pass_water(hh, valid_of(hh), zone, pixel_m=10.0)
+    # the strip (dark in one view only, once "shadow-prone" and left out) is water inside the zone now
+    assert out["area_km2"] == pytest.approx((LAKE | STRIP).sum() * 100 / 1e6)
+    assert out["observable_share"] == 1.0 and out["water"].sum() == (LAKE | STRIP).sum()
+    empty = pass_water(hh, valid_of(hh), np.zeros((100, 100), bool), pixel_m=10.0)
+    assert empty["observable_share"] == 0.0 and empty["area_km2"] == 0.0
 
 
-def test_pass_water_observable_share_counts_shadow_and_nan_as_unobservable():
-    hh, hv = scene()
+def test_pass_water_observable_share_counts_only_invalid_pixels_as_unobservable():
+    hh, _ = scene()
     zone = np.zeros((100, 100), bool)
     zone[0:20, 0:20] = True  # 400 pixels
-    sp = np.zeros((100, 100), bool)
-    sp[0:5, 0:20] = True  # 100 pixels
     hh[10:15, 0:20] = np.nan  # 100 pixels
-    out = pass_water(hh, hv, zone, sp, pixel_m=10.0)
-    assert out["observable_share"] == pytest.approx(0.5)
-    assert out["valid"] == 200
+    out = pass_water(hh, valid_of(hh), zone, pixel_m=10.0)
+    assert out["observable_share"] == pytest.approx(0.75)
+    assert out["valid"] == 300
 
 
-def test_pass_water_no_shadow_and_empty_zone():
-    hh, hv = scene()
-    out = pass_water(hh, hv, np.ones((100, 100), bool), None, pixel_m=10.0)
-    assert out["area_km2"] == pytest.approx((LAKE | STRIP).sum() * 100 / 1e6)
-    empty = pass_water(hh, hv, np.zeros((100, 100), bool), None, pixel_m=10.0)
-    assert empty["observable_share"] == 0.0 and empty["area_km2"] == 0.0
+def test_lee_filter_keeps_a_flat_field_and_an_edge():
+    flat = np.full((30, 30), 0.1)
+    assert np.allclose(lee_filter(flat), 0.1)
+    rng = np.random.default_rng(0)
+    speckled = 0.1 * rng.gamma(4.0, 0.25, (60, 60))  # 4-look speckle (the filter's ENL): smoothed to near its mean
+    out = lee_filter(speckled)
+    assert np.std(out[10:50, 10:50]) < 0.5 * np.std(speckled[10:50, 10:50])
+    step = np.where(np.arange(40)[None, :] < 20, 0.002, 0.2) * np.ones((40, 40))
+    out = lee_filter(step)
+    # a water/land edge stays an edge: away from it each side keeps its own value, and next to it the water side stays
+    # over 10 dB darker than the land (a 7x7 boxcar would smear it to about half the land's power)
+    assert np.allclose(out[:, :17], 0.002) and np.allclose(out[:, 23:], 0.2)
+    assert (out[:, 17:20] < 0.02).all() and (out[:, 20:23] > 0.1).all()
+
+
+def test_lee_filter_is_nan_aware():
+    p = np.full((30, 30), 0.1)
+    p[15, 15] = np.nan  # one masked pixel: filled from its neighbours, as the boxcar fills it
+    out = lee_filter(p)
+    assert np.isfinite(out).all() and out[15, 15] == pytest.approx(0.1)
+    p[:, :20] = np.nan  # a masked block: deep inside it stays NaN (under half of the 7x7 box is finite)
+    out = lee_filter(p)
+    assert np.isnan(out[:, :16]).all() and np.isfinite(out[:, 21:]).all()
+    assert (np.isfinite(out) == np.isfinite(despeckle(p, 7))).all()
+    assert np.allclose(out[np.isfinite(out)], 0.1)  # NaN never leaks into a value
 
 
 def test_screen_passes_drops_bright_outlier():

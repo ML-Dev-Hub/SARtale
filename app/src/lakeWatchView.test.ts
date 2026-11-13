@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test } from "vitest";
 import { findBannedClaims } from "./content";
-import { fixtureLakes, frozenFixture, requestedLake, withRequestedLake } from "./fixtures";
-import { sortLakes, type Lake, type LakesFile } from "./lakes";
+import { fixtureLakes, frozenFixture, olderFile, requestedLake, withRequestedLake } from "./fixtures";
+import { isLakesFile, keepValidLakes, sortLakes, type Lake, type LakesFile } from "./lakes";
 import { checkLine, createLakeWatchView, FORMING_LAYER, FORMING_NO_LAYER, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
 
 function setup(file: LakesFile | null = fixtureLakes, extra: Partial<Parameters<typeof createLakeWatchView>[1]> = {}) {
@@ -156,9 +156,9 @@ describe("Lake Watch", () => {
     const { root, view } = setup({ ...fixtureLakes, crid: "P05023, P05036", lakes: [lake] });
     view.select(lake.id);
     const head = [...root.querySelectorAll('[data-role="lw-readings"] thead th')].map((th) => th.textContent);
-    expect(head[5]).toBe("Version");
+    expect(head.slice(5)).toEqual(["Baseline (km²)", "z", "Level set", "Version"]);
     const rows = [...root.querySelectorAll('[data-role="lw-readings"] tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent));
-    expect(rows.map((r) => r[5])).toEqual(["P05023", "P05036"]);
+    expect(rows.map((r) => r[8])).toEqual(["P05023", "P05036"]);
   });
 
   test("test_a_check_note_shows_as_a_line_and_does_not_break_the_panel", () => {
@@ -253,18 +253,97 @@ describe("Lake Watch after an accept", () => {
   });
 });
 
-describe("Change not confirmed yet", () => {
-  test("its chip carries its own class (styles.css styles it dashed and neutral; test_lakestatus checks the rule)", () => {
-    const lake: Lake = { ...fixtureLakes.lakes[2], status: { ...fixtureLakes.lakes[2].status, status: "Change not confirmed yet", new_crid: "P05036" } };
-    const { root, view } = setup({ ...fixtureLakes, lakes: [lake] });
-    view.select(lake.id);
-    expect(root.querySelector(".lw-chip.lw-status-change-not-confirmed-yet")).not.toBeNull();
+describe("Lake Watch: alert levels", () => {
+  const byId = (id: string) => fixtureLakes.lakes.find((l) => l.id === id)!;
+
+  test("each level has its own chip; an Alert carries a mark as well as its colour", () => {
+    const { root } = setup(fixtureLakes);
+    const chip = (id: string) => root.querySelector(`[data-lake-id="${id}"] .lw-chip`)!;
+    expect(chip("grow-new").className).toContain("lw-status-alert-growing");
+    expect(chip("grow-new").textContent).toBe("▲ Alert: growing");
+    expect(chip("grow-new").querySelector(".lw-chip-mark")!.getAttribute("aria-hidden")).toBe("true");
+    expect(chip("grow-old").className).toContain("lw-status-watch");
+    expect(chip("shrink").className).toContain("lw-status-decrease-noted");
+    expect(chip("stable").className).toContain("lw-status-no-change");
+    expect(chip("stable").textContent).toBe("No change");
   });
 
-  test("sorts after the confirmed changes and before Not seen this pass", () => {
-    const mk = (id: string, status: Lake["status"]["status"]) => ({ ...fixtureLakes.lakes[2], id, status: { ...fixtureLakes.lakes[2].status, status } });
-    const ids = sortLakes([mk("seen", "Not seen this pass"), mk("pending", "Change not confirmed yet"), mk("grow", "Growing")]).map((l) => l.id);
-    expect(ids).toEqual(["grow", "pending", "seen"]);
+  test("the lake list shows the level and sorts an Alert first, then Watch, then Decrease noted", () => {
+    const { root } = setup(fixtureLakes);
+    expect(rowIds(root).slice(0, 4)).toEqual(["grow-new", "grow-old", "shrink", "stable"]);
+    expect(root.querySelector('[data-lake-id="grow-new"] .lw-sentence')!.textContent).toMatch(/^Alert: growing: \+0\.031 km²/);
+  });
+
+  test("a banner over Lake Watch names every lake at Alert and opens it", () => {
+    const picked: string[] = [];
+    const { root } = setup(fixtureLakes, { onSelect: (id) => void picked.push(id) });
+    const banner = root.querySelector<HTMLElement>('[data-role="lw-alert-banner"]')!;
+    expect(banner.hidden).toBe(false);
+    expect(banner.getAttribute("role")).toBe("alert");
+    expect(banner.textContent).toContain("Alert: growing at Fixture grow-new. Alert: growing. The radar water area of Fixture grow-new rose on two passes in a row.");
+    expect(banner.textContent).toContain("Official warnings come from PMD, NDMA, GBDMA and PDMA.");
+    banner.querySelector<HTMLButtonElement>(".lw-alert-open")!.click();
+    expect(picked).toEqual(["grow-new"]);
+    expect(root.querySelector(".lw-title")!.textContent).toBe("Fixture grow-new");
+    // no Alert, no banner
+    const calm = setup({ ...fixtureLakes, lakes: fixtureLakes.lakes.filter((l) => l.id !== "grow-new") }).root;
+    expect(calm.querySelector<HTMLElement>('[data-role="lw-alert-banner"]')!.hidden).toBe(true);
+  });
+
+  test("the message is at the top of the lake's view, before the status sentence", () => {
+    const { root, view } = setup(fixtureLakes);
+    for (const id of ["grow-new", "grow-old", "shrink"]) {
+      view.select(id);
+      const detail = root.querySelector('[data-role="lw-detail"]')!;
+      const msg = detail.querySelector<HTMLElement>('[data-role="lw-message"]')!;
+      expect(msg.dataset.level).toBe(byId(id).status.status);
+      expect(detail.children[1]).toBe(msg); // straight after the header
+      const m = byId(id).status.message!;
+      expect(msg.textContent).toContain(m.title);
+      expect(msg.textContent).toContain(m.what);
+      expect(msg.textContent).toContain("This is not an outburst forecast.");
+      expect(msg.querySelector(".lw-message-since")!.textContent).toBe(m.since);
+      expect(msg.textContent).toContain("contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.");
+      expect(findBannedClaims(msg.textContent!)).toEqual([]);
+    }
+    view.select("stable");
+    expect(root.querySelector('[data-role="lw-message"]')).toBeNull();
+  });
+
+  test("the chart marks the passes that set a level and draws the baseline ± 2 × noise band of the status track", () => {
+    const p = (date: string, area: number, extra: object = {}) => ({ date, track: "156A", area_km2: area, observable_share: 1, excluded: null, ...extra });
+    const series = [p("2026-09-01", 1.0), p("2026-09-13", 1.0), p("2026-09-25", 1.0),
+      p("2026-10-07", 1.01, { z: 0.5, baseline_km2: 1.0, noise_km2: 0.02, level_contrib: "No change" }),
+      p("2026-10-19", 1.2, { z: 9.5, baseline_km2: 1.0, noise_km2: 0.021, level_contrib: "Watch" }),
+      { date: "2026-10-24", track: "063D", area_km2: 0.5, observable_share: 1, excluded: null }];
+    const lake: Lake = { ...byId("grow-old"), series };
+    const data = lakeChartData(lake, 0.5, 2);
+    const hi = data.series.find((s) => s.band === "hi")!;
+    const lo = data.series.find((s) => s.band === "lo")!;
+    const set = data.series.find((s) => s.level)!;
+    expect(hi.label).toBe("Baseline ± 2 × noise (156A), upper");
+    expect(hi.values).toEqual([null, null, null, 1.04, 1.042, null]);
+    expect(lo.values.map((v) => (v === null ? null : Number(v.toFixed(3))))).toEqual([null, null, null, 0.96, 0.958, null]);
+    expect(set.values).toEqual([null, null, null, null, 1.2, null]);
+    // without a level (older builds, frozen lakes) neither is drawn
+    expect(lakeChartData(olderFile().lakes[0], 0.5, 2).series.some((s) => s.band || s.level)).toBe(false);
+  });
+});
+
+describe("Lake Watch: a lakes.json made before the levels", () => {
+  test("still loads and shows its old status text, with no banner and no message", () => {
+    const older = olderFile();
+    expect(isLakesFile(older)).toBe(true);
+    expect(keepValidLakes(older).lakes).toHaveLength(3);
+    const { root } = setup(older);
+    expect(rowIds(root)).toHaveLength(3);
+    const chips = [...root.querySelectorAll(".lw-row .lw-chip")].map((c) => c.textContent);
+    expect(chips.sort()).toEqual(["Growing", "Shrinking", "Stable"]);
+    expect(root.querySelector<HTMLElement>('[data-role="lw-alert-banner"]')!.hidden).toBe(true);
+    expect(root.querySelector('[data-role="lw-message"]')).toBeNull();
+    // a status this page does not know, in a build that has the levels, still drops that lake only
+    const bad = { ...fixtureLakes, lakes: [...fixtureLakes.lakes, { ...fixtureLakes.lakes[2], id: "odd", status: { ...fixtureLakes.lakes[2].status, status: "Growing" } }] };
+    expect(keepValidLakes(bad).dropped_lakes).toEqual(["Fixture stable"]);
   });
 });
 

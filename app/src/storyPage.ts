@@ -4,7 +4,7 @@ import "./storyPage.css";
 import copyJson from "./content/storyPage.json";
 import { dataUrl, formatDate } from "./format";
 import { mountAddLake, requestLine, shownRequests, type LakeRequest } from "./lakeRequests";
-import { cloudLooks, FROZEN_AREA, hasLakeNow, iouRange, isFrozen, lakesNow, mayBeForming, opticalOverlapPhrase, picturedPassFrozen, type Lake, type LakesFile } from "./lakes";
+import { alertLakes, cloudLooks, FROZEN_AREA, hasLakeNow, iouRange, isFrozen, lakesNow, levelMessage, mayBeForming, opticalOverlapPhrase, picturedPassFrozen, type Lake, type LakesFile } from "./lakes";
 
 const copy = copyJson;
 const DASH = "—";
@@ -217,11 +217,34 @@ function eyebrow(label: string): HTMLElement {
   return text("p", "sp-eyebrow", label);
 }
 
-/** Only a confirmed change gets the change colour; "Change not confirmed yet" and the unobserved statuses are other. */
+/** The level colours (an Alert also a solid pill with a mark); the statuses without a level are other. Older builds'
+ * Stable, Growing and Shrinking keep their colours. */
 export function statusClass(status: string): string {
-  if (status === "Stable") return "sp-st-stable";
+  if (status === "Alert: growing") return "sp-st-alert";
+  if (status === "Watch") return "sp-st-watch";
+  if (status === "Decrease noted") return "sp-st-decrease";
+  if (status === "No change" || status === "Stable") return "sp-st-stable";
   if (status === "Growing" || status === "Shrinking") return "sp-st-change";
   return "sp-st-other";
+}
+
+/** The banner at the top of the story page when any lake is at Alert: growing; null otherwise. */
+export function alertBanner(file: LakesFile | null, onOpen: () => void): HTMLElement | null {
+  const alerts = alertLakes(file);
+  if (!alerts.length) return null;
+  const box = el("section", "sp-alert-banner");
+  box.setAttribute("role", "alert");
+  box.setAttribute("aria-label", "Alert");
+  box.dataset.role = "sp-alert-banner";
+  for (const a of alerts) {
+    const m = levelMessage(a);
+    box.append(el("p", undefined, text("strong", undefined, "Alert: growing"), ` at ${a.name}. ${m ? `${m.title} ${m.what}` : a.status.reason}`));
+  }
+  const go = text("button", "sp-btn sp-btn-primary", "Open Lake Watch");
+  (go as HTMLButtonElement).type = "button";
+  go.addEventListener("click", onOpen);
+  box.append(el("p", undefined, "Not an outburst forecast. Check recent optical imagery or the site, and contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA. ", go));
+  return box;
 }
 
 export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts: StoryPageOptions): StoryPage {
@@ -466,6 +489,8 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   setRequests(opts.requests ?? []);
   const addLake = mountAddLake(addLakeEl, addDeps);
 
+  const banner = alertBanner(file, opts.onOpenLakes);
+  if (banner) page.append(banner);
   page.append(cover, risk, gap, view, measure, watch, add, videos, closing, footer);
   root.replaceChildren(page);
 
