@@ -1,12 +1,17 @@
 import csv
 import json
 import re
+from pathlib import Path
 
 import pytest
 
 from conftest import APP_DATA, PROCESSING, load_json
 from sartale.districts import DISTRICT_SOURCE, district_of
 from sartale.inventory import InventoryEntry, SuparcoMatch, load_inventory
+from sartale.lakes import load_lakes
+
+LAKES_IN = PROCESSING / "lakes_in.json"
+OUTLINES = PROCESSING / "outlines"
 
 
 def register_and_new():
@@ -157,3 +162,13 @@ def test_suparco_match_csv_holds_only_matched_inventory_lakes_without_coordinate
     for name in ("suparco_match.csv", "lake_candidates.csv", "watched_inventory.json"):
         text = (PROCESSING / "inventory" / name).read_text(encoding="utf-8")
         assert not re.search(r"map dot \d+\.\d+,\d+\.\d+|dot at \d", text), name
+
+
+@pytest.mark.parametrize("batch", [1])
+def test_a_registered_batch_is_complete(batch):
+    reg = {l.id: l for l in load_lakes(LAKES_IN)}
+    rows = [r for r in load_json("inventory/new_lakes.json") if r["batch"] == batch]
+    for r in rows:
+        lk = reg[r["id"]]
+        assert (lk.lon, lk.lat, lk.outline, lk.province) == (r["lon"], r["lat"], r["outline"], r["province"])
+        assert (OUTLINES / Path(lk.outline).name).is_file()
