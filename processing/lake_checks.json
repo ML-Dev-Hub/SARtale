@@ -447,5 +447,277 @@
    },
    "window_margin_m": 1500.0
   }
+ },
+ {
+  "lake": "lake_c012",
+  "nisar_date": "2026-08-24",
+  "nisar_track": "156A",
+  "s2_date": "2026-08-27",
+  "s2_id": "S2C_43SDU_20260827_0_L2A",
+  "days_apart": 3,
+  "s2_window_cloud_pct": 0.2,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.3099,
+  "optical_km2": 0.0061,
+  "area_error_pct": 4980.32786885246,
+  "iou": 0.011523687580025609,
+  "zone_valid_share": 0.9998686629892304,
+  "window_radar_km2": 2.8518000000000003,
+  "window_optical_km2": 0.0235,
+  "window_area_error_pct": 12035.319148936172,
+  "window_iou": 0.001811783561548378,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 74.761124,
+    "lat": 34.839399,
+    "outline": "outlines/lake_c012.geojson",
+    "outline_sha256": "ab10488d7e297e321a41bfe92b6f0a60a592ecfa141b0cdf5cee659673e6e0b0"
+   },
+   "window_margin_m": 1500.0
+  }
+ },
+ {
+  "lake": "lake_c013",
+  "nisar_date": "2026-08-17",
+  "nisar_track": "063D",
+  "s2_date": "2026-08-17",
+  "s2_id": "S2C_43SCA_20260817_0_L2A",
+  "days_apart": 0,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.1836,
+  "optical_km2": 0.23070000000000002,
+  "area_error_pct": -20.416124837451235,
+  "iou": 0.697255223269152,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 1.7221000000000002,
+  "window_optical_km2": 0.6336,
+  "window_area_error_pct": 171.79608585858588,
+  "window_iou": 0.12783070809594485,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 73.406199,
+    "lat": 36.64235,
+    "outline": "outlines/lake_c013.geojson",
+    "outline_sha256": "3a926577bf38cfc5f137d2f4317e8bcdbb386047cee3acdd52439cf3b0bc8332"
+   },
+   "window_margin_m": 1500.0
+  }
+ },
+ {
+  "lake": "rama",
+  "nisar_date": "2026-06-30",
+  "nisar_track": "063D",
+  "s2_date": "2026-06-30",
+  "s2_id": "S2B_43SDV_20260630_0_L2A",
+  "days_apart": 0,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.21960000000000002,
+  "optical_km2": 0.14070000000000002,
+  "area_error_pct": 56.076759061833684,
+  "iou": 0.6317934782608695,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 1.6621000000000001,
+  "window_optical_km2": 0.3932,
+  "window_area_error_pct": 322.71108850457784,
+  "window_iou": 0.10923417345782287,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 74.785665,
+    "lat": 35.330114,
+    "outline": "outlines/rama.geojson",
+    "outline_sha256": "2cdfdbb2aff7f5bd48a690ffe0431c34df3e522e04d853742f9581aff319c9db"
+   },
+   "window_margin_m": 1500.0
+  }
+ },
+ {
+  "lake": "lake_c015",
+  "nisar_date": "2026-08-29",
+  "nisar_track": "055A",
+  "s2_date": "2026-08-29",
+  "s2_id": "S2B_43SFU_20260829_0_L2A",
+  "days_apart": 0,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.23370000000000002,
+  "optical_km2": 0.16440000000000002,
+  "area_error_pct": 42.153284671532845,
+  "iou": 0.6705832983634075,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 2.3584,
+  "window_optical_km2": 0.7427,
+  "window_area_error_pct": 217.54409586643328,
+  "window_iou": 0.19886341670854757,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 76.517178,
+    "lat": 34.81333,
+    "outline": "outlines/lake_c015.geojson",
+    "outline_sha256": "1ab4c4b331a9fa7cff602bb4cb08a1987303a390229eead35991ed5a1a17804e"
+   },
+   "window_margin_m": 1500.0
+  }
+ },
+ {
+  "lake": "lake_c017",
+  "note": "no clear Sentinel-2 scene within 3 days in the open-water season (15 Jun\u201330 Sep)",
+  "season": "15 Jun\u201330 Sep",
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 74.616053,
+    "lat": 35.192717,
+    "outline": "outlines/lake_c017.geojson",
+    "outline_sha256": "6af23bbf22e6560e66db3083658bdab64538c0d03a4d58cc62dea31aa989b2fd"
+   },
+   "window_margin_m": 1500.0
+  },
+  "season_pass": "2026-09-29 156A"
+ },
+ {
+  "lake": "lake_c018",
+  "nisar_date": "2026-08-31",
+  "nisar_track": "084A",
+  "s2_date": "2026-08-30",
+  "s2_id": "S2C_42SYE_20260830_0_L2A",
+  "days_apart": 1,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.1228,
+  "optical_km2": 0.08950000000000001,
+  "area_error_pct": 37.20670391061452,
+  "iou": 0.6119969627942293,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 1.7766000000000002,
+  "window_optical_km2": 0.3058,
+  "window_area_error_pct": 480.967952910399,
+  "window_iou": 0.08424450692491929,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 71.373013,
+    "lat": 35.979567,
+    "outline": "outlines/lake_c018.geojson",
+    "outline_sha256": "c352ea4be0ec6b0b8a7b4f02f76f99e2751867ac3c5929a157857d78e89629d3"
+   },
+   "window_margin_m": 1500.0
+  }
+ },
+ {
+  "lake": "lake_c019",
+  "note": "no clear Sentinel-2 scene within 3 days in the open-water season (15 Jun\u201330 Sep)",
+  "season": "15 Jun\u201330 Sep",
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 71.516438,
+    "lat": 35.658561,
+    "outline": "outlines/lake_c019.geojson",
+    "outline_sha256": "6f63f50a135502221038cab5626d1524bd00b748dbee64a99633eeca55f7ee0b"
+   },
+   "window_margin_m": 1500.0
+  },
+  "season_pass": "2026-09-29 164D"
+ },
+ {
+  "lake": "lake_c020",
+  "nisar_date": "2026-09-29",
+  "nisar_track": "156A",
+  "s2_date": "2026-10-01",
+  "s2_id": "S2B_43SDU_20261001_0_L2A",
+  "days_apart": 2,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.10590000000000001,
+  "optical_km2": 0.0656,
+  "area_error_pct": 61.43292682926828,
+  "iou": 0.4978165938864629,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 3.2057,
+  "window_optical_km2": 0.647,
+  "window_area_error_pct": 395.47140649149924,
+  "window_iou": 0.07138487208008899,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 74.637775,
+    "lat": 34.914277,
+    "outline": "outlines/lake_c020.geojson",
+    "outline_sha256": "f8afb4c1e4dea689361521a1edfb95e1c0eda16bb6399fa28d291fb24e644d18"
+   },
+   "window_margin_m": 1500.0
+  }
+ },
+ {
+  "lake": "katora",
+  "nisar_date": "2026-09-29",
+  "nisar_track": "164D",
+  "s2_date": "2026-10-01",
+  "s2_id": "S2A_42SYE_20261001_1_L2A",
+  "days_apart": 2,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.8867,
+  "optical_km2": 0.636,
+  "area_error_pct": 39.418238993710695,
+  "iou": 0.7107066621727895,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 2.9288000000000003,
+  "window_optical_km2": 1.6658000000000002,
+  "window_area_error_pct": 75.81942610157282,
+  "window_iou": 0.33103508212868277,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 72.34594,
+    "lat": 35.367338,
+    "outline": "outlines/katora.geojson",
+    "outline_sha256": "334cbad3a9e13cfeedbc37aba5998cf61aba282ad7079197043de45935e34040"
+   },
+   "window_margin_m": 1500.0
+  }
+ },
+ {
+  "lake": "godar_dhand",
+  "nisar_date": "2026-09-29",
+  "nisar_track": "164D",
+  "s2_date": "2026-09-26",
+  "s2_id": "S2C_43SBV_20260926_0_L2A",
+  "days_apart": 3,
+  "s2_window_cloud_pct": 0.6,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.5810000000000001,
+  "optical_km2": 0.4534,
+  "area_error_pct": 28.142920158800184,
+  "iou": 0.7288985458799934,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 2.5276,
+  "window_optical_km2": 0.9044000000000001,
+  "window_area_error_pct": 179.47810703228657,
+  "window_iou": 0.19245335464368854,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 72.513988,
+    "lat": 35.422236,
+    "outline": "outlines/godar_dhand.geojson",
+    "outline_sha256": "53c369c2823a954561a68a75350683a14aa888cf6e7f5794b09da80062dfebe3"
+   },
+   "window_margin_m": 1500.0
+  }
  }
 ]
