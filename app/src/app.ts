@@ -1,7 +1,9 @@
 import { createEvidenceView } from "./evidenceView";
 import type { Lake, LakesFile } from "./lakes";
 import { createLakeStoryView } from "./lakeStory";
-import { createLakeWatchView, type LakeChartFactory, type LocatorFactory } from "./lakeWatchView";
+import { createLakePage } from "./lakePage/lakePage";
+import { droppedLine } from "./lakes";
+import type { LakeChartFactory, LocatorFactory } from "./lakeWatchView";
 import type { LakeRequest } from "./lakeRequests";
 import { DEFAULT_STATE, overviewQuery, parseOverviewHash, type OverviewState } from "./overview/model";
 import { createOverview } from "./overview/overviewView";
@@ -125,14 +127,8 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
   syncFolds();
 
   // ---- Views ---------------------------------------------------------------------------------------------------
-  const lakeView = createLakeWatchView(q("lakes-root"), {
-    lakes,
-    createChart: opts.createLakeChart,
-    onBrief: opts.onLakeBrief,
-    onSelect: (id) => setHash(`#lakes/${id}`, true),
-  });
-  // `#lakes` and `#lakes?<filters>` show the overview; `#lakes/<id>` shows the lake. Without lake data the lake view
-  // says so, and there is no overview.
+  // `#lakes` and `#lakes?<filters>` show the overview; `#lakes/<id>` shows the lake page. Without lake data there is no
+  // overview, and the lakes view says so.
   const overview = lakes && lakes.lakes.length
     ? createOverview(q("overview-root"), {
       file: lakes,
@@ -150,15 +146,47 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     })
     : null;
 
-  /** Shows the overview, or one lake when the route names a lake in the data. */
-  function showLakes(r: { lake?: string; query?: string }): void {
+  let lakePage: { destroy(): void } | undefined;
+  /** A link or button on the lake page: put the hash in the address bar and show what it names. */
+  function routeTo(hash: string): void {
+    setHash(hash);
+    showLakes(routeFromHash(hash) ?? {});
+    window.scrollTo?.(0, 0);
+  }
+
+  /** Shows the overview, or one lake page when the route names a lake in the data. */
+  function showLakes(r: { lake?: string; pass?: string; compare?: [string, string]; query?: string }): void {
+    lakePage?.destroy();
+    lakePage = undefined;
     const lake = r.lake && lakes?.lakes.some((l) => l.id === r.lake) ? r.lake : undefined;
     const onOverview = overview !== null && !lake;
     q("lakes-view").dataset.mode = onOverview ? "overview" : "lake";
     q("overview-root").hidden = !onOverview;
     q("lakes-root").hidden = onOverview;
-    if (onOverview) overview!.update(parseOverviewHash(r.query ?? ""));
-    else if (lake) lakeView.select(lake);
+    if (onOverview) {
+      overview!.update(parseOverviewHash(r.query ?? ""));
+    } else if (lake && lakes) {
+      lakePage = createLakePage(q("lakes-root"), {
+        file: lakes, lakeId: lake, pass: r.pass, compare: r.compare, onRoute: routeTo,
+        createChart: opts.createLakeChart, onBrief: opts.onLakeBrief,
+      });
+    } else {
+      const empty = q("lakes-root");
+      const head = document.createElement("p");
+      head.className = "sites-empty";
+      head.textContent = "No lake data in this build";
+      const why = document.createElement("p");
+      why.className = "sites-why";
+      why.textContent = "Lake Watch needs data/lakes.json, made by the pipeline in processing/.";
+      empty.replaceChildren(head, why);
+      const dropped = lakes ? droppedLine(lakes) : null;
+      if (dropped) {
+        const note = document.createElement("p");
+        note.className = "lw-note";
+        note.textContent = dropped;
+        empty.append(note);
+      }
+    }
   }
   const evidenceView = createEvidenceView(q("evidence-root"), { lakes });
   const lakeStory = createLakeStoryView(q("lakestory-root"), {
@@ -261,7 +289,7 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
       window.removeEventListener("hashchange", followHash);
       storyPage.destroy();
       lakeStory.destroy();
-      lakeView.destroy();
+      lakePage?.destroy();
       overview?.destroy();
       evidenceView.destroy();
       root.innerHTML = "";

@@ -192,16 +192,6 @@ describe("the lake story", () => {
     expect($("lakestory-view").textContent).toContain("space4climate.gov.pk, 2 Jul 2026");
   });
 
-  test("the Lake Watch headline link goes to beat 1", () => {
-    const { root, $ } = setup();
-    openStory($);
-    $("ls-next").click();
-    $("view-lakes").click();
-    root.querySelector<HTMLAnchorElement>('a[href="#cloud-gap"]')!.click();
-    expect($("lakestory-view").hidden).toBe(false);
-    expect(beatId($)).toBe("cloud-gap");
-  });
-
   test("featuredLake picks the watch lake with most looks, ties to the newest look, never a control or story lake", () => {
     const f = lakesWith([
       ["a", 6, "2026-10-23"],
@@ -228,7 +218,7 @@ describe("the lake story", () => {
     $("lakestory-view").querySelector<HTMLButtonElement>('[data-action="lake"]')!.click();
     expect($("lakes-view").hidden).toBe(false);
     expect($("lakes-root").hidden).toBe(false);
-    expect($("lakes-root").querySelector(".lw-title")?.textContent).toBe(lakes.lakes.find((l) => l.id === "b")!.name);
+    expect($("lakes-root").querySelector(".lp-name")?.textContent).toBe(lakes.lakes.find((l) => l.id === "b")!.name);
     expect(window.location.hash).toBe("#lakes/b");
     window.history.replaceState(null, "", "/");
   });
@@ -294,7 +284,7 @@ describe("routing", () => {
     window.history.replaceState(null, "", `#lakes/${id}`);
     const { root, $ } = setup();
     expect($("overview-root").hidden).toBe(true);
-    expect(root.querySelector(".lw-title")?.textContent).toBe(lakesJson.lakes[1].name);
+    expect(root.querySelector(".lp-name")?.textContent).toBe(lakesJson.lakes[1].name);
     window.history.replaceState(null, "", "/");
   });
 
@@ -321,7 +311,7 @@ describe("routing", () => {
     root.querySelector<HTMLButtonElement>('[data-role="ov-row"][data-id="b"] button.ov-name')!.click();
     expect(window.location.hash).toBe("#lakes/b");
     expect($("overview-root").hidden).toBe(true);
-    expect($("lakes-root").querySelector(".lw-title")?.textContent).toBe("Lake B");
+    expect($("lakes-root").querySelector(".lp-name")?.textContent).toBe("Lake B");
     $("view-lakes").click();
     expect(window.location.hash).toBe("#lakes");
     expect($("overview-root").hidden).toBe(false);
@@ -341,7 +331,7 @@ describe("after an accept adds a lake", () => {
     const file = withRequestedLake(realLakes);
     window.history.replaceState(null, "", `#lakes/${requestedLake.id}`);
     const { root, $ } = setup({ lakes: file });
-    expect($("lakes-root").querySelector(".lw-title")?.textContent).toBe(requestedLake.name);
+    expect($("lakes-root").querySelector(".lp-name")?.textContent).toBe(requestedLake.name);
     $("view-lakes").click();
     expect($("lakes-view").querySelectorAll('[data-role="ov-row"], [data-role="ov-pinned"]')).toHaveLength(realLakes.lakes.length + 1);
     $("home").click();
