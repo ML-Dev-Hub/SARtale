@@ -1,5 +1,5 @@
-"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-build, lakes-check, lakes-absence, lakes-freeze,
-lakes-elevation, lakes-diff, lake-issues, lake-issue-accept."""
+"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-build, lakes-check, lakes-absence,
+lakes-absence-backtest, lakes-freeze, lakes-elevation, lakes-diff, lake-issues, lake-issue-accept."""
 import argparse
 import json
 import os
@@ -314,6 +314,43 @@ def cmd_lakes_absence(args) -> None:
     write_json_atomic(path, doc)
 
 
+def cmd_lakes_absence_backtest(args) -> None:
+    """Run the forming check over every scene of a period at one no-lake site (`formingtest.backtest`), with its
+    register rule or a trial `--rule`; write the result as JSON and print each change of state and the number of
+    qualifying scenes. With `--persistent-out`, also write the water seen in at least 60% of the qualifying scenes,
+    inside the lake zone, as a GeoJSON outline (a candidate `forming_exclude`)."""
+    from sartale.formingtest import PERSISTENT_SHARE, backtest, mask_outline, persistent_water
+    from sartale.lakewater import lake_zone
+
+    lake = next((lk for lk in load_lakes(Path(args.lakes_in)) if lk.id == args.lake), None)
+    if lake is None or lake.lake_state != "no_lake":
+        sys.exit(f"{args.lake}: not a site with no lake now in {args.lakes_in}")
+    rule = None
+    if args.rule:
+        text = args.rule if args.rule.lstrip().startswith("{") else Path(args.rule).read_text(encoding="utf-8")
+        rule = json.loads(text)
+    out = backtest(lake, args.start, args.end, rule=rule, log=print if args.verbose else (lambda *_: None),
+                   cache_dir=Path(args.cache) if args.cache else None, keep_masks=bool(args.persistent_out))
+    if args.persistent_out:
+        x, y, epsg = out.pop("grid")
+        water = persistent_water(out.pop("water_masks"), PERSISTENT_SHARE)
+        zone = lake_zone((len(y), len(x)), x, y, epsg, lake)
+        feature = {"type": "Feature", "properties": {
+            "lake": lake.id, "source": args.persistent_source or (
+                f"water in at least {PERSISTENT_SHARE:.0%} of the {out['qualifying']} clear, snow-free Sentinel-2 L2A "
+                f"scenes of {args.start} to {args.end} (MNDWI > 0), inside the lake zone"),
+            "licence": "derived from Copernicus Sentinel-2 L2A"},
+            "geometry": mask_outline(water & zone, x, y, epsg)}
+        Path(args.persistent_out).write_text(json.dumps(feature, indent=1) + "\n", encoding="utf-8")
+        print(f"lasting water: {int((water & zone).sum())} pixels of the zone -> {args.persistent_out}")
+    write_json_atomic(Path(args.out), out)
+    for f in out["flips"]:
+        print(f"{lake.id} {f['date']}: {'Lake may be forming' if f['forming'] else 'No lake now'}")
+    print(f"{lake.id} {args.start}..{args.end}: {len(out['scenes'])} scenes, {out['qualifying']} qualifying, "
+          f"{len(out['flips'])} flips; at the end: {'Lake may be forming' if out['state']['forming'] else 'No lake now'}"
+          + (f", pending {out['state']['pending_scene']['date']}" if out["state"]["pending_scene"] else ""))
+
+
 def freeze_line(lk: dict) -> str:
     """One log line on a lake's freeze state."""
     f = lk.get("freeze")
@@ -519,6 +556,23 @@ def build_parser() -> argparse.ArgumentParser:
     la.add_argument("--only-missing", action="store_true",
                     help="check only the sites without carried evidence (after lakes-build, for new sites)")
     la.set_defaults(func=cmd_lakes_absence)
+
+    lt = sub.add_parser("lakes-absence-backtest", help="run the forming check over every scene of a period at one "
+                                                       "no-lake site, with its rule or a trial one")
+    lt.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    lt.add_argument("--lake", required=True, help="lake id (a site with no lake now)")
+    lt.add_argument("--start", required=True, help="YYYY-MM-DD")
+    lt.add_argument("--end", required=True, help="YYYY-MM-DD")
+    lt.add_argument("--rule", default=None, help='trial rule, JSON text or a file: {"share": 0.16, "seasons": '
+                                                 '[{"start": "MM-DD", "end": "MM-DD", "share": null}], "exclude": '
+                                                 '"outlines/x.geojson" or null} (default: the register rule)')
+    lt.add_argument("--out", required=True, help="where to write the back-test JSON")
+    lt.add_argument("--cache", default=None, help="folder to keep each scene's read window in (re-runs read nothing)")
+    lt.add_argument("--persistent-out", default=None,
+                    help="also write the water of at least 60%% of the qualifying scenes, in the zone, as GeoJSON")
+    lt.add_argument("--persistent-source", default=None, help="the source text written with --persistent-out")
+    lt.add_argument("--verbose", action="store_true", help="print one line per scene")
+    lt.set_defaults(func=cmd_lakes_absence_backtest)
 
     lz = sub.add_parser("lakes-freeze", help="freeze state of each lake from NASA POWER air temperature (and Sentinel-2 "
                                              "for a cold lake); flags passes taken while frozen")
