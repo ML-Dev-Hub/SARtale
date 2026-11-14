@@ -1,4 +1,4 @@
-import { hasLakeNow, hasLevel, isTrendPass, levelMessage, sortLakes, type Lake, type LakeCheck } from "./lakes";
+import { hasLakeNow, hasLevel, isFrozen, isTrendPass, levelMessage, sortLakes, type Lake, type LakeCheck } from "./lakes";
 import { formatDate } from "./format";
 
 /** One line on the lake chart: a track's valid passes, or the passes that were left out. */
@@ -14,6 +14,10 @@ export interface LakeChartSeries {
   band?: "hi" | "lo";
   /** True for the marker-only series of the passes that set a Watch, an Alert or a Decrease noted. */
   level?: boolean;
+  /** True for the marker-only series of passes that gave no usable reading: drawn on their own rail, not as a value (values are 0). */
+  rail?: boolean;
+  /** True for the series that marks the first reading on a new processing version (one value per marker; its area, or 0). */
+  version?: boolean;
 }
 
 export interface LakeChartData {
@@ -28,6 +32,20 @@ export type LakeChartFactory = (el: HTMLElement, data: LakeChartData) => { destr
 /** Marks every lake on a small map. Lazy MapLibre in lakeLocator.ts; the overview's map drawer takes it over (Task 15). */
 export type LocatorFactory = (el: HTMLElement, lakes: Lake[], onPick: (id: string) => void) => { highlight(id: string): void; destroy(): void };
 
+/** The track the lake's status is read from: the status track, else the track with the most passes. */
+export function statusTrackName(lake: Lake): string | null {
+  if (lake.status.track) return lake.status.track;
+  const n = new Map<string, number>();
+  for (const p of lake.series) n.set(p.track, (n.get(p.track) ?? 0) + 1);
+  return [...n].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null;
+}
+
+/** Every pass on the lake's status track, oldest first. */
+export function statusTrackPasses(lake: Lake): Lake["series"] {
+  const t = statusTrackName(lake);
+  return lake.series.filter((p) => p.track === t).sort((a, b) => a.date.localeCompare(b.date));
+}
+
 const utcSeconds = (iso: string): number => Date.parse(`${iso}T00:00:00Z`) / 1000;
 
 /**
@@ -36,7 +54,8 @@ const utcSeconds = (iso: string): number => Date.parse(`${iso}T00:00:00Z`) / 100
  * level, the status track's band (baseline ± `factor` × noise, pass by pass) and the passes that set a Watch, an Alert or
  * a Decrease noted are added.
  */
-export function lakeChartData(lake: Lake, minObservable = 0, factor = 2): LakeChartData {
+export function lakeChartData(lake: Lake, minObservable = 0, factor = 2, opts: { statusTrackOnly?: boolean } = {}): LakeChartData {
+  if (opts.statusTrackOnly) return statusTrackChartData(lake, minObservable, factor);
   const dates = [...new Set(lake.series.map((p) => p.date))].sort();
   const index = new Map(dates.map((d, i) => [d, i]));
   const tracks = [...new Set(lake.series.map((p) => p.track))].sort();
@@ -80,6 +99,62 @@ export function lakeChartData(lake: Lake, minObservable = 0, factor = 2): LakeCh
     const set = blank();
     for (const p of lake.series) {
       if (p.level_contrib && p.level_contrib !== "No change" && p.area_km2 !== null) set[index.get(p.date)!] = p.area_km2;
+    }
+    if (set.some((v) => v !== null)) series.push({ label: "Passes that set a level", values: set, excluded: false, level: true });
+  }
+  return { x: dates.map(utcSeconds), series };
+}
+
+/**
+ * The history chart's columns: the status track only. Valid passes are the track's line; passes taken while frozen are
+ * grey markers; passes with no usable reading sit on a rail (value 0); the first reading on a new processing version is
+ * marked; the baseline ± factor × noise band is drawn only while the lake is not frozen.
+ */
+function statusTrackChartData(lake: Lake, minObservable: number, factor: number): LakeChartData {
+  const track = statusTrackName(lake);
+  const passes = statusTrackPasses(lake);
+  const dates = [...new Set(passes.map((p) => p.date))];
+  const index = new Map(dates.map((d, i) => [d, i]));
+  const blank = (): (number | null)[] => dates.map(() => null);
+  const series: LakeChartSeries[] = [];
+  const line = blank();
+  const ice = blank();
+  const rail = blank();
+  const version = blank();
+  let crid: string | null = null;
+  let newCrid = "";
+  for (const p of passes) {
+    const i = index.get(p.date)!;
+    if (isTrendPass(p, minObservable)) line[i] = p.area_km2;
+    else if (p.frozen && p.excluded === null && p.area_km2 !== null && (p.observable_share === null || p.observable_share >= minObservable)) ice[i] = p.area_km2;
+    else rail[i] = 0;
+    if (p.crid) {
+      if (crid !== null && p.crid !== crid) {
+        version[i] = p.area_km2 ?? p.diagnostic_km2 ?? 0;
+        newCrid = p.crid;
+      }
+      crid = p.crid;
+    }
+  }
+  if (track && line.some((v) => v !== null)) series.push({ label: track, values: line, excluded: false });
+  if (ice.some((v) => v !== null)) series.push({ label: "Frozen passes (not open water)", values: ice, excluded: false, frozen: true });
+  if (rail.some((v) => v !== null)) series.push({ label: "No usable reading", values: rail, excluded: false, rail: true });
+  if (version.some((v) => v !== null)) series.push({ label: `First reading on ${newCrid}`, values: version, excluded: false, version: true });
+  if (hasLevel(lake) && !isFrozen(lake)) {
+    const hi = blank();
+    const lo = blank();
+    const set = blank();
+    for (const p of passes) {
+      const i = index.get(p.date)!;
+      if (typeof p.baseline_km2 === "number" && typeof p.noise_km2 === "number") {
+        hi[i] = p.baseline_km2 + factor * p.noise_km2;
+        lo[i] = Math.max(0, p.baseline_km2 - factor * p.noise_km2);
+      }
+      if (p.level_contrib && p.level_contrib !== "No change" && p.area_km2 !== null) set[i] = p.area_km2;
+    }
+    if (hi.some((v) => v !== null)) {
+      const label = `Baseline ± ${factor} × noise (${track})`;
+      series.push({ label: `${label}, upper`, values: hi, excluded: false, band: "hi" }, { label: `${label}, lower`, values: lo, excluded: false, band: "lo" });
     }
     if (set.some((v) => v !== null)) series.push({ label: "Passes that set a level", values: set, excluded: false, level: true });
   }

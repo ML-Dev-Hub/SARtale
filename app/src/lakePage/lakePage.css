@@ -98,3 +98,37 @@
 .lp-extent-word { font-size: 18px; font-weight: 600; color: var(--text); }
 .lp-extent[data-above="true"] .lp-extent-word { border-left: 4px solid var(--warm); padding-left: 10px; }
 .lp-extent-detail, .lp-extent-reason { color: var(--text); }
+
+/* ---- History: the chart, its legend (a shape for every mark) and the readings table ---- */
+.lp-legend { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px 22px; color: var(--text); font-size: 14px; }
+.lp-legend li { display: flex; align-items: center; gap: 8px; }
+.lg-open { fill: var(--accent); }
+.lg-frozen { fill: #53606b; stroke: var(--muted); stroke-width: 2; }
+.lg-band { fill: none; stroke: var(--dim); stroke-dasharray: 4 3; }
+.lg-rail { fill: none; stroke: var(--muted); stroke-width: 2; }
+.lg-version { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 2 3; }
+.lp-chart { min-width: 0; width: 100%; }
+.lp-chart-note { color: var(--text); font-size: 14px; }
+.lp-readings { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+.lp-readings h3 { font-size: 20px; font-weight: 700; }
+.lp-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+.lp-table { min-width: 860px; font-size: 15px; }
+.lp-row { display: grid; grid-template-columns: 128px 108px 76px 108px 96px minmax(0, 1fr); align-items: start; border-top: 1px solid var(--line); }
+.lp-row > span { padding: 8px 12px; min-width: 0; }
+.lp-row-head { align-items: end; border-top: 0; color: var(--muted); font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.lp-row-head > span { padding: 10px 12px; }
+.lp-row > span:first-child { font-weight: 600; }
+.lp-num { text-align: right; }
+.lp-note { color: var(--muted); font-size: 14px; }
+.lp-showall { align-self: flex-start; background: transparent; color: var(--accent); cursor: pointer; font: inherit; font-weight: 600; }
+
+/* ---- Sources and limits: neutral rows, no colour ---- */
+.lp-sources-list { display: grid; gap: 0; margin: 0; }
+.lp-source { display: grid; grid-template-columns: minmax(130px, 200px) 1fr; gap: 4px 20px; padding: 10px 0; border-top: 1px solid var(--line); }
+.lp-source:first-child { border-top: 0; }
+.lp-source dt { color: var(--muted); font-size: 14px; font-weight: 700; }
+.lp-source dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.lp-limits h3 { color: var(--muted); font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.lp-limits ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.lp-block > .lp-slot > .lp-btn[data-action="brief"] { align-self: flex-start; background: transparent; cursor: pointer; font: inherit; font-weight: 600; }
+@media (max-width: 640px) { .lp-source { grid-template-columns: 1fr; } }

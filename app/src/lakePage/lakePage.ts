@@ -9,6 +9,7 @@ import { statusChip } from "../overview/marks";
 import { provinceName } from "../provinces";
 import { renderExtent } from "./extent";
 import { renderCompare, type MaskDecoder } from "./compare";
+import { historyHeading, renderHistory } from "./history";
 import { gaugeHeading, gaugeInput, renderGauge } from "./gauge";
 
 export interface LakePageOptions {
@@ -251,7 +252,14 @@ export function createLakePage(root: HTMLElement, opts: LakePageOptions): { dest
     // Blocks whose content a later task fills (the gauge or frozen card, extent, history, sources) join here, in order.
     const factor = opts.file.constants.change_factor;
     const top = isFrozen(lake) ? block("lp-freeze", "Frozen: no change reading while frozen", fillFreeze(lake)) : gaugeBlock(lake, factor);
-    for (const sec of [top, block("lp-extent", "Largest recorded extent", (b) => (renderExtent(b, lake, opts.file.constants.min_observable), true)), block("lp-picture", "Radar picture", fillPicture(lake))]) if (sec) page.append(sec);
+    const hist = { minObservable: opts.file.constants.min_observable, factor, createChart: opts.createChart };
+    const blocks = [
+      top,
+      block("lp-extent", "Largest recorded extent", (b) => (renderExtent(b, lake, opts.file.constants.min_observable), true)),
+      block("lp-picture", "Radar picture", fillPicture(lake)),
+      block("lp-history", historyHeading(lake), (b) => renderHistory(b, lake, hist)),
+    ];
+    for (const sec of blocks) if (sec) page.append(sec);
   }
   return { destroy: () => void root.replaceChildren() };
 }
