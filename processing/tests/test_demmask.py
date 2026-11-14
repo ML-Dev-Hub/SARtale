@@ -94,3 +94,29 @@ def test_stat_masks_keeps_the_dem_file_in_one_order_whatever_direction_comes_fir
         stat_masks(d, xs, ys, 32643, {second})
         contents.append(path.read_bytes())
     assert contents[0] == contents[1]
+
+
+def test_the_dem_download_times_out_instead_of_holding_the_lock(monkeypatch):
+    """read_dem runs under the DEM file's lock: its GDAL reads carry HTTP timeouts, so a hung read cannot hold it."""
+    import rasterio
+    import requests
+
+    class Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"features": [{"assets": {"data": {"href": "s3://copernicus-dem-30m/t.tif"}}}]}
+
+    seen = {}
+
+    def env(**kw):
+        seen.update(kw)
+        raise TimeoutError("stop here")
+
+    monkeypatch.setattr(requests, "post", lambda *a, **k: Resp())
+    monkeypatch.setattr(rasterio, "Env", env)
+    with pytest.raises(TimeoutError):
+        demmask.read_dem(np.array([500000.0, 500010.0]), np.array([4000010.0, 4000000.0]), 32643, 1)
+    assert int(seen["GDAL_HTTP_TIMEOUT"]) == demmask.DEM_HTTP_TIMEOUT_S > 0
+    assert int(seen["GDAL_HTTP_CONNECTTIMEOUT"]) == demmask.DEM_HTTP_CONNECT_TIMEOUT_S > 0

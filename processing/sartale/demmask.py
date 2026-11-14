@@ -29,6 +29,8 @@ STAC_URL = "https://earth-search.aws.element84.com/v1/search"
 DEM_COLLECTION = "cop-dem-glo-30"
 SOURCE = "Copernicus DEM GLO-30 (Earth Search)"
 OFFLINE_ENV = "SARTALE_DEM_OFFLINE"
+DEM_HTTP_TIMEOUT_S = 120  # GDAL_HTTP_TIMEOUT of one DEM read (seconds)
+DEM_HTTP_CONNECT_TIMEOUT_S = 30  # GDAL_HTTP_CONNECTTIMEOUT
 NO_DEM_LIMIT = ("no Copernicus DEM for this build: the window median that water is measured against uses every valid "
                 "pixel, terrain in radar layover or shadow included")
 
@@ -114,8 +116,11 @@ def read_dem(xs: np.ndarray, ys: np.ndarray, epsg: int, margin: int) -> np.ndarr
         raise RuntimeError("no Copernicus DEM tile over the window")
     transform = Affine(dx, 0, X[0] - dx / 2, 0, dy, Y[0] - dy / 2)
     out = np.full((len(Y), len(X)), np.nan, np.float32)
+    # Timeouts: this runs under the DEM file's lock (`stat_masks`), so a hung read must not hold it, and every worker
+    # waiting on it, for good. A timed-out read raises, and the pass goes on without the mask, as with no network.
     env = dict(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif",
-               GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2")
+               GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2", GDAL_HTTP_TIMEOUT=str(DEM_HTTP_TIMEOUT_S),
+               GDAL_HTTP_CONNECTTIMEOUT=str(DEM_HTTP_CONNECT_TIMEOUT_S))
     for it in items:
         href = it["assets"]["data"]["href"].replace("s3://copernicus-dem-30m/",
                                                     "https://copernicus-dem-30m.s3.amazonaws.com/")
