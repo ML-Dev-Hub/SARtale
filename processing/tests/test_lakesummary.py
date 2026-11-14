@@ -52,6 +52,13 @@ def lake_case(case):
         lk["status"]["status"] = "No lake now"
     elif case == "frozen":
         lk["status"]["status"] = "Frozen (likely)"
+    elif case == "not_measurable":
+        lk["status"]["status"] = "Not measurable"
+        lk["status"]["noise_km2"] = None
+    elif case == "forming":
+        lk["lake_state"] = "lake_forming_check"
+        lk["status"]["status"] = "Lake may be forming"
+        lk["coverage"] = {"outline_in_window_share": None, "zone_kind": "circle", "radius_m": 1000.0}
     elif case == "circle":
         lk["coverage"] = {"outline_in_window_share": None, "zone_kind": "circle", "radius_m": 1000.0}
     elif case.startswith("window_"):
@@ -153,6 +160,8 @@ def test_a_shown_share_is_the_latest_status_track_reading_over_the_extent():
 
 @pytest.mark.parametrize("case,note", [("no_lake", "there is no lake here now"),
                                        ("frozen", "Not shown while the lake is frozen"),
+                                       ("not_measurable", "did not pass the Sentinel-2 check"),
+                                       ("forming", "only a search circle"),
                                        ("circle", "only a search circle"), ("window_0.89", "only 89% of the lake outline"),
                                        ("no_extent", "no inventory outline"),
                                        ("no_reading", "no valid open-water reading yet")])
@@ -252,3 +261,28 @@ def test_the_committed_inventory_feeds_the_summary(tmp_path):
     inv = load_inventory()
     d = with_summary(doc_with([("godar_dhand", "No change")]), None, inv, mapped_path=tmp_path / "n.json")
     assert by_id(d, "godar_dhand")["largest_extent"] == {"km2": 0.4755, "source": HKH, "year": 2020}
+
+
+def test_a_lake_whose_radar_water_failed_the_sentinel2_check_gets_no_share():
+    f = share_fields(lake_case("not_measurable"), ext(0.5))
+    assert f == {"share_of_largest": None, "above_largest": None,
+                 "share_note": "Not shown: the radar water did not pass the Sentinel-2 check."}
+    # after the no-lake and frozen notes, before the circle note
+    circle = lake_case("not_measurable")
+    circle["coverage"] = {"outline_in_window_share": None, "zone_kind": "circle", "radius_m": 1000.0}
+    assert "Sentinel-2 check" in share_fields(circle, ext(0.5))["share_note"]
+    frozen = lake_case("not_measurable")
+    frozen["status"]["status"] = "Frozen (likely)"
+    assert "frozen" in share_fields(frozen, ext(0.5))["share_note"]
+
+
+def test_a_forming_site_is_not_told_there_is_no_lake():
+    f = share_fields(lake_case("forming"), ext(1.0))
+    assert f["share_note"] == "Not shown: this lake has no mapped outline, only a search circle."
+    assert headline_counts([{**lake_case("forming"), "suparco": None}])["no_lake"] == 0
+
+
+def test_attabad_takes_its_osm_outline_as_largest_extent(tmp_path):
+    from sartale.inventory import load_inventory
+    d = with_summary(doc_with([("attabad", "No change")]), None, load_inventory(), mapped_path=tmp_path / "n.json")
+    assert by_id(d, "attabad")["largest_extent"] == {"km2": 7.2385, "source": OSM, "year": None}

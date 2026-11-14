@@ -12,16 +12,18 @@ from pathlib import Path
 from sartale.config import CHANGE_FACTOR
 from sartale.inventory import InventoryEntry, load_inventory
 from sartale.lakecheck import in_season
-from sartale.lakestatus import ALERT, DECREASE, FREEZE_STATUS, WATCH, is_valid
+from sartale.lakestatus import ALERT, DECREASE, FREEZE_STATUS, NOT_MEASURABLE, WATCH, is_valid
 
 APP_DATA = Path(__file__).resolve().parents[2] / "app" / "public" / "data"
 FORMING_STATE = "lake_forming_check"  # lakebuild.FORMING_STATE (not imported: lakebuild imports this module)
-NO_LAKE_STATES = ("no_lake", FORMING_STATE)  # no lake now; a forming site's dark area is not lake area either
+# A forming site (a search circle) is not "no lake now": it falls through to the circle note.
+NO_LAKE_STATES = ("no_lake",)
 FROZEN_STATUSES = frozenset(FREEZE_STATUS.values())
 MIN_OUTLINE_IN_WINDOW = 0.9  # an outline less inside the radar window than this gets no share
 
 NOTE_NO_LAKE = "Not shown: there is no lake here now."
 NOTE_FROZEN = "Not shown while the lake is frozen: the radar area is not an open-water measurement."
+NOTE_NOT_MEASURABLE = "Not shown: the radar water did not pass the Sentinel-2 check."
 NOTE_CIRCLE = "Not shown: this lake has no mapped outline, only a search circle."
 NOTE_WINDOW = "Not shown: only {n}% of the lake outline is inside the radar window (at least 90% needed)."
 NOTE_NO_EXTENT = "Not shown: no inventory outline or earlier-season radar reading for this lake."
@@ -82,6 +84,8 @@ def share_fields(lake: dict, extent: dict | None) -> dict:
         note = NOTE_NO_LAKE
     elif st.get("status") in FROZEN_STATUSES:
         note = NOTE_FROZEN
+    elif st.get("status") == NOT_MEASURABLE:
+        note = NOTE_NOT_MEASURABLE
     elif kind == "circle":
         note = NOTE_CIRCLE
     elif inside is not None and inside < MIN_OUTLINE_IN_WINDOW:

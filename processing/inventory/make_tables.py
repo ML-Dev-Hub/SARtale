@@ -71,6 +71,9 @@ PICKS = [
 # Register sites that are inventory candidates too. The other four sites (attabad, shisper, karambar, rogheli) are
 # not: Attabad is a landslide-dammed lake, and the others have no lake now or no lake of 0.05 km² or more.
 SITES = {"passu": "C045", "shazore": "C043", "khurdopin": "C048"}
+# Register sites that are not inventory candidates but whose outline is an OpenStreetMap file in the repo: its area is
+# their inventory outline (the largest recorded extent, sartale.lakesummary), with no SUPARCO match.
+REGISTER_OSM = {"attabad": "outlines/attabad_osm.geojson"}
 
 SUPARCO_METHOD = (
     "SUPARCO publishes no coordinates, names or outlines for its list of potentially dangerous glacial lakes (PDGL), "
@@ -297,6 +300,15 @@ def outline_areas(c) -> list[dict]:
     return out
 
 
+def register_osm_outline(path: Path) -> dict:
+    """The inventory outline of a register site's committed OpenStreetMap outline file (REGISTER_OSM): its area in
+    UTM (EPSG:32643, as every inventory area here)."""
+    feature = json.loads(Path(path).read_text(encoding="utf-8"))
+    geom = shapely.geometry.shape(feature.get("geometry", feature))
+    km2 = float(gpd.GeoSeries([geom], crs=4326).to_crs(UTM).area.iloc[0]) / 1e6
+    return {"source": "OpenStreetMap outline (undated)", "year": None, "km2": round(km2, 4), "licence": "ODbL 1.0"}
+
+
 def _txt(v) -> str:
     return "" if pd.isna(v) else str(v).strip()
 
@@ -479,6 +491,9 @@ def main(argv=None) -> None:
         suparco, candidates = suparco_matches(c, supa)
         inventory[rid] = {"cand_id": cid, "outlines": outline_areas(c), "suparco": suparco,
                           "suparco_candidates": candidates}
+    for rid, rel in REGISTER_OSM.items():
+        inventory[rid] = {"cand_id": None, "outlines": [register_osm_outline(PROCESSING / rel)], "suparco": None,
+                          "suparco_candidates": []}
     (out / "new_lakes.json").write_text(
         "[\n" + ",\n".join("  " + json.dumps(r, ensure_ascii=False) for r in new_rows) + "\n]\n", encoding="utf-8")
     (out / "watched_inventory.json").write_text(json.dumps(
