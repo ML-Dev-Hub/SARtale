@@ -166,7 +166,7 @@ def test_suparco_match_csv_holds_only_matched_inventory_lakes_without_coordinate
         assert not re.search(r"map dot \d+\.\d+,\d+\.\d+|dot at \d", text), name
 
 
-@pytest.mark.parametrize("batch", [1, 2])
+@pytest.mark.parametrize("batch", [1, 2, 3])
 def test_a_registered_batch_is_complete(batch):
     reg = {l.id: l for l in load_lakes(LAKES_IN)}
     rows = [r for r in load_json("inventory/new_lakes.json") if r["batch"] == batch]
