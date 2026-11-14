@@ -1,7 +1,7 @@
 import "./lakePage.css";
 import { authorityFor } from "../contacts";
 import { dataUrl, formatDate } from "../format";
-import { isFrozen, levelMessage, picturedPassFrozen, suparcoLine, type Lake, type LakesFile } from "../lakes";
+import { freezeFacts, freezeHeadline, frozenAreaLine, isFrozen, levelMessage, picturedPassFrozen, suparcoLine, type Lake, type LakesFile } from "../lakes";
 import type { LakeChartFactory } from "../lakeWatchView";
 import { sentinel2Url } from "../links";
 import { nextRefresh } from "../overview/model";
@@ -9,6 +9,7 @@ import { statusChip } from "../overview/marks";
 import { provinceName } from "../provinces";
 import { renderExtent } from "./extent";
 import { renderCompare, type MaskDecoder } from "./compare";
+import { gaugeHeading, gaugeInput, renderGauge } from "./gauge";
 
 export interface LakePageOptions {
   file: LakesFile;
@@ -179,6 +180,50 @@ function fillPicture(lake: Lake): (body: HTMLElement) => boolean {
   };
 }
 
+/** The lake's latest open-water pass: the pipeline's last_open, else the newest pass not taken while frozen. */
+function lastOpenLine(lake: Lake): string | null {
+  const o = lake.last_open;
+  const p = o ? null : lake.series.filter((q) => q.area_km2 !== null && q.excluded === null && !q.frozen).sort((a, b) => a.date.localeCompare(b.date)).pop();
+  const date = o?.date ?? p?.date;
+  const area = o?.area_km2 ?? p?.area_km2;
+  const track = o?.track ?? p?.track;
+  const when = day(date);
+  if (!when || area == null) return null;
+  return `${when} · ${area.toFixed(3)} km² · track ${track}`;
+}
+
+/** The frozen card: it replaces the gauge while the lake is frozen. No frozen pass is shown as an open-water number. */
+function fillFreeze(lake: Lake): (body: HTMLElement) => boolean {
+  return (body) => {
+    const f = lake.freeze;
+    body.append(el("p", "lp-freeze-head", f ? freezeHeadline(f) : lake.status.status));
+    const area = frozenAreaLine(lake);
+    if (area) body.append(el("p", "lp-freeze-area", area));
+    const facts = freezeFacts(lake);
+    if (facts.length) {
+      const ul = el("ul", "lp-freeze-facts");
+      for (const t of facts) ul.append(el("li", undefined, t));
+      body.append(ul);
+    }
+    const open = lastOpenLine(lake);
+    if (open) {
+      const d = el("div", "lp-freeze-open");
+      d.append(el("h3", undefined, "Last open-water pass"), el("p", undefined, open));
+      body.append(d);
+    }
+    return true;
+  };
+}
+
+/** The change gauge, or null when the lake has no change reading to draw. */
+function gaugeBlock(lake: Lake, factor: number): HTMLElement | null {
+  if (!gaugeInput(lake, factor)) return null;
+  return block("lp-gauge", gaugeHeading(lake), (body) => {
+    renderGauge(body, lake, factor);
+    return body.childElementCount > 0;
+  });
+}
+
 /** The lake page (spec decision 5): header and message, then the gauge or frozen card, extent, picture, history, sources. */
 export function createLakePage(root: HTMLElement, opts: LakePageOptions): { destroy(): void } {
   const page = el("div", "lp");
@@ -208,7 +253,9 @@ export function createLakePage(root: HTMLElement, opts: LakePageOptions): { dest
     const msg = isFrozen(lake) ? null : message(lake);
     if (msg) page.append(msg);
     // Blocks whose content a later task fills (the gauge or frozen card, extent, history, sources) join here, in order.
-    for (const sec of [block("lp-extent", "Largest recorded extent", (b) => (renderExtent(b, lake, opts.file.constants.min_observable), true)), block("lp-picture", "Radar picture", fillPicture(lake))]) if (sec) page.append(sec);
+    const factor = opts.file.constants.change_factor;
+    const top = isFrozen(lake) ? block("lp-freeze", "Frozen: no change reading while the ice lasts", fillFreeze(lake)) : gaugeBlock(lake, factor);
+    for (const sec of [top, block("lp-extent", "Largest recorded extent", (b) => (renderExtent(b, lake, opts.file.constants.min_observable), true)), block("lp-picture", "Radar picture", fillPicture(lake))]) if (sec) page.append(sec);
   }
   return { destroy: () => void root.replaceChildren() };
 }

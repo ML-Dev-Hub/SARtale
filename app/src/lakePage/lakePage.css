@@ -55,7 +55,35 @@
 .lp-img-water { position: absolute; inset: 0; opacity: 0.7; }
 .lp-caption { color: var(--muted); font-size: 14px; }
 
+.lp-slot { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+/* ---- Change gauge: neutral surfaces; the marker is a solid mark, and the value is written, never colour alone ---- */
+.lp-gauge-sub { color: var(--muted); font-size: 14px; }
+.lp-gauge-area { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+.lp-gauge-value { font-family: var(--display); font-size: 44px; font-weight: 700; line-height: 1; }
+.lp-gauge-areaname { font-weight: 600; }
+.lp-gauge-svg { display: block; max-width: 900px; }
+.lp-g-scale { fill: none; stroke: var(--line-strong); }
+.lp-g-band { fill: var(--line); }
+.lp-g-edge { stroke: var(--text); stroke-width: 2; }
+.lp-g-zero { stroke: var(--muted); stroke-dasharray: 3 3; }
+.lp-g-marker { fill: var(--text); stroke: var(--ground); stroke-width: 2; }
+.lp-g-hollow { fill: none; stroke: var(--text); stroke-dasharray: 3 2; }
+.lp-g-arrow { fill: var(--text); }
+.lp-g-value { fill: var(--text); font-size: 16px; font-weight: 700; }
+.lp-g-zone { fill: var(--muted); font-size: 14px; font-weight: 600; }
+.lp-g-tick { fill: var(--muted); font-size: 13px; }
+.lp-gauge-note { color: var(--muted); font-size: 15px; max-width: 90ch; }
+
+/* ---- Frozen card: a neutral panel with the ice colour as its border ---- */
+.lp-block[data-role="lp-freeze"] { border: 1.5px solid var(--ice); }
+.lp-freeze-head { font-size: 18px; font-weight: 700; }
+.lp-freeze-area { color: var(--muted); }
+.lp-freeze-facts { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; overflow-wrap: anywhere; }
+.lp-freeze-open { display: flex; flex-direction: column; gap: 4px; padding-top: 12px; border-top: 1px solid var(--line); }
+.lp-freeze-open h3 { color: var(--muted); font-size: 14px; font-weight: 700; }
+
 @media (max-width: 760px) {
+  .lp-gauge-value { font-size: 34px; }
   .lakes-view[data-mode="lake"] { padding: 12px 16px 48px; }
   .lp-name { font-size: 32px; }
   .lp-message { padding: 18px 16px 18px 18px; }
