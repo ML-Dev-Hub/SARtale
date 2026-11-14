@@ -74,10 +74,10 @@
 .ov-th-num { align-items: flex-end; }
 .ov-sort {
   display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0; border: 0; background: none;
-  color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; line-height: 1.25; text-transform: uppercase; text-align: left; cursor: pointer;
+  color: #d3dfe7; font-size: 13px; font-weight: 700; line-height: 1.25; text-align: left; cursor: pointer;
 }
-.ov-th-num .ov-sort { flex-direction: row-reverse; text-align: right; }
-.ov-unit { text-transform: none; letter-spacing: 0; }
+.ov-th-num .ov-sort { text-align: right; }
+.ov-sort-last { white-space: nowrap; }
 .ov-sort:hover, .ov-sort-active { color: var(--accent); }
 .ov-sort-arrow { flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: 0.55; }
 .ov-sort-active .ov-sort-arrow { opacity: 1; }
@@ -90,32 +90,40 @@
 .ov-name:hover { color: #fff; text-decoration-color: var(--accent); }
 .ov-c-lake .ov-sub { font-size: 13px; }
 
-/* Needs attention */
-.ov-pinned-group { display: flex; flex-direction: column; background: #1a140a; border-bottom: 1px solid #5c4720; }
-.ov-row-pinned { min-height: 64px; border-bottom: 0; }
+/* Needs attention: the same neutral row fill as every other row, a 3 px bar in the status colour, one group label */
+.ov-pinned-group { display: flex; flex-direction: column; border-bottom: 2px solid var(--line-strong); }
+.ov-group-label { display: block; border-bottom: 1px solid var(--line-strong); }
+.ov-group-label-cell { padding: 10px 12px 8px; color: #fff; font-size: 14px; font-weight: 700; }
+.ov-row-pinned { min-height: 64px; border-bottom: 0; box-shadow: inset 3px 0 0 var(--line-strong); }
+.ov-row-pinned[data-status="watch"] { box-shadow: inset 3px 0 0 var(--warm); }
+.ov-row-pinned[data-status="alert-growing"] { box-shadow: inset 3px 0 0 var(--alert); }
+.ov-row-pinned[data-status="decrease-noted"] { box-shadow: inset 3px 0 0 var(--decrease); }
+.ov-row-pinned[data-status="lake-may-be-forming"] { box-shadow: inset 3px 0 0 var(--accent); }
+.ov-row-pinned[data-selected="true"] { box-shadow: inset 0 0 0 2px var(--accent), inset 3px 0 0 var(--accent); }
 .ov-row-pinned .ov-cell { padding-top: 12px; padding-bottom: 6px; }
-.ov-kicker { color: #ffd796; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
-.ov-row-pinned .ov-name { color: #fff; font-weight: 700; text-decoration-color: #8a6a2c; white-space: normal; overflow-wrap: anywhere; }
+.ov-row-pinned .ov-name { color: #fff; font-weight: 700; white-space: normal; overflow-wrap: anywhere; }
 .ov-row-pinned .ov-sub { color: #d3dfe7; }
+.ov-c-num[data-info="true"] .ov-num { color: var(--dim); font-weight: 500; }
+.ov-c-num[data-info="true"] .ov-sub { color: var(--dim); font-style: italic; }
 .ov-headline {
   max-width: 100%; color: var(--text); font-size: 13.5px; line-height: 1.4;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
 }
-.ov-message { display: block; border-bottom: 1px solid #3a2e16; }
+.ov-message { display: block; border-bottom: 1px solid #13283a; }
 .ov-pinned-group .ov-message:last-child { border-bottom: 0; }
 .ov-message-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 0 12px 12px; }
 .ov-toggle {
   display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 8px;
-  border: 1px solid var(--warm); background: none; color: #ffd796; font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--warm); background: none; color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
 }
-.ov-toggle:hover { background: #2a1f0b; }
+.ov-toggle:hover { background: var(--panel-3); }
 .ov-toggle-arrow { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .ov-message-panel {
   align-self: stretch; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 12px 24px;
-  padding: 14px 16px; border-radius: 10px; border: 1px solid #5c4720; background: var(--panel);
+  padding: 14px 16px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--panel);
 }
 .ov-message-part { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
-.ov-message-head { color: #ffd796; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.ov-message-head { color: #fff; font-size: 13px; font-weight: 700; }
 
 .ov-empty { padding: 28px 14px; color: var(--muted); text-align: center; }
 
@@ -143,7 +151,7 @@
 .ov-mark path { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 1.5 2; }
 .ov-status-alert-growing { background: var(--alert); border: 2px solid var(--alert); color: var(--alert-ink); font-weight: 800; }
 .ov-mark-alert-growing path { fill: var(--alert); stroke: var(--alert-ink); stroke-dasharray: none; }
-.ov-status-watch { background: #2a1f0b; border: 2px solid var(--warm); color: #ffd796; font-weight: 700; }
+.ov-status-watch { background: var(--panel); border: 2px solid var(--warm); color: var(--warm); font-weight: 700; }
 .ov-mark-watch path { fill: var(--warm); stroke: var(--warm-ink); stroke-dasharray: none; }
 .ov-status-decrease-noted { border-color: var(--decrease); color: var(--decrease); }
 .ov-mark-decrease-noted path { fill: var(--decrease); stroke: var(--ground); stroke-dasharray: none; }

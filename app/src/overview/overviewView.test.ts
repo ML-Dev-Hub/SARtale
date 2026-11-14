@@ -81,7 +81,7 @@ describe("overview", () => {
     render(makeFile([makeLake({ district: undefined, suparco: undefined, largest_extent: undefined, share_of_largest: undefined, elevation_m: undefined })]));
     const c = cells("ov-row");
     expect(c).toHaveLength(7);
-    expect(c[0]).toContain("not on SUPARCO list");
+    expect(c[0]).toContain("no SUPARCO match");
     expect(c[3]).toContain("—");
     expect(c[6]).toBe("—");
     expect(root.textContent).not.toMatch(/undefined|NaN/);
@@ -200,9 +200,54 @@ describe("overview details", () => {
   });
   it("column heads read as given, units included", () => {
     render(file);
-    expect([...root.querySelectorAll('[role="columnheader"]')].map((h) => h.textContent)).toEqual([
+    expect([...root.querySelectorAll('[role="columnheader"]')].map((h) => h.textContent!.replace(/ /g, " ").trim())).toEqual([
       "Lake · district · SUPARCO", "Status", "Area (km²)", "% of largest extent", "Trend (status track)", "Latest pass", "Elev. (m)",
     ]);
+  });
+  it("a possible SUPARCO match shows as no match", () => {
+    render(makeFile([makeLake({ district: "Hunza", suparco: { id: 12, match: "possible", source: "PDGL" } })]));
+    expect(cells("ov-row")[0]).toContain("Hunza · no SUPARCO match");
+    expect(root.textContent).not.toContain("not on SUPARCO list");
+  });
+  it("a share of 100% or more with unknown noise says so, not Above or Within", () => {
+    render(makeFile([makeLake({ share_of_largest: 1.55, above_largest: null })]));
+    const share = role("ov-row")!.querySelectorAll('[role="cell"]')[3];
+    expect(share.textContent).toContain("155%");
+    expect(share.textContent).toContain("noise unknown");
+    expect(share.textContent).not.toMatch(/Above|Within/);
+    expect(share.querySelector(".ov-sub")!.getAttribute("title")).toMatch(/noise/);
+  });
+  it("a share of 100% or more that is not Above reads Within noise; below 100% reads Within", () => {
+    render(makeFile([makeLake({ share_of_largest: 1.18, above_largest: false })]));
+    let sub = role("ov-row")!.querySelectorAll('[role="cell"]')[3].querySelector(".ov-sub")!;
+    expect(sub.textContent).toBe("Within noise");
+    expect(sub.getAttribute("title")).toBe("Above 100% but less than 2× radar noise beyond the largest mapped outline");
+    render(makeFile([makeLake({ share_of_largest: 0.96, above_largest: false })]));
+    sub = role("ov-row")!.querySelectorAll('[role="cell"]')[3].querySelector(".ov-sub")!;
+    expect(sub.textContent).toBe("Within");
+    render(makeFile([makeLake({ share_of_largest: 1.3, above_largest: true })]));
+    expect(role("ov-row")!.querySelectorAll('[role="cell"]')[3].querySelector(".ov-sub")!.textContent).toBe("Above");
+  });
+  it("a Not measurable lake keeps its area, greyed, as info only with the reason on hover", () => {
+    const l = makeLake();
+    render(makeFile([{ ...l, status: { ...l.status, status: "Not measurable", level: null, change_km2: null, reason: "Radar water failed the Sentinel-2 check (IoU 0.21)." } }]));
+    const area = role("ov-row")!.querySelectorAll<HTMLElement>('[role="cell"]')[2];
+    expect(area.textContent).toContain("0.131");
+    expect(area.dataset.info).toBe("true");
+    const sub = area.querySelector(".ov-sub")!;
+    expect(sub.textContent).toBe("info only");
+    expect(sub.getAttribute("title")).toBe("Radar water failed the Sentinel-2 check (IoU 0.21).");
+  });
+  it("one group label heads the pinned rows; rows carry no eyebrow and mark their status for the accent bar", () => {
+    render(file);
+    expect(role("ov-pinned-label")!.textContent).toBe("Needs attention (4)");
+    expect(root.querySelectorAll(".ov-kicker")).toHaveLength(0);
+    expect(root.querySelector('[data-role="ov-pinned"][data-id="watch_lake"]')!.getAttribute("data-status")).toBe("watch");
+    expect(root.querySelector('[data-role="ov-pinned"][data-id="alert_lake"]')!.getAttribute("data-status")).toBe("alert-growing");
+  });
+  it("each sort arrow sits inside its header's text", () => {
+    render(file);
+    for (const b of root.querySelectorAll('[data-sort]')) expect(b.querySelector(".ov-sort-label svg")).not.toBeNull();
   });
   it("the lake name opens the lake", () => {
     render(file);

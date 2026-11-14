@@ -94,10 +94,13 @@ function signed(v: number): string {
   return Number(shown) === 0 ? shown : `${v > 0 ? "+" : "−"}${shown}`;
 }
 
-/** The SUPARCO part of a row's second line; a "possible" match is never shown. */
+/**
+ * The SUPARCO part of a row's second line; a "possible" match is never shown. SUPARCO publishes no coordinates, so
+ * without a probable match we only know that we found none, not that SUPARCO does not list the lake.
+ */
 export function suparcoShort(l: Lake): string {
   const s = l.suparco;
-  if (!s || s.match === "possible") return "not on SUPARCO list";
+  if (!s || s.match === "possible") return "no SUPARCO match";
   return s.match === "probable" ? `SUPARCO ${s.id} (probable)` : `SUPARCO ${s.id}`;
 }
 
@@ -134,7 +137,7 @@ const FILTER_CHIPS: { filter: OverviewFilter; label: string }[] = [
 
 export const OV_FOOTER = "Screening on NISAR radar, not a warning. Official warnings come from PMD, NDMA, GBDMA and PDMA.";
 export const OV_CREDITS = "Lake inventories: HKH-PK-2020 (CC BY 4.0), Hi-MAG (CC BY 4.0), OpenStreetMap (ODbL). Radar: NASA–ISRO NISAR. Optical checks: Copernicus Sentinel-2.";
-const OV_NOTES = "Area: NISAR radar water area on the lake's status track, from its newest valid pass, with the change against the baseline of earlier passes on that track. % of largest extent: that area against the largest mapped outline (Hi-MAG 2008–2017, HKH-PK-2020, OpenStreetMap); \"Above\" means it is larger by more than twice the radar noise. Trend: the valid readings of the status track; for a frozen lake it stops at the last open-water reading. SUPARCO numbers are our match by map position and area to SUPARCO's published PDGL IDs; SUPARCO does not publish coordinates.";
+const OV_NOTES = "Area: NISAR radar water area on the lake's status track, from its newest valid open-water pass, with the change against the baseline of earlier passes on that track; \"info only\" marks a lake whose radar water did not pass the Sentinel-2 check. % of largest extent: that area against the largest mapped outline (Hi-MAG 2008–2017, HKH-PK-2020, OpenStreetMap); \"Above\" means it is larger by more than twice the radar noise, \"Within noise\" that it is larger by less than that, and \"noise unknown\" that the noise could not be set. No share is given where the radar water failed the Sentinel-2 check, the outline lies mostly outside the radar window, or there is no outline. Trend: the valid readings of the status track; for a frozen lake it stops at the last open-water reading. SUPARCO numbers are our match by map position and area to SUPARCO's published PDGL IDs; SUPARCO does not publish coordinates.";
 
 export function createOverview(root: HTMLElement, opts: OverviewOptions): OverviewHandle {
   const file = opts.file;
@@ -196,7 +199,7 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
       { filter: "watch", label: "Watch", value: c.watch, sub: c.watch ? nameList(of("Watch").map((l) => l.name)) : "None in this build", mark: "Watch" },
       { filter: "open", label: "Open water", value: c.open_water, sub: "A lake now, not frozen", mark: "No change" },
       { filter: "frozen", label: "Frozen", value: c.frozen, sub: frozenSub(), mark: "Frozen (likely)" },
-      { filter: "above", label: "Above largest extent", value: c.above_largest, sub: "Latest reading above the largest mapped outline" },
+      { filter: "above", label: "Above largest extent", value: c.above_largest, sub: "Above the largest mapped outline by more than radar noise" },
       { filter: "no-lake", label: "No lake now", value: c.no_lake, sub: nameList(lakes.filter((l) => l.lake_state === "no_lake").map((l) => l.name)), mark: "No lake now" },
       { filter: "changed", label: "Changed since last build", value: c.changed, sub: prevBuilt ? `Since the ${formatDate(prevBuilt)} build` : "" },
     ];
@@ -295,7 +298,6 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
 
   function nameCell(l: Lake, pinned: boolean): HTMLElement {
     const c = cell("ov-c-lake");
-    if (pinned) c.append(el("span", "ov-kicker", "Needs attention"));
     const name = el("button", "ov-name", l.name);
     name.type = "button";
     name.title = l.name;
@@ -328,6 +330,14 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
       ? `last open water ${shortDate(r.date)}`
       : typeof l.status.change_km2 === "number" && Number.isFinite(l.status.change_km2) ? `${signed(l.status.change_km2)} km²` : "";
     const c = cell("ov-c-num", el("span", "ov-num", r.area.toFixed(3)));
+    if (l.status.status === "Not measurable") {
+      // The method shows this area as information only: the radar water did not pass the Sentinel-2 check.
+      c.dataset.info = "true";
+      const info = el("span", "ov-sub", "info only");
+      info.title = l.status.reason;
+      c.append(info);
+      return c;
+    }
     if (sub) {
       const s = el("span", "ov-sub", sub);
       if (!isFrozen(l)) s.title = "Change against the baseline of earlier passes on this track";
@@ -353,7 +363,18 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     fill.style.width = `${(Math.min(pct, 150) / 150) * 100}%`;
     bar.append(fill, el("span", "ov-bar-tick"));
     line.append(bar, el("span", "ov-num", `${pct}%`));
-    return cell("ov-c-num", line, el("span", "ov-sub", above ? "Above" : "Within"));
+    // Below 100% the reading is inside the outline. At 100% or more, "Above" needs 2× radar noise beyond it; with the
+    // noise unknown (above_largest null) neither word can be said.
+    const sub = above ? el("span", "ov-sub", "Above")
+      : v < 1 ? el("span", "ov-sub", "Within")
+      : l.above_largest === false ? el("span", "ov-sub", "Within noise")
+      : el("span", "ov-sub", "noise unknown");
+    if (v >= 1 && !above) {
+      sub.title = l.above_largest === false
+        ? "Above 100% but less than 2× radar noise beyond the largest mapped outline"
+        : "Above 100%, but the radar noise is not known, so it cannot say whether the lake is above its largest mapped outline";
+    }
+    return cell("ov-c-num", line, sub);
   }
 
   function trendCell(l: Lake): HTMLElement {
@@ -392,6 +413,7 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     r.dataset.role = pinned ? "ov-pinned" : "ov-row";
     r.dataset.id = l.id;
     if (state.sel === l.id) r.dataset.selected = "true";
+    if (pinned) r.dataset.status = statusSlug(l.status.status);
     r.append(nameCell(l, pinned), statusCell(l), areaCell(l), shareCell(l), trendCell(l), latestCell(l), elevationCell(l));
     return r;
   }
@@ -461,13 +483,17 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
       const b = el("button", `ov-sort${active ? " ov-sort-active" : ""}`);
       b.type = "button";
       b.dataset.sort = key;
-      const unit = /^(.*?)\s*(\((?:km²|m)\))$/.exec(c.label);
-      const text = el("span", undefined, unit ? `${unit[1]} ` : c.label);
-      if (unit) text.append(el("span", "ov-unit", unit[2]));
-      b.append(text);
+      // The arrow sits in the label's text flow, glued to its last word, so it stays with the label when it wraps.
+      const text = el("span", "ov-sort-label");
+      const words = c.label.split(" ");
+      const last = el("span", "ov-sort-last", words.pop()!);
+      if (words.length) text.append(`${words.join(" ")} `);
       const arrow = svg("svg", { viewBox: "0 0 14 14", width: "12", height: "12", "aria-hidden": "true", class: "ov-sort-arrow" });
       arrow.append(svg("path", { d: active ? (state.dir === "asc" ? "M3 9 L7 5 L11 9" : "M3 5 L7 9 L11 5") : "M4 5.5 L7 2.5 L10 5.5 M4 8.5 L7 11.5 L10 8.5" }));
-      b.append(arrow);
+      last.append("\u00a0", arrow);
+      text.append(last);
+      b.append(text);
+      if (c.col === "trend") b.title = "Sorts by the change against the baseline of the status track";
       b.addEventListener("click", () => set({ sort: key, dir: active && state.dir === "asc" ? "desc" : "asc" }));
       h.append(b);
       r.append(h);
@@ -502,6 +528,14 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
       const g = el("div", "ov-pinned-group");
       g.setAttribute("role", "rowgroup");
       g.setAttribute("aria-label", "Needs attention");
+      const labelRow = el("div", "ov-group-label");
+      labelRow.setAttribute("role", "row");
+      const labelCell = el("div", "ov-group-label-cell", `Needs attention (${pinned.length})`);
+      labelCell.setAttribute("role", "rowheader");
+      labelCell.setAttribute("aria-colspan", "7");
+      labelCell.dataset.role = "ov-pinned-label";
+      labelRow.append(labelCell);
+      g.append(labelRow);
       for (const l of pinned) g.append(row(l, true), message(l));
       body.push(g);
     }
