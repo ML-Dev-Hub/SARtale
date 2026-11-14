@@ -180,16 +180,12 @@ function fillPicture(lake: Lake): (body: HTMLElement) => boolean {
   };
 }
 
-/** The lake's latest open-water pass: the pipeline's last_open, else the newest pass not taken while frozen. */
+/** The pipeline's last open-water pass, or null when it gave none: no pass is guessed from the series. */
 function lastOpenLine(lake: Lake): string | null {
   const o = lake.last_open;
-  const p = o ? null : lake.series.filter((q) => q.area_km2 !== null && q.excluded === null && !q.frozen).sort((a, b) => a.date.localeCompare(b.date)).pop();
-  const date = o?.date ?? p?.date;
-  const area = o?.area_km2 ?? p?.area_km2;
-  const track = o?.track ?? p?.track;
-  const when = day(date);
-  if (!when || area == null) return null;
-  return `${when} · ${area.toFixed(3)} km² · track ${track}`;
+  const when = day(o?.date);
+  if (!o || !when) return null;
+  return `${when} · ${o.area_km2.toFixed(3)} km² · track ${o.track}`;
 }
 
 /** The frozen card: it replaces the gauge while the lake is frozen. No frozen pass is shown as an open-water number. */
@@ -254,7 +250,7 @@ export function createLakePage(root: HTMLElement, opts: LakePageOptions): { dest
     if (msg) page.append(msg);
     // Blocks whose content a later task fills (the gauge or frozen card, extent, history, sources) join here, in order.
     const factor = opts.file.constants.change_factor;
-    const top = isFrozen(lake) ? block("lp-freeze", "Frozen: no change reading while the ice lasts", fillFreeze(lake)) : gaugeBlock(lake, factor);
+    const top = isFrozen(lake) ? block("lp-freeze", "Frozen: no change reading while frozen", fillFreeze(lake)) : gaugeBlock(lake, factor);
     for (const sec of [top, block("lp-extent", "Largest recorded extent", (b) => (renderExtent(b, lake, opts.file.constants.min_observable), true)), block("lp-picture", "Radar picture", fillPicture(lake))]) if (sec) page.append(sec);
   }
   return { destroy: () => void root.replaceChildren() };

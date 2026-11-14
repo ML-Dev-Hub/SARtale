@@ -117,10 +117,12 @@ export function renderGauge(el: HTMLElement, l: Lake, factor: number): void {
     el.append(row);
   }
 
-  const pctText = `${signed((g.change / base) * 100, 0)}%`;
+  const pctText = base > 0 ? ` (${signed((g.change / base) * 100, 0)}%)` : "";
+  const d = s.latest_date?.slice(0, 10);
+  const passText = d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? `Newest pass, ${formatDate(d)}${s.track ? ` (${s.track})` : ""}: baseline` : "Baseline";
   const observable = pt?.observable_share != null ? ` · zone observable on this pass ${Math.round(pt.observable_share * 100)}%` : "";
   const z = s.z != null ? ` · z ${signed(s.z, 1)}` : "";
-  el.append(p(`Baseline ${base.toFixed(3)} km² · change ${signed(g.change, 3)} km² (${pctText}) · noise ${g.noise.toFixed(3)} km²${z}${observable}`, "lp-gauge-numbers"));
+  el.append(p(`${passText} ${base.toFixed(3)} km² · change ${signed(g.change, 3)} km²${pctText} · noise ${g.noise.toFixed(3)} km²${z}${observable}`, "lp-gauge-numbers"));
 
   const W = SVG_WIDTH;
   const geo = gaugeGeometry(g, W);

@@ -55,7 +55,7 @@ describe("the change gauge", () => {
     const el = document.createElement("div");
     renderGauge(el, makeLake(), 2);
     expect(el.textContent).toContain("Latest valid 055A reading minus the median of up to 6 earlier valid 055A readings");
-    expect(el.textContent).toContain("Baseline 0.130 km² · change +0.001 km² (+1%) · noise 0.005 km²");
+    expect(el.textContent).toContain("Newest pass, 9 Nov 2026 (055A): baseline 0.130 km² · change +0.001 km² (+1%) · noise 0.005 km²");
     expect(el.textContent).toContain("zone observable on this pass 100%");
     expect(el.textContent).toContain("water area in the search window");
     expect(el.querySelector("svg")!.getAttribute("aria-label")).toContain("+0.0010 square kilometres");
@@ -81,9 +81,17 @@ describe("the change gauge", () => {
     expect(t).toContain("Probably frozen since 18 Oct 2026");
     expect(t).toContain("Air temperature");
     expect(t).toContain("Latest reading 0.226 km² on 30 Oct 2026");
-    expect(t).toContain("Last open-water pass");
-    expect(t).toContain("18 Sep 2026");
-    expect(t).toContain("0.159 km²");
+  });
+  it("shows no percent when the baseline is zero", () => {
+    const el = document.createElement("div");
+    renderGauge(el, makeLake({ status: { ...makeLake().status, baseline_km2: 0 } }), 2);
+    expect(el.textContent).toContain("change +0.001 km² · noise");
+    expect(el.textContent).not.toMatch(/Infinity|NaN|%\)/);
+  });
+  it("leaves out the last open-water pass when the pipeline gives none", () => {
+    expect(cardText()).not.toContain("Last open-water pass");
+    const withLast = frozenFixture("shazore", "Frozen (likely)", { last_open: { date: "2026-09-18", track: "084A", area_km2: 0.159, status: "No change", change_km2: 0, noise_km2: 0.005, looks: 7, images: null } });
+    expect(page(withLast).textContent).toContain("18 Sep 2026 · 0.159 km² · track 084A");
   });
   it("a Not yet validated lake draws a hollow marker", () => {
     const l = makeLake({ status: { ...makeLake().status, status: "Not yet validated against Sentinel-2" } });
