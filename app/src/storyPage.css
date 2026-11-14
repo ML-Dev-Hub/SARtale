@@ -130,8 +130,9 @@
 .sp-lake-title { font-weight: 600; overflow-wrap: normal; word-break: normal; }
 .sp-lake-meta { font-size: 13px; color: var(--sp-muted); }
 .sp-lake-right { text-align: right; min-width: 0; }
-.sp-lake-tag { font-size: 13px; color: var(--sp-muted); overflow-wrap: break-word; }
-.sp-lake-mark { font-size: 0.8em; }
+.sp-lake-tag { font-size: 14px; color: var(--sp-muted); overflow-wrap: break-word; }
+.sp-lake-mark { display: inline-flex; vertical-align: middle; line-height: 0; }
+.sp-lake-mark svg { display: block; }
 .sp-dashed { border-bottom: 1px dashed currentColor; }
 .sp-lake-status { font-size: 13px; font-weight: 600; }
 .sp-requests { display: flex; flex-direction: column; gap: 10px; }
@@ -140,13 +141,13 @@
 .sp-family-toggle { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 8px 14px; background: var(--sp-panel); color: #fff; border: 0; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
 .sp-family-toggle::after { content: "▾"; margin-left: auto; color: var(--sp-muted); }
 .sp-family-toggle[aria-expanded="false"]::after { content: "▸"; }
-.sp-family-toggle:focus-visible { outline: 3px solid var(--sp-warm); outline-offset: -3px; }
+.sp-family-toggle:focus-visible { outline: 3px solid var(--sp-accent); outline-offset: -3px; }
 .sp-family-list { display: flex; flex-direction: column; gap: 8px; padding: 8px; }
 .sp-family-list[hidden] { display: none; }
 .sp-family .sp-lake { background: transparent; }
 .sp-levels-calm { margin: 0; font-size: 15px; }
 .sp-levels-all { justify-content: center; align-self: stretch; }
-.sp-lake-area { font-size: 13px; color: #c6d5de; font-variant-numeric: tabular-nums; }
+.sp-lake-area { font-size: 14px; color: #c6d5de; font-variant-numeric: tabular-nums; }
 .sp-st-stable { color: var(--sp-accent); }
 .sp-st-change, .sp-st-watch { color: var(--sp-warm); }
 .sp-st-decrease { color: #c4d3ff; }

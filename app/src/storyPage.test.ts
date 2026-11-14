@@ -425,6 +425,17 @@ describe("05 The levels: cards and family rows", () => {
     for (const r of rows) expect(r.querySelectorAll(".sp-lake").length).toBe(Number(r.dataset.count));
   });
 
+  it("draws each family row and lake chip with the map's SVG marker, not a text glyph", () => {
+    const { page } = render(real);
+    for (const r of page.listEl.querySelectorAll<HTMLElement>(".sp-family")) {
+      const mark = r.querySelector(".sp-family-toggle .sp-lake-mark");
+      expect(mark!.getAttribute("aria-hidden")).toBe("true");
+      expect(mark!.querySelector("svg")!.getAttribute("width")).toBe("16");
+      expect(r.querySelector(".sp-family-toggle")!.textContent).not.toMatch(/[▲◆▼●⬢■✕○]/);
+    }
+    for (const m of page.listEl.querySelectorAll(".sp-lake-status .sp-lake-mark")) expect(m.querySelector("svg")).not.toBeNull();
+  });
+
   it("summarises the frozen lakes by evidence", () => {
     const { page } = render(real);
     const b = frozenBreakdown(real.lakes);

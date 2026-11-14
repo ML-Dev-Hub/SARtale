@@ -386,13 +386,17 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   }
   // The lake list: one row per status family (attention first), each opening its lakes in place.
   const ATTENTION: Family[] = ["alert", "watch", "decrease", "forming"];
-  const GLYPH: Record<string, string> = { triangle: "▲", diamond: "◆", down: "▼", circle: "●", hexagon: "⬢", square: "■", crossed: "✕", ring: "○" };
+  /** The same shape as the pin on the map, so a row and its pin read alike. */
+  const markOf = (fam: Family): HTMLElement => {
+    const m = el("span", "sp-lake-mark");
+    m.setAttribute("aria-hidden", "true");
+    m.innerHTML = markerSvg(fam, { size: 16 });
+    return m;
+  };
   const lakeCard = (l: Lake): HTMLElement => {
     const d = statusDisplay(l, file?.constants);
     const meta = [l.status.track, l.status.latest_date ? formatDate(l.status.latest_date) : null].filter(Boolean).join(" · ");
-    const glyph = text("span", "sp-lake-mark", GLYPH[d.mark] ?? "●");
-    glyph.setAttribute("aria-hidden", "true");
-    const chip = el("div", `sp-lake-status ${statusClass(l.status.status)}${d.dashed ? " sp-dashed" : ""}`, glyph, ` ${d.chip}`);
+    const chip = el("div", `sp-lake-status ${statusClass(l.status.status)}${d.dashed ? " sp-dashed" : ""}`, markOf(d.family), ` ${d.chip}`);
     const right = el("div", "sp-lake-right", chip);
     if (d.tag) right.append(text("div", "sp-lake-tag", d.tag));
     // An area only where it is an open-water reading: not for frozen, unmeasured or no-lake sites.
@@ -419,9 +423,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
     const id = `sp-family-${fam}`;
     const n = counts[fam] ?? group.length;
     const summary = fam === "frozen" ? `: ${frozenSplit.seen} seen in Sentinel-2, ${frozenSplit.temperature} by air temperature` : "";
-    const glyph = text("span", "sp-lake-mark", GLYPH[first.mark] ?? "●");
-    glyph.setAttribute("aria-hidden", "true");
-    const toggle = el("button", "sp-family-toggle", glyph, text("span", "sp-family-name", `${first.chip} ${n}${summary}`));
+    const toggle = el("button", "sp-family-toggle", markOf(fam), text("span", "sp-family-name", `${first.chip} ${n}${summary}`));
     toggle.type = "button";
     toggle.setAttribute("aria-expanded", String(open));
     toggle.setAttribute("aria-controls", id);
