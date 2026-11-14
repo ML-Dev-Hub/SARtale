@@ -92,7 +92,7 @@
 
 /* Needs attention: the same neutral row fill as every other row, a 3 px bar in the status colour, one group label */
 .ov-pinned-group { display: flex; flex-direction: column; border-bottom: 2px solid var(--line-strong); }
-.ov-group-label { display: block; border-bottom: 1px solid var(--line-strong); }
+.ov-group-label { display: block; border-bottom: 1px solid var(--line); }
 .ov-group-label-cell { padding: 10px 12px 8px; color: #fff; font-size: 14px; font-weight: 700; }
 .ov-row-pinned { min-height: 64px; border-bottom: 0; box-shadow: inset 3px 0 0 var(--line-strong); }
 .ov-row-pinned[data-status="watch"] { box-shadow: inset 3px 0 0 var(--warm); }
@@ -114,13 +114,13 @@
 .ov-message-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 0 12px 12px; }
 .ov-toggle {
   display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 8px;
-  border: 1px solid var(--warm); background: none; color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--line-strong); background: none; color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
 }
-.ov-toggle:hover { background: var(--panel-3); }
+.ov-toggle:hover, .ov-toggle:focus-visible { background: var(--panel-3); border-color: var(--accent); }
 .ov-toggle-arrow { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .ov-message-panel {
   align-self: stretch; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 12px 24px;
-  padding: 14px 16px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--panel);
+  padding: 14px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-3);
 }
 .ov-message-part { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
 .ov-message-head { color: #fff; font-size: 13px; font-weight: 700; }
@@ -138,7 +138,10 @@
 /* Trend sparkline */
 .ov-trend { display: block; overflow: visible; }
 .ov-spark { fill: none; stroke: #5d93a8; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
-.ov-row-pinned .ov-spark { stroke: var(--warm); }
+.ov-row-pinned[data-status="watch"] .ov-spark { stroke: var(--warm); }
+.ov-row-pinned[data-status="alert-growing"] .ov-spark { stroke: var(--alert); }
+.ov-row-pinned[data-status="decrease-noted"] .ov-spark { stroke: var(--decrease); }
+.ov-row-pinned[data-status="lake-may-be-forming"] .ov-spark { stroke: var(--accent); }
 .ov-spark-end { fill: #fff; }
 .ov-trend-frozen .ov-spark { stroke: var(--dim); }
 
@@ -219,3 +222,4 @@
 .ov-locate[hidden] { display: none; }
 .ov-locate[aria-pressed="true"] { border-color: var(--accent); }
 .ov[data-map="true"] .ov-row:not(.ov-row-head) { cursor: pointer; }
+.ov :focus-visible, .ov-drawer :focus-visible { outline-color: var(--accent); }
