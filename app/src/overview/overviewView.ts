@@ -2,6 +2,7 @@ import "./overview.css";
 import { formatDate } from "../format";
 import { droppedLine, isFrozen, levelMessage, type HeadlineCounts, type Lake, type LakesFile } from "../lakes";
 import { statusSlug } from "../lakeLocator";
+import { shareState } from "../share";
 import { createDrawerPanel, type DrawerPanel } from "./drawerPanel";
 import { loadMappedLakes } from "./mappedLakes";
 import { el, statusChip, statusMark, svg } from "./marks";
@@ -331,8 +332,8 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
       dash.title = why;
       return cell("ov-c-num", dash, el("span", "ov-sub", l.lake_state === "no_lake" ? "no lake" : "not available"));
     }
-    const pct = Math.round(v * 100);
-    const above = l.above_largest === true;
+    const st = shareState(l)!;
+    const { pct, above } = st;
     const line = el("span", "ov-share");
     const bar = el("span", "ov-bar");
     bar.setAttribute("aria-hidden", "true");
@@ -340,17 +341,8 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     fill.style.width = `${(Math.min(pct, 150) / 150) * 100}%`;
     bar.append(fill, el("span", "ov-bar-tick"));
     line.append(bar, el("span", "ov-num", `${pct}%`));
-    // Below 100% the reading is inside the outline. At 100% or more, "Above" needs 2× radar noise beyond it; with the
-    // noise unknown (above_largest null) neither word can be said.
-    const sub = above ? el("span", "ov-sub", "Above")
-      : v < 1 ? el("span", "ov-sub", "Within")
-      : l.above_largest === false ? el("span", "ov-sub", "Within noise")
-      : el("span", "ov-sub", "noise unknown");
-    if (v >= 1 && !above) {
-      sub.title = l.above_largest === false
-        ? "Above 100% but less than 2× radar noise beyond the largest mapped outline"
-        : "Above 100%, but the radar noise is not known, so it cannot say whether the lake is above its largest mapped outline";
-    }
+    const sub = el("span", "ov-sub", st.word);
+    if (st.title) sub.title = st.title;
     return cell("ov-c-num", line, sub);
   }
 

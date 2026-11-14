@@ -30,10 +30,10 @@ const header = (el: HTMLElement): HTMLElement => el.querySelector<HTMLElement>('
 
 describe("the lake page", () => {
   it("draws the header, the message and the filled blocks in order, and no block that has nothing in it yet", () => {
-    expect(roles(page(watchLake))).toEqual(["lp-header", "lp-message", "lp-picture"]);
-    expect(page(watchLake).querySelectorAll("h2").length).toBe(2);
+    expect(roles(page(watchLake))).toEqual(["lp-header", "lp-message", "lp-extent", "lp-picture"]);
+    expect(page(watchLake).querySelectorAll("h2").length).toBe(3);
   });
-  it("a frozen lake has no message", () => expect(roles(page(frozen))).toEqual(["lp-header", "lp-picture"]));
+  it("a frozen lake has no message", () => expect(roles(page(frozen))).toEqual(["lp-header", "lp-extent", "lp-picture"]));
   it("a lake without a level has no message", () => expect(roles(page(makeLake()))).not.toContain("lp-message"));
   it("the message has the four parts and the actions", () => {
     const m = page(watchLake).querySelector('[data-role="lp-message"]')!;

@@ -7,6 +7,7 @@ import { sentinel2Url } from "../links";
 import { nextRefresh } from "../overview/model";
 import { statusChip } from "../overview/marks";
 import { provinceName } from "../provinces";
+import { renderExtent } from "./extent";
 import { renderCompare, type MaskDecoder } from "./compare";
 
 export interface LakePageOptions {
@@ -207,7 +208,7 @@ export function createLakePage(root: HTMLElement, opts: LakePageOptions): { dest
     const msg = isFrozen(lake) ? null : message(lake);
     if (msg) page.append(msg);
     // Blocks whose content a later task fills (the gauge or frozen card, extent, history, sources) join here, in order.
-    for (const sec of [block("lp-picture", "Radar picture", fillPicture(lake))]) if (sec) page.append(sec);
+    for (const sec of [block("lp-extent", "Largest recorded extent", (b) => (renderExtent(b, lake, opts.file.constants.min_observable), true)), block("lp-picture", "Radar picture", fillPicture(lake))]) if (sec) page.append(sec);
   }
   return { destroy: () => void root.replaceChildren() };
 }
