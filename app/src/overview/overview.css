@@ -184,3 +184,38 @@
   .ov-shown { margin-left: 0; white-space: normal; }
   .ov-field { flex-wrap: wrap; }
 }
+
+/* ---- Map drawer ---- */
+.ov-btn {
+  min-height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--panel);
+  color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.ov-btn:hover { border-color: var(--accent); }
+.ov-drawer { display: flex; flex-direction: column; gap: 12px; }
+.ov-drawer[hidden] { display: none; }
+.ov-map { position: relative; aspect-ratio: 5.8 / 3.5; min-height: 260px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--ground); overflow: hidden; color: var(--muted); font-size: 14px; }
+.ov-mapped-row { color: #d3dfe7; font-size: 14px; }
+.ov-mapped-switch { display: inline-flex; align-items: center; gap: 10px; min-height: 36px; }
+.ov-mapped-switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+.ov-pin { display: block; width: 30px; height: 30px; padding: 3px; border: 0; border-radius: 50%; background: rgba(5, 13, 22, 0.72); cursor: pointer; }
+.ov-pin svg { display: block; width: 24px; height: 24px; overflow: visible; }
+.ov-pin[data-selected] { box-shadow: 0 0 0 2px #fff; background: var(--ground); }
+.ov-pin:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ov-mapped-dot circle { fill: var(--dim); }
+.ov-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--panel-2); }
+.ov-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ov-card-title { flex: 1 1 100%; margin: 0; font-family: var(--display); font-size: 19px; font-weight: 700; overflow-wrap: anywhere; }
+.ov-facts { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 8px 16px; font-size: 14px; overflow-wrap: anywhere; }
+.ov-facts dt { color: var(--muted); font-size: 12.5px; }
+.ov-facts dd { margin: 0; }
+.ov-card-note, .ov-card-hint { margin: 0; color: var(--muted); font-size: 14px; }
+.ov-card-link { align-self: flex-start; min-height: 40px; display: inline-flex; align-items: center; font-weight: 600; }
+.ov-legend { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 6px 12px; font-size: 13px; color: #d3dfe7; }
+.ov-legend li { display: flex; align-items: center; gap: 8px; }
+.ov-legend svg { flex: none; }
+.ov-notices { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12.5px; }
+.ov-notices p { margin: 0; }
+.ov-locate { align-self: flex-start; min-height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: transparent; color: var(--accent); font-size: 12.5px; cursor: pointer; }
+.ov-locate[hidden] { display: none; }
+.ov-locate[aria-pressed="true"] { border-color: var(--accent); }
+.ov[data-map="true"] .ov-row:not(.ov-row-head) { cursor: pointer; }

@@ -5,7 +5,7 @@ import { createLakePage } from "./lakePage/lakePage";
 import { droppedLine } from "./lakes";
 import type { LakeChartFactory, LocatorFactory } from "./lakeWatchView";
 import type { LakeRequest } from "./lakeRequests";
-import { DEFAULT_STATE, overviewQuery, parseOverviewHash, type OverviewState } from "./overview/model";
+import { DEFAULT_STATE, overviewQuery, parseOverviewHash, type MapDrawerFactory, type OverviewState } from "./overview/model";
 import { createOverview } from "./overview/overviewView";
 import { renderStoryPage } from "./storyPage";
 
@@ -16,6 +16,8 @@ export interface AppOptions {
   createLakeChart?: LakeChartFactory;
   /** Small map that marks the lakes (the overview's map drawer takes it over in a later step). */
   createLakeLocator?: LocatorFactory;
+  /** The overview map drawer. */
+  createMapDrawer?: MapDrawerFactory;
   /** Called by "Print lake brief". */
   onLakeBrief?: (lake: Lake) => void;
   /** Lake requests from data/requests.json. */
@@ -133,6 +135,7 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     ? createOverview(q("overview-root"), {
       file: lakes,
       state: DEFAULT_STATE,
+      mapDrawer: opts.createMapDrawer,
       onState: (s: OverviewState) => {
         const query = overviewQuery(s);
         setHash(query ? `#lakes?${query}` : "#lakes", true);

@@ -2,9 +2,13 @@ import "./overview.css";
 import { formatDate } from "../format";
 import { droppedLine, isFrozen, levelMessage, type HeadlineCounts, type Lake, type LakesFile } from "../lakes";
 import { statusSlug } from "../lakeLocator";
+import { createDrawerPanel, type DrawerPanel } from "./drawerPanel";
+import { loadMappedLakes } from "./mappedLakes";
+import { el, statusChip, statusMark, svg } from "./marks";
+export { statusChip, statusMark };
 import {
   arrange, latestReadingOnTrack, nextRefresh, SORT_FOR_COLUMN, sparklinePath, trendPoints,
-  type MapDrawerFactory, type OverviewFilter, type OverviewState, type SortKey,
+  type MapDrawerFactory, type MappedLakesFile, type OverviewFilter, type OverviewState, type SortKey,
 } from "./model";
 
 export interface OverviewOptions {
@@ -15,6 +19,8 @@ export interface OverviewOptions {
   isPhone?: boolean;
   /** The map drawer (Task 15); the overview leaves `ov-drawer` empty without it. */
   mapDrawer?: MapDrawerFactory;
+  /** Reads the mapped lakes; called once, when the drawer first opens. Defaults to data/mapped_lakes.json. */
+  loadMapped?: () => Promise<MappedLakesFile | null>;
 }
 
 export interface OverviewHandle {
@@ -31,58 +37,6 @@ export function validCounts(c: unknown): c is HeadlineCounts {
   if (typeof c !== "object" || c === null) return false;
   const o = c as Record<string, unknown>;
   return COUNT_KEYS.every((k) => typeof o[k] === "number" && Number.isInteger(o[k]) && (o[k] as number) >= 0);
-}
-
-/** The status marker shapes (20 × 20): a shape for each kind of status, so the chip never relies on colour alone. */
-const SHAPES = {
-  triangle: "M10 2 L19 18 L1 18 Z",
-  diamond: "M10 1.5 L18.5 10 L10 18.5 L1.5 10 Z",
-  down: "M1.5 3 L18.5 3 L10 18 Z",
-  ring: "M10 3.5 a6.5 6.5 0 1 0 0.01 0 Z",
-  hexagon: "M10 2 L17 6 L17 14 L10 18 L3 14 L3 6 Z",
-  circle: "M10 4 a6 6 0 1 0 0.01 0 Z",
-  crossed: "M3.5 3.5 H16.5 V16.5 H3.5 Z M3.5 16.5 L16.5 3.5",
-};
-
-const STATUS_SHAPE: Record<string, string> = {
-  "Alert: growing": SHAPES.triangle,
-  Watch: SHAPES.diamond,
-  "Decrease noted": SHAPES.down,
-  "Lake may be forming": SHAPES.ring,
-  "No change": SHAPES.circle,
-  "Frozen (likely)": SHAPES.hexagon,
-  "Frozen (seen by Sentinel-2)": SHAPES.hexagon,
-  "Break-up likely": SHAPES.hexagon,
-  "No lake now": SHAPES.crossed,
-};
-
-const SVG = "http://www.w3.org/2000/svg";
-
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text !== undefined) e.textContent = text;
-  return e;
-}
-
-function svg<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string>): SVGElementTagNameMap[K] {
-  const e = document.createElementNS(SVG, tag);
-  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
-  return e;
-}
-
-/** A status marker: decorative, the words beside it carry the status. */
-export function statusMark(status: string, size = 12): SVGSVGElement {
-  const s = svg("svg", { viewBox: "0 0 20 20", width: String(size), height: String(size), "aria-hidden": "true", class: `ov-mark ov-mark-${statusSlug(status)}` });
-  s.append(svg("path", { d: STATUS_SHAPE[status] ?? SHAPES.circle }));
-  return s;
-}
-
-/** The status chip: a marker shape and the status in words. */
-export function statusChip(status: string): HTMLElement {
-  const c = el("span", `ov-chip ov-status-${statusSlug(status)}`);
-  c.append(statusMark(status), el("span", undefined, status));
-  return c;
 }
 
 /** "9 Nov" from "2026-11-09". */
@@ -168,6 +122,20 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
   titles.append(asof);
   const actions = el("div", "ov-actions");
   actions.dataset.role = "ov-actions";
+  let mapToggle: HTMLButtonElement | null = null;
+  if (opts.mapDrawer) {
+    mapToggle = el("button", "ov-btn");
+    mapToggle.type = "button";
+    mapToggle.dataset.role = "ov-map-toggle";
+    mapToggle.setAttribute("aria-controls", "ov-drawer");
+    // The state is kept here first, so the drawer opens at once whether or not the host echoes it back.
+    mapToggle.addEventListener("click", () => {
+      state = { ...state, map: !state.map };
+      opts.onState(state);
+      draw();
+    });
+    actions.append(mapToggle);
+  }
   head.append(titles, actions);
   wrap.append(head);
 
@@ -306,6 +274,15 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     const subEl = el("span", "ov-sub", sub);
     subEl.title = sub;
     c.append(name, subEl);
+    if (opts.mapDrawer) {
+      const locate = el("button", "ov-locate", "Show on map");
+      locate.type = "button";
+      locate.hidden = !state.map;
+      locate.setAttribute("aria-pressed", String(state.sel === l.id));
+      locate.setAttribute("aria-label", `Show ${l.name} on the map`);
+      locate.addEventListener("click", () => set({ sel: l.id }));
+      c.append(locate);
+    }
     if (pinned) {
       const m = levelMessage(l);
       const headline = el("span", "ov-headline", m ? m.title : l.status.reason);
@@ -414,6 +391,12 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     r.dataset.id = l.id;
     if (state.sel === l.id) r.dataset.selected = "true";
     if (pinned) r.dataset.status = statusSlug(l.status.status);
+    if (opts.mapDrawer && state.map) {
+      r.setAttribute("aria-pressed", String(state.sel === l.id));
+      r.addEventListener("click", (e) => {
+        if (!(e.target as Element).closest("button, a")) set({ sel: l.id });
+      });
+    }
     r.append(nameCell(l, pinned), statusCell(l), areaCell(l), shareCell(l), trendCell(l), latestCell(l), elevationCell(l));
     return r;
   }
@@ -551,6 +534,31 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
       body.push(p);
     }
     table.replaceChildren(...body);
+    syncDrawer();
+  }
+
+  // ---- Map drawer: made when first opened, kept (hidden) after ------------------------------------------------------
+  let panel: DrawerPanel | null = null;
+  let mappedOnce: Promise<MappedLakesFile | null> | null = null;
+  function syncDrawer(): void {
+    if (!opts.mapDrawer || !mapToggle) return;
+    drawer.hidden = !state.map;
+    drawer.id = "ov-drawer";
+    wrap.dataset.map = String(state.map);
+    mapToggle.textContent = state.map ? "Hide map" : "Show map";
+    mapToggle.setAttribute("aria-expanded", String(state.map));
+    if (state.map && !panel) {
+      const load = opts.loadMapped ?? (() => loadMappedLakes());
+      panel = createDrawerPanel(drawer, {
+        lakes,
+        minObservable: minObs,
+        factory: opts.mapDrawer,
+        loadMapped: () => (mappedOnce ??= load()),
+        onSelect: (id) => set({ sel: id }),
+        onOpenLake: opts.onOpenLake,
+      });
+    }
+    panel?.setSelection(state.sel);
   }
 
   draw();
@@ -561,6 +569,7 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
       draw();
     },
     destroy(): void {
+      panel?.destroy();
       root.replaceChildren();
     },
   };

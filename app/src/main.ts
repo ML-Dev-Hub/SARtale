@@ -1,6 +1,7 @@
 import "./styles.css";
 import { createUplotLakeChart } from "./chart";
 import { createLakeLocator } from "./lakeLocator";
+import { createMapDrawer } from "./overview/mapDrawer";
 import { printLatestBrief } from "./lakeBrief";
 import { loadRequests } from "./lakeRequests";
 import { loadLakes } from "./lakes";
@@ -20,6 +21,7 @@ void loadLakes("data/lakes.json").then((lakes) => {
     lakes,
     createLakeChart: createUplotLakeChart,
     createLakeLocator,
+    createMapDrawer,
     requests: [],
     onLakeBrief: (lake) => {
       if (lakes) void printLatestBrief(lake);
