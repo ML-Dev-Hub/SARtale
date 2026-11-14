@@ -121,7 +121,7 @@ function message(lake: Lake): HTMLElement | null {
   s2.rel = "noopener noreferrer";
   actions.append(s2);
   const authority = authorityFor(lake.province);
-  if (authority) {
+  if (authority?.url) {
     const a = link(authority.label, authority.url, "lp-btn");
     a.dataset.action = "authority";
     a.target = "_blank";
