@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 
@@ -671,3 +672,139 @@ def test_absence_check_tries_only_scenes_newer_than_the_evidence(monkeypatch):
 def test_no_view_since():
     assert not lakecheck.no_view_since("2026-09-06", "2026-09-13")
     assert lakecheck.no_view_since("2026-09-06", "2026-09-14")
+
+
+# --- terrain shadow, seasonal forming share and an exclusion zone ---------------------------------------------------
+
+def _zone_of(lake, x, y, epsg):
+    from sartale.lakewater import lake_zone
+    return lake_zone((len(y), len(x)), x, y, epsg, lake)
+
+
+def _all_clear(shape, **extra):
+    ones = np.ones(shape, bool)
+    return {"water": ones.copy(), "valid": ones.copy(), "snow": np.zeros(shape, bool),
+            "terrain_shadow": np.zeros(shape, bool), **extra}
+
+
+def test_terrain_shadow_pixels_are_not_clear_in_the_absence_check():
+    lake = _absent_lake()
+    x, y, epsg = lakecheck.absence_grid(lake)
+    zone = _zone_of(lake, x, y, epsg)
+    opt_with_shadow = _all_clear(zone.shape)
+    rank = np.cumsum(zone.ravel()).reshape(zone.shape)  # 1..n over the zone pixels
+    opt_with_shadow["terrain_shadow"] = zone & (rank <= 0.3 * zone.sum())  # SCL 2 on 30% of the zone; MNDWI calls it water
+    w = lakecheck.zone_water(lake, opt_with_shadow, x, y, epsg)
+    assert w["zone_valid_share"] == pytest.approx(0.70, abs=0.001)
+    shadow_only_water = {**opt_with_shadow, "water": opt_with_shadow["terrain_shadow"]}
+    assert lakecheck.zone_water(lake, shadow_only_water, x, y, epsg)["water_share"] == 0.0
+
+
+def test_the_cross_check_valid_mask_ignores_terrain_shadow(tmp_path):
+    lake = _absent_lake()
+    f = synthetic_scene(tmp_path, lake,
+                        lambda dx, dy: np.where((abs(dx) < 200) & (abs(dy) < 200), lakecheck.SCL_TERRAIN_SHADOW, 5))
+    scene = lakecheck._scene(f, lakecheck.Date(2026, 7, 12))
+    x, y, epsg = lakecheck.absence_grid(lake)
+    raw_with_scl2 = lakecheck.read_scene(scene, x, y, epsg)
+    g = lakecheck.grid_scene(scene, raw_with_scl2, x, y, epsg)
+    cx, cy = Transformer.from_crs(4326, epsg, always_xy=True).transform(lake.lon, lake.lat)
+    xx, yy = np.meshgrid(x - cx, y - cy)
+    shadow_block = (abs(xx) < 150) & (abs(yy) < 150)
+    assert g["valid"][shadow_block].all() and g["terrain_shadow"][shadow_block].all()
+    assert not g["terrain_shadow"][(abs(xx) > 260) | (abs(yy) > 260)].any()
+
+
+def test_the_exclusion_outline_leaves_the_zone():
+    lake = _absent_lake()
+    x, y, epsg = lakecheck.absence_grid(lake)
+    zone = _zone_of(lake, x, y, epsg)
+    xx, _ = np.meshgrid(x, y)
+    river_mask = xx < np.median(x[zone.any(axis=0)])  # the west half of the zone
+    opt_all_water = _all_clear(zone.shape)
+    w = lakecheck.zone_water(lake, opt_all_water, x, y, epsg, exclude=river_mask)
+    assert w["water_km2"] == pytest.approx((zone & ~river_mask).sum() * 1e-4)
+    assert w["zone_valid_share"] == 1.0
+
+
+def _khurdopin():
+    from sartale.lakes import load_lakes
+    return next(l for l in load_lakes(Path(__file__).resolve().parents[1] / "lakes_in.json") if l.id == "khurdopin")
+
+
+def _khurdopin_with_melt_season():
+    from dataclasses import replace
+    from sartale.lakes import FormingSeason
+    return replace(_khurdopin(), forming_seasons=(FormingSeason("03-15", "06-15", None, "t"),))
+
+
+def absence_state_after(monkeypatch, rows, lake):
+    """The evidence after absence_check(lake, "2026-06-30") over scenes with these (date, water share) rows."""
+    shares = {f"S2_{d}": s for d, s in rows}
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a: _scenes(*[(f"S2_{d}", d, 5.0) for d, _ in rows]))
+    monkeypatch.setattr(lakecheck, "optical_on_grid", lambda scene, x, y, epsg: {"id": scene["id"]})
+    monkeypatch.setattr(lakecheck, "zone_water", lambda lk, opt, x, y, epsg, exclude=None: {
+        "zone_valid_share": 1.0, "snow_share": 0.0, "water_share": shares[opt["id"]], "water_km2": 0.0})
+    return lakecheck.absence_check(lake, "2026-06-30", log=lambda *_: None)
+
+
+def test_a_scene_in_a_not_assessed_season_is_recorded_but_never_moves_the_state(monkeypatch):
+    rows = [("2026-04-26", 0.997), ("2026-05-09", 0.186)]
+    ev = absence_state_after(monkeypatch, rows, _khurdopin_with_melt_season())
+    assert ev["forming"] is False and ev["pending_scene"] is None and ev["threshold"] is None
+    assert ev["s2_id"] == "S2_2026-05-09" and ev["water_share"] == 0.186  # recorded: the newest clear view
+    # the same scenes outside a season are two scenes above the share
+    assert absence_state_after(monkeypatch, rows, _khurdopin())["forming"] is True
+
+
+def test_scenes_after_a_not_assessed_season_count_again(monkeypatch):
+    from sartale.lakebuild import forming_share
+    lake = _khurdopin_with_melt_season()
+    ev = absence_state_after(monkeypatch, [("2026-06-05", 0.9), ("2026-06-20", 0.5), ("2026-06-27", 0.6)], lake)
+    assert ev["threshold"] == forming_share(lake) and ev["forming"] is True  # 20 and 27 Jun are after the season
+    assert [r["date"] for r in ev["confirmed"]] == ["2026-06-20", "2026-06-27"]
+
+
+def test_the_exclusion_outline_of_the_rule_lake_is_applied_to_the_zone(monkeypatch, tmp_path):
+    from dataclasses import replace
+    lake = _absent_lake()
+    ring = [[lake.lon + sx * 0.002, lake.lat + sy * 0.002] for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))]
+    path = tmp_path / "river.geojson"
+    path.write_text(json.dumps({"type": "Polygon", "coordinates": [ring]}), encoding="utf-8")
+    trial = replace(lake, forming_exclude=str(path), forming_exclude_source="t")
+    seen = []
+    monkeypatch.setattr(lakecheck, "search_scenes", lambda *a: _scenes(("S2_A", "2026-07-01", 5.0)))
+    monkeypatch.setattr(lakecheck, "optical_on_grid", lambda scene, x, y, epsg: {})
+    monkeypatch.setattr(lakecheck, "zone_water", lambda lk, opt, x, y, epsg, exclude=None: seen.append(exclude) or {
+        "zone_valid_share": 1.0, "snow_share": 0.0, "water_share": 0.0, "water_km2": 0.0})
+    ev = lakecheck.absence_check(lake, "2026-07-02", log=lambda *_: None, rule_lake=trial)
+    assert seen[0] is not None and seen[0].any() and ev["forming_rule"]["exclude"] is not None
+
+
+def prev_with_rule(rule, lake):
+    from sartale.lakebuild import absence_zone
+    ev = {"date": "2026-08-17", "s2_id": "S2_DRY", "water_share": 0.0, "water_km2": 0.0, "zone_valid_share": 1.0,
+          "snow_share": 0.0, "forming": False, "pending_scene": None, "confirmed": None, "threshold": 0.04,
+          "forming_rule": rule, "checked": "2026-08-20", "searched": "2026-08-20", "no_view_since": False,
+          "rule": lakecheck.ABSENCE_RULE, "source": "S2", "zone": absence_zone(lake)}
+    return {"lakes": [{"id": lake.id, "absence_checked": ev}]}
+
+
+def test_evidence_from_another_forming_rule_is_not_carried():
+    from sartale.lakebuild import carried_absence, forming_rule
+    lake = _khurdopin_with_melt_season()
+    assert carried_absence(prev_with_rule({"share": 0.16, "seasons": [], "exclude": None}, lake), lake) is None
+    assert carried_absence(prev_with_rule(forming_rule(lake), lake), lake) is not None
+
+
+def test_forming_threshold_follows_the_season_and_wraps_the_year_end():
+    from dataclasses import replace
+    from sartale.lakebuild import forming_share, forming_threshold
+    from sartale.lakes import FormingSeason
+    lake = replace(_absent_lake(), forming_seasons=(FormingSeason("03-15", "06-15", None, "t"),
+                                                    FormingSeason("12-01", "02-10", 0.3, "t")))
+    base = forming_share(lake)
+    assert [forming_threshold(lake, d) for d in ("2026-03-14", "2026-03-15", "2026-06-15", "2026-06-16")] \
+        == [base, None, None, base]
+    assert [forming_threshold(lake, d) for d in ("2026-11-30", "2026-12-01", "2027-01-20", "2027-02-10", "2027-02-11")] \
+        == [base, 0.3, 0.3, 0.3, base]

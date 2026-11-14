@@ -416,12 +416,12 @@ def _no_lake_site(tmp_path):
 def _ev(lake, **extra):
     """Absence evidence of `lake` under the current rule (rule, zone key, threshold, state), dry unless `extra` says
     otherwise."""
-    from sartale.lakebuild import absence_zone, forming_share
+    from sartale.lakebuild import absence_zone, forming_rule, forming_share
     from sartale.lakecheck import ABSENCE_RULE
     return {"date": "2026-08-17", "s2_id": "S2_DRY", "water_share": 0.002, "water_km2": 0.006,
             "zone_valid_share": 1.0, "snow_share": 0.0, "forming": False, "pending_scene": None, "confirmed": None,
-            "threshold": forming_share(lake), "checked": "2026-08-20", "searched": "2026-08-20",
-            "no_view_since": False, "rule": ABSENCE_RULE, "source": "Sentinel-2", "zone": absence_zone(lake), **extra}
+            "threshold": forming_share(lake), "forming_rule": forming_rule(lake), "checked": "2026-08-20",
+            "searched": "2026-08-20", "no_view_since": False, "rule": ABSENCE_RULE, "source": "Sentinel-2", "zone": absence_zone(lake), **extra}
 
 
 def _wet(lake):
@@ -448,9 +448,9 @@ def test_a_no_lake_site_carries_its_last_absence_check_from_the_previous_build(t
     for changed in (replace(gone, lon=gone.lon + 0.001), replace(gone, zone_radius_km=0.5)):
         assert build_lakes([changed], cache, tmp_path / "out", "t", previous=first)["lakes"][0]["absence_checked"] is None
     # evidence made under another rule (round 1 had no cloud-edge buffer and no persistence), or for another
-    # threshold, is not carried: its state was worked out with them
+    # forming rule, is not carried: its state was worked out with them
     for other in (_ev(gone, rule="older rule"), {k: v for k, v in _ev(gone).items() if k != "rule"},
-                  _ev(gone, threshold=0.1)):
+                  _ev(gone, forming_rule={"share": 0.1, "seasons": [], "exclude": None})):
         first["lakes"][0]["absence_checked"] = other
         assert build_lakes([gone], cache, tmp_path / "out", "t", previous=first)["lakes"][0]["absence_checked"] is None
 

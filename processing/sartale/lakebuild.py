@@ -2,6 +2,7 @@
 import hashlib
 import json
 import warnings
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -475,16 +476,47 @@ def forming_share(lake: Lake) -> float | None:
     return lake.forming_share if lake.forming_share is not None else config.FORMING_WATER_SHARE
 
 
-def is_forming(absence: dict | None, threshold: float | None = None) -> bool:
+def forming_threshold(lake: Lake, iso_date: str) -> float | None:
+    """The water share above which a scene of `iso_date` counts as forming at a no-lake site: the share of the season
+    the date falls in (None: that season is not assessed), else the site's `forming_share`."""
+    md = iso_date[5:10]
+    for s in lake.forming_seasons:
+        inside = s.start <= md <= s.end if s.start <= s.end else md >= s.start or md <= s.end
+        if inside:
+            return s.share
+    return forming_share(lake)
+
+
+def _exclude_feature(lake: Lake) -> dict | None:
+    return _outline_feature(replace(lake, outline=lake.forming_exclude)) if lake.forming_exclude else None
+
+
+def forming_rule(lake: Lake) -> dict:
+    """What decides a site's forming state besides the scenes: the default share, the seasons, and the digest of the
+    outline left out of the zone. The evidence stores it and is carried only while it is the same."""
+    feature = _exclude_feature(lake)
+    return {"share": forming_share(lake),
+            "seasons": [{"start": s.start, "end": s.end, "share": s.share} for s in lake.forming_seasons],
+            "exclude": outline_digest(feature["geometry"]) if feature else None}
+
+
+def exclude_mask(lake: Lake, x, y, epsg) -> np.ndarray | None:
+    """The `forming_exclude` outline on the grid (True inside it), or None when the site has none or it is unreadable."""
+    feature = _exclude_feature(lake)
+    if feature is None:
+        return None
+    return outline_mask((len(y), len(x)), x, y, epsg, feature["geometry"])
+
+
+def is_forming(absence: dict | None) -> bool:
     """True when the absence check says a lake may be forming: its `forming` state, which two qualifying scenes above
     the site's threshold set (`lakecheck.step`). Evidence without a state (older builds, hand-made rows) falls back
-    to its one scene: water on more than `threshold` (default config.FORMING_WATER_SHARE) of the lake zone."""
+    to its one scene: water on more than config.FORMING_WATER_SHARE of the lake zone."""
     if not absence:
         return False
     if "forming" in absence:
         return bool(absence["forming"])
-    limit = config.FORMING_WATER_SHARE if threshold is None else threshold
-    return float(absence.get("water_share") or 0.0) > limit
+    return float(absence.get("water_share") or 0.0) > config.FORMING_WATER_SHARE
 
 
 def apply_absence(entry: dict, absence: dict | None) -> dict:
@@ -495,7 +527,7 @@ def apply_absence(entry: dict, absence: dict | None) -> dict:
     if entry.get("lake_state") not in ("no_lake", FORMING_STATE):
         return entry
     st = entry["status"]
-    if is_forming(absence, entry.get("forming_share")):
+    if is_forming(absence):
         return {**entry, "lake_state": FORMING_STATE, "absence_checked": absence, "area_label": FORMING_LABEL,
                 "status": forming_status(st, absence)}
     return {**entry, "lake_state": "no_lake", "absence_checked": absence, "area_label": NO_LAKE_LABEL,
@@ -671,7 +703,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         # No verdict, and no blue "water" layer: the dark pixels at an empty basin are not a lake. Where Sentinel-2
         # has since found water (a lake may be forming), the layer stays once the pictured pass is no older than
         # that scene.
-        keep = is_forming(absence, forming_share(lake)) and images["date"] is not None and images["date"] >= absence["date"]
+        keep = is_forming(absence) and images["date"] is not None and images["date"] >= absence["date"]
         if images["water"] and not keep:
             (Path(out_dir) / images["water"]).unlink(missing_ok=True)
             images = {**images, "water": None}
@@ -748,7 +780,7 @@ def carried_absence(previous: dict | None, lake: Lake) -> dict | None:
     """The last absence check of `lake` in a previously published lakes.json, if it was made for the same zone
     (`absence_zone`: point, and radius or outline file) under the current rule. A moved site, a new radius or a
     changed outline starts again with no evidence, and so does evidence made under another rule (`rule`, e.g. from
-    before snow, ice and cloud edges stopped counting as a clear view) or for another forming threshold, since its
+    before snow, ice and cloud edges stopped counting as a clear view) or for another forming rule (share, seasons, excluded outline), since its
     forming state was worked out with them."""
     if lake.lake_state != "no_lake" or not previous:
         return None
@@ -756,7 +788,7 @@ def carried_absence(previous: dict | None, lake: Lake) -> dict | None:
     ev = old.get("absence_checked") if old else None
     if not isinstance(ev, dict) or ev.get("rule") != ABSENCE_RULE:
         return None
-    if ev.get("zone") != absence_zone(lake) or ev.get("threshold") != forming_share(lake):
+    if ev.get("zone") != absence_zone(lake) or ev.get("forming_rule") != forming_rule(lake):
         return None
     return ev
 

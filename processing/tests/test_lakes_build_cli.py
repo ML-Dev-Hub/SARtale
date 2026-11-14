@@ -159,13 +159,13 @@ def _absence_site(tmp_path):
 
 
 def _wet_evidence(lake, today):
-    from sartale.lakebuild import absence_zone, forming_share
+    from sartale.lakebuild import absence_zone, forming_rule, forming_share
     from sartale.lakecheck import ABSENCE_RULE
     pair = [{"date": "2026-08-25", "s2_id": "S2_WET0", "water_share": 0.07},
             {"date": "2026-09-01", "s2_id": "S2_WET", "water_share": 0.08}]
     return {"date": "2026-09-01", "s2_id": "S2_WET", "water_share": 0.08, "water_km2": 0.25, "zone_valid_share": 1.0,
             "snow_share": 0.0, "forming": True, "pending_scene": None, "confirmed": pair,
-            "threshold": forming_share(lake), "checked": today, "searched": today, "no_view_since": False,
+            "threshold": forming_share(lake), "forming_rule": forming_rule(lake), "checked": today, "searched": today, "no_view_since": False,
             "rule": ABSENCE_RULE, "source": "S2", "zone": absence_zone(lake)}
 
 
