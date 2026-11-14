@@ -7,7 +7,7 @@
     "videosLabel": "Play the videos",
     "openLabel": "Open Lake Watch",
     "stats": [
-      { "value": "{lakes}", "label": "lakes watched" },
+      { "value": "{lakes}", "label": "lakes holding water now" },
       { "value": "{cloudLooks}", "label": "valid radar looks in the cloud gap" },
       { "value": "{passes}", "label": "NISAR passes read" }
     ],
