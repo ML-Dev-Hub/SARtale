@@ -25,6 +25,8 @@ const BAND_FILL = "rgba(125, 216, 242, 0.12)";
 const RAIL = "#a9bdca";
 const VERSION = "#d3dfe7";
 export const LEVEL_RING = "#ffd23f";
+/** Ring colour by the level a pass set: Watch amber, Alert and Decrease noted their status colours. */
+export const LEVEL_COLORS: Partial<Record<string, string>> = { Watch: "#ffc46b", "Alert: growing": "#ffd23f", "Decrease noted": "#c4d3ff" };
 const TRACK_COLORS =["#7dd8f2", "#ffc46b", "#9db8ff", "#e58bd0", "#b6d96b", "#ff8a7a"];
 
 /** The uPlot options for the lake area chart: one line per track, then a markers-only series for excluded passes. */
@@ -35,9 +37,13 @@ export function lakeChartOptions(width: number, data: LakeChartData): uPlot.Opti
     if (s.band) {
       // The status track's baseline ± 2 × noise: thin dashed edges, shaded between them (bands below).
       series.push({ label: s.label, stroke: BAND_EDGE, width: 1, dash: [4, 4], spanGaps: true, points: { show: false } });
+    } else if (s.bridge) {
+      // Dashed in the track colour (the track is the first line, so it has the first colour): spans a pass with no usable reading.
+      series.push({ label: s.label, stroke: TRACK_COLORS[0], width: 2, dash: [5, 5], spanGaps: true, points: { show: false } });
     } else if (s.level) {
+      const ring = (s.levelName && LEVEL_COLORS[s.levelName]) || LEVEL_RING;
       // The passes that set a level: large ringed markers in the level colour, no line.
-      series.push({ label: s.label, stroke: LEVEL_RING, width: 0, paths: () => null, points: { show: true, size: 15, width: 3, stroke: LEVEL_RING, fill: "transparent" } });
+      series.push({ label: s.label, stroke: ring, width: 0, paths: () => null, points: { show: true, size: 15, width: 3, stroke: ring, fill: "transparent" } });
     } else if (s.rail) {
       // Passes with no usable reading: hollow rings on their own rail along the bottom, not at any area value.
       series.push({ label: s.label, scale: "rail", stroke: RAIL, width: 0, paths: () => null, points: { show: true, size: 10, width: 2, stroke: RAIL, fill: "transparent" } });
@@ -53,7 +59,7 @@ export function lakeChartOptions(width: number, data: LakeChartData): uPlot.Opti
     } else {
       const c = TRACK_COLORS[k++ % TRACK_COLORS.length];
       // Nulls here are dates that belong to other tracks, so the line steps over them within this track only.
-      series.push({ label: s.label, stroke: c, width: 2, spanGaps: true, points: { show: true, size: 7, fill: c } });
+      series.push({ label: s.label, stroke: c, width: 2, spanGaps: !data.series.some((b) => b.bridge), points: { show: true, size: 7, fill: c } });
     }
   }
   // Shade between the band's upper and lower edges (uPlot series indices count the x series as 0).

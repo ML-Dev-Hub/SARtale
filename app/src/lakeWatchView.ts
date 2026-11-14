@@ -1,4 +1,4 @@
-import { hasLakeNow, hasLevel, isFrozen, isTrendPass, levelMessage, sortLakes, type Lake, type LakeCheck } from "./lakes";
+import { hasLakeNow, hasLevel, isFrozen, isTrendPass, levelMessage, sortLakes, type Lake, type LakeCheck, type LevelName } from "./lakes";
 import { formatDate } from "./format";
 
 /** One line on the lake chart: a track's valid passes, or the passes that were left out. */
@@ -18,6 +18,10 @@ export interface LakeChartSeries {
   rail?: boolean;
   /** True for the series that marks the first reading on a new processing version (one value per marker; its area, or 0). */
   version?: boolean;
+  /** True for a two-point series that bridges a pass with no usable reading: drawn dashed, so the line never looks unbroken across a gap. */
+  bridge?: boolean;
+  /** For a level series: the level its passes set (drives the ring colour). */
+  levelName?: LevelName;
 }
 
 export interface LakeChartData {
@@ -137,26 +141,38 @@ function statusTrackChartData(lake: Lake, minObservable: number, factor: number)
     }
   }
   if (track && line.some((v) => v !== null)) series.push({ label: track, values: line, excluded: false });
+  // A dashed two-point connector over each run of passes with no open-water line point between two that have one.
+  const valid = line.flatMap((v, i) => (v === null ? [] : [i]));
+  for (let k = 1; k < valid.length; k++) {
+    if (valid[k] === valid[k - 1] + 1) continue;
+    const values = blank();
+    values[valid[k - 1]] = line[valid[k - 1]];
+    values[valid[k]] = line[valid[k]];
+    series.push({ label: "Line dashed across a pass with no usable reading", values, excluded: false, bridge: true });
+  }
   if (ice.some((v) => v !== null)) series.push({ label: "Frozen passes (not open water)", values: ice, excluded: false, frozen: true });
   if (rail.some((v) => v !== null)) series.push({ label: "No usable reading", values: rail, excluded: false, rail: true });
   if (version.some((v) => v !== null)) series.push({ label: `First reading on ${newCrid}`, values: version, excluded: false, version: true });
   if (hasLevel(lake) && !isFrozen(lake)) {
     const hi = blank();
     const lo = blank();
-    const set = blank();
+    const sets = new Map<LevelName, (number | null)[]>();
     for (const p of passes) {
       const i = index.get(p.date)!;
       if (typeof p.baseline_km2 === "number" && typeof p.noise_km2 === "number") {
         hi[i] = p.baseline_km2 + factor * p.noise_km2;
         lo[i] = Math.max(0, p.baseline_km2 - factor * p.noise_km2);
       }
-      if (p.level_contrib && p.level_contrib !== "No change" && p.area_km2 !== null) set[i] = p.area_km2;
+      if (p.level_contrib && p.level_contrib !== "No change" && p.area_km2 !== null) {
+        if (!sets.has(p.level_contrib)) sets.set(p.level_contrib, blank());
+        sets.get(p.level_contrib)![i] = p.area_km2;
+      }
     }
     if (hi.some((v) => v !== null)) {
       const label = `Baseline ± ${factor} × noise (${track})`;
       series.push({ label: `${label}, upper`, values: hi, excluded: false, band: "hi" }, { label: `${label}, lower`, values: lo, excluded: false, band: "lo" });
     }
-    if (set.some((v) => v !== null)) series.push({ label: "Passes that set a level", values: set, excluded: false, level: true });
+    for (const [name, values] of sets) series.push({ label: `Pass that set a ${name}`, values, excluded: false, level: true, levelName: name });
   }
   return { x: dates.map(utcSeconds), series };
 }

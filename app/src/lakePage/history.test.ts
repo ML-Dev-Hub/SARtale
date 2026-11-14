@@ -15,12 +15,16 @@ const twoTrack = makeLake({
     ...["2026-07-05", "2026-07-17", "2026-07-29", "2026-08-10"].map((d) => pass(d, "156A", 0.2, "P05023")),
   ],
 });
+const leveled = makeLake({
+  series: dates.map((d, i) => pass(d, "055A", 0.13, "P05023", { level_contrib: i === 4 ? "Watch" : i === 6 ? "Alert: growing" : null })),
+  status: { ...makeLake().status, status: "Watch", level: "Watch" },
+});
 const frozen = frozenFixture("shazore");
 
 describe("lakeChartData for the history chart", () => {
   it("draws the status track only, with a rail for unusable passes", () => {
     const d = lakeChartData(twoTrack, 0, 2, { statusTrackOnly: true });
-    expect(d.series.filter((s) => !s.rail && !s.band && !s.frozen && !s.version && !s.level && !s.excluded).map((s) => s.label)).toEqual(["055A"]);
+    expect(d.series.filter((s) => !s.rail && !s.band && !s.frozen && !s.version && !s.bridge && !s.level && !s.excluded).map((s) => s.label)).toEqual(["055A"]);
     expect(d.series.find((s) => s.rail)!.values.filter((v) => v !== null)).toHaveLength(1);
     expect(d.x).toHaveLength(8);
   });
@@ -36,6 +40,14 @@ describe("lakeChartData for the history chart", () => {
   });
   it("keeps the band while open", () => {
     expect(lakeChartData(twoTrack, 0, 2, { statusTrackOnly: true }).series.filter((s) => s.band).map((s) => s.band)).toEqual(["hi", "lo"]);
+  });
+  it("bridges the unusable pass with a dashed connector series and colours level rings by level", () => {
+    const d = lakeChartData(twoTrack, 0, 2, { statusTrackOnly: true });
+    const b = d.series.filter((s) => s.bridge);
+    expect(b).toHaveLength(1);
+    expect(b[0].values.filter((v) => v !== null)).toHaveLength(2);
+    const lv = lakeChartData(leveled, 0, 2, { statusTrackOnly: true }).series.filter((s) => s.level);
+    expect(lv.map((s) => s.levelName).sort()).toEqual(["Alert: growing", "Watch"]);
   });
   it("leaves the default chart unchanged", () => {
     expect(lakeChartData(twoTrack, 0, 2).series.map((s) => s.label)).toContain("156A");
@@ -81,6 +93,16 @@ describe("renderHistory", () => {
     btn.click();
     expect(el.querySelectorAll('[role="row"]')).toHaveLength(9);
     expect(el.querySelector("button.lp-showall")!.textContent).toBe("Show only the newest 6");
+  });
+  it("has legend entries for the level rings and the dashed bridge, and uses the change factor", () => {
+    const { el } = mount(leveled);
+    expect(el.textContent).toContain("Pass that set the level: Watch");
+    expect(el.textContent).toContain("Pass that set the level: Alert");
+    const w = mount(twoTrack);
+    expect(w.el.textContent).toContain("Line dashed across a pass with no usable reading");
+    const el3 = document.createElement("div");
+    renderHistory(el3, twoTrack, { minObservable: 0, factor: 3, createChart: vi.fn(() => ({ destroy() {} })) });
+    expect(el3.textContent).toContain("Baseline ± 3 × noise");
   });
   it("says why no band is drawn while frozen", () => {
     expect(mount(frozen).el.textContent).toContain("No reference band is drawn");

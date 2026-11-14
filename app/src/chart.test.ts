@@ -66,6 +66,13 @@ describe("history chart marks", () => {
     expect(o.hooks!.draw).toHaveLength(1);
   });
 
+  test("a bridge series is dashed, the track does not span the gap, and rings take the level colour", async () => {
+    const { lakeChartOptions } = await import("./chart");
+    const o = lakeChartOptions(300, { x: HIST.x, series: [HIST.series[0], { label: "Line dashed", values: [0.12, null, 0.13], excluded: false, bridge: true }, { label: "Pass that set a Watch", values: [null, null, 0.13], excluded: false, level: true, levelName: "Watch" }] });
+    expect([o.series[1].spanGaps, o.series[2].dash, o.series[2].spanGaps]).toEqual([false, [5, 5], true]);
+    expect(o.series[3].points?.stroke).toBe("#ffc46b");
+  });
+
   test("the plain chart has neither a rail scale nor a hook", async () => {
     const { lakeChartOptions } = await import("./chart");
     const o = lakeChartOptions(300, DATA);
