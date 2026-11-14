@@ -1,4 +1,4 @@
-"""Bounded concurrency for lakes-fetch (worker processes), with the sequential run's output.
+"""Bounded concurrency for lakes-fetch (worker processes) and lakes-check (threads), with the sequential run's output.
 
 lakes-fetch runs in processes, not threads: h5py holds one global lock across every HDF5 call, and the range reads of
 a remote window happen inside those calls (HDF5 calls back into `remote.RangeFile.readinto`), so threads reading
@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import contextlib
 import io
+import sys
+import threading
 
 _SESSION = None  # the worker process's HTTP session (`init_fetch_worker`)
 
@@ -45,3 +47,39 @@ def fetch_group(fetch, lake, passes, out) -> list[tuple[int, str | None, dict, s
             n, note = fetch_one(fetch, lake, p, out, _SESSION, stats)
         results.append((n, note, stats, buf.getvalue()))
     return results
+
+
+class ThreadStdout(io.TextIOBase):
+    """A stdout that sends what a thread prints to that thread's buffer (`capture`) and the rest to `real`, so the
+    log lines of lakes checked at the same time can be printed one lake after the other."""
+
+    def __init__(self, real):
+        self.real, self.local = real, threading.local()
+
+    def write(self, s):
+        buf = getattr(self.local, "buf", None)
+        return (buf if buf is not None else self.real).write(s)
+
+    def flush(self):
+        if getattr(self.local, "buf", None) is None:
+            self.real.flush()
+
+    @contextlib.contextmanager
+    def capture(self):
+        self.local.buf = io.StringIO()
+        try:
+            yield self.local.buf
+        finally:
+            self.local.buf = None
+
+
+@contextlib.contextmanager
+def thread_stdout():
+    """Install a `ThreadStdout` for the duration of the block (yielded)."""
+    real = sys.stdout
+    router = ThreadStdout(real)
+    sys.stdout = router
+    try:
+        yield router
+    finally:
+        sys.stdout = real

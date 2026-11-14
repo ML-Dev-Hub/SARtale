@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sys
+from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,7 +30,7 @@ from sartale.lake_requests import RequestError
 from sartale.lakes import load_lakes
 from sartale import config
 from sartale.remote import fetch_lake_passes, shrink_cache
-from sartale.workpool import fetch_group, fetch_one, init_fetch_worker
+from sartale.workpool import fetch_group, fetch_one, init_fetch_worker, thread_stdout
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -66,6 +67,7 @@ def is_new_lake(out: Path, lake_id: str) -> bool:
 
 
 FETCH_WORKERS = 6  # lakes-fetch worker processes by default (--workers)
+CHECK_WORKERS = 4  # lakes-check threads by default (--workers)
 
 
 def fetch_all(lakes, doc: dict, out: Path, session, fetch=fetch_lake_passes,
@@ -317,6 +319,47 @@ def check_row_line(lid: str, row: dict) -> str:
             f"{row['window_radar_km2']:.3f}, optical {row['window_optical_km2']:.3f}, IoU {row['window_iou']}")
 
 
+def _check_one(lake, cache: Path, series: list[dict]) -> tuple[dict, float]:
+    """`check_lake` for one lake, timed; a check that raises gives a "failed" row (the lake says it is not validated)."""
+    import time
+
+    t = time.time()
+    try:
+        row = check_lake(lake, cache, series)
+    except Exception as e:  # noqa: BLE001 - one lake's failed check never stops the refresh; the lake says so
+        row = {"lake": lake.id, "note": f"Sentinel-2 check failed ({type(e).__name__})", "failed": True}
+    return row, time.time() - t
+
+
+@contextmanager
+def _check_runner(workers: int):
+    """Yields run(fn, *args) -> a callable that gives (fn's result..., what fn printed). With one worker fn runs when
+    that callable is called, in this thread, and prints as it goes (nothing is held back); with more, in a pool of `workers` threads (the
+    checks wait on Earth Search and on Sentinel-2 reads, which give up the GIL), each thread's printing held back
+    (`workpool.thread_stdout`) so the caller prints the lakes' logs one after the other, in its own order."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    if workers <= 1:
+        def later(fn, *a):  # run when its turn comes, as the loop always has
+            return lambda: (*fn(*a), "")
+        yield later
+        return
+    with thread_stdout() as router, ThreadPoolExecutor(max_workers=workers) as ex:
+        def captured(fn, *a):
+            with router.capture() as buf:
+                got = fn(*a)
+            return (*got, buf.getvalue())
+
+        def submit(fn, *a):
+            fut = ex.submit(captured, fn, *a)
+            return fut.result
+        try:
+            yield submit
+        except BaseException:
+            ex.shutdown(wait=False, cancel_futures=True)
+            raise
+
+
 def cmd_lakes_check(args) -> None:
     """Compare the radar water of chosen lakes with Sentinel-2 MNDWI water; write the rows (each with the `key` it was
     made for: method and zone) into lake_checks.json and lakes.json, and set each lake's status again, since a level
@@ -324,7 +367,10 @@ def cmd_lakes_check(args) -> None:
 
     `--stale-only` (the rebuild's step) checks only the lakes without a current check in lakes.json (none, one made
     for another method, zone or point, a note or a failure) and keeps the others' rows. Needs no login. Never fails the
-    run for one lake: a check that raises leaves a "failed" row, and the lake says it is not yet validated."""
+    run for one lake: a check that raises leaves a "failed" row, and the lake says it is not yet validated.
+
+    `--workers` lakes are checked at once (threads; `_check_runner`). The rows, the files and the log come out in the
+    order of the lakes, as with one worker: only the "[N s]" timings differ."""
     import time
 
     lakes = {lk.id: lk for lk in load_lakes(Path(args.lakes_in))}
@@ -333,34 +379,45 @@ def cmd_lakes_check(args) -> None:
     old = {r.get("lake"): r for r in doc.get("checks") or [] if isinstance(r, dict)}
     rows: dict[str, dict] = {}
     t0 = time.time()
+    plan: list = []  # in check_ids order: (lake id, a line to print and the row kept) or (lake id, lake, series, season)
     for lid in check_ids(list(lakes.values()), args.lakes):
         lake = lakes[lid]
         entry = next((lk for lk in doc["lakes"] if lk["id"] == lid), None)
         if entry is None:
-            print(f"{lid}: not in {path.name}; run lakes-build first")
+            plan.append((lid, f"{lid}: not in {path.name}; run lakes-build first", None))
             continue
         if args.stale_only and is_current(old.get(lid), lake):
-            rows[lid] = old[lid]
-            print(f"{lid}: current check kept (IoU {old[lid]['iou']:.3f}, {old[lid].get('nisar_date')})")
+            plan.append((lid, f"{lid}: current check kept (IoU {old[lid]['iou']:.3f}, {old[lid].get('nisar_date')})",
+                         old[lid]))
             continue
         season_pass = latest_season_pass(entry["series"])
         prev = old.get(lid)
         if (args.stale_only and prev and "note" in prev and not prev.get("failed") and prev.get("key") == check_key(lake)
                 and (season_pass or "") <= (prev.get("season_pass") or "")):
             # A check that found no pair is made again only for a new open-water-season pass (or a new key)
-            rows[lid] = prev
-            print(f"{lid}: no new open-water-season pass since the last check ({prev['note']}); not checked again")
+            plan.append((lid, f"{lid}: no new open-water-season pass since the last check ({prev['note']}); not "
+                              "checked again", prev))
             continue
-        t = time.time()
-        try:
-            row = check_lake(lake, Path(args.cache), entry["series"])
-        except Exception as e:  # noqa: BLE001 - one lake's failed check never stops the refresh; the lake says so
-            row = {"lake": lid, "note": f"Sentinel-2 check failed ({type(e).__name__})", "failed": True}
-        row = {**row, "key": check_key(lake)}
-        if "note" in row and not row.get("failed"):
-            row["season_pass"] = season_pass  # the newest pass it could pair; a newer one makes it worth trying again
-        rows[lid] = row
-        print(f"{check_row_line(lid, row)} [{time.time() - t:.0f} s]", flush=True)
+        plan.append((lid, lake, entry["series"], season_pass))
+    with _check_runner(args.workers) as run:
+        pending = {item[0]: run(_check_one, item[1], Path(args.cache), item[2])
+                   for item in plan if len(item) == 4}
+        for item in plan:
+            if len(item) == 3:  # nothing to check: say why, keep the old row (if any)
+                lid, line, kept_row = item
+                if kept_row is not None:
+                    rows[lid] = kept_row
+                print(line)
+                continue
+            lid, lake, _, season_pass = item
+            row, seconds, text = pending[lid]()
+            if text:
+                sys.stdout.write(text)
+            row = {**row, "key": check_key(lake)}
+            if "note" in row and not row.get("failed"):
+                row["season_pass"] = season_pass  # the newest pass it could pair; a newer one makes it worth trying again
+            rows[lid] = row
+            print(f"{check_row_line(lid, row)} [{seconds:.0f} s]", flush=True)
     kept = [r for lid, r in old.items() if lid not in rows and lid in lakes]
     out = list(rows.values()) + kept
     write_json_atomic(Path(args.checks), out)
@@ -679,6 +736,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="comma-separated lake ids (default: every register lake except those with no lake now)")
     lc.add_argument("--stale-only", action="store_true",
                     help="check only lakes without a current check in lakes.json (the rebuild's step)")
+    lc.add_argument("--workers", type=_positive, default=CHECK_WORKERS,
+                    help=f"lakes checked at once, in threads (default {CHECK_WORKERS}; 1: one after the other)")
     lc.set_defaults(func=cmd_lakes_check)
 
     la = sub.add_parser("lakes-absence", help="re-check the sites with no lake now with Sentinel-2 (all year; clear, "

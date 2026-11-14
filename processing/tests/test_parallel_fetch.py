@@ -1,4 +1,4 @@
-"""lakes-fetch with bounded concurrency gives the same files (and the same log) as the sequential run.
+"""lakes-fetch and lakes-check with bounded concurrency give the same files (and the same log) as the sequential run.
 
 The fetch runs the real `fetch_lake_passes` (HTTP range reads through h5py, crop, full-window statistics, DEM masks)
 in worker processes against a fake remote (`fake_remote`): several lakes and passes, one URL that always fails, one
@@ -159,3 +159,65 @@ def test_lakes_fetch_takes_a_worker_count(tmp_path, monkeypatch):
     assert seen["workers"] == run_pipeline.FETCH_WORKERS == 6
     run_pipeline.main(["lakes-fetch", "--passes", str(passes), "--out", str(tmp_path), "--workers", "1"])
     assert seen["workers"] == 1
+
+
+# --- lakes-check ---------------------------------------------------------------------------------------------------
+
+CHECK_IDS = ("k1", "k2", "k3", "k4", "k5", "k6")
+
+
+def _check_lake(lid):
+    return Lake(id=lid, name=lid, lon=74.82, lat=36.32, coord_source="t", outline=None, role="watch",
+                downstream=None, downstream_source=None)
+
+
+def _fake_check(lake, cache, series):
+    """Later lakes answer first (so a parallel run finishes out of order); one lake fails; each logs a line."""
+    i = CHECK_IDS.index(lake.id)
+    time.sleep(0.05 * (len(CHECK_IDS) - i))
+    print(f"{lake.id}: scene log line")
+    if lake.id == "k3":
+        raise TimeoutError("Earth Search")
+    if lake.id == "k5":
+        return {"lake": lake.id, "note": "no clear scene"}
+    return {"lake": lake.id, "nisar_date": "2026-09-02", "nisar_track": "156A", "s2_date": "2026-09-02",
+            "s2_id": f"S{i}", "days_apart": 0, "iou": 0.3 + 0.1 * i, "radar_km2": 1.0, "optical_km2": 1.0,
+            "area_error_pct": 0.0, "window_radar_km2": 1.0, "window_optical_km2": 1.0, "window_iou": 0.5}
+
+
+def _check_run(tmp_path, name, workers, monkeypatch, capsys):
+    from sartale.lakebuild import check_key
+    out = tmp_path / name
+    out.mkdir()
+    series = [{"date": f"2026-09-{d:02d}", "track": "156A", "area_km2": a, "observable_share": 1.0, "excluded": None}
+              for d, a in zip(range(1, 8), [1.0, 1.02, 0.99, 1.01, 1.0, 1.5, 1.5])]
+    lakes = [{"id": lid, "name": lid, "lake_state": "lake", "series": series, "status": {"status": "x"}}
+             for lid in CHECK_IDS]
+    current = {"lake": "k2", "iou": 0.7, "nisar_date": "2026-09-01", "s2_date": "2026-09-01",
+               "key": check_key(_check_lake("k2"))}  # a current check, kept by --stale-only
+    (out / "lakes.json").write_text(json.dumps({"lakes": lakes, "checks": [current]}), encoding="utf-8")
+    monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: [_check_lake(i) for i in CHECK_IDS])
+    monkeypatch.setattr(run_pipeline, "check_lake", _fake_check)
+    capsys.readouterr()
+    t = time.perf_counter()
+    run_pipeline.main(["lakes-check", "--out", str(out), "--cache", str(tmp_path), "--checks", str(out / "c.json"),
+                       "--stale-only", "--workers", str(workers)])
+    took = time.perf_counter() - t
+    log = [re.sub(r"\[\d+ s\]$", "[N s]", re.sub(r"\(\d+ s\)$", "(N s)", ln))
+           for ln in capsys.readouterr().out.replace(str(out), "OUT").splitlines()]
+    return _files(out), log, took
+
+
+def test_parallel_lakes_check_equals_the_sequential_one(tmp_path, monkeypatch, capsys):
+    seq_files, seq_log, seq_s = _check_run(tmp_path, "seq", 1, monkeypatch, capsys)
+    par_files, par_log, par_s = _check_run(tmp_path, "par", 4, monkeypatch, capsys)
+    assert seq_files == par_files
+    assert seq_log == par_log
+    assert seq_log.index("k1: scene log line") < seq_log.index("k3: scene log line") < seq_log.index("k6: scene log line")
+    assert par_s < 0.7 * seq_s, "the checks ran at the same time"
+
+
+def test_lakes_check_takes_a_worker_count():
+    args = run_pipeline.build_parser().parse_args(["lakes-check"])
+    assert args.workers == run_pipeline.CHECK_WORKERS == 4
+    assert run_pipeline.build_parser().parse_args(["lakes-check", "--workers", "1"]).workers == 1
