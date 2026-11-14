@@ -1082,3 +1082,7 @@ def test_w02_a_change_outside_the_science_still_publishes(tmp_path):
     (repo / "README.md").write_text("changed\n", encoding="utf-8")
     git("commit", "-q", "-am", "docs", cwd=repo)
     data_artifact.unpack(repo, out)
+
+
+def test_the_artifact_science_covers_the_inventory():
+    assert "processing/inventory" in data_artifact.SCIENCE

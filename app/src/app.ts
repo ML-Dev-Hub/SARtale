@@ -1,8 +1,12 @@
 import { createEvidenceView } from "./evidenceView";
 import type { Lake, LakesFile } from "./lakes";
 import { createLakeStoryView } from "./lakeStory";
-import { createLakeWatchView, type LakeChartFactory, type LocatorFactory } from "./lakeWatchView";
+import { createLakePage } from "./lakePage/lakePage";
+import { droppedLine } from "./lakes";
+import type { LakeChartFactory, LocatorFactory } from "./lakeWatchView";
 import type { LakeRequest } from "./lakeRequests";
+import { DEFAULT_STATE, overviewQuery, parseOverviewHash, type MapDrawerFactory, type OverviewState } from "./overview/model";
+import { createOverview } from "./overview/overviewView";
 import { renderStoryPage } from "./storyPage";
 
 export interface AppOptions {
@@ -10,28 +14,36 @@ export interface AppOptions {
   lakes?: LakesFile | null;
   /** Area-by-track chart for Lake Watch. */
   createLakeChart?: LakeChartFactory;
-  /** Small map that marks the lakes. */
+  /** Small map that marks the lakes (the overview's map drawer takes it over in a later step). */
   createLakeLocator?: LocatorFactory;
+  /** The overview map drawer. */
+  createMapDrawer?: MapDrawerFactory;
   /** Called by "Print lake brief". */
   onLakeBrief?: (lake: Lake) => void;
   /** Lake requests from data/requests.json. */
   requests?: LakeRequest[];
 }
 
-type View = "home" | "lakes" | "story" | "evidence";
+type View = "home" | "lakes" | "story" | "evidence" | "share";
 
-const VIEW_NAMES: Record<View, string> = { home: "The story", lakes: "Lake Watch", story: "Story walkthrough", evidence: "How we know" };
+const VIEW_NAMES: Record<View, string> = { home: "The story", lakes: "Lake Watch", story: "Story walkthrough", evidence: "How we know", share: "Share" };
 /** Hashes that open a view on load, so a view can be linked to or screenshotted directly. */
-const HASH_VIEWS: Record<string, View> = { "#lakes": "lakes", "#story": "story", "#evidence": "evidence" };
-const VIEW_HASH: Record<View, string> = { home: "", lakes: "#lakes", story: "#story", evidence: "#evidence" };
+const HASH_VIEWS: Record<string, View> = { "#lakes": "lakes", "#story": "story", "#evidence": "evidence", "#share": "share" };
+const VIEW_HASH: Record<View, string> = { home: "", lakes: "#lakes", story: "#story", evidence: "#evidence", share: "#share" };
 
 /**
  * The view (and lake) a URL hash names: "" or "#" is the start page, "#lakes/attabad" a lake. Any other hash is an
  * in-page anchor (the skip link, a story section) and returns null, so it never changes the view.
  */
-export function routeFromHash(hash: string): { view: View; lake?: string } | null {
+export function routeFromHash(hash: string): { view: View; lake?: string; pass?: string; compare?: [string, string]; query?: string } | null {
   if (hash === "" || hash === "#") return { view: "home" };
   if (HASH_VIEWS[hash]) return { view: HASH_VIEWS[hash] };
+  const q = /^#lakes\?(.+)$/.exec(hash);
+  if (q) return { view: "lakes", query: q[1] };
+  const pass = /^#lakes\/([a-z0-9_-]+)\/pass\/([0-9A-Za-z_-]+)$/.exec(hash);
+  if (pass) return { view: "lakes", lake: pass[1], pass: pass[2] };
+  const cmp = /^#lakes\/([a-z0-9_-]+)\/compare\/([0-9A-Za-z_-]+)\/([0-9A-Za-z_-]+)$/.exec(hash);
+  if (cmp) return { view: "lakes", lake: cmp[1], compare: [cmp[2], cmp[3]] };
   const m = /^#lakes\/([a-z0-9_-]+)$/.exec(hash);
   return m ? { view: "lakes", lake: m[1] } : null;
 }
@@ -62,6 +74,7 @@ const TEMPLATE = `
     <div class="home-root" data-role="home-root"></div>
 
     <section class="sites-view lakes-view" data-role="lakes-view" aria-label="Lake Watch" hidden>
+      <div class="sites-scroll" data-role="overview-root"></div>
       <div class="sites-scroll" data-role="lakes-root"></div>
     </section>
     <section class="sites-view lakestory-view" data-role="lakestory-view" aria-label="Story" hidden>
@@ -116,13 +129,68 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
   syncFolds();
 
   // ---- Views ---------------------------------------------------------------------------------------------------
-  const lakeView = createLakeWatchView(q("lakes-root"), {
-    lakes,
-    createChart: opts.createLakeChart,
-    createLocator: opts.createLakeLocator,
-    onBrief: opts.onLakeBrief,
-    onSelect: (id) => setHash(`#lakes/${id}`, true),
-  });
+  // `#lakes` and `#lakes?<filters>` show the overview; `#lakes/<id>` shows the lake page. Without lake data there is no
+  // overview, and the lakes view says so.
+  const overview = lakes && lakes.lakes.length
+    ? createOverview(q("overview-root"), {
+      file: lakes,
+      state: DEFAULT_STATE,
+      mapDrawer: opts.createMapDrawer,
+      onState: (s: OverviewState) => {
+        const query = overviewQuery(s);
+        setHash(query ? `#lakes?${query}` : "#lakes", true);
+        overview?.update(s);
+      },
+      onOpenLake: (id) => {
+        setHash(`#lakes/${id}`);
+        showLakes({ lake: id });
+        window.scrollTo?.(0, 0);
+      },
+    })
+    : null;
+
+  let lakePage: { destroy(): void } | undefined;
+  /** A link or button on the lake page: put the hash in the address bar and show what it names. */
+  function routeTo(hash: string): void {
+    setHash(hash);
+    showLakes(routeFromHash(hash) ?? {});
+    window.scrollTo?.(0, 0);
+  }
+
+  /** Shows the overview, or one lake page when the route names a lake in the data. */
+  function showLakes(r: { lake?: string; pass?: string; compare?: [string, string]; query?: string }): void {
+    lakePage?.destroy();
+    lakePage = undefined;
+    const lake = r.lake && lakes?.lakes.some((l) => l.id === r.lake) ? r.lake : undefined;
+    const onOverview = overview !== null && !lake;
+    q("lakes-view").dataset.mode = onOverview ? "overview" : "lake";
+    q("overview-root").hidden = !onOverview;
+    q("lakes-root").hidden = onOverview;
+    if (onOverview) {
+      overview!.update(parseOverviewHash(r.query ?? ""));
+    } else if (lake && lakes) {
+      lakePage = createLakePage(q("lakes-root"), {
+        file: lakes, lakeId: lake, pass: r.pass, compare: r.compare, onRoute: routeTo,
+        createChart: opts.createLakeChart, onBrief: opts.onLakeBrief,
+      });
+    } else {
+      const empty = q("lakes-root");
+      const head = document.createElement("p");
+      head.className = "sites-empty";
+      head.textContent = "No lake data in this build";
+      const why = document.createElement("p");
+      why.className = "sites-why";
+      why.textContent = "Lake Watch needs data/lakes.json, made by the pipeline in processing/.";
+      empty.replaceChildren(head, why);
+      const dropped = lakes ? droppedLine(lakes) : null;
+      if (dropped) {
+        const note = document.createElement("p");
+        note.className = "lw-note";
+        note.textContent = dropped;
+        empty.append(note);
+      }
+    }
+  }
   const evidenceView = createEvidenceView(q("evidence-root"), { lakes });
   const lakeStory = createLakeStoryView(q("lakestory-root"), {
     lakes,
@@ -130,8 +198,8 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
       if (action === "evidence") return showView("evidence");
       showView("lakes");
       if (action === "lake" && lakeId) {
-        lakeView.select(lakeId);
         setHash(`#lakes/${lakeId}`, true);
+        showLakes({ lake: lakeId });
       }
     },
   });
@@ -146,13 +214,13 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     },
   });
 
-  const sections: Record<View, HTMLElement> = {
+  const sections: Record<Exclude<View, "share">, HTMLElement> = {
     home: q("home-root"),
     lakes: q("lakes-view"),
     story: q("lakestory-view"),
     evidence: q("evidence-view"),
   };
-  const viewButtons: Record<Exclude<View, "story">, HTMLButtonElement> = {
+  const viewButtons: Record<Exclude<View, "story" | "share">, HTMLButtonElement> = {
     home: q("view-home"),
     lakes: q("view-lakes"),
     evidence: q("view-evidence"),
@@ -174,7 +242,10 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
       if (here?.view !== next) setHash(VIEW_HASH[next], here === null);
     }
     q("shell").dataset.view = next;
-    for (const [name, el] of Object.entries(sections)) el.hidden = name !== next;
+    // No share page yet (a later task): #share shows the start page meanwhile.
+    const shown = next === "share" ? "home" : next;
+    for (const [name, el] of Object.entries(sections)) el.hidden = name !== shown;
+    if (next === "lakes") showLakes(routeFromHash(window.location.hash) ?? {});
     // The walkthrough is part of the story, so the nav keeps "The story" lit there.
     for (const [name, btn] of Object.entries(viewButtons)) btn.setAttribute("aria-pressed", String(name === next || (name === "home" && next === "story")));
     if (scroll) window.scrollTo?.(0, 0);
@@ -182,16 +253,14 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     document.title = next === "home" ? "SARtale" : `SARtale · ${VIEW_NAMES[next]}`;
   }
 
-  root.addEventListener("click", (e) => {
-    // The Lake Watch headline links to the cloud gap, which is the first beat of the story.
-    if ((e.target as Element).closest?.('a[href="#cloud-gap"]')) {
-      e.preventDefault();
-      lakeStory.go(0);
-      showView("story");
-    }
-  });
   q("home").addEventListener("click", () => showView("home"));
-  for (const [name, btn] of Object.entries(viewButtons)) btn.addEventListener("click", () => showView(name as View));
+  for (const [name, btn] of Object.entries(viewButtons)) {
+    btn.addEventListener("click", () => {
+      // Lake Watch in the nav always leads to the overview, also from a lake's own page.
+      if (name === "lakes" && routeFromHash(window.location.hash)?.view === "lakes") setHash("#lakes");
+      showView(name as View);
+    });
+  }
 
   // Back, Forward and a typed or linked hash all change the hash (our pushState entries always differ in it), so
   // hashchange alone covers them; popstate as well would run every move twice.
@@ -199,12 +268,10 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     const r = routeFromHash(window.location.hash);
     if (!r) return;
     showView(r.view, false, false);
-    if (r.lake) lakeView.select(r.lake);
   };
   window.addEventListener("hashchange", followHash);
   const first = routeFromHash(window.location.hash) ?? { view: "home" as View };
   showView(first.view, false, false);
-  if (first.lake) lakeView.select(first.lake);
   // A link to a story section, such as #videos, arrives before the page is drawn, so scroll to it now.
   const id = routeFromHash(window.location.hash) ? null : fragmentId(window.location.hash);
   const anchor = id ? document.getElementById(id) : null;
@@ -217,7 +284,8 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
       window.removeEventListener("hashchange", followHash);
       storyPage.destroy();
       lakeStory.destroy();
-      lakeView.destroy();
+      lakePage?.destroy();
+      overview?.destroy();
       evidenceView.destroy();
       root.innerHTML = "";
     },

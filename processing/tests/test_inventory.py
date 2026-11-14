@@ -28,10 +28,10 @@ def test_the_committed_inventory_matches_its_tables():
     assert inv["passu"].suparco is None  # the "4" dot was rejected
 
 
-def test_the_inventory_covers_the_new_lakes_and_three_sites_only():
+def test_the_inventory_covers_the_new_lakes_and_four_sites_only():
     inv = load_inventory()
     new_ids = {r["id"] for r in load_json("inventory/new_lakes.json")}
-    assert set(inv) == new_ids | {"passu", "shazore", "khurdopin"}
+    assert set(inv) == new_ids | {"passu", "shazore", "khurdopin", "attabad"}
     assert all(isinstance(e, InventoryEntry) and e.lake_id == i and e.outlines for i, e in inv.items())
     assert all(o.km2 > 0 and o.licence in ("CC BY 4.0", "ODbL 1.0") and o.source.strip()
                for e in inv.values() for o in e.outlines)
@@ -174,3 +174,11 @@ def test_a_registered_batch_is_complete(batch):
         lk = reg[r["id"]]
         assert (lk.lon, lk.lat, lk.outline, lk.province) == (r["lon"], r["lat"], r["outline"], r["province"])
         assert (OUTLINES / Path(lk.outline).name).is_file()
+
+
+def test_attabad_has_its_committed_osm_outline_in_the_inventory():
+    a = load_inventory()["attabad"]
+    assert len(a.outlines) == 1 and a.suparco is None and a.suparco_candidates == ()
+    o = a.outlines[0]
+    assert (o.source, o.year, o.licence) == ("OpenStreetMap outline (undated)", None, "ODbL 1.0")
+    assert 7.0 < o.km2 < 7.5  # OpenStreetMap way 60065056, 7.2 km² (docs/DATA_SOURCES.md)

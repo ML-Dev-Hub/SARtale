@@ -129,6 +129,8 @@ def test_lakes_check_writes_the_rows_and_merges_them_into_lakes_json(tmp_path, m
     rows = [{"lake": "attabad", "note": "no clear scene", "key": check_key(_lake("attabad")), "season_pass": None}]
     assert json.loads(checks.read_text(encoding="utf-8")) == rows
     assert json.loads((out / "lakes.json").read_text(encoding="utf-8"))["checks"] == rows
+    # the headline counts are set again from the new statuses (lakesummary.refresh_summary)
+    assert json.loads((out / "lakes.json").read_text(encoding="utf-8"))["counts"]["watched"] == 1
 
 
 def test_lakes_check_defaults_to_every_lake_that_holds_a_lake_now():

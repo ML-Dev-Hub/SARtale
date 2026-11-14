@@ -633,6 +633,8 @@ def test_the_lakes_freeze_command_sets_each_lake_again_and_is_idempotent(tmp_pat
     doc = json.loads(first)
     assert doc["lakes"][0]["status"]["status"] == "Frozen (seen by Sentinel-2)"
     assert "freeze" not in doc["lakes"][1] and doc["lakes"][1]["status"]["status"] == "No lake now"
+    # the headline counts are set again from the new statuses (lakesummary.refresh_summary)
+    assert doc["counts"]["frozen"] == 1 and doc["counts"]["no_lake"] == 1 and doc["counts"]["open_water"] == 0
     log = capsys.readouterr().out
     assert "shazore: frozen_s2 since 2026-10-18" in log and "S2 2026-11-08 S2A_43SCV_20261108_0_L2A" in log
     run_pipeline.main(args)

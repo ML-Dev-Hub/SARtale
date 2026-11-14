@@ -1,4 +1,4 @@
-import type { Lake, LakesFile, LakeStatus, LakeStatusName, LevelMessage, LevelName } from "./lakes";
+import type { HeadlineCounts, Lake, LakesFile, LakeStatus, LakeStatusName, LevelMessage, LevelName } from "./lakes";
 
 const LEVEL_NAMES: string[] = ["Alert: growing", "Watch", "Decrease noted", "No change"];
 
@@ -167,4 +167,64 @@ export const requestedLake: Lake = {
 /** A copy of a lakes file with requestedLake appended, as the rebuild after an accept leaves it. */
 export function withRequestedLake(file: LakesFile): LakesFile {
   return { ...file, lakes: [...file.lakes, requestedLake] };
+}
+
+/**
+ * A valid open lake for tests: id "lake_a", status "No change" with a baseline, noise 0.005 and z, and three readings on
+ * track 055A that carry a `pass_id` and `assets`. It has no district, suparco, largest_extent or elevation_m unless given.
+ */
+export function makeLake(over: Partial<Lake> = {}): Lake {
+  const reading = (date: string, area: number) => ({
+    date, track: "055A", area_km2: area, observable_share: 1, excluded: null, crid: "P05036",
+    z: 0.2, baseline_km2: 0.13, noise_km2: 0.005,
+    pass_id: `${date}_055A_P05036`,
+    assets: { hh: `lakes/lake_a/${date}_055A_hh.png`, water: `lakes/lake_a/${date}_055A_water.png`, valid: `lakes/lake_a/${date}_055A_valid.png` },
+  });
+  const base = fixtureLake("lake_a", "No change", "2026-11-09", {
+    name: "Lake A",
+    series: [reading("2026-10-16", 0.13), reading("2026-10-28", 0.131), reading("2026-11-09", 0.131)],
+  });
+  const lake: Lake = {
+    ...base,
+    status: { ...base.status, track: "055A", noise_km2: 0.005, z: 0.2, baseline_km2: 0.13, change_km2: 0.001 },
+  };
+  return { ...lake, ...over };
+}
+
+const FROZEN_STATUS_NAMES: string[] = ["Frozen (likely)", "Frozen (seen by Sentinel-2)", "Break-up likely"];
+
+/** The headline counts of lakes by the pipeline's rules (lakesummary.headline_counts). */
+function countsOf(lakes: Lake[]): HeadlineCounts {
+  const c: HeadlineCounts = { watched: lakes.length, alert: 0, watch: 0, decrease: 0, forming: 0, needs_attention: 0, open_water: 0, frozen: 0, no_lake: 0, above_largest: 0, suparco_listed: 0, changed: 0 };
+  for (const l of lakes) {
+    const s = l.status.status;
+    const state = l.lake_state;
+    const frozen = FROZEN_STATUS_NAMES.includes(s);
+    if (s === "Alert: growing") c.alert++;
+    if (s === "Watch") c.watch++;
+    if (s === "Decrease noted") c.decrease++;
+    if (state === "lake_forming_check") c.forming++;
+    if (s === "Alert: growing" || s === "Watch" || s === "Decrease noted" || state === "lake_forming_check") c.needs_attention++;
+    if (frozen) c.frozen++;
+    if (state === "no_lake") c.no_lake++;
+    if ((state === undefined || state === "lake" || state === "unconfirmed") && !frozen) c.open_water++;
+    if (l.above_largest === true) c.above_largest++;
+    if (l.suparco != null) c.suparco_listed++;
+    if (l.previous_status != null && l.previous_status !== s) c.changed++;
+  }
+  return c;
+}
+
+/** A lakes file around `lakes`, built 2026-11-13T12:28:00Z with method D17, the headline counts and 503 mapped lakes. */
+export function makeFile(lakes: Lake[], over: Partial<LakesFile> = {}): LakesFile {
+  return {
+    ...fixtureLakes,
+    built: "2026-11-13T12:28:00Z",
+    method: { id: "D17", water: "valid and HH at least 3 dB below the window-median HH" },
+    lakes,
+    checks: [],
+    counts: countsOf(lakes),
+    mapped_count: 503,
+    ...over,
+  };
 }

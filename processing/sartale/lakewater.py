@@ -293,6 +293,31 @@ def outline_window_share(x, y, epsg, outline_polygon) -> float:
     return min(1.0, float(inside.sum()) * abs(dx * dy) / area)
 
 
+def outline_in_window_share(x, y, epsg, outline_polygon) -> float | None:
+    """Share of the outline (without the buffer) inside the window, 0 to 1, counted in pixels on both sides: the
+    outline is rasterised (`outline_mask`) on the window grid extended, with the same pixel size and pixel centres, to
+    cover the outline's bounds, and its pixels inside the window are divided by all of its pixels. None when the
+    outline takes no pixel at all."""
+    x, y = np.asarray(x, float), np.asarray(y, float)
+    to_utm = Transformer.from_crs(4326, epsg, always_xy=True)
+    pts = [to_utm.transform(lon, lat) for ring in outline_rings(outline_polygon) for lon, lat in ring]
+    bx, by = [p[0] for p in pts], [p[1] for p in pts]
+
+    def extended(axis: np.ndarray, lo: float, hi: float) -> tuple[np.ndarray, int]:
+        step = float(axis[1] - axis[0]) if len(axis) > 1 else 1.0
+        before = max(0, int(np.ceil(max((axis[0] - lo) / step, (axis[0] - hi) / step)))) + 1
+        after = max(0, int(np.ceil(max((lo - axis[-1]) / step, (hi - axis[-1]) / step)))) + 1
+        return axis[0] + step * np.arange(-before, len(axis) + after), before
+
+    ex, ix = extended(x, min(bx), max(bx))
+    ey, iy = extended(y, min(by), max(by))
+    mask = outline_mask((len(ey), len(ex)), ex, ey, epsg, outline_polygon)
+    total = int(mask.sum())
+    if total == 0:
+        return None
+    return int(mask[iy:iy + len(y), ix:ix + len(x)].sum()) / total
+
+
 def pass_water(hh_db: np.ndarray, valid: np.ndarray, zone: np.ndarray, pixel_m: float,
                stat_mask: np.ndarray | None = None, ref_db: float | None = None) -> dict:
     """Water in one pass (D17, `water_mask`): Lee-filtered HH `hh_db`, its `valid` pixels, the lake `zone`, and the

@@ -33,6 +33,7 @@ from sartale.lakewater import (
     despeckle,
     lake_zone,
     lee_filter,
+    outline_in_window_share,
     outline_mask,
     outline_window_share,
     pass_water,
@@ -43,6 +44,8 @@ from sartale.lakewater import (
     water_reference,
     window_stats,
 )
+from sartale.inventory import InventoryEntry, load_inventory
+from sartale.lakesummary import status_fields, with_summary
 from sartale.render import render_frame, shared_stretch
 from sartale.radiometry import to_db
 
@@ -784,7 +787,23 @@ def _empty(entry: dict, limits: list[str], lake: Lake, absence: dict | None = No
            "directions": [], "limits": limits,
            "series": [], "excluded": [], "images": {"latest_hh": None, "water": None, "date": None, "track": None},
            "bounds": None, "summer_ref": {}}
-    return apply_absence(out, absence)
+    return _with_status_fields(apply_absence(out, absence))
+
+
+def _with_status_fields(entry: dict) -> dict:
+    """The entry with its status's `threshold_km2`, `latest_pass_id` and `noise_floor_applied` (`status_fields`)."""
+    return {**entry, "status": status_fields(entry)}
+
+
+def coverage(lake: Lake, outline, xs=None, ys=None, epsg: int | None = None) -> dict:
+    """How the lake's zone sits in the radar window: `zone_kind` "outline" or "circle", `radius_m` of a circle, and
+    `outline_in_window_share` (`lakewater.outline_in_window_share`; None for a circle or without a window). The share
+    of the largest extent needs at least 90% of the outline inside (`lakesummary.share_fields`)."""
+    if outline is None:
+        return {"outline_in_window_share": None, "zone_kind": "circle", "radius_m": float(lake.zone_radius_km * 1000)}
+    share = None if xs is None else outline_in_window_share(xs, ys, epsg, outline)
+    return {"outline_in_window_share": None if share is None else round(share, 4), "zone_kind": "outline",
+            "radius_m": None}
 
 
 def validation_of(check: dict | None) -> dict | None:
@@ -861,7 +880,9 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         "lake_state": lake.lake_state, "lake_state_source": lake.lake_state_source,
         "downstream": lake.downstream, "downstream_source": lake.downstream_source,
         "elevation_m": lake.elevation_m, "elevation_source": lake.elevation_source,
+        "district": lake.district, "province": lake.province,
         "validation": check if lake.lake_state != "no_lake" else None,
+        "coverage": coverage(lake, outline),
     }
     lake_dir = Path(cache_dir) / lake.id
     if not lake_dir.is_dir():
@@ -873,6 +894,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
 
     epsg, px, by_track, excluded, directions, shadow = _analyse(passes, xs, ys, limits)
     zone = lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline)
+    entry["coverage"] = coverage(lake, outline, xs, ys, epsg)
     if outline is not None:
         share = outline_window_share(xs, ys, epsg, outline)
         if share < 0.99:
@@ -887,7 +909,8 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
         w = pass_water(p["hh_w"], p["w_valid"], zone, px, stat_mask_of(masks, p["key"]), ref_db=water_ref_of(p))
         reason = excluded.get(p["id"])
         point = {"date": p["date"], "track": p["key"], "area_km2": None if reason else w["area_km2"],
-                 "observable_share": w["observable_share"], "excluded": reason, "crid": p["crid"]}
+                 "observable_share": w["observable_share"], "excluded": reason, "crid": p["crid"],
+                 "pass_id": f"{p['id']}_{p['crid']}"}  # the cache file stem, <date>_<key>_<CRID>
         if reason:
             # What the left-out pass read, so the chart can mark it; never used by the status (area_km2 is null).
             point["diagnostic_km2"] = w["area_km2"] if w["valid"] and not p.get("unusable") else None
@@ -935,7 +958,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
            "summer_ref": summer_reference(series, {k: int(c.sum()) for k, (c, _) in cores.items()})}
     if lake.lake_state == "lake" and (prior or {}).get("freeze"):
         out["freeze"] = prior["freeze"]
-    return apply_absence(out, absence)
+    return _with_status_fields(apply_absence(out, absence))
 
 
 def _track_medians(lk: dict) -> dict[str, float]:
@@ -1026,12 +1049,15 @@ def carried_freeze(previous: dict | None, lake: Lake) -> dict | None:
 
 
 def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, checks: list[dict] | None = None,
-                collections: dict[str, str] | None = None, previous: dict | None = None) -> dict:
+                collections: dict[str, str] | None = None, previous: dict | None = None,
+                inventory: dict[str, InventoryEntry] | None = None) -> dict:
     """`checks` are the Sentinel-2 cross-check rows from `lakes-check`, merged in as the `checks` block.
     `collections` maps CRID -> CMR short name (default: read from `cache_dir`/passes.json). With `checks` (a list, maybe
     empty) each lake needs a current check (`check_key`) for a level; `checks` None leaves the check out. Only the passes that
     `cache_dir`/passes.json lists are built; without that file every cached window is read. `previous` is the
-    lakes.json this build replaces: each no-lake site keeps its last Sentinel-2 absence check from it."""
+    lakes.json this build replaces: each no-lake site keeps its last Sentinel-2 absence check from it, and the summary
+    (`lakesummary.with_summary`) records its date, counts and statuses as `previous_build`. `inventory`: the lake
+    inventory entries (default: the committed processing/inventory/watched_inventory.json)."""
     if collections is None:
         collections = read_collections(Path(cache_dir) / PASSES_JSON)
     listed = read_listed(Path(cache_dir) / PASSES_JSON)
@@ -1048,7 +1074,7 @@ def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, c
     out_checks = [r for lake in lakes for r in [picked.get(lake.id)] if r and (is_current(r, lake) or (
         r.get("key") == check_key(lake)))] if checks is not None else []
     crids = sorted({p["crid"] for lk in built_lakes for p in lk["series"]})
-    return {
+    doc = {
         "version": 1, "built": built, "notes": NOTES, "method": METHOD,
         "crid": ", ".join(crids),  # every processing version used, e.g. "P05023, P05036"
         "collections": sorted({collections[c] for c in crids if c in collections}),
@@ -1077,6 +1103,7 @@ def build_lakes(lakes: list[Lake], cache_dir: Path, out_dir: Path, built: str, c
         "lakes": built_lakes,
         "checks": out_checks,
     }
+    return with_summary(doc, previous, load_inventory() if inventory is None else inventory)
 
 
 def radar_water_context(lake: Lake, cache_dir: Path):

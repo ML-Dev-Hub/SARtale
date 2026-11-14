@@ -40,3 +40,43 @@ describe("lake chart options", () => {
     expect([out.label, out.width]).toEqual(["Left out", 0]);
   });
 });
+
+describe("history chart marks", () => {
+  const HIST = {
+    x: [Date.UTC(2026, 6, 2) / 1000, Date.UTC(2026, 6, 14) / 1000, Date.UTC(2026, 6, 26) / 1000],
+    series: [
+      { label: "055A", values: [0.12, null, 0.13], excluded: false },
+      { label: "No usable reading", values: [null, 0, null], excluded: false, rail: true },
+      { label: "First reading on P05036", values: [null, null, 0.13], excluded: false, version: true },
+    ],
+  };
+
+  test("unusable passes sit on their own rail scale, as rings with no line", async () => {
+    const { lakeChartOptions } = await import("./chart");
+    const o = lakeChartOptions(300, HIST);
+    const rail = o.series[2];
+    expect([rail.scale, rail.width, rail.points?.show]).toEqual(["rail", 0, true]);
+    expect(o.scales!.rail).toBeDefined();
+  });
+
+  test("the version marker draws a line in a hook, not a series line", async () => {
+    const { lakeChartOptions } = await import("./chart");
+    const o = lakeChartOptions(300, HIST);
+    expect([o.series[3].width, o.series[3].points?.show]).toEqual([0, false]);
+    expect(o.hooks!.draw).toHaveLength(1);
+  });
+
+  test("a bridge series is dashed, the track does not span the gap, and rings take the level colour", async () => {
+    const { lakeChartOptions } = await import("./chart");
+    const o = lakeChartOptions(300, { x: HIST.x, series: [HIST.series[0], { label: "Line dashed", values: [0.12, null, 0.13], excluded: false, bridge: true }, { label: "Pass that set a Watch", values: [null, null, 0.13], excluded: false, level: true, levelName: "Watch" }] });
+    expect([o.series[1].spanGaps, o.series[2].dash, o.series[2].spanGaps]).toEqual([false, [5, 5], true]);
+    expect(o.series[3].points?.stroke).toBe("#ffc46b");
+  });
+
+  test("the plain chart has neither a rail scale nor a hook", async () => {
+    const { lakeChartOptions } = await import("./chart");
+    const o = lakeChartOptions(300, DATA);
+    expect(o.scales!.rail).toBeUndefined();
+    expect(o.hooks!.draw).toBeUndefined();
+  });
+});

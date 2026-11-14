@@ -1291,6 +1291,19 @@
    ],
    "suparco": null,
    "suparco_candidates": []
+  },
+  "attabad": {
+   "cand_id": null,
+   "outlines": [
+    {
+     "source": "OpenStreetMap outline (undated)",
+     "year": null,
+     "km2": 7.2385,
+     "licence": "ODbL 1.0"
+    }
+   ],
+   "suparco": null,
+   "suparco_candidates": []
   }
  }
 }

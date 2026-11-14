@@ -5,7 +5,7 @@ import { fragmentId, mountApp, routeFromHash, type AppOptions } from "./app";
 import { mountOrShowError } from "./startup";
 import type { LakeRequest } from "./lakeRequests";
 import { findBannedClaims } from "./content";
-import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
+import { fixtureLakes, makeFile, makeLake, requestedLake, withRequestedLake } from "./fixtures";
 import { featuredLake, splitChecks, type LakesFile } from "./lakes";
 
 // loaded the way the app loads it (lakes.ts loadLakes): check rows with only a note move to check_notes
@@ -192,16 +192,6 @@ describe("the lake story", () => {
     expect($("lakestory-view").textContent).toContain("space4climate.gov.pk, 2 Jul 2026");
   });
 
-  test("the Lake Watch headline link goes to beat 1", () => {
-    const { root, $ } = setup();
-    openStory($);
-    $("ls-next").click();
-    $("view-lakes").click();
-    root.querySelector<HTMLAnchorElement>('a[href="#cloud-gap"]')!.click();
-    expect($("lakestory-view").hidden).toBe(false);
-    expect(beatId($)).toBe("cloud-gap");
-  });
-
   test("featuredLake picks the watch lake with most looks, ties to the newest look, never a control or story lake", () => {
     const f = lakesWith([
       ["a", 6, "2026-10-23"],
@@ -227,7 +217,10 @@ describe("the lake story", () => {
     expect($("ls-title").textContent).toContain("Lake b");
     $("lakestory-view").querySelector<HTMLButtonElement>('[data-action="lake"]')!.click();
     expect($("lakes-view").hidden).toBe(false);
-    expect($("lakes-view").querySelector('.lw-row[aria-pressed="true"]')?.getAttribute("data-lake-id")).toBe("b");
+    expect($("lakes-root").hidden).toBe(false);
+    expect($("lakes-root").querySelector(".lp-name")?.textContent).toBe(lakes.lakes.find((l) => l.id === "b")!.name);
+    expect(window.location.hash).toBe("#lakes/b");
+    window.history.replaceState(null, "", "/");
   });
 
   test("the last beat opens How we know", () => {
@@ -289,19 +282,58 @@ describe("routing", () => {
   test("test_a_lake_hash_opens_that_lake", () => {
     const id = lakesJson.lakes[1].id;
     window.history.replaceState(null, "", `#lakes/${id}`);
-    const { root } = setup();
-    expect(root.querySelector('.lw-row[aria-pressed="true"]')?.getAttribute("data-lake-id")).toBe(id);
+    const { root, $ } = setup();
+    expect($("overview-root").hidden).toBe(true);
+    expect(root.querySelector(".lp-name")?.textContent).toBe(lakesJson.lakes[1].name);
+    window.history.replaceState(null, "", "/");
+  });
+
+  test("#lakes and #lakes?<filters> show the overview, with the filters from the hash", () => {
+    const lakes = makeFile([makeLake({ id: "a", name: "Lake A", district: "Hunza" }), makeLake({ id: "b", name: "Lake B", district: "Chitral" })]);
+    window.history.replaceState(null, "", "#lakes?district=Chitral");
+    const { root, $ } = setup({ lakes });
+    expect($("lakes-view").hidden).toBe(false);
+    expect($("overview-root").hidden).toBe(false);
+    expect($("lakes-root").hidden).toBe(true);
+    expect([...root.querySelectorAll<HTMLElement>('[data-role="ov-row"]')].map((r) => r.dataset.id)).toEqual(["b"]);
+    window.history.replaceState(null, "", "/");
+  });
+
+  test("a filter writes the hash, a lake name opens the lake, and Lake Watch in the nav goes back to the overview", () => {
+    const lakes = makeFile([makeLake({ id: "a", name: "Lake A" }), makeLake({ id: "b", name: "Lake B", district: "Chitral" })]);
+    window.history.replaceState(null, "", "#lakes");
+    const { root, $ } = setup({ lakes });
+    root.querySelector<HTMLButtonElement>('[data-role="ov-filters"] [data-filter="suparco"]')!.click();
+    expect(window.location.hash).toBe("#lakes?show=suparco");
+    expect(root.querySelector('[data-role="ov-empty"]')).not.toBeNull();
+    root.querySelector<HTMLButtonElement>('[data-role="ov-filters"] [data-filter="all"]')!.click();
+    expect(window.location.hash).toBe("#lakes");
+    root.querySelector<HTMLButtonElement>('[data-role="ov-row"][data-id="b"] button.ov-name')!.click();
+    expect(window.location.hash).toBe("#lakes/b");
+    expect($("overview-root").hidden).toBe(true);
+    expect($("lakes-root").querySelector(".lp-name")?.textContent).toBe("Lake B");
+    $("view-lakes").click();
+    expect(window.location.hash).toBe("#lakes");
+    expect($("overview-root").hidden).toBe(false);
+    window.history.replaceState(null, "", "/");
+  });
+
+  test("an unknown lake in the hash shows the overview", () => {
+    window.history.replaceState(null, "", "#lakes/no_such_lake");
+    const { $ } = setup({ lakes: makeFile([makeLake()]) });
+    expect($("overview-root").hidden).toBe(false);
     window.history.replaceState(null, "", "/");
   });
 });
 
-describe("after an accept adds a 12th lake", () => {
+describe("after an accept adds a lake", () => {
   test("the app mounts, pins and lists it, and #lakes/<id> opens it", () => {
     const file = withRequestedLake(realLakes);
     window.history.replaceState(null, "", `#lakes/${requestedLake.id}`);
     const { root, $ } = setup({ lakes: file });
-    expect(root.querySelector('.lw-row[aria-pressed="true"]')?.getAttribute("data-lake-id")).toBe(requestedLake.id);
-    expect($("lakes-view").querySelectorAll(".lw-row")).toHaveLength(realLakes.lakes.length + 1);
+    expect($("lakes-root").querySelector(".lp-name")?.textContent).toBe(requestedLake.name);
+    $("view-lakes").click();
+    expect($("lakes-view").querySelectorAll('[data-role="ov-row"], [data-role="ov-pinned"]')).toHaveLength(realLakes.lakes.length + 1);
     $("home").click();
     expect($("home-root").querySelectorAll(".sp-pin:not(.sp-pin-request)")).toHaveLength(realLakes.lakes.length + 1);
     expect(root.textContent).not.toMatch(/NaN|undefined/);
@@ -327,5 +359,16 @@ describe("startup robustness", () => {
     expect(root.querySelectorAll(".sp-request").length).toBe(0);
     app.setRequests([{ issue: 7, name: "Asked-for pond", lat: 36.0, lon: 72.5, state: "searched", passes: 4, tracks: ["084A"], first: "2026-07-01", last: "2026-10-30", reason: null, lake_id: null, created: "2026-11-04T10:00:00Z" } as LakeRequest]);
     expect(root.querySelectorAll(".sp-request").length).toBe(1);
+  });
+});
+
+describe("routeFromHash, new routes", () => {
+  test("routes the new hashes", () => {
+    expect(routeFromHash("#lakes?show=frozen")).toEqual({ view: "lakes", query: "show=frozen" });
+    expect(routeFromHash("#lakes/passu/pass/2026-11-09_055A_P05036")).toEqual({ view: "lakes", lake: "passu", pass: "2026-11-09_055A_P05036" });
+    expect(routeFromHash("#lakes/passu/compare/a_1/b_2")).toEqual({ view: "lakes", lake: "passu", compare: ["a_1", "b_2"] });
+    expect(routeFromHash("#lakes/passu")).toEqual({ view: "lakes", lake: "passu" });
+    expect(routeFromHash("#share")).toEqual({ view: "share" });
+    expect(routeFromHash("#lakes/Passu<script>")).toBeNull();
   });
 });
