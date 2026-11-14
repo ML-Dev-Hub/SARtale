@@ -28,15 +28,15 @@ type View = "home" | "lakes" | "story" | "evidence" | "share";
 
 const VIEW_NAMES: Record<View, string> = { home: "The story", lakes: "Lake Watch", story: "Story walkthrough", evidence: "How we know", share: "Share" };
 /** Hashes that open a view on load, so a view can be linked to or screenshotted directly. */
-const HASH_VIEWS: Record<string, View> = { "#lakes": "lakes", "#story": "story", "#evidence": "evidence", "#share": "share" };
-const VIEW_HASH: Record<View, string> = { home: "", lakes: "#lakes", story: "#story", evidence: "#evidence", share: "#share" };
+const HASH_VIEWS: Record<string, View> = { "#start": "home", "#lakes": "lakes", "#story": "story", "#evidence": "evidence", "#share": "share" };
+const VIEW_HASH: Record<View, string> = { home: "#start", lakes: "#lakes", story: "#story", evidence: "#evidence", share: "#share" };
 
 /**
- * The view (and lake) a URL hash names: "" or "#" is the start page, "#lakes/attabad" a lake. Any other hash is an
+ * The view (and lake) a URL hash names: "" or "#" is Lake Watch (the front page), "#start" the story page, "#lakes/attabad" a lake. Any other hash is an
  * in-page anchor (the skip link, a story section) and returns null, so it never changes the view.
  */
 export function routeFromHash(hash: string): { view: View; lake?: string; pass?: string; compare?: [string, string]; query?: string } | null {
-  if (hash === "" || hash === "#") return { view: "home" };
+  if (hash === "" || hash === "#") return { view: "lakes" };
   if (HASH_VIEWS[hash]) return { view: HASH_VIEWS[hash] };
   const q = /^#lakes\?(.+)$/.exec(hash);
   if (q) return { view: "lakes", query: q[1] };
@@ -57,15 +57,15 @@ const TEMPLATE = `
 <div class="shell" data-role="shell">
   <a class="skip" href="#main">Skip to the content</a>
   <header class="top">
-    <button type="button" class="logo-btn" data-role="home" aria-label="SARtale: back to the start">
+    <button type="button" class="logo-btn" data-role="home" aria-label="SARtale: Lake Watch">
       <span class="logo-panel"><img class="logo" src="brand/logo-256.png" width="56" height="56" alt="SARtale Pakistan logo" /></span>
     </button>
     <p class="brand">SARtale</p>
-    <p class="sr-only" data-role="view-name" aria-live="polite">The story</p>
+    <p class="sr-only" data-role="view-name" aria-live="polite">Lake Watch</p>
     <nav class="views" aria-label="Views">
-      <button type="button" class="view-btn" data-role="view-home" aria-pressed="false">The story</button>
       <button type="button" class="view-btn" data-role="view-lakes" aria-pressed="false">Lake Watch</button>
       <button type="button" class="view-btn" data-role="view-evidence" aria-pressed="false">How we know</button>
+      <button type="button" class="view-btn" data-role="view-home" aria-pressed="false">The story</button>
     </nav>
     <p class="maturity" data-role="maturity" data-kind="provisional"></p>
   </header>
@@ -221,9 +221,9 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     evidence: q("evidence-view"),
   };
   const viewButtons: Record<Exclude<View, "story" | "share">, HTMLButtonElement> = {
-    home: q("view-home"),
     lakes: q("view-lakes"),
     evidence: q("view-evidence"),
+    home: q("view-home"),
   };
 
   /** Puts a view in the address bar: a new history entry for a view change, a replaced one for a lake pick. */
@@ -250,16 +250,17 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     for (const [name, btn] of Object.entries(viewButtons)) btn.setAttribute("aria-pressed", String(name === next || (name === "home" && next === "story")));
     if (scroll) window.scrollTo?.(0, 0);
     q("view-name").textContent = VIEW_NAMES[next];
-    document.title = next === "home" ? "SARtale" : `SARtale · ${VIEW_NAMES[next]}`;
+    document.title = `SARtale · ${VIEW_NAMES[next]}`;
   }
 
-  q("home").addEventListener("click", () => showView("home"));
+  const openLakeWatch = (): void => {
+    // Lake Watch (the nav or the logo) always leads to the overview, also from a lake's own page.
+    if (routeFromHash(window.location.hash)?.view === "lakes") setHash("#lakes");
+    showView("lakes");
+  };
+  q("home").addEventListener("click", openLakeWatch);
   for (const [name, btn] of Object.entries(viewButtons)) {
-    btn.addEventListener("click", () => {
-      // Lake Watch in the nav always leads to the overview, also from a lake's own page.
-      if (name === "lakes" && routeFromHash(window.location.hash)?.view === "lakes") setHash("#lakes");
-      showView(name as View);
-    });
+    btn.addEventListener("click", () => (name === "lakes" ? openLakeWatch() : showView(name as View)));
   }
 
   // Back, Forward and a typed or linked hash all change the hash (our pushState entries always differ in it), so
@@ -270,7 +271,7 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     showView(r.view, false, false);
   };
   window.addEventListener("hashchange", followHash);
-  const first = routeFromHash(window.location.hash) ?? { view: "home" as View };
+  const first = routeFromHash(window.location.hash) ?? { view: "lakes" as View };
   showView(first.view, false, false);
   // A link to a story section, such as #videos, arrives before the page is drawn, so scroll to it now.
   const id = routeFromHash(window.location.hash) ? null : fragmentId(window.location.hash);
