@@ -39,8 +39,8 @@ BASE = (LAKES_IN, LAKES_JSON, PICTURES)  # inputs that only the rebuild jobs cha
 # What the numbers are computed with, besides the register: the method code (config.py included), the outlines,
 # the Sentinel-2 check rows lakes-build merges in, the Python environment and the rebuild steps. Recorded as git
 # object ids (a folder's tree id covers every file in it) of the commit the rebuild started from.
-SCIENCE = ("processing/sartale", "processing/outlines", "processing/lake_checks.json", "environment.yml",
-           ".github/actions/rebuild/action.yml")
+SCIENCE = ("processing/sartale", "processing/outlines", "processing/inventory", "processing/lake_checks.json",
+           "environment.yml", ".github/actions/rebuild/action.yml")
 MANIFEST = "manifest.json"
 SEGMENT = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9._-]*$")
 LAKE_ID = re.compile(r"^[a-z0-9_]+$")

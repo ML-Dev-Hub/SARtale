@@ -143,6 +143,17 @@ def pass_noise_km2(areas: list[float], baseline: float) -> float:
     return max(track_noise_km2(areas[-NOISE_PASSES:]), NOISE_REL_FLOOR * baseline)
 
 
+def noise_with_floor(areas: list[float], baseline: float) -> tuple[float, bool]:
+    """(`pass_noise_km2`, whether a floor set it): True when the track has too few passes for a pass-to-pass noise, or
+    when NOISE_FLOOR_KM2 or NOISE_REL_FLOOR x baseline is above 1.4826 x the median pass-to-pass difference."""
+    recent = areas[-NOISE_PASSES:]
+    noise = pass_noise_km2(areas, baseline)
+    if len(recent) < 3:
+        return noise, True
+    raw = 1.4826 * median(abs(b - a) for a, b in zip(recent, recent[1:]))
+    return noise, noise != raw
+
+
 def is_valid(p: SeriesPoint) -> bool:
     """A pass the status may use: not excluded, has an area, enough of the zone observable, and not taken while the
     lake was probably frozen (`frozen`, set by lakes-freeze: its area is kept but enters no baseline or noise)."""
@@ -163,7 +174,7 @@ def compare_passes(series: list[SeriesPoint]) -> list[dict]:
     level (module docstring): `z`, `baseline_km2`, `noise_km2` and `level_contrib`, plus `new_version` and `after_open`
     when they hold. A pass that is not valid gets none of these; a valid pass whose track has fewer than MIN_LOOKS earlier
     valid passes gets z None. Internal keys (`_z` unrounded, `_why`, `_prev`, `_cusum`, `_cusum_at`) ride along for
-    `assess`; `public` drops them."""
+    `assess`; `public` drops them. `_floored`: a floor set the pass's noise (`noise_with_floor`)."""
     out = [_strip(p) for p in series]
     order = sorted(range(len(out)), key=lambda i: (out[i]["date"], out[i]["track"]))
     hist: dict[str, list[tuple[float, str | None]]] = {}
@@ -193,12 +204,12 @@ def compare_passes(series: list[SeriesPoint]) -> list[dict]:
             continue
         base = h[-BASELINE_PASSES:]
         ref = median(a for a, _ in base)
-        noise = pass_noise_km2([a for a, _ in h], ref)
+        noise, floored = noise_with_floor([a for a, _ in h], ref)
         z = (area - ref) / noise
         base_crids = {c for _, c in base} - {None}
         if crid and base_crids and crid not in base_crids:
             p["new_version"] = True
-        p.update(z=round(z, 2), baseline_km2=round(ref, 6), noise_km2=round(noise, 6), _z=z)
+        p.update(z=round(z, 2), baseline_km2=round(ref, 6), noise_km2=round(noise, 6), _z=z, _floored=floored)
         h.append((area, crid))
         if after_open:
             p["level_contrib"] = None  # only rebuilds the baseline
@@ -305,7 +316,7 @@ def public(series: list[dict]) -> list[dict]:
 
 def _result(status, track=None, latest_date=None, looks=0, change=None, noise=None, reason="", **level) -> dict:
     """A status object. The level keys (`level`, `level_since`, `level_passes`, `cusum`, `z`, `baseline_km2`,
-    `alerts_paused`, `message`) are None (or empty) unless the status is a level."""
+    `alerts_paused`, `message`, `noise_floor_applied`) are None (or empty) unless the status is a level."""
     out = {
         "status": status,
         "track": track,
@@ -313,6 +324,7 @@ def _result(status, track=None, latest_date=None, looks=0, change=None, noise=No
         "looks": looks,
         "change_km2": change,
         "noise_km2": noise,
+        "noise_floor_applied": None,
         "reason": reason,
         "level": None,
         "level_since": None,
@@ -541,7 +553,7 @@ def assess(series: list[SeriesPoint], latest_expected: dict[str, str] | None = N
     return _result(level, t, last["date"], looks, round(change, 6), last["noise_km2"], reason,
                    level=level, level_since=since, level_passes=level_passes, cusum=cusum, z=last["z"],
                    baseline_km2=last["baseline_km2"], alerts_paused=paused, first_on_version=first_pass,
-                   newest_unread=unread, message=message), annotated
+                   newest_unread=unread, message=message, noise_floor_applied=last["_floored"]), annotated
 
 
 def _unread_why(series: list[dict], date: str, track: str) -> str:

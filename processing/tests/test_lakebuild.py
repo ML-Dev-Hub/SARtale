@@ -1032,3 +1032,65 @@ def test_an_outline_that_cannot_be_read_fails_the_lake_instead_of_drawing_the_ci
     write_pass(cache, lk, "2026-06-18", "156A")
     with pytest.raises(ValueError, match="alpha: the outline"):
         build_lakes([lk], cache, out, "2026-11-04T00:00:00Z")
+
+
+def test_every_series_row_gets_the_cache_stem_as_pass_id(built):
+    doc, _ = built
+    e = lake(doc, "alpha")
+    assert e["series"] and all(p["pass_id"] == f"{p['date']}_{p['track']}_{p['crid']}" for p in e["series"])
+    assert e["status"]["latest_pass_id"] in {p["pass_id"] for p in e["series"]}
+    assert e["status"]["latest_pass_id"] == f"{e['status']['latest_date']}_{e['status']['track']}_P05023"
+
+
+def test_the_status_carries_its_threshold_and_whether_a_noise_floor_set_it(built):
+    doc, _ = built
+    st = lake(doc, "alpha")["status"]
+    assert st["threshold_km2"] == pytest.approx(config.CHANGE_FACTOR * st["noise_km2"])
+    # four near-identical passes: the pass-to-pass noise is under the floors, so a floor set the noise
+    assert st["noise_floor_applied"] is True
+    gamma = lake(doc, "gamma")["status"]  # no window at all
+    assert gamma["threshold_km2"] is None and gamma["latest_pass_id"] is None and gamma["noise_floor_applied"] is None
+
+
+def test_each_lake_carries_its_district_province_and_zone_coverage(built, tmp_path):
+    from dataclasses import replace
+    doc, _ = built
+    alpha = lake(doc, "alpha")
+    assert alpha["district"] is None and alpha["province"] is None  # the test register sets none
+    assert alpha["coverage"] == {"outline_in_window_share": None, "zone_kind": "circle", "radius_m": 1000.0}
+    cache, out = tmp_path / "c2", tmp_path / "o2"
+    base = replace(make_lake("delta"), district="Hunza", province="GB", district_source="test")
+    write_pass(cache, base, "2026-06-18", "156A")
+    d = lake(build_lakes([base], cache, out, "2026-11-04T00:00:00Z"), "delta")
+    assert d["district"] == "Hunza" and d["province"] == "GB"
+
+
+def test_an_outline_lake_reports_how_much_of_its_outline_is_in_the_window(tmp_path):
+    inside = _build_with_outline(tmp_path / "in", lambda b: _outline_around(b, 600))
+    assert inside["coverage"]["zone_kind"] == "outline" and inside["coverage"]["radius_m"] is None
+    assert inside["coverage"]["outline_in_window_share"] == 1.0
+    # The window is 80 x 50 m = 4 km wide; a 3 km square shifted 2 km east is about half outside it.
+    half = _build_with_outline(tmp_path / "half", lambda b: _outline_around(b, 1500, shift_m=2000))
+    assert 0.35 <= half["coverage"]["outline_in_window_share"] <= 0.65
+    assert half["share_of_largest"] is None and "of the lake outline is inside the radar window" in half["share_note"]
+
+
+def test_the_build_writes_the_headline_summary(built):
+    doc, _ = built
+    assert doc["counts"]["watched"] == 3 and doc["previous_build"] is None
+    assert doc["newest_pass"] == "2026-08-05"
+    assert "mapped_count" in doc
+    for lk in doc["lakes"]:
+        assert {"suparco", "suparco_candidates", "largest_extent", "share_of_largest", "above_largest", "share_note",
+                "previous_status"} <= set(lk)
+
+
+def test_a_rebuild_records_the_build_it_replaces(tmp_path, built):
+    doc, out = built
+    cache = tmp_path / "cache"
+    again = build_lakes([make_lake("alpha"), make_lake("beta", 74.9, 36.4, "control"), make_lake("gamma")], cache,
+                        out, "2026-11-09T00:00:00Z", previous=doc)
+    assert again["previous_build"]["built"] == "2026-11-02T00:00:00Z"
+    assert again["previous_build"]["statuses"]["alpha"] == "No change"
+    assert again["previous_build"]["counts"] == doc["counts"]
+    assert lake(again, "alpha")["previous_status"] == "No change" and again["counts"]["changed"] == 0

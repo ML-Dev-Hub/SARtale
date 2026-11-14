@@ -25,6 +25,7 @@ from sartale.lakebuild import (
     validation_for,
 )
 from sartale.freeze import restatus
+from sartale.lakesummary import refresh_summary
 from sartale.lakecheck import check_lake
 from sartale.lake_requests import RequestError
 from sartale.lakes import load_lakes
@@ -499,6 +500,7 @@ def cmd_lakes_check(args) -> None:
         before, after = (lk.get("status") or {}).get("status"), (doc["lakes"][i].get("status") or {}).get("status")
         if before != after:
             print(f"{lk['id']}: status {before} -> {after}")
+    doc = refresh_summary(doc)  # the headline counts and shares follow the new statuses
     write_json_atomic(path, doc)
     print(f"{len(out)} checks -> {args.checks} and {path} ({time.time() - t0:.0f} s)")
 
@@ -637,6 +639,7 @@ def cmd_lakes_freeze(args) -> None:
             print(f"{lake.id}: last open-water pass {lo['date']} {lo['track']} {lo['area_km2']:.3f} km2 "
                   f"({lo['status']}), pictures {'drawn' if pics else 'not drawn'}")
         print(freeze_line(lk), flush=True)
+    doc = refresh_summary(doc)  # the headline counts and shares follow the new statuses and frozen flags
     write_json_atomic(path, doc)
     for gone in prune_lake_images(Path(args.out), doc):
         print(f"removed stale {gone.relative_to(Path(args.out))}")
