@@ -4,11 +4,13 @@ from pathlib import Path
 
 import pytest
 
+from conftest import DISTRICT_FIELDS, load_json, write_register
+from sartale.districts import DISTRICT_SOURCE, district_of
 from sartale.lake_requests import BOUNDS
 from sartale.lakes import Lake, lake_bbox, load_lakes
 from sartale.run_pipeline import append_lake_entry, lake_slug
 
-ROW = {"id": "x", "name": "X", "lon": 74.0, "lat": 36.0, "coord_source": "src", "role": "watch"}
+ROW = {"id": "x", "name": "X", "lon": 74.0, "lat": 36.0, "coord_source": "src", "role": "watch", **DISTRICT_FIELDS}
 
 
 def write(tmp_path, rows):
@@ -120,10 +122,12 @@ def test_register_checks_still_pass_after_an_accepted_request(tmp_path):
     shutil.copyfile(SHIPPED_REGISTER, copy)
     shipped = load_lakes(copy)
     lake_id = lake_slug("Requested lake", {l.id for l in shipped})  # as accept_entry picks it
-    # in the request box but outside the older, narrower study box (34.5-37.1 N, 71-77.8 E)
-    append_lake_entry(copy, {"id": lake_id, "name": "Requested lake", "lon": 70.9, "lat": 37.5,
+    # in the request box but outside the older, narrower study box (34.5-37.1 N, 71-77.8 E): Mansehra, KP
+    district, province = district_of(73.3, 34.45)
+    append_lake_entry(copy, {"id": lake_id, "name": "Requested lake", "lon": 73.3, "lat": 34.45,
                              "role": "watch", "coord_source": "Requested 2026-11-06 (issue #7): a survey",
-                             "outline": None, "downstream": None, "downstream_source": None})
+                             "outline": None, "downstream": None, "downstream_source": None,
+                             "district": district, "province": province, "district_source": DISTRICT_SOURCE})
     lakes = check_register(copy)
     assert len(lakes) == len(shipped) + 1 and lakes[-1].id == lake_id
 
@@ -184,3 +188,27 @@ def test_a_forming_exclude_that_cannot_be_used_stops_the_load(tmp_path):
             load_lakes(write(tmp_path, [_exclude_row("outlines/_tmp_point_test.geojson")]))
     finally:
         point.unlink()
+
+
+def test_every_register_and_new_lake_has_district_and_province(tmp_path):
+    rows = load_json("processing/lakes_in.json") + [{k: v for k, v in r.items() if k != "batch"}
+                                                    for r in load_json("inventory/new_lakes.json")]
+    lakes = load_lakes(write_register(tmp_path, rows))
+    assert all(l.district and l.province in ("GB", "KP") and l.district_source for l in lakes)
+    with pytest.raises(ValueError, match="province"):
+        load_lakes(write_register(tmp_path, [{k: v for k, v in rows[0].items() if k != "province"}]))
+
+
+@pytest.mark.parametrize("key, bad", [("district", None), ("district", " "), ("province", "PB"),
+                                      ("district_source", "")])
+def test_load_lakes_requires_district_province_and_source(tmp_path, key, bad):
+    with pytest.raises(ValueError, match=key):
+        load_lakes(write(tmp_path, [{**ROW, key: bad}]))
+    lake = load_lakes(write(tmp_path, [ROW]))[0]
+    assert (lake.district, lake.province, lake.district_source) == ("Hunza", "GB", "test districts")
+
+
+def test_a_lake_built_in_code_keeps_working_without_district():
+    lake = Lake(id="x", name="X", lon=74.0, lat=36.0, coord_source="s", outline=None, role="watch",
+                downstream=None, downstream_source=None)
+    assert lake.district is None and lake.province is None and lake.district_source is None

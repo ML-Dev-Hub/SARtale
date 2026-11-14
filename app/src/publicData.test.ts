@@ -10,13 +10,13 @@ const lakes = lakesJson as unknown as LakesFile;
 const dataFiles = Object.keys(import.meta.glob("../public/data/**/*", { query: "?url" })).map((p) => p.replace("../public/data/", ""));
 
 describe("the data the app ships (app/public/data)", () => {
-  test("is lakes.json, requests.json and the lake images lakes.json names, nothing else", () => {
+  test("is lakes.json, requests.json, mapped_lakes.json and the lake images lakes.json names, nothing else", () => {
     // Derived from lakes.json, so a rebuild with more lakes keeps passing.
     // a frozen lake also ships the pictures of its last open-water pass (last_open.images)
     const images = lakes.lakes
       .flatMap((l) => [l.images, l.last_open?.images].flatMap((im) => (im ? [im.latest_hh, im.water] : [])))
       .filter((p): p is string => typeof p === "string");
-    expect(dataFiles.sort()).toEqual(["lakes.json", "requests.json", ...images].sort());
+    expect(dataFiles.sort()).toEqual(["lakes.json", "mapped_lakes.json", "requests.json", ...images].sort());
   });
 
   test("names its NISAR processing versions and collections, with the cloud window and the method constants", () => {

@@ -1,9 +1,14 @@
+import json
 import re
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
+from conftest import DISTRICT_FIELDS, write_register
+from sartale import lake_requests
 from sartale.lake_catalog import Pass
+from sartale.lake_issues import accept_entry, build_feed
 from sartale.lake_requests import BANNED_CLAIMS, RequestError, coverage, find_banned_claims, validate
 from sartale.lakes import Lake
 
@@ -134,3 +139,27 @@ def test_banned_source_comes_after_the_name_and_source_rules():
     assert str(err({**GOOD, "name": "Safe lake", "source": "A safe survey"})).startswith("The name uses")
     assert str(err({**GOOD, "source": "ok"})) == "source must be 3–200 characters."
     assert validate({**GOOD, "source": "Unsafe-slope inventory"}, [], [])["source"] == "Unsafe-slope inventory"
+
+
+def accept_fixture_request(tmp_path, lat, lon):
+    """Check one request issue and accept it the way lake-issue-accept does; return the appended register row. The
+    request box is widened while checking so that the accept step's own district check is what is tested."""
+    lakes_in = write_register(tmp_path, [{"id": "attabad", "name": "Attabad Lake", "lon": 74.86, "lat": 36.33,
+                                          "role": "control", "coord_source": "s", "outline": None, "downstream": None,
+                                          "downstream_source": None, **DISTRICT_FIELDS}])
+    body = (f"### Lake name\n\nRequested tarn\n\n### Latitude (°N)\n\n{lat}\n\n### Longitude (°E)\n\n{lon}\n\n"
+            "### Where the coordinates come from\n\nGlacier survey")
+    issue = {"number": 7, "title": "Add a lake", "body": body, "state": "open", "labels": [{"name": "lake-request"}],
+             "created_at": "2026-11-07T10:00:00Z", "user": {"login": "visitor"}}
+    search = lambda lat, lon: {"passes": 14, "tracks": ["055A", "156A"], "first": "2026-06-18", "last": "2026-10-23"}  # noqa: E731
+    with mock.patch.object(lake_requests, "BOUNDS", (30.0, 40.0, 60.0, 80.0)):
+        feed = build_feed([issue], [], None, search=search, now="2026-11-07T11:00:00Z")
+    lake_id = accept_entry(feed, issue, lakes_in, "2026-11-08")
+    return next(r for r in json.loads(lakes_in.read_text(encoding="utf-8")) if r["id"] == lake_id)
+
+
+def test_an_accepted_request_gets_its_district_and_province(tmp_path):
+    row = accept_fixture_request(tmp_path, lat=36.458, lon=74.881)
+    assert row["province"] == "GB" and row["district"] and row["district_source"]
+    with pytest.raises(RequestError, match="outside Gilgit-Baltistan and Khyber Pakhtunkhwa"):
+        accept_fixture_request(tmp_path, lat=34.0, lon=73.5)

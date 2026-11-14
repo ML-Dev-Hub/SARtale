@@ -3,6 +3,7 @@
 *.h5
 *.tif
 app/public/data/raw/
+processing/inventory/dl/
 app/dist/
 node_modules/
 __pycache__/

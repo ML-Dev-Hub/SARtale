@@ -3,6 +3,7 @@ import math
 import re
 import unicodedata
 
+from sartale.districts import DISTRICT_SOURCE, district_of
 from sartale.lake_catalog import search_lake_passes, select_lake_passes
 from sartale.lakes import Lake
 
@@ -107,6 +108,17 @@ def validate(payload: dict, watched: list[Lake], open_requests: list[dict]) -> d
         if haversine_km(lat, lon, row["lat"], row["lon"]) <= NEAR_KM:
             raise RequestError(f"Already requested: {row['name']}.", 409)
     return {"name": name, "lat": lat, "lon": lon, "source": source}
+
+
+def district_fields(lat: float, lon: float) -> dict:
+    """The register's district, province and district_source for an accepted request's point. A point outside
+    Gilgit-Baltistan and Khyber Pakhtunkhwa is refused (the request box also takes in parts of Azad Kashmir,
+    Afghanistan and Ladakh)."""
+    try:
+        district, province = district_of(lon, lat)
+    except ValueError:
+        raise RequestError("The point is outside Gilgit-Baltistan and Khyber Pakhtunkhwa.", 409) from None
+    return {"district": district, "province": province, "district_source": DISTRICT_SOURCE}
 
 
 def coverage(lat: float, lon: float, search=search_lake_passes) -> dict:

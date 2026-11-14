@@ -16,7 +16,7 @@ import requests
 from sartale.accept_queue import CHECKED, next_accept
 from sartale.config import MIN_LOOKS
 from sartale.lake_requests import (MAX_OPEN, RequestError, _text, banned_name_message, banned_source_message, coverage,
-                                   validate)
+                                   district_fields, validate)
 from sartale.lakes import Lake
 
 FIELDS = {"Lake name": "name", "Latitude (°N)": "lat", "Longitude (°E)": "lon",
@@ -300,10 +300,11 @@ def accept_entry(feed: dict, issue: dict, lakes_in: Path, today: str, approved_a
         banned = banned_source_message(source)  # an entry checked before this rule existed
         if banned:
             raise RequestError(banned, 409)
+        place = district_fields(entry["lat"], entry["lon"])
         lake = {"id": lake_slug(entry["name"], {r["id"] for r in rows}), "name": entry["name"],
                 "lon": entry["lon"], "lat": entry["lat"], "role": "watch",
                 "coord_source": f"Requested {today} {marker} {source}",
-                "outline": None, "downstream": None, "downstream_source": None}
+                "outline": None, "downstream": None, "downstream_source": None, **place}
         append_lake_entry(lakes_in, lake)
         same = lake
     entry["state"], entry["lake_id"] = "accepted", same["id"]

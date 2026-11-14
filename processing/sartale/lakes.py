@@ -13,6 +13,7 @@ KM_PER_DEG_LAT = 111.32
 # lake; the status is still computed and the site carries a limit. "no_lake": there is no lake now (an ice-dammed
 # lake's empty basin, say); the site is kept to watch for a lake forming, with no growing/shrinking verdict.
 LAKE_STATES = ("lake", "unconfirmed", "no_lake")
+PROVINCES = ("GB", "KP")  # Gilgit-Baltistan, Khyber Pakhtunkhwa
 DEFAULT_ZONE_KM = 1.0  # radius of the circle zone when a lake has no outline
 MAX_ZONE_KM = 2.5  # the cached window is 6 km across, so a circle must stay inside it
 
@@ -56,6 +57,11 @@ class Lake:
     # to it. Needs a source.
     elevation_m: float | None = None
     elevation_source: str | None = None
+    # The district and province the lake point lies in (sartale.districts.district_of) and where that comes from.
+    # Every register row must carry them (load_lakes); the defaults only keep lakes built in code working.
+    district: str | None = None
+    province: Literal["GB", "KP"] | None = None
+    district_source: str | None = None
 
 
 def exclude_geometry(lake_id: str, path: str, root: Path | None = None) -> dict:
@@ -119,7 +125,8 @@ def _forming_seasons(lake_id, rows, state: str) -> tuple[FormingSeason, ...]:
 
 
 def load_lakes(path: Path) -> list[Lake]:
-    """Read the register. Every lake needs a coordinate source and a known role; ids are unique."""
+    """Read the register. Every lake needs a coordinate source, a known role, and its district and province with
+    their source; ids are unique."""
     lakes, seen = [], set()
     for row in json.loads(Path(path).read_text(encoding="utf-8")):
         lake_id = row.get("id")
@@ -163,6 +170,11 @@ def load_lakes(path: Path) -> list[Lake]:
                 raise ValueError(f"Lake {lake_id}: elevation_m must be a height in metres, got {elev!r}")
             if not str(row.get("elevation_source") or "").strip():
                 raise ValueError(f"Lake {lake_id}: elevation_m needs an elevation_source")
+        for key in ("district", "district_source"):
+            if not isinstance(row.get(key), str) or not row[key].strip():
+                raise ValueError(f"Lake {lake_id}: {key} is required")
+        if row.get("province") not in PROVINCES:
+            raise ValueError(f"Lake {lake_id}: province must be one of {PROVINCES}, got {row.get('province')!r}")
         seen.add(lake_id)
         lakes.append(Lake(
             id=lake_id, name=row["name"], lon=float(row["lon"]), lat=float(row["lat"]),
@@ -173,6 +185,7 @@ def load_lakes(path: Path) -> list[Lake]:
             forming_share_source=row.get("forming_share_source"), forming_seasons=seasons,
             forming_exclude=exclude, forming_exclude_source=row.get("forming_exclude_source"), limits=tuple(limits),
             elevation_m=None if elev is None else float(elev), elevation_source=row.get("elevation_source"),
+            district=row["district"], province=row["province"], district_source=row["district_source"],
         ))
     return lakes
 

@@ -14,7 +14,8 @@ HERE = Path(__file__).parent
 LAKES_IN = (
     '[\n'
     '  {"id": "attabad", "name": "Attabad Lake (landslide-dammed control)", "lon": 74.86, "lat": 36.33, "role": "control",\n'
-    '   "coord_source": "spike", "outline": null, "downstream": null, "downstream_source": null}\n'
+    '   "coord_source": "spike", "outline": null, "downstream": null, "downstream_source": null,\n'
+    '   "district": "Hunza", "province": "GB", "district_source": "test districts"}\n'
     ']\n')
 
 

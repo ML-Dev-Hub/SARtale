@@ -1,0 +1,131 @@
+[
+ {
+  "id": "hkhpk2020",
+  "name": "HKH-PK-2020 glacial lake inventory (Siddique et al. 2023)",
+  "url": "https://zenodo.org/api/records/15476013/files/HKH-PK.zip/content",
+  "doi": "https://doi.org/10.5281/zenodo.15476013",
+  "file": "hkhpk/hkhpk.zip",
+  "licence": "CC BY 4.0",
+  "attribution": "Siddique et al. 2023, Zenodo 15476013",
+  "fetched": "2026-11-11",
+  "note": "8,808 outlines mapped on PlanetScope imagery of Sep 2020. The .prj says UTM 43N (EPSG:32643), not EPSG:4326 as the record's description says.",
+  "sha256": "7bdc3da137c34c3c5e0c6219de872aab662df2ec02eff90018d6f94f7576bf1f"
+ },
+ {
+  "id": "himag",
+  "name": "Hi-MAG glacial lake database 2008-2017 (Chen et al. 2021, ESSD 13:741)",
+  "url": "https://zenodo.org/api/records/4275164/files/Hi-MAG%20database.zip/content",
+  "doi": "https://doi.org/10.5281/zenodo.4275164",
+  "file": "himag/himag.zip",
+  "licence": "CC BY 4.0",
+  "attribution": "Chen et al. 2021, Earth Syst. Sci. Data 13:741, Zenodo 4275164",
+  "fetched": "2026-11-11",
+  "note": "Annual Landsat 30 m outlines with lake type and elevation.",
+  "sha256": "b7abd8ed1ae452961e7826418104c896db7e8a8dec329d6d7353d1e469e9085c"
+ },
+ {
+  "id": "osm",
+  "name": "OpenStreetMap water polygons (natural=water) over the request box",
+  "url": "https://overpass-api.de/api/interpreter",
+  "file": "osm/osm_water.json",
+  "licence": "ODbL 1.0",
+  "attribution": "© OpenStreetMap contributors",
+  "fetched": "2026-11-11",
+  "osm_base": "2026-11-11T13:23:19Z",
+  "query": "[out:json][timeout:600];(way[\"natural\"=\"water\"][\"water\"!=\"river\"](34.4,70.8,37.6,76.6);relation[\"natural\"=\"water\"][\"water\"!=\"river\"](34.4,70.8,37.6,76.6););out geom;",
+  "note": "The Overpass result is a dated snapshot of OpenStreetMap (osm_base above); fetching again gives newer data. The query text was not saved with the result: this one is rebuilt from the investigation's notes (bounding box 34.4,70.8,37.6,76.6; natural=water except rivers) and matches the result (2,419 ways and 35 relations, all natural=water, none water=river).",
+  "sha256": "4556bfc6f32c58de3956c4f4008d0f068ca9d4b45d5a3099986a570e72838ecd"
+ },
+ {
+  "id": "geoboundaries_adm0",
+  "name": "geoBoundaries gbOpen PAK ADM0 (Unknown, 2017)",
+  "url": "https://www.geoboundaries.org/api/current/gbOpen/PAK/ADM0/",
+  "download_url": "https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/PAK/ADM0/geoBoundaries-PAK-ADM0.geojson",
+  "file": "gb/ADM0.geojson",
+  "licence": "Open Data Commons Open Database License 1.0",
+  "attribution": "geoBoundaries (Runfola et al. 2020); source: OpenStreetMap, Wambacher",
+  "fetched": "2026-11-11",
+  "build": "Dec 12, 2023",
+  "sha256": "0caf6e9e0153e3fe482b9c6ed0aa745bdea9b282423bb9b2ca6ce905e09439d8"
+ },
+ {
+  "id": "geoboundaries_adm1",
+  "name": "geoBoundaries gbOpen PAK ADM1 (Province, 2019)",
+  "url": "https://www.geoboundaries.org/api/current/gbOpen/PAK/ADM1/",
+  "download_url": "https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/PAK/ADM1/geoBoundaries-PAK-ADM1.geojson",
+  "file": "gb/ADM1.geojson",
+  "licence": "Public Domain",
+  "attribution": "geoBoundaries (Runfola et al. 2020); source: geoBoundaries, Wikipedia",
+  "fetched": "2026-11-11",
+  "build": "Dec 12, 2023",
+  "sha256": "34c973399b464f8b43a6cfbc9255ff6d19d911477f1549d0ff0f1dcaaf63c37b"
+ },
+ {
+  "id": "geoboundaries_adm2",
+  "name": "geoBoundaries gbOpen PAK ADM2 (Districts, 2019)",
+  "url": "https://www.geoboundaries.org/api/current/gbOpen/PAK/ADM2/",
+  "download_url": "https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/PAK/ADM2/geoBoundaries-PAK-ADM2.geojson",
+  "file": "gb/ADM2.geojson",
+  "licence": "Public Domain",
+  "attribution": "geoBoundaries (Runfola et al. 2020); source: geoBoundaries, Wikipedia",
+  "fetched": "2026-11-11",
+  "build": "Dec 12, 2023",
+  "sha256": "108eeaa75a6de678f022e0b6d8fd8ab4c93e4b4d1a9c6a28995afe7c0731182c"
+ },
+ {
+  "id": "hmaglofdb",
+  "name": "HMAGLOFDB v1.3.0, High Mountain Asia GLOF database (Shrestha et al. 2023, ESSD 15:3941)",
+  "url": "https://api.github.com/repos/fidelsteiner/HMAGLOFDB/zipball/1d975defe128dc66f5d342f42bc54b9a731cfc29",
+  "doi": "https://doi.org/10.5281/zenodo.18257243",
+  "file": "hma.zip",
+  "licence": "CC0 1.0",
+  "attribution": "Shrestha et al. 2023",
+  "fetched": "2026-11-10",
+  "sha256": "7903cd5abf95265705824f7e1f54e7e52bf514b2d300b828718e781fbe2622ca"
+ },
+ {
+  "id": "suparco_2026_05_20",
+  "name": "SUPARCO space4climate GLOF post, published 2026-05-22",
+  "url": "https://space4climate.gov.pk/glacial-lakes-status-20th-may-2026/",
+  "file": "suparco/glacial-lakes-status-20th-may-2026.html",
+  "licence": "None stated ('All rights reserved by SUPARCO'). Not redistributed: only SARtale's reconstructed ID matches are committed, with their method",
+  "fetched": "2026-11-11",
+  "sha256": "702971a1b0e8242ab5a829c6eca85bd0397d0d2f18f44ecaa8aeb1545c0bcbad"
+ },
+ {
+  "id": "suparco_2026_06_05",
+  "name": "SUPARCO space4climate GLOF post, published 2026-06-08",
+  "url": "https://space4climate.gov.pk/glacial-lakes-status-5th-june-2026/",
+  "file": "suparco/glacial-lakes-status-5th-june-2026.html",
+  "licence": "None stated ('All rights reserved by SUPARCO'). Not redistributed: only SARtale's reconstructed ID matches are committed, with their method",
+  "fetched": "2026-11-11",
+  "sha256": "645ee8c1257a4e4746411299c046e4dd65004cd488a84783fb169cd7d2b9f9fc"
+ },
+ {
+  "id": "suparco_2026_07_02",
+  "name": "SUPARCO space4climate GLOF post, published 2026-07-02",
+  "url": "https://space4climate.gov.pk/glof-status-update/",
+  "file": "suparco/glof-status-update.html",
+  "licence": "None stated ('All rights reserved by SUPARCO'). Not redistributed: only SARtale's reconstructed ID matches are committed, with their method",
+  "fetched": "2026-11-11",
+  "sha256": "59fd2aa0864128700bb61851711aca85b1a3440d3082b665656ca54c657babcb"
+ },
+ {
+  "id": "suparco_2026_08_20",
+  "name": "SUPARCO space4climate GLOF post, published 2026-08-20",
+  "url": "https://space4climate.gov.pk/glof-monitoring-status-05-august-2026/",
+  "file": "suparco/glof-monitoring-status-05-august-2026.html",
+  "licence": "None stated ('All rights reserved by SUPARCO'). Not redistributed: only SARtale's reconstructed ID matches are committed, with their method",
+  "fetched": "2026-11-11",
+  "sha256": "a1eab4058cb7b601d3a10539d136564e4084b6c121879df7cf6a59434dcf5852"
+ },
+ {
+  "id": "suparco_map_2026_07_01",
+  "name": "SUPARCO GLOF monitoring status map, 1 Jul 2026 (JPEG)",
+  "url": "https://space4climate.gov.pk/wp-content/uploads/2026/07/GLOF-Monitoring-Status3-1st-July-2026.jpg",
+  "file": "suparco/GLOF-Monitoring-Status3-1st-July-2026.jpg",
+  "licence": "None stated ('All rights reserved by SUPARCO'). Not redistributed: only SARtale's reconstructed ID matches are committed, with their method",
+  "fetched": "2026-11-11",
+  "sha256": "81045d774682320190e10d3f025e546eb85bad12c87ddf94536a04f19892b1e2"
+ }
+]
