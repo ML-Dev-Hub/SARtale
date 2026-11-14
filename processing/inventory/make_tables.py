@@ -334,6 +334,17 @@ def coord_source(c, rid: str) -> str:
     return "; ".join(parts)
 
 
+LAKE_KINDS = (("moraine", "Moraine-dammed lake"), ("thermokarst", "Thermokarst lake"),
+              ("supraglacial", "Supraglacial lake"), ("proglacial", "Proglacial lake"))
+
+
+def fallback_name(cid: str, dam_type: str, district: str | None) -> str:
+    """A name for a lake no source names: its inventory type, candidate ID and district, e.g. "Proglacial lake
+    C026, Ghizer". Never "Unnamed": officers read the list, and the ID alone tells them nothing."""
+    kind = next((k for key, k in LAKE_KINDS if key in str(dam_type).lower()), "Glacial lake")
+    return f"{kind} {cid}, {district}" if district else f"{kind} {cid}"
+
+
 def outline_feature(geom, c, name: str) -> dict:
     src = c.outline_source
     lic = "CC BY 4.0" if "CC BY" in src else ("ODbL 1.0" if "OpenStreetMap" in src else "")
@@ -449,15 +460,15 @@ def main(argv=None) -> None:
     new_rows, inventory = [], {}
     for batch, cid, rid, name in PICKS:
         c = cands.loc[cid]
-        name = name or f"Unnamed lake {cid}"
+        cen = centroids.loc[cid]
+        district, province, km = districts.locate(cen.x, cen.y, dpath)
+        name = name or fallback_name(cid, c.dam_type, district)
         if "pdgl" in rid or "PDGL" in name:
             raise SystemExit(f"{rid}: a SUPARCO number in an id or name")
         feature = outline_feature(geoms.loc[cid].geometry, c, name)
         args.outlines.mkdir(parents=True, exist_ok=True)
         (args.outlines / f"{rid}.geojson").write_text(json.dumps(feature, ensure_ascii=False) + "\n",
                                                       encoding="utf-8")
-        cen = centroids.loc[cid]
-        district, province, km = districts.locate(cen.x, cen.y, dpath)
         new_rows.append({"id": rid, "name": name, "lon": round(float(c.lon), 6), "lat": round(float(c.lat), 6),
                          "role": "watch", "coord_source": coord_source(c, rid),
                          "outline": f"outlines/{rid}.geojson", "downstream": None, "downstream_source": None,

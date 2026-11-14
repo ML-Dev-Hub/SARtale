@@ -58,11 +58,13 @@ def test_no_name_or_id_carries_a_suparco_number():
     assert not [r for r in register_and_new() if "pdgl" in r["id"] or "PDGL" in r["name"]]
 
 
-def test_unnamed_lakes_are_named_by_candidate():
-    for r in load_json("inventory/new_lakes.json"):
+def test_unnamed_lakes_are_named_by_type_candidate_and_district():
+    kinds = "Moraine-dammed|Thermokarst|Supraglacial|Proglacial|Glacial"
+    for r in register_and_new():
+        assert "Unnamed" not in r["name"]
         m = re.fullmatch(r"lake_c(\d{3})", r["id"])
         if m:
-            assert r["name"] == f"Unnamed lake C{m.group(1)}"
+            assert re.fullmatch(rf"({kinds}) lake C{m.group(1)}, {re.escape(r['district'])}", r["name"]), r["name"]
     borith = next(r for r in load_json("inventory/new_lakes.json") if r["id"] == "borith")
     assert "GLOF lake" not in borith["coord_source"] and "glacial lake outburst" not in borith["coord_source"]
 

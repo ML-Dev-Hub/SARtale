@@ -5278,7 +5278,7 @@
   },
   {
    "id": "lake_c006",
-   "name": "Unnamed lake C006",
+   "name": "Proglacial lake C006, Ghizer",
    "lon": 72.594339,
    "lat": 35.944233,
    "role": "watch",
@@ -5686,7 +5686,7 @@
   },
   {
    "id": "lake_c007",
-   "name": "Unnamed lake C007",
+   "name": "Proglacial lake C007, Diamer",
    "lon": 73.364776,
    "lat": 35.945076,
    "role": "watch",
@@ -7180,7 +7180,7 @@
   },
   {
    "id": "lake_c010",
-   "name": "Unnamed lake C010",
+   "name": "Proglacial lake C010, Ghizer",
    "lon": 73.95457,
    "lat": 36.264717,
    "role": "watch",
@@ -7563,7 +7563,7 @@
   },
   {
    "id": "lake_c011",
-   "name": "Unnamed lake C011",
+   "name": "Proglacial lake C011, Kohistan",
    "lon": 72.798167,
    "lat": 35.623888,
    "role": "watch",
@@ -8169,7 +8169,7 @@
   },
   {
    "id": "lake_c012",
-   "name": "Unnamed lake C012",
+   "name": "Glacial lake C012, Astore",
    "lon": 74.761124,
    "lat": 34.839399,
    "role": "watch",
@@ -8674,7 +8674,7 @@
   },
   {
    "id": "lake_c013",
-   "name": "Unnamed lake C013",
+   "name": "Proglacial lake C013, Ghizer",
    "lon": 73.406199,
    "lat": 36.64235,
    "role": "watch",
@@ -9682,7 +9682,7 @@
   },
   {
    "id": "lake_c015",
-   "name": "Unnamed lake C015",
+   "name": "Supraglacial lake C015, Kharmang",
    "lon": 76.517178,
    "lat": 34.81333,
    "role": "watch",
@@ -10170,7 +10170,7 @@
   },
   {
    "id": "lake_c017",
-   "name": "Unnamed lake C017",
+   "name": "Proglacial lake C017, Astore",
    "lon": 74.616053,
    "lat": 35.192717,
    "role": "watch",
@@ -10617,7 +10617,7 @@
   },
   {
    "id": "lake_c018",
-   "name": "Unnamed lake C018",
+   "name": "Proglacial lake C018, Chitral",
    "lon": 71.373013,
    "lat": 35.979567,
    "role": "watch",
@@ -11272,7 +11272,7 @@
   },
   {
    "id": "lake_c019",
-   "name": "Unnamed lake C019",
+   "name": "Proglacial lake C019, Chitral",
    "lon": 71.516438,
    "lat": 35.658561,
    "role": "watch",
@@ -11833,7 +11833,7 @@
   },
   {
    "id": "lake_c020",
-   "name": "Unnamed lake C020",
+   "name": "Proglacial lake C020, Astore",
    "lon": 74.637775,
    "lat": 34.914277,
    "role": "watch",
