@@ -329,3 +329,14 @@ describe("startup robustness", () => {
     expect(root.querySelectorAll(".sp-request").length).toBe(1);
   });
 });
+
+describe("routeFromHash, new routes", () => {
+  test("routes the new hashes", () => {
+    expect(routeFromHash("#lakes?show=frozen")).toEqual({ view: "lakes", query: "show=frozen" });
+    expect(routeFromHash("#lakes/passu/pass/2026-11-09_055A_P05036")).toEqual({ view: "lakes", lake: "passu", pass: "2026-11-09_055A_P05036" });
+    expect(routeFromHash("#lakes/passu/compare/a_1/b_2")).toEqual({ view: "lakes", lake: "passu", compare: ["a_1", "b_2"] });
+    expect(routeFromHash("#lakes/passu")).toEqual({ view: "lakes", lake: "passu" });
+    expect(routeFromHash("#share")).toEqual({ view: "share" });
+    expect(routeFromHash("#lakes/Passu<script>")).toBeNull();
+  });
+});

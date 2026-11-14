@@ -129,6 +129,52 @@ export interface AbsenceCheck {
   source?: string;
 }
 
+/** A SUPARCO PDGL list entry matched to a lake. A "possible" match is never shown (suparcoLine). */
+export interface SuparcoRef {
+  id: number;
+  match: "probable" | "possible" | "official";
+  source: string;
+}
+
+/** The largest extent a lake is known to have had, and where that comes from. */
+export interface LargestExtent {
+  km2: number;
+  source: string;
+  year: number | null;
+}
+
+/** The picture files of one pass (paths under data/), null where a picture could not be drawn. */
+export interface PassAssets {
+  hh: string | null;
+  water: string | null;
+  valid: string | null;
+}
+
+/** The headline numbers of the overview (pipeline: lakesummary.headline_counts). */
+export interface HeadlineCounts {
+  watched: number;
+  alert: number;
+  watch: number;
+  decrease: number;
+  forming: number;
+  needs_attention: number;
+  open_water: number;
+  frozen: number;
+  no_lake: number;
+  above_largest: number;
+  suparco_listed: number;
+  changed: number;
+}
+
+/** The radar grid a lake's pictures are drawn on. */
+export interface LakeGrid {
+  key: string;
+  pixel_m: number;
+  width: number;
+  height: number;
+  zone: string;
+}
+
 export interface LakeStatus {
   /** A level, or why there is none. Older builds (before the levels) used other words, shown as they are. */
   status: LakeStatusName | string;
@@ -156,6 +202,12 @@ export interface LakeStatus {
   /** A newer pass of some track that could not be read while a level stands (it never hides the level). */
   newest_unread?: { date: string; track: string; why: string } | null;
   message?: LevelMessage | null;
+  /** The change a pass must pass to count: the change factor times the noise (absent before the overview build). */
+  threshold_km2?: number | null;
+  /** Whether the noise floor set the noise (null when the status did not come from a compared pass). */
+  noise_floor_applied?: boolean | null;
+  /** The pass_id of the status track's pass on the latest date. */
+  latest_pass_id?: string | null;
 }
 
 export interface LakeSeriesPoint {
@@ -183,6 +235,10 @@ export interface LakeSeriesPoint {
   new_version?: boolean;
   /** One of a track's first passes after the lake opened: it only rebuilds the baseline. */
   after_open?: boolean;
+  /** Stable id of the pass, e.g. "2026-11-09_055A_P05036" (absent before the overview build). */
+  pass_id?: string;
+  /** The pass's pictures (absent when none were drawn). */
+  assets?: PassAssets;
 }
 
 export interface Lake {
@@ -218,6 +274,18 @@ export interface Lake {
   elevation_source?: string | null;
   downstream: string | null;
   downstream_source: string | null;
+  /** The district, the province and the SUPARCO PDGL match (absent before the overview build; null where unknown). */
+  district?: string | null;
+  province?: "GB" | "KP" | null;
+  suparco?: SuparcoRef | null;
+  largest_extent?: LargestExtent | null;
+  /** The lake's radar area now as a share of its largest extent; null with `share_note` saying why. */
+  share_of_largest?: number | null;
+  above_largest?: boolean | null;
+  share_note?: string | null;
+  /** The status the previous build gave the lake. */
+  previous_status?: string | null;
+  grid?: LakeGrid | null;
   status: LakeStatus;
   cloud_window_looks: number;
   directions: string[];
@@ -443,6 +511,14 @@ export interface LakesFile {
   check_notes?: LakeCheckNote[];
   /** Names of the sites the file lists but this version of the page cannot show; filled by keepValidLakes. */
   dropped_lakes?: string[];
+  /** The overview's numbers, from the newest build (absent before the overview build). */
+  counts?: HeadlineCounts;
+  /** Date of the newest pass of any lake. */
+  newest_pass?: string | null;
+  /** What the previous build said, to show what changed. */
+  previous_build?: { built: string | null; counts: HeadlineCounts; statuses: Record<string, string | null> } | null;
+  /** Lakes in the mapped inventory. */
+  mapped_count?: number | null;
 }
 
 export const STATUS_ORDER: LakeStatusName[] = [
@@ -648,10 +724,50 @@ export function isLakesFile(v: unknown): v is LakesFile {
     && Array.isArray(v.lakes) && Array.isArray(v.checks);
 }
 
+const isSuparco = (v: unknown): boolean => isObj(v) && isNum(v.id) && ["probable", "possible", "official"].includes(v.match as string) && isStr(v.source);
+const isExtent = (v: unknown): boolean => isObj(v) && isNum(v.km2) && isStr(v.source) && isNumOrNull(v.year);
+const isAssets = (v: unknown): boolean => isObj(v) && ["hh", "water", "valid"].every((k) => isStrOrNull(v[k]));
+const isGrid = (v: unknown): boolean => isObj(v) && isStr(v.key) && isStr(v.zone) && ["pixel_m", "width", "height"].every((k) => isNum(v[k]));
+
+/**
+ * The lake with each malformed optional field of the overview build set to null (a series point's malformed `assets`
+ * or `pass_id` is removed), so one bad field costs only itself and never the lake.
+ */
+export function degradeLake(l: Lake): Lake {
+  const o = l as unknown as Record<string, unknown>;
+  const out: Record<string, unknown> = { ...o };
+  const nullIfBad = (k: string, ok: (v: unknown) => boolean) => {
+    if (o[k] !== undefined && o[k] !== null && !ok(o[k])) out[k] = null;
+  };
+  nullIfBad("suparco", isSuparco);
+  nullIfBad("largest_extent", isExtent);
+  nullIfBad("grid", isGrid);
+  nullIfBad("district", isStr);
+  nullIfBad("province", (v) => v === "GB" || v === "KP");
+  nullIfBad("share_of_largest", isNum);
+  nullIfBad("above_largest", (v) => typeof v === "boolean");
+  nullIfBad("share_note", isStr);
+  nullIfBad("previous_status", isStr);
+  out.series = l.series.map((p) => {
+    const r = { ...(p as unknown as Record<string, unknown>) };
+    if (r.assets !== undefined && !isAssets(r.assets)) delete r.assets;
+    if (r.pass_id !== undefined && !isStr(r.pass_id)) delete r.pass_id;
+    return r;
+  });
+  return out as unknown as Lake;
+}
+
+/** The SUPARCO line of a lake: a "possible" match is never shown. */
+export function suparcoLine(l: Lake): string {
+  const s = l.suparco;
+  if (!s || s.match === "possible") return "Not matched to a SUPARCO PDGL ID";
+  return s.match === "probable" ? `SUPARCO PDGL ${s.id} (probable match)` : `SUPARCO PDGL ${s.id}`;
+}
+
 /** Keeps the lakes the views can draw and lists the others by name (or id) in `dropped_lakes`. */
 export function keepValidLakes(f: LakesFile): LakesFile {
   const all = f.lakes as unknown[];
-  const kept = all.filter(isLake) as Lake[];
+  const kept = (all.filter(isLake) as Lake[]).map(degradeLake);
   const dropped = all
     .filter((l) => !isLake(l))
     .map((l, i) => {

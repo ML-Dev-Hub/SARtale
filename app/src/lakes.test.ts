@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { olderFile, fixtureLakes, frozenFixture } from "./fixtures";
+import { olderFile, fixtureLakes, frozenFixture, makeFile, makeLake } from "./fixtures";
 import realLakes from "../public/data/lakes.json";
 import frozenLakes from "./frozen/lakes.json";
-import { droppedLine, isLake, isLakesFile } from "./lakes";
+import { droppedLine, isLake, isLakesFile, keepValidLakes, suparcoLine } from "./lakes";
 import { findBannedClaims } from "./content";
 import { absenceLine, cloudHeadline, LEVEL_LIMITS, FROZEN_AREA, freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, isFrozen, isTrendPass, lakeTokens, mayBeForming, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
 
@@ -363,5 +363,38 @@ describe("frozen lakes, review fixes", () => {
     expect(facts).toContain("Sentinel-2: none clear over the lake in the last 7 days.");
     expect(facts).toContain("Last Sentinel-2 evidence, which still holds: 8 Nov 2026 (S2A_X), snow or ice on 100% and water on 0% of the lake outline seen clear.");
     expect(facts[facts.length - 1]).toBe("Not refreshed since 12 Nov 2026: NASA POWER air temperature could not be fetched; the last check stands.");
+  });
+});
+
+describe("the new lakes.json fields", () => {
+  test("a malformed suparco, extent or assets degrades that field only", () => {
+    const f = keepValidLakes(makeFile([makeLake({ id: "a", suparco: { id: "x" } as never, largest_extent: 5 as never })]));
+    expect(f.lakes[0].suparco).toBeNull();
+    expect(f.lakes[0].largest_extent).toBeNull();
+    expect(f.dropped_lakes).toBeUndefined();
+  });
+  test("malformed assets and province degrade", () => {
+    const l = makeLake({ id: "a", province: "XX" as never });
+    l.series[0].assets = { hh: 3 } as never;
+    const out = keepValidLakes(makeFile([l])).lakes[0];
+    expect(out.province).toBeNull();
+    expect(out.series[0].assets).toBeUndefined();
+  });
+  test("a possible match is never shown", () => expect(suparcoLine(makeLake({ suparco: { id: 7, match: "possible", source: "s" } }))).toBe("Not matched to a SUPARCO PDGL ID"));
+  test("suparco lines", () => {
+    expect(suparcoLine(makeLake({ suparco: { id: 116, match: "probable", source: "s" } }))).toBe("SUPARCO PDGL 116 (probable match)");
+    expect(suparcoLine(makeLake({ suparco: { id: 116, match: "official", source: "s" } }))).toBe("SUPARCO PDGL 116");
+    expect(suparcoLine(makeLake())).toBe("Not matched to a SUPARCO PDGL ID");
+  });
+  test("makeFile counts the lakes", () => {
+    const f = makeFile([makeLake(), makeLake({ id: "b", status: { ...makeLake().status, status: "Watch" } })]);
+    expect(f.counts?.watched).toBe(2);
+    expect(f.counts?.watch).toBe(1);
+    expect(f.counts?.open_water).toBe(2);
+    expect(f.mapped_count).toBe(503);
+  });
+  test("the shipped lakes.json loads", () => {
+    expect(isLakesFile(realLakes)).toBe(true);
+    expect(keepValidLakes(realLakes as unknown as LakesFile).dropped_lakes).toBeUndefined();
   });
 });

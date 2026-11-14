@@ -18,20 +18,26 @@ export interface AppOptions {
   requests?: LakeRequest[];
 }
 
-type View = "home" | "lakes" | "story" | "evidence";
+type View = "home" | "lakes" | "story" | "evidence" | "share";
 
-const VIEW_NAMES: Record<View, string> = { home: "The story", lakes: "Lake Watch", story: "Story walkthrough", evidence: "How we know" };
+const VIEW_NAMES: Record<View, string> = { home: "The story", lakes: "Lake Watch", story: "Story walkthrough", evidence: "How we know", share: "Share" };
 /** Hashes that open a view on load, so a view can be linked to or screenshotted directly. */
-const HASH_VIEWS: Record<string, View> = { "#lakes": "lakes", "#story": "story", "#evidence": "evidence" };
-const VIEW_HASH: Record<View, string> = { home: "", lakes: "#lakes", story: "#story", evidence: "#evidence" };
+const HASH_VIEWS: Record<string, View> = { "#lakes": "lakes", "#story": "story", "#evidence": "evidence", "#share": "share" };
+const VIEW_HASH: Record<View, string> = { home: "", lakes: "#lakes", story: "#story", evidence: "#evidence", share: "#share" };
 
 /**
  * The view (and lake) a URL hash names: "" or "#" is the start page, "#lakes/attabad" a lake. Any other hash is an
  * in-page anchor (the skip link, a story section) and returns null, so it never changes the view.
  */
-export function routeFromHash(hash: string): { view: View; lake?: string } | null {
+export function routeFromHash(hash: string): { view: View; lake?: string; pass?: string; compare?: [string, string]; query?: string } | null {
   if (hash === "" || hash === "#") return { view: "home" };
   if (HASH_VIEWS[hash]) return { view: HASH_VIEWS[hash] };
+  const q = /^#lakes\?(.+)$/.exec(hash);
+  if (q) return { view: "lakes", query: q[1] };
+  const pass = /^#lakes\/([a-z0-9_-]+)\/pass\/([0-9A-Za-z_-]+)$/.exec(hash);
+  if (pass) return { view: "lakes", lake: pass[1], pass: pass[2] };
+  const cmp = /^#lakes\/([a-z0-9_-]+)\/compare\/([0-9A-Za-z_-]+)\/([0-9A-Za-z_-]+)$/.exec(hash);
+  if (cmp) return { view: "lakes", lake: cmp[1], compare: [cmp[2], cmp[3]] };
   const m = /^#lakes\/([a-z0-9_-]+)$/.exec(hash);
   return m ? { view: "lakes", lake: m[1] } : null;
 }
@@ -146,13 +152,13 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     },
   });
 
-  const sections: Record<View, HTMLElement> = {
+  const sections: Record<Exclude<View, "share">, HTMLElement> = {
     home: q("home-root"),
     lakes: q("lakes-view"),
     story: q("lakestory-view"),
     evidence: q("evidence-view"),
   };
-  const viewButtons: Record<Exclude<View, "story">, HTMLButtonElement> = {
+  const viewButtons: Record<Exclude<View, "story" | "share">, HTMLButtonElement> = {
     home: q("view-home"),
     lakes: q("view-lakes"),
     evidence: q("view-evidence"),
@@ -174,7 +180,9 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
       if (here?.view !== next) setHash(VIEW_HASH[next], here === null);
     }
     q("shell").dataset.view = next;
-    for (const [name, el] of Object.entries(sections)) el.hidden = name !== next;
+    // No share page yet (a later task): #share shows the start page meanwhile.
+    const shown = next === "share" ? "home" : next;
+    for (const [name, el] of Object.entries(sections)) el.hidden = name !== shown;
     // The walkthrough is part of the story, so the nav keeps "The story" lit there.
     for (const [name, btn] of Object.entries(viewButtons)) btn.setAttribute("aria-pressed", String(name === next || (name === "home" && next === "story")));
     if (scroll) window.scrollTo?.(0, 0);
