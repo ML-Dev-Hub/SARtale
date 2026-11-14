@@ -98,11 +98,3 @@
 .lp-extent-word { font-size: 18px; font-weight: 600; color: var(--text); }
 .lp-extent[data-above="true"] .lp-extent-word { border-left: 4px solid var(--warm); padding-left: 10px; }
 .lp-extent-detail, .lp-extent-reason { color: var(--text); }
-
-/* Largest recorded extent: a neutral figure; amber marks only "Above", and the word says it too. */
-.lp-extent { display: flex; flex-direction: column; gap: 6px; }
-.lp-extent-pct { font-size: 44px; line-height: 1.05; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
-.lp-extent-none { color: var(--muted); }
-.lp-extent-word { font-size: 18px; font-weight: 600; color: var(--text); }
-.lp-extent[data-above="true"] .lp-extent-word { border-left: 4px solid var(--warm); padding-left: 10px; }
-.lp-extent-detail, .lp-extent-reason { color: var(--text); }
