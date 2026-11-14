@@ -62,8 +62,9 @@ function readingBlock(lake: Lake, file: LakesFile): string {
 /** District, province and the SUPARCO line; a probable match is named as ours, never as SUPARCO's. */
 function placeLine(lake: Lake): string {
   const place = [lake.district, provinceName(lake.province)].filter((x): x is string => !!x).join(", ") || "District unknown";
-  const probable = lake.suparco?.match === "probable" ? " (our match by map position and area to SUPARCO's published IDs, not an official SUPARCO match)" : "";
-  return `${place}. ${suparcoLine(lake)}${probable}.`;
+  const s = lake.suparco;
+  const line = s?.match === "probable" ? `SUPARCO PDGL ${s.id} (probable match: our match by map position and area to SUPARCO's published IDs; not an official SUPARCO match)` : suparcoLine(lake);
+  return `${place}. ${line}.`;
 }
 
 const zText = (z: number | null | undefined): string =>
@@ -111,7 +112,7 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): strin
   return `<section class="lake-brief" aria-label="Lake brief">
 ${briefMessage(lake)}<h1>${esc(lake.name)}</h1>
 <p class="lake-brief-meta">${esc(placeLine(lake))}</p>
-<p class="lake-brief-meta">Coordinates${lake.lat.toFixed(4)}, ${lake.lon.toFixed(4)}. Source: ${esc(lake.coord_source)}</p>${outline}
+<p class="lake-brief-meta">Coordinates ${lake.lat.toFixed(4)}, ${lake.lon.toFixed(4)}. Source: ${esc(lake.coord_source)}</p>${outline}
 <p class="lake-brief-meta">Measures: ${esc(lake.area_label)}. Brief made ${esc(formatDate(localIsoDate(generatedAt)))}.</p>
 <p class="lake-brief-meta">${esc(dataLine(lake, file))}</p>
 <h2>Status</h2>

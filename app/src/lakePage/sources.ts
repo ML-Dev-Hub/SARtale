@@ -52,7 +52,7 @@ function elevationRow(l: Lake): string {
 }
 
 function districtRow(l: Lake): string {
-  const src = (l as Lake & { district_source?: string | null }).district_source;
+  const src = l.district_source;
   const place = [l.district, provinceName(l.province)].filter((s): s is string => !!s).join(", ");
   if (!place) return DASH;
   return src ? `${place} (${src})` : place;

@@ -276,6 +276,7 @@ export interface Lake {
   downstream_source: string | null;
   /** The district, the province and the SUPARCO PDGL match (absent before the overview build; null where unknown). */
   district?: string | null;
+  district_source?: string | null;
   province?: "GB" | "KP" | null;
   suparco?: SuparcoRef | null;
   largest_extent?: LargestExtent | null;

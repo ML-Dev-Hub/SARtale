@@ -295,3 +295,11 @@ describe("the fuller brief", () => {
     for (const s of ["Baseline", "noise", "P05023", "Hunza, Gilgit-Baltistan", "SUPARCO PDGL 116", "our match by map position and area", "Largest recorded extent"]) expect(doc.body.textContent).toContain(s);
   });
 });
+
+test("the brief's coordinates line has its separator, and a probable match has one parenthetical", () => {
+  const lake = lakeOf({ lat: 36.4571, lon: 74.8794, coord_source: "fixture", suparco: { id: 116, match: "probable", source: "s" } });
+  const t = text(briefHtml(lake, fixtureLakes, NOW));
+  expect(t).toContain("Coordinates 36.4571, 74.8794. Source: fixture");
+  const line = t.split("\n").join(" ").match(/SUPARCO PDGL 116[^.]*\./)![0];
+  expect((line.match(/\(/g) ?? []).length).toBe(1);
+});
