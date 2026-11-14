@@ -143,7 +143,8 @@ def test_banned_source_comes_after_the_name_and_source_rules():
 
 def accept_fixture_request(tmp_path, lat, lon):
     """Check one request issue and accept it the way lake-issue-accept does; return the appended register row. The
-    request box is widened while checking so that the accept step's own district check is what is tested."""
+    request box and the check step's province check are switched off while checking, so that the accept step's own
+    district check (the backstop for entries checked before the province rule) is what is tested."""
     lakes_in = write_register(tmp_path, [{"id": "attabad", "name": "Attabad Lake", "lon": 74.86, "lat": 36.33,
                                           "role": "control", "coord_source": "s", "outline": None, "downstream": None,
                                           "downstream_source": None, **DISTRICT_FIELDS}])
@@ -152,7 +153,8 @@ def accept_fixture_request(tmp_path, lat, lon):
     issue = {"number": 7, "title": "Add a lake", "body": body, "state": "open", "labels": [{"name": "lake-request"}],
              "created_at": "2026-11-07T10:00:00Z", "user": {"login": "visitor"}}
     search = lambda lat, lon: {"passes": 14, "tracks": ["055A", "156A"], "first": "2026-06-18", "last": "2026-10-23"}  # noqa: E731
-    with mock.patch.object(lake_requests, "BOUNDS", (30.0, 40.0, 60.0, 80.0)):
+    with mock.patch.object(lake_requests, "BOUNDS", (30.0, 40.0, 60.0, 80.0)), \
+            mock.patch.object(lake_requests, "check_province", lambda lat, lon: None):
         feed = build_feed([issue], [], None, search=search, now="2026-11-07T11:00:00Z")
     lake_id = accept_entry(feed, issue, lakes_in, "2026-11-08")
     return next(r for r in json.loads(lakes_in.read_text(encoding="utf-8")) if r["id"] == lake_id)
@@ -163,3 +165,42 @@ def test_an_accepted_request_gets_its_district_and_province(tmp_path):
     assert row["province"] == "GB" and row["district"] and row["district_source"]
     with pytest.raises(RequestError, match="outside Gilgit-Baltistan and Khyber Pakhtunkhwa"):
         accept_fixture_request(tmp_path, lat=34.0, lon=73.5)
+
+
+def test_validate_refuses_a_point_outside_gilgit_baltistan_and_kp():
+    # in the request box: Neelum valley (Azad Kashmir) and Wakhan (Afghanistan)
+    for lat, lon in [(34.8, 74.0), (37.0, 71.2)]:
+        e = err({**GOOD, "lat": lat, "lon": lon})
+        assert str(e) == "The point is outside Gilgit-Baltistan and Khyber Pakhtunkhwa." and e.status == 400
+    assert validate({**GOOD, "lat": 36.458, "lon": 74.881}, [], [])["lat"] == 36.458  # Passu, GB
+
+
+def test_the_accept_cli_names_the_province_reason_for_the_workflow(tmp_path, capsys):
+    from sartale import lake_issues, run_pipeline
+    issues = tmp_path / "issues.json"
+    issues.write_text("[]", encoding="utf-8")
+    with mock.patch.object(lake_issues, "accept_entry",
+                           side_effect=RequestError(lake_requests.OUTSIDE_PROVINCES)), \
+            mock.patch.object(lake_issues, "write_feed"):
+        feed = tmp_path / "requests.json"
+        feed.write_text('{"requests": []}', encoding="utf-8")
+        issues.write_text(json.dumps([{"number": 7}]), encoding="utf-8")
+        with pytest.raises(SystemExit) as e:
+            run_pipeline.main(["lake-issue-accept", "--issues", str(issues), "--feed", str(feed), "--issue", "7",
+                               "--lakes-in", str(tmp_path / "l.json"), "--today", "2026-11-08",
+                               "--actions", str(tmp_path / "a.json")])
+    assert e.value.code == 1
+    # the exact line lake-accept.yml matches (grep -qx) to comment the reason instead of the catch-all
+    assert "lake-issue-accept: The point is outside Gilgit-Baltistan and Khyber Pakhtunkhwa.\n" in capsys.readouterr().err
+
+
+def test_the_accept_workflow_comments_the_province_reason_and_removes_accepted():
+    text = (Path(__file__).resolve().parents[2] / ".github" / "workflows" / "lake-accept.yml").read_text(encoding="utf-8")
+    assert f"grep -qx 'lake-issue-accept: {lake_requests.OUTSIDE_PROVINCES}'" in text
+    assert text.index("decide refuse-outside") < text.index("decide refuse-unchecked")  # before the catch-all
+    refuse = text[text.index("- name: Refuse a request that cannot be accepted"):]
+    refuse = refuse[:refuse.index("- name:", 10)]
+    assert "needs.rebuild.outputs.decision == 'refuse-outside'" in refuse
+    assert f'"{lake_requests.OUTSIDE_PROVINCES} SARtale watches lakes' in refuse
+    assert "gh issue edit \"$ISSUE\" --remove-label accepted" in refuse
+    assert "needs.rebuild.outputs.decision != 'refuse-outside'" in text  # not reported as a failed rebuild

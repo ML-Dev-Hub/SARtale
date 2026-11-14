@@ -102,7 +102,7 @@ def test_earlier_issue_wins(watched):
 
 
 def test_cap_of_200_open(watched):
-    issues = [issue(n, lat=str(34.5 + (n - 1) // 100 * 0.05), lon=str(71.0 + (n - 1) % 100 * 0.05))
+    issues = [issue(n, lat=str(35.5 + (n - 1) // 100 * 0.05), lon=str(72.0 + (n - 1) % 100 * 0.02))
               for n in range(1, 202)]
     feed = build_feed(issues, watched, None, search=fake_search, now=NOW)
     assert one(feed, 200)["state"] == "searched"
@@ -114,7 +114,7 @@ def test_labels_drive_state(watched):
     issues = [issue(1, labels=["accepted"], lat="36.2"),
               issue(2, "closed", labels=["invalid"], lat="36.5"),
               issue(3, "closed", labels=["searched"], lat="36.8"),
-              issue(4, "open", labels=["invalid"], lat="37.1")]  # reopened
+              issue(4, "open", labels=["invalid"], lat="36.65")]  # reopened
     feed = build_feed(issues, watched, None, search=fake_search, now=NOW)
     assert one(feed, 1)["state"] == "searched", "only the accept job makes a request accepted, never the label"
     assert one(feed, 2)["state"] == "invalid"
@@ -467,7 +467,7 @@ def test_reconcile_unchanged_approval_still_dispatches(watched):
 
 
 def test_reconcile_dispatches_one_issue_per_run(watched):
-    issues = [issue(5, labels=["searched", "accepted"], lat="36.9"), issue(3, labels=["searched", "accepted"]),
+    issues = [issue(5, labels=["searched", "accepted"], lat="36.65"), issue(3, labels=["searched", "accepted"]),
               issue(4, labels=["searched", "accepted"], lat="36.5")]
     feed = build_feed(issues, watched, None, search=fake_search, now=NOW)
     acts = reconcile_actions(feed, issues, feed)
@@ -478,7 +478,7 @@ def test_reconcile_dispatches_one_issue_per_run(watched):
 def test_reconcile_and_the_publish_drain_choose_the_same_issue(watched):
     from sartale.accept_queue import next_accept
 
-    issues = [issue(5, labels=["searched", "accepted"], lat="36.9"),
+    issues = [issue(5, labels=["searched", "accepted"], lat="36.65"),
               issue(3, labels=["searched", "accepted", "rebuild failed"]),
               issue(4, labels=["searched", "accepted"], lat="36.5")]
     feed = build_feed(issues, watched, None, search=fake_search, now=NOW)

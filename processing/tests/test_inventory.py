@@ -1,3 +1,4 @@
+import csv
 import json
 import re
 
@@ -115,3 +116,44 @@ def test_sources_pin_a_url_and_sha256_for_every_download():
         assert s["url"].startswith("https://") and re.fullmatch(r"[0-9a-f]{64}", s["sha256"]) and s["licence"].strip()
     osm = next(s for s in load_json("inventory/sources.json") if s["id"] == "osm")
     assert "snapshot" in osm["note"] and osm["query"].strip() and osm["fetched"]
+
+
+ODBL = ("This file is published under the Open Database Licence (ODbL) 1.0 "
+        "(https://opendatacommons.org/licenses/odbl/1-0/): it contains data from OpenStreetMap, "
+        "© OpenStreetMap contributors (https://www.openstreetmap.org/copyright).")
+CC_BY = ("Lake points and areas from HKH-PK-2020 (Siddique et al. 2023, Zenodo 15476013; rows with source "
+         "hkhpk2020) and Hi-MAG (Chen et al. 2021, ESSD 13:741, Zenodo 4275164; rows with source himag) are "
+         "used under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).")
+
+
+def test_the_whole_mapped_lakes_file_is_odbl_with_the_cc_by_attribution_kept():
+    doc = load_json(APP_DATA / "mapped_lakes.json")
+    assert doc["licence"] == "ODbL 1.0"
+    assert doc["notice"]["odbl"] == ODBL and doc["notice"]["cc_by"] == CC_BY
+
+
+def test_no_shown_register_text_names_a_suparco_id():
+    # SUPARCO links live only in the inventory's suparco field (probable shown, possible kept as candidates)
+    for r in register_and_new():
+        for key in ("id", "name", "coord_source"):
+            assert "SUPARCO" not in r[key].upper() and "PDGL" not in r[key].upper(), (r["id"], key)
+    for r in load_json("inventory/new_lakes.json"):
+        props = json.loads((PROCESSING / r["outline"]).read_text(encoding="utf-8"))["properties"]
+        assert not any("SUPARCO" in str(v).upper() or "PDGL" in str(v).upper() for v in props.values())
+
+
+def test_suparco_match_csv_holds_only_matched_inventory_lakes_without_coordinates():
+    with open(PROCESSING / "inventory" / "suparco_match.csv", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    cols = set(rows[0])
+    assert not [c for c in cols if re.search(r"lon|lat|dot_x|dot_y|coord", c)]
+    assert {r["match"] for r in rows} <= {"probable", "possible"}
+    new_ids = {r["id"] for r in load_json("inventory/new_lakes.json")}
+    mapped = {l["id"] for l in load_json(APP_DATA / "mapped_lakes.json")["lakes"]}
+    assert all(r["lake_id"] in new_ids | mapped | {"passu", "shazore", "khurdopin"} and r["method"] for r in rows)
+    assert {(r["lake_id"], int(r["suparco_id"])) for r in rows if r["lake_id"] == "godar_dhand"} == {
+        ("godar_dhand", 7), ("godar_dhand", 22)}
+    # no georeferenced position of SUPARCO's map dots anywhere in the committed tables
+    for name in ("suparco_match.csv", "lake_candidates.csv", "watched_inventory.json"):
+        text = (PROCESSING / "inventory" / name).read_text(encoding="utf-8")
+        assert not re.search(r"map dot \d+\.\d+,\d+\.\d+|dot at \d", text), name

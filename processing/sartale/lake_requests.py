@@ -93,6 +93,7 @@ def validate(payload: dict, watched: list[Lake], open_requests: list[dict]) -> d
     if not (lat_min <= lat <= lat_max and lon_min <= lon <= lon_max):
         raise RequestError(
             f"The point must be in Gilgit-Baltistan or upper KP: {lat_min}–{lat_max} °N, {lon_min}–{lon_max} °E.")
+    check_province(lat, lon)
     name = _text(payload, "name", 2, 80)
     banned = banned_name_message(name)
     if banned:
@@ -110,15 +111,23 @@ def validate(payload: dict, watched: list[Lake], open_requests: list[dict]) -> d
     return {"name": name, "lat": lat, "lon": lon, "source": source}
 
 
+OUTSIDE_PROVINCES = "The point is outside Gilgit-Baltistan and Khyber Pakhtunkhwa."
+
+
 def district_fields(lat: float, lon: float) -> dict:
-    """The register's district, province and district_source for an accepted request's point. A point outside
+    """The register's district, province and district_source for a request's point. A point outside
     Gilgit-Baltistan and Khyber Pakhtunkhwa is refused (the request box also takes in parts of Azad Kashmir,
     Afghanistan and Ladakh)."""
     try:
         district, province = district_of(lon, lat)
     except ValueError:
-        raise RequestError("The point is outside Gilgit-Baltistan and Khyber Pakhtunkhwa.", 409) from None
+        raise RequestError(OUTSIDE_PROVINCES) from None
     return {"district": district, "province": province, "district_source": DISTRICT_SOURCE}
+
+
+def check_province(lat: float, lon: float) -> None:
+    """The check step's refusal of a point outside GB and KP (accept_entry repeats it through district_fields)."""
+    district_fields(lat, lon)
 
 
 def coverage(lat: float, lon: float, search=search_lake_passes) -> dict:

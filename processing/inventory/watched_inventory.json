@@ -1,6 +1,6 @@
 {
  "version": 1,
- "built": "2026-11-14T02:54:00Z",
+ "built": "2026-11-14T03:30:10Z",
  "suparco_method": "SUPARCO publishes no coordinates, names or outlines for its list of potentially dangerous glacial lakes (PDGL), only ID numbers, areas and a numbered dot map. SARtale georeferenced SUPARCO's 1 Jul 2026 GLOF status map (district boundaries fitted to geoBoundaries ADM2, then 7 large lakes whose areas match SUPARCO's within 10%; RMS 0.6 km), read the dot labels by eye and matched each ID to an inventory lake. 'probable': exactly one label is read at the dot, an inventory lake within 1.5 km has 0.6-1.5 times SUPARCO's area, and the district agrees where SUPARCO gives one. 'possible': the label is ambiguous or the area agrees only loosely. A dot whose label could be several IDs never gives one ID. These are reconstructions, not SUPARCO-supplied locations; no SUPARCO image or geometry is copied.",
  "sources": "HKH-PK-2020 (CC BY 4.0), Hi-MAG (CC BY 4.0), OpenStreetMap (ODbL 1.0); see sources.json",
  "lakes": {
@@ -29,7 +29,7 @@
    "suparco": {
     "id": 116,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 73.6931 E, 36.8759 N, 0.05 km from this lake's outline, labelled 116; SUPARCO's table gives ID 116 2.65197 km² in Jul-Aug 2026 and 2.6552 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.05 km from this lake's outline, labelled 116; SUPARCO's table gives ID 116 2.65197 km² in Jul-Aug 2026 and 2.6552 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -58,7 +58,7 @@
    "suparco": {
     "id": 97,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.6131 E, 35.9910 N, 0.0 km from this lake's outline, labelled 97; SUPARCO's table gives ID 97 2.09123 km² in Jul-Aug 2026 and 2.07772 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.0 km from this lake's outline, labelled 97; SUPARCO's table gives ID 97 2.09123 km² in Jul-Aug 2026 and 2.07772 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -87,7 +87,7 @@
    "suparco": {
     "id": 87,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.5324 E, 36.0783 N, 0.0 km from this lake's outline, labelled 87; SUPARCO's table gives ID 87 1.1361 km² in Jul-Aug 2026 and 1.13678 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.0 km from this lake's outline, labelled 87; SUPARCO's table gives ID 87 1.1361 km² in Jul-Aug 2026 and 1.13678 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -116,7 +116,7 @@
    "suparco": {
     "id": 99,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.3345 E, 35.9115 N, 0.0 km from this lake's outline, labelled 99; SUPARCO's table gives ID 99 1.62188 km² in Jul-Aug 2026 and 1.6022 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.0 km from this lake's outline, labelled 99; SUPARCO's table gives ID 99 1.62188 km² in Jul-Aug 2026 and 1.6022 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -145,7 +145,7 @@
    "suparco": {
     "id": 59,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 73.6624 E, 36.6523 N, 0.93 km from this lake's outline, labelled 59; SUPARCO's table gives ID 59 1.06471 km² in Jul-Aug 2026 and 1.343 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.93 km from this lake's outline, labelled 59; SUPARCO's table gives ID 59 1.06471 km² in Jul-Aug 2026 and 1.343 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -174,7 +174,7 @@
    "suparco": {
     "id": 98,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.5964 E, 35.9407 N, 0.02 km from this lake's outline, labelled 98; SUPARCO's table gives ID 98 1.02971 km² in Jul-Aug 2026 and 1.00809 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.02 km from this lake's outline, labelled 98; SUPARCO's table gives ID 98 1.02971 km² in Jul-Aug 2026 and 1.00809 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -203,7 +203,7 @@
    "suparco": {
     "id": 84,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 73.3703 E, 35.9481 N, 0.24 km from this lake's outline, labelled 84; SUPARCO's table gives ID 84 0.70064 km² in Jul-Aug 2026 and 0.71014 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.24 km from this lake's outline, labelled 84; SUPARCO's table gives ID 84 0.70064 km² in Jul-Aug 2026 and 0.71014 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -232,7 +232,7 @@
    "suparco": {
     "id": 131,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.1920 E, 35.7976 N, 0.0 km from this lake's outline, labelled 131; SUPARCO's table gives ID 131 0.56739 km² in Jul-Aug 2026 and 0.62436 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.0 km from this lake's outline, labelled 131; SUPARCO's table gives ID 131 0.56739 km² in Jul-Aug 2026 and 0.62436 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -261,7 +261,7 @@
    "suparco": {
     "id": 35,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.5101 E, 35.6448 N, 0.06 km from this lake's outline, labelled 35; SUPARCO's table gives ID 35 0.31719 km² in Jul-Aug 2026 and 0.395 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.06 km from this lake's outline, labelled 35; SUPARCO's table gives ID 35 0.31719 km² in Jul-Aug 2026 and 0.395 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -290,7 +290,7 @@
    "suparco": {
     "id": 60,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 73.9658 E, 36.2704 N, 0.91 km from this lake's outline, labelled 60; SUPARCO's table gives ID 60 0.31608 km² in Jul-Aug 2026 and 0.39 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.91 km from this lake's outline, labelled 60; SUPARCO's table gives ID 60 0.31608 km² in Jul-Aug 2026 and 0.39 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -319,7 +319,7 @@
    "suparco": {
     "id": 20,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.7963 E, 35.6209 N, 0.14 km from this lake's outline, labelled 20; SUPARCO's table gives ID 20 0.30939 km² in Jul-Aug 2026 and 0.399 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.14 km from this lake's outline, labelled 20; SUPARCO's table gives ID 20 0.30939 km² in Jul-Aug 2026 and 0.399 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -348,7 +348,7 @@
    "suparco": {
     "id": 78,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 74.7531 E, 34.8374 N, 0.54 km from this lake's outline, labelled 78; SUPARCO's table gives ID 78 0.25401 km² in Jul-Aug 2026 and 0.2522 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.54 km from this lake's outline, labelled 78; SUPARCO's table gives ID 78 0.25401 km² in Jul-Aug 2026 and 0.2522 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -377,7 +377,7 @@
    "suparco": {
     "id": 62,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 73.4215 E, 36.6498 N, 1.26 km from this lake's outline, labelled 62; SUPARCO's table gives ID 62 0.18831 km² in Jul-Aug 2026 and 0.22 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 1.26 km from this lake's outline, labelled 62; SUPARCO's table gives ID 62 0.18831 km² in Jul-Aug 2026 and 0.22 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -406,7 +406,7 @@
    "suparco": {
     "id": 74,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 74.7845 E, 35.3311 N, 0.0 km from this lake's outline, labelled 74; SUPARCO's table gives ID 74 0.17271 km² in Jul-Aug 2026 and 0.19605 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.0 km from this lake's outline, labelled 74; SUPARCO's table gives ID 74 0.17271 km² in Jul-Aug 2026 and 0.19605 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -435,7 +435,7 @@
    "suparco": {
     "id": 71,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 76.5131 E, 34.8143 N, 0.26 km from this lake's outline, labelled 71; SUPARCO's table gives ID 71 0.19795 km² in Jul-Aug 2026 and 0.1501 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.26 km from this lake's outline, labelled 71; SUPARCO's table gives ID 71 0.19795 km² in Jul-Aug 2026 and 0.1501 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -464,7 +464,7 @@
    "suparco": {
     "id": 66,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 74.6125 E, 35.1932 N, 0.11 km from this lake's outline, labelled 66; SUPARCO's table gives ID 66 0.07766 km² in Jul-Aug 2026 and 0.1 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.11 km from this lake's outline, labelled 66; SUPARCO's table gives ID 66 0.07766 km² in Jul-Aug 2026 and 0.1 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -493,7 +493,7 @@
    "suparco": {
     "id": 79,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 71.3726 E, 35.9785 N, 0.0 km from this lake's outline, labelled 79; SUPARCO's table gives ID 79 0.08229 km² in Jul-Aug 2026 and 0.0733 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.0 km from this lake's outline, labelled 79; SUPARCO's table gives ID 79 0.08229 km² in Jul-Aug 2026 and 0.0733 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -522,7 +522,7 @@
    "suparco": {
     "id": 111,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 71.5135 E, 35.6537 N, 0.47 km from this lake's outline, labelled 111; SUPARCO's table gives ID 111 0.07936 km² in Jul-Aug 2026 and 0.0699 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.47 km from this lake's outline, labelled 111; SUPARCO's table gives ID 111 0.07936 km² in Jul-Aug 2026 and 0.0699 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -551,7 +551,7 @@
    "suparco": {
     "id": 75,
     "match": "probable",
-    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 74.6303 E, 34.9118 N, 0.54 km from this lake's outline, labelled 75; SUPARCO's table gives ID 75 0.08322 km² in Jul-Aug 2026 and 0.0594 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
+    "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.54 km from this lake's outline, labelled 75; SUPARCO's table gives ID 75 0.08322 km² in Jul-Aug 2026 and 0.0594 km² as the 2025 maximum. Probable match by map position and area (see suparco_method)."
    },
    "suparco_candidates": []
   },
@@ -582,7 +582,7 @@
     {
      "id": 48,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.3324 E, 35.3718 N, 0.89 km from this lake's outline, whose label could be any of 47, 48; SUPARCO's table gives ID 48 0.77182 km² in Jul-Aug 2026 and 0.97 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.89 km from this lake's outline, whose label could be any of 47, 48; SUPARCO's table gives ID 48 0.77182 km² in Jul-Aug 2026 and 0.97 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -613,12 +613,12 @@
     {
      "id": 22,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.5092 E, 35.4186 N, 0.11 km from this lake's outline, whose label could be any of 7, 22; SUPARCO's table gives ID 22 0.47374 km² in Jul-Aug 2026 and 0.61 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.11 km from this lake's outline, whose label could be any of 7, 22; SUPARCO's table gives ID 22 0.47374 km² in Jul-Aug 2026 and 0.61 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     },
     {
      "id": 7,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.5092 E, 35.4186 N, 0.11 km from this lake's outline, whose label could be any of 7, 22; SUPARCO's table gives ID 7 0.45055 km² in Jul-Aug 2026 and 0.618 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.11 km from this lake's outline, whose label could be any of 7, 22; SUPARCO's table gives ID 7 0.45055 km² in Jul-Aug 2026 and 0.618 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -649,17 +649,17 @@
     {
      "id": 7,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.4262 E, 35.4155 N, 0.46 km from this lake's outline, whose label could be any of 7, 22, 24; SUPARCO's table gives ID 7 0.45055 km² in Jul-Aug 2026 and 0.618 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.46 km from this lake's outline, whose label could be any of 7, 22, 24; SUPARCO's table gives ID 7 0.45055 km² in Jul-Aug 2026 and 0.618 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     },
     {
      "id": 22,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.4262 E, 35.4155 N, 0.46 km from this lake's outline, whose label could be any of 7, 22, 24; SUPARCO's table gives ID 22 0.47374 km² in Jul-Aug 2026 and 0.61 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.46 km from this lake's outline, whose label could be any of 7, 22, 24; SUPARCO's table gives ID 22 0.47374 km² in Jul-Aug 2026 and 0.61 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     },
     {
      "id": 24,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.4262 E, 35.4155 N, 0.46 km from this lake's outline, whose label could be any of 7, 22, 24; SUPARCO's table gives ID 24 0.43658 km² in Jul-Aug 2026 and 0.595 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.46 km from this lake's outline, whose label could be any of 7, 22, 24; SUPARCO's table gives ID 24 0.43658 km² in Jul-Aug 2026 and 0.595 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -690,7 +690,7 @@
     {
      "id": 24,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.5158 E, 35.3457 N, 1.01 km from this lake's outline, whose label could be any of 8, 9, 24; SUPARCO's table gives ID 24 0.43658 km² in Jul-Aug 2026 and 0.595 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 1.01 km from this lake's outline, whose label could be any of 8, 9, 24; SUPARCO's table gives ID 24 0.43658 km² in Jul-Aug 2026 and 0.595 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -721,7 +721,7 @@
     {
      "id": 34,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.6322 E, 35.8273 N, 0.82 km from this lake's outline, whose label could be any of 33, 34; SUPARCO's table gives ID 34 0.08402 km² in Jul-Aug 2026 and 0.121 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.82 km from this lake's outline, whose label could be any of 33, 34; SUPARCO's table gives ID 34 0.08402 km² in Jul-Aug 2026 and 0.121 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -752,7 +752,7 @@
     {
      "id": 21,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.8222 E, 35.6127 N, 0.01 km from this lake's outline, labelled 21; SUPARCO's table gives ID 21 0.23321 km² in Jul-Aug 2026 and 0.318 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.01 km from this lake's outline, labelled 21; SUPARCO's table gives ID 21 0.23321 km² in Jul-Aug 2026 and 0.318 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -783,7 +783,7 @@
     {
      "id": 118,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 73.4465 E, 36.8948 N, 1.69 km from this lake's outline, labelled 118; SUPARCO's table gives ID 118 0.18788 km² in Jul-Aug 2026 and 0.18984 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 1.69 km from this lake's outline, labelled 118; SUPARCO's table gives ID 118 0.18788 km² in Jul-Aug 2026 and 0.18984 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -814,12 +814,12 @@
     {
      "id": 8,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.5158 E, 35.3457 N, 0.67 km from this lake's outline, whose label could be any of 8, 9, 24; SUPARCO's table gives ID 8 0.18383 km² in Jul-Aug 2026 and 0.237 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.67 km from this lake's outline, whose label could be any of 8, 9, 24; SUPARCO's table gives ID 8 0.18383 km² in Jul-Aug 2026 and 0.237 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     },
     {
      "id": 9,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.5158 E, 35.3457 N, 0.67 km from this lake's outline, whose label could be any of 8, 9, 24; SUPARCO's table gives ID 9 0.19084 km² in Jul-Aug 2026 and 0.243 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.67 km from this lake's outline, whose label could be any of 8, 9, 24; SUPARCO's table gives ID 9 0.19084 km² in Jul-Aug 2026 and 0.243 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -844,7 +844,7 @@
     {
      "id": 72,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 76.4524 E, 34.8289 N, 0.18 km from this lake's outline, labelled 72; SUPARCO's table gives ID 72 0.21486 km² in Jul-Aug 2026 and 0.12821 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.18 km from this lake's outline, labelled 72; SUPARCO's table gives ID 72 0.21486 km² in Jul-Aug 2026 and 0.12821 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -869,7 +869,7 @@
     {
      "id": 63,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 73.5234 E, 36.3564 N, 0.92 km from this lake's outline, whose label could be any of 63, 67; SUPARCO's table gives ID 63 0.18334 km² in Jul-Aug 2026 and 0.24 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.92 km from this lake's outline, whose label could be any of 63, 67; SUPARCO's table gives ID 63 0.18334 km² in Jul-Aug 2026 and 0.24 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -900,7 +900,7 @@
     {
      "id": 112,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 71.8029 E, 36.1801 N, 0.16 km from this lake's outline, labelled 112; SUPARCO's table gives ID 112 0.23718 km² in Jul-Aug 2026 and 0.19887 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.16 km from this lake's outline, labelled 112; SUPARCO's table gives ID 112 0.23718 km² in Jul-Aug 2026 and 0.19887 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -931,7 +931,7 @@
     {
      "id": 47,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.3324 E, 35.3718 N, 1.13 km from this lake's outline, whose label could be any of 47, 48; SUPARCO's table gives ID 47 0.1414 km² in Jul-Aug 2026 and 0.19 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 1.13 km from this lake's outline, whose label could be any of 47, 48; SUPARCO's table gives ID 47 0.1414 km² in Jul-Aug 2026 and 0.19 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -962,7 +962,7 @@
     {
      "id": 32,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.5970 E, 35.6501 N, 1.75 km from this lake's outline, whose label could be any of 29, 32; SUPARCO's table gives ID 32 0.1897 km² in Jul-Aug 2026 and 0.236 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 1.75 km from this lake's outline, whose label could be any of 29, 32; SUPARCO's table gives ID 32 0.1897 km² in Jul-Aug 2026 and 0.236 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -993,7 +993,7 @@
     {
      "id": 89,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 71.9862 E, 35.8157 N, 0.49 km from this lake's outline, whose label could be any of 80, 89; SUPARCO's table gives ID 89 0.08674 km² in Jul-Aug 2026 and 0.08363 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.49 km from this lake's outline, whose label could be any of 80, 89; SUPARCO's table gives ID 89 0.08674 km² in Jul-Aug 2026 and 0.08363 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -1024,7 +1024,7 @@
     {
      "id": 124,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.2334 E, 35.7277 N, 0.25 km from this lake's outline, whose label could be any of 121, 124; SUPARCO's table gives ID 124 0.05165 km² in Jul-Aug 2026 and 0.04844 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.25 km from this lake's outline, whose label could be any of 121, 124; SUPARCO's table gives ID 124 0.05165 km² in Jul-Aug 2026 and 0.04844 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -1055,7 +1055,7 @@
     {
      "id": 34,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.6549 E, 35.8267 N, 0.27 km from this lake's outline, whose label could be any of 33, 34; SUPARCO's table gives ID 34 0.08402 km² in Jul-Aug 2026 and 0.121 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.27 km from this lake's outline, whose label could be any of 33, 34; SUPARCO's table gives ID 34 0.08402 km² in Jul-Aug 2026 and 0.121 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -1086,7 +1086,7 @@
     {
      "id": 23,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 72.8456 E, 35.5990 N, 0.03 km from this lake's outline, whose label could be any of 23, 119; SUPARCO's table gives ID 23 0.07351 km² in Jul-Aug 2026 and 0.093 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.03 km from this lake's outline, whose label could be any of 23, 119; SUPARCO's table gives ID 23 0.07351 km² in Jul-Aug 2026 and 0.093 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -1111,7 +1111,7 @@
     {
      "id": 77,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 73.2947 E, 35.9526 N, 1.82 km from this lake's outline, labelled 77; SUPARCO's table gives ID 77 0.0337 km² in Jul-Aug 2026 and 0.0275 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 1.82 km from this lake's outline, labelled 77; SUPARCO's table gives ID 77 0.0337 km² in Jul-Aug 2026 and 0.0275 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },
@@ -1136,7 +1136,7 @@
     {
      "id": 67,
      "match": "possible",
-     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot at 73.5653 E, 36.3443 N, 0.79 km from this lake's outline, whose label could be any of 63, 67; SUPARCO's table gives ID 67 0.05558 km² in Jul-Aug 2026 and 0.0682 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
+     "source": "Reconstructed by SARtale, not published by SUPARCO: SUPARCO's 1 Jul 2026 GLOF status map has a dot 0.79 km from this lake's outline, whose label could be any of 63, 67; SUPARCO's table gives ID 67 0.05558 km² in Jul-Aug 2026 and 0.0682 km² as the 2025 maximum. Possible match by map position and area (see suparco_method)."
     }
    ]
   },

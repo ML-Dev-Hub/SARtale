@@ -8,7 +8,7 @@ HMAGLOFDB zip is read from --hmaglofdb. The scripts that made those outputs are 
 as they ran; they take the investigation folder as their first argument). Raw downloads belong in
 processing/inventory/dl/, which git ignores.
 
-Writes, under --out: lake_candidates.csv and suparco_match.csv (copied), sources.json (URL, SHA-256 and licence of
+Writes, under --out: lake_candidates.csv (copied, without SUPARCO map-dot positions), suparco_match.csv (the SUPARCO IDs matched to inventory lakes, without map-dot coordinates), sources.json (URL, SHA-256 and licence of
 every download), districts.geojson (geoBoundaries ADM2 near the study area, simplified to 0.001°, each with its
 province in `adm1`, plus Pakistan's ADM0 outline), new_lakes.json (the 43 register rows, with `batch`) and
 watched_inventory.json (outline areas and SUPARCO matches per watched lake); processing/outlines/<id>.geojson for the
@@ -90,6 +90,14 @@ OVERPASS_QUERY = ('[out:json][timeout:600];'
 SUPARCO_LICENCE = ("None stated ('All rights reserved by SUPARCO'). Not redistributed: only SARtale's reconstructed "
                    "ID matches are committed, with their method")
 GB_API = "https://www.geoboundaries.org/api/current/gbOpen/PAK/{level}/"
+ODBL_NOTICE = ("This file is published under the Open Database Licence (ODbL) 1.0 "
+               "(https://opendatacommons.org/licenses/odbl/1-0/): it contains data from OpenStreetMap, "
+               "© OpenStreetMap contributors (https://www.openstreetmap.org/copyright).")
+CC_BY_NOTICE = ("Lake points and areas from HKH-PK-2020 (Siddique et al. 2023, Zenodo 15476013; rows with source "
+                "hkhpk2020) and Hi-MAG (Chen et al. 2021, ESSD 13:741, Zenodo 4275164; rows with source himag) are "
+                "used under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).")
+SUPARCO_MATCH_COLUMNS = ["cand_id", "lake_id", "suparco_id", "match", "ids_read_at_dot", "dot_to_outline_km",
+                         "suparco_area_km2", "suparco_max2025_km2", "inventory_area_km2", "area_ratio", "method"]
 
 
 def sha256(path: Path) -> str:
@@ -194,6 +202,49 @@ def districts_geojson(lakefind: Path) -> dict:
             "features": feats}
 
 
+def area_of(c) -> float:
+    """The area of the candidate's outline (the one mapped_lakes.json and the outline file use)."""
+    src = c.outline_source
+    return float(c.area_2020_hkhpk if src.startswith("HKH-PK") else
+                 c.area_2017_himag if src.startswith("Hi-MAG") else c.area_osm)
+
+
+def suparco_match_table(cands: pd.DataFrame, supa: dict[int, dict], lake_ids: dict[str, str]) -> list[dict]:
+    """One row per SUPARCO ID matched (probable or possible) to an inventory lake: our lake id, the match class, the
+    distance and area agreement, and the method. No map-dot coordinates and no unmatched or rejected dots."""
+    rows = []
+    for c in cands.sort_values("rank").itertuples():
+        if not _txt(c.suparco_id):
+            continue
+        ids = [int(x) for x in str(c.suparco_id).split("/")]
+        labels, dot = _note_parts(c.suparco_note)
+        for sid in ids:
+            s, km2 = supa[sid], area_of(c)
+            ref = float(s["suparco_area_aug"]) if s["suparco_area_aug"] else None
+            rows.append({"cand_id": c.cand_id, "lake_id": lake_ids[c.cand_id], "suparco_id": sid,
+                         "match": "possible" if len(ids) > 1 else c.suparco_conf,
+                         "ids_read_at_dot": labels or str(sid), "dot_to_outline_km": dot[2] if dot else "",
+                         "suparco_area_km2": s["suparco_area_aug"], "suparco_max2025_km2": s["suparco_max2025"],
+                         "inventory_area_km2": f"{km2:.4f}", "area_ratio": f"{km2 / ref:.2f}" if ref else "",
+                         "method": "SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; "
+                                   "see watched_inventory.json suparco_method"})
+    return rows
+
+
+def copy_candidates(src: Path, dst: Path) -> None:
+    """lake_candidates.csv as the investigation wrote it, except that suparco_note loses the georeferenced position
+    of SUPARCO's map dot (only its distance to the outline stays): no SUPARCO map geometry is committed."""
+    with open(src, encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        fields, rows = reader.fieldnames, list(reader)
+    for r in rows:
+        r["suparco_note"] = re.sub(r"map dot [\d.]+,[\d.]+, ", "map dot ", r["suparco_note"])
+    with open(dst, "w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
+        w.writeheader()
+        w.writerows(rows)
+
+
 def suparco_rows(path: Path) -> dict[int, dict]:
     """The first suparco_match.csv row of each ID (SUPARCO's areas are per ID)."""
     out = {}
@@ -217,7 +268,7 @@ def suparco_matches(c, supa: dict[int, dict]) -> tuple[dict | None, list[dict]]:
     out = []
     for sid in ids:
         s = supa[sid]
-        where = (f"has a dot at {dot[0]} E, {dot[1]} N, {dot[2]} km from this lake's outline" if dot
+        where = (f"has a dot {dot[2]} km from this lake's outline" if dot
                  else "has a dot near this lake")
         label = (f"whose label could be any of {labels.replace('/', ', ')}" if labels else f"labelled {sid}")
         area = (f"SUPARCO's table gives ID {sid} {s['suparco_area_aug']} km² in Jul-Aug 2026 and "
@@ -250,8 +301,9 @@ def _txt(v) -> str:
     return "" if pd.isna(v) else str(v).strip()
 
 
-def coord_source(c, rid: str, supa: dict[int, dict]) -> str:
-    """regbatch.py's template, for every outline source, point kind and match kind."""
+def coord_source(c, rid: str) -> str:
+    """regbatch.py's template for every outline source and point kind, without its SUPARCO clause: coord_source
+    names only where the point comes from. A SUPARCO link lives only in the inventory's `suparco` field."""
     src = c.outline_source
     if src.startswith("HKH-PK"):
         outline = (f"HKH-PK-2020 outline (Zenodo 15476013, CC BY 4.0; PlanetScope, Sep 2020; "
@@ -272,17 +324,6 @@ def coord_source(c, rid: str, supa: dict[int, dict]) -> str:
     if same:
         parts.append("the same lake as " + " and ".join(same))
     parts.append(f"open water in Sentinel-2 on {c.s2_date} ({c.s2_water_buf100_km2:.2f} km²)")
-    if _txt(c.suparco_id):
-        ids = str(c.suparco_id).split("/")
-        if len(ids) == 1:
-            parts.append(f"SUPARCO PDGL ID {ids[0]} ({c.suparco_conf} match by map position and area; SUPARCO gives "
-                         f"{supa[int(ids[0])]['suparco_area_aug']} km² in Jul-Aug 2026 and "
-                         f"{supa[int(ids[0])]['suparco_max2025']} km² as the 2025 maximum)")
-        else:
-            areas = ", ".join(f"{supa[int(i)]['suparco_area_aug']} km² for ID {i}" for i in ids)
-            parts.append(f"SUPARCO PDGL ID {' or '.join(ids)} (possible match by map position and area; the map "
-                         f"labels at this dot are unclear, so which ID is not settled; SUPARCO gives {areas} in "
-                         "Jul-Aug 2026)")
     if rid == "borith":
         parts.append("an HMAGLOFDB event (Ghulkin, 2007) has its lake point within 1 km, but SARtale's location "
                      "check (10 Nov 2026) found that Borith Lake is not that event's source")
@@ -304,7 +345,8 @@ def outline_feature(geom, c, name: str) -> dict:
 
 
 def mapped_lakes(cands: pd.DataFrame, geoms: gpd.GeoDataFrame, points: list[tuple[float, float]], built: str,
-                 supa_probable: set[int]) -> dict:
+                 supa_probable: set[int], ids: dict[str, str] | None = None) -> dict:
+    """The mapped-lakes document. `ids`, when given, receives each mapped candidate's id (cand_id -> m0001)."""
     g = geoms.to_crs(UTM)
     pts = gpd.GeoSeries(gpd.points_from_xy([p[0] for p in points], [p[1] for p in points]), crs=4326).to_crs(UTM)
     near = {cid for cid, geom in zip(g.index, g.geometry) if pts.distance(geom).min() <= MAPPED_EXCLUDE_M}
@@ -322,15 +364,15 @@ def mapped_lakes(cands: pd.DataFrame, geoms: gpd.GeoDataFrame, points: list[tupl
         sid = _txt(c.suparco_id)
         suparco = ({"id": int(sid), "match": "probable"}
                    if c.suparco_conf == "probable" and sid.isdigit() and int(sid) in supa_probable else None)
+        if ids is not None:
+            ids[c.cand_id] = f"m{len(lakes) + 1:04d}"
         lakes.append({"id": f"m{len(lakes) + 1:04d}", "lon": round(float(c.lon), 5), "lat": round(float(c.lat), 5),
                       "km2": round(float(km2), 3), "year": year, "source": source, "suparco": suparco})
     return {
-        "version": 1, "built": built,
+        "version": 1, "built": built, "licence": "ODbL 1.0",
         "notice": {
-            "odbl": "Lakes with source osm: © OpenStreetMap contributors, available under the Open Database "
-                    "Licence (ODbL) 1.0, https://www.openstreetmap.org/copyright.",
-            "cc_by": "Lakes with source hkhpk2020: HKH-PK-2020, Siddique et al. 2023 (Zenodo 15476013); source himag: "
-                     "Hi-MAG, Chen et al. 2021, ESSD 13:741 (Zenodo 4275164). Both CC BY 4.0.",
+            "odbl": ODBL_NOTICE,
+            "cc_by": CC_BY_NOTICE,
             "suparco": "SUPARCO IDs are SARtale's probable matches, reconstructed from SUPARCO's 1 Jul 2026 GLOF "
                        "status map and area table; SUPARCO publishes no coordinates for its list."},
         "sources": [
@@ -389,8 +431,7 @@ def main(argv=None) -> None:
     built = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     out.mkdir(parents=True, exist_ok=True)
 
-    for name in ("lake_candidates.csv", "suparco_match.csv"):
-        shutil.copyfile(lf / name, out / name)
+    copy_candidates(lf / "lake_candidates.csv", out / "lake_candidates.csv")
     (out / "sources.json").write_text(json.dumps(sources(lf, hma), ensure_ascii=False, indent=1) + "\n",
                                       encoding="utf-8")
     dpath = out / "districts.geojson"
@@ -418,7 +459,7 @@ def main(argv=None) -> None:
         cen = centroids.loc[cid]
         district, province, km = districts.locate(cen.x, cen.y, dpath)
         new_rows.append({"id": rid, "name": name, "lon": round(float(c.lon), 6), "lat": round(float(c.lat), 6),
-                         "role": "watch", "coord_source": coord_source(c, rid, supa),
+                         "role": "watch", "coord_source": coord_source(c, rid),
                          "outline": f"outlines/{rid}.geojson", "downstream": None, "downstream_source": None,
                          "district": district, "province": province, "district_source": district_source(km),
                          "batch": batch})
@@ -436,7 +477,14 @@ def main(argv=None) -> None:
 
     register = json.loads(args.lakes_in.read_text(encoding="utf-8"))
     points = [(r["lon"], r["lat"]) for r in register] + [(r["lon"], r["lat"]) for r in new_rows]
-    doc = mapped_lakes(cands, geoms, points, built, supa_probable)
+    mapped_ids: dict[str, str] = {}
+    doc = mapped_lakes(cands, geoms, points, built, supa_probable, mapped_ids)
+    lake_ids = {**mapped_ids, **{c: r for _, c, r, _ in PICKS}, **{c: r for r, c in SITES.items()}}
+    table = suparco_match_table(cands, supa, lake_ids)
+    with open(out / "suparco_match.csv", "w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=SUPARCO_MATCH_COLUMNS)
+        w.writeheader()
+        w.writerows(table)
     args.app_data.mkdir(parents=True, exist_ok=True)
     (args.app_data / "mapped_lakes.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")) + "\n",
                                                      encoding="utf-8")

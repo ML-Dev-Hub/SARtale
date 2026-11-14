@@ -1,108 +1,46 @@
-suparco_id,dot,colour,dot_lon,dot_lat,n_label_cands,suparco_area_aug,suparco_max2025,ref_area,match_src,match_key,match_area,match_dkm,match_name,n_area_ok,confidence,label_note
-2,0,red,73.71788,36.88757,1,0.14792,0.18,0.18,,,,,,0,no match,
-3,63,cyan,73.30271,36.82172,1,0.27193,0.14,0.27193,,,,,,0,no match,
-4,5,red,74.89536,36.46625,1,0.11395,0.1268,0.1268,OSM,way/360957778,0.143,1.37,Passu lake,2,rejected,SUPARCO 5 Jun 2026 lists ID 4 in Chitral; this Hunza dot's label was misread
-5,67,cyan,72.74664,36.3792,1,0.01771,0.026,0.026,,,,,,0,no match,
-6,66,cyan,74.88136,36.52414,1,0.00314,0.00229,0.00314,,,,,,0,no match,
-7,91,cyan,72.42621,35.41552,3,0.45055,0.618,0.618,OSM,way/69905401,0.432,0.46,Kondol Lake,2,possible,dot labels unclear: 7/22/24
-7,90,cyan,72.50919,35.41865,2,0.45055,0.618,0.618,OSM,way/840717903,0.455,0.11,Godar Dhand,2,possible,dot labels unclear: 7/22
-8,53,red,72.51582,35.34574,3,0.18383,0.237,0.237,OSM,way/840717888,0.193,0.67,,6,possible,dot labels unclear: 8/9/24
-9,53,red,72.51582,35.34574,3,0.19084,0.243,0.243,OSM,way/840717888,0.193,0.67,,6,possible,dot labels unclear: 8/9/24
-10,81,cyan,72.6004,35.78986,1,0.08083,0.106,0.106,,,,,,0,no match,
-11,3,red,74.35724,36.78377,1,,,0.0,,,,,,0,no match,
-12,83,cyan,72.14156,35.7136,1,0.03171,0.043,0.043,OSM,way/840770277,0.034,0.17,,2,probable,
-12,30,red,72.14225,35.73482,1,0.03171,0.043,0.043,Hi-MAG2017,GL072143E35715N,0.023,2.05,,2,possible,
-13,84,cyan,72.48478,35.69825,1,0.09292,0.118,0.118,,,,,,0,no match,
-14,37,red,72.34862,35.61501,1,0.00806,0.012,0.012,Hi-MAG2017,GL072360E35615N,0.015,0.98,,3,probable,
-16,45,red,72.26511,35.57613,1,0.03412,0.049,0.049,,,,,,0,no match,
-17,47,red,72.30827,35.53981,2,0.01414,0.021,0.021,Hi-MAG2017,GL072310E35530N,0.026,0.96,,1,possible,dot labels unclear: 17/101
-18,42,red,72.29546,35.60706,1,0.01119,0.017,0.017,Hi-MAG2017,GL072299E35611N,0.018,0.5,,1,probable,
-20,39,red,72.79632,35.62091,1,0.30939,0.399,0.399,OSM,relation/15881639,0.295,0.14,,3,probable,
-21,41,red,72.82219,35.61275,1,0.23321,0.318,0.318,Hi-MAG2017,GL072827E35613N,0.164,0.01,,4,possible,
-22,90,cyan,72.50919,35.41865,2,0.47374,0.61,0.61,OSM,way/840717903,0.455,0.11,Godar Dhand,2,possible,dot labels unclear: 7/22
-22,91,cyan,72.42621,35.41552,3,0.47374,0.61,0.61,OSM,way/69905401,0.432,0.46,Kondol Lake,2,possible,dot labels unclear: 7/22/24
-23,88,cyan,72.8456,35.59903,2,0.07351,0.093,0.093,OSM,way/1174629353,0.072,0.03,,3,possible,dot labels unclear: 23/119
-24,91,cyan,72.42621,35.41552,3,0.43658,0.595,0.595,OSM,way/69905401,0.432,0.46,Kondol Lake,2,possible,dot labels unclear: 7/22/24
-24,53,red,72.51582,35.34574,3,0.43658,0.595,0.595,OSM,way/840717887,0.416,1.01,Shetangud Dhand,2,possible,dot labels unclear: 8/9/24
-26,31,red,72.56859,35.72557,1,0.14431,0.184,0.184,,,,,,0,no match,
-29,34,red,72.59699,35.65013,2,0.01692,0.0144,0.01692,Hi-MAG2017,GL072595E35645N,0.009,0.5,,2,possible,dot labels unclear: 29/32
-32,34,red,72.59699,35.65013,2,0.1897,0.236,0.236,OSM,way/491297273,0.135,1.75,,1,possible,dot labels unclear: 29/32
-33,25,red,72.63218,35.8273,2,0.01592,0.024,0.024,Hi-MAG2017,GL072635E35828N,0.015,0.21,,2,possible,dot labels unclear: 33/34
-33,21,red,72.57412,35.84792,1,0.01592,0.024,0.024,OSM,way/1174626469,0.018,0.58,,1,probable,
-33,24,red,72.65493,35.82668,2,0.01592,0.024,0.024,OSM,way/1174626458,0.014,0.6,,2,possible,dot labels unclear: 33/34
-34,24,red,72.65493,35.82668,2,0.08402,0.121,0.121,OSM,way/460783297,0.082,0.27,,4,possible,dot labels unclear: 33/34
-34,25,red,72.63218,35.8273,2,0.08402,0.121,0.121,OSM,way/460783296,0.225,0.82,,4,possible,dot labels unclear: 33/34
-34,79,cyan,72.70558,35.82,1,0.08402,0.121,0.121,,,,,,0,no match,
-35,86,cyan,72.51007,35.64478,1,0.31719,0.395,0.395,Hi-MAG2017,GL072511E35646N,0.269,0.06,,2,probable,
-45,89,cyan,71.89193,35.46573,1,0.15194,0.199,0.199,,,,,,0,no match,
-47,92,cyan,72.33244,35.37184,2,0.1414,0.19,0.19,OSM,way/923585948,0.113,1.13,,1,possible,dot labels unclear: 47/48
-48,92,cyan,72.33244,35.37184,2,0.77182,0.97,0.97,Hi-MAG2017,GL072345E35367N,0.764,0.89,,2,possible,dot labels unclear: 47/48
-53,48,red,72.14573,35.52685,2,,,0.0,,,,,,0,no match,dot labels unclear: 53/55
-55,48,red,72.14573,35.52685,2,,,0.0,,,,,,0,no match,dot labels unclear: 53/55
-56,51,red,71.95622,35.46061,1,0.12225,0.146,0.146,,,,,,0,no match,
-59,64,cyan,73.6624,36.65234,1,1.06471,1.343,1.343,OSM,way/611783886,1.032,0.93,Atro Sar,2,probable,
-60,69,cyan,73.9658,36.27039,1,0.31608,0.39,0.39,Hi-MAG2017,GL073954E36264N,0.261,0.91,,2,probable,
-61,7,red,74.58638,36.36353,1,,,0.0,,,,,,0,no match,
-62,65,cyan,73.42146,36.64984,1,0.18831,0.22,0.22,OSM,way/1160948541,0.169,1.26,,1,probable,
-63,9,red,73.56527,36.3443,2,0.18334,0.24,0.24,,,,,,0,no match,dot labels unclear: 63/67
-63,8,red,73.52337,36.35644,2,0.18334,0.24,0.24,Hi-MAG2017,GL073513E36350N,0.153,0.92,,1,possible,dot labels unclear: 63/67
-64,6,red,75.46712,36.36938,1,,,0.0,,,,,,0,no match,
-66,94,cyan,74.61251,35.19317,1,0.07766,0.1,0.1,Hi-MAG2017,GL074615E35192N,0.068,0.11,,2,probable,
-67,9,red,73.56527,36.3443,2,0.05558,0.0682,0.0682,Hi-MAG2017,GL073555E36343N,0.055,0.79,,2,possible,dot labels unclear: 63/67
-67,8,red,73.52337,36.35644,2,0.05558,0.0682,0.0682,,,,,,0,no match,dot labels unclear: 63/67
-70,55,red,76.07011,35.30966,1,,,0.0,,,,,,0,no match,
-71,61,red,76.51313,34.81435,1,0.19795,0.1501,0.19795,Hi-MAG2017,GL076516E34813N,0.133,0.26,,4,probable,
-72,95,cyan,76.4524,34.82895,1,0.21486,0.12821,0.21486,Hi-MAG2017,GL076455E34827N,0.126,0.18,,2,possible,
-74,93,cyan,74.78452,35.33106,1,0.17271,0.19605,0.19605,Hi-MAG2017,GL074785E35330N,0.135,0.0,,2,probable,
-75,59,red,74.63033,34.91184,1,0.08322,0.0594,0.08322,OSM,way/1169652125,0.063,0.54,,3,probable,
-76,58,red,74.97732,35.0608,1,0.01825,0.017,0.01825,,,,,,0,no match,
-77,18,red,73.24898,35.89635,1,0.0337,0.0275,0.0337,Hi-MAG2017,GL073245E35894N,0.018,0.22,,2,possible,
-77,17,red,73.29466,35.95264,1,0.0337,0.0275,0.0337,Hi-MAG2017,GL073298E35934N,0.057,1.82,,5,possible,
-78,60,red,74.7531,34.83745,1,0.25401,0.2522,0.25401,OSM,way/1169718402,0.244,0.54,,2,probable,
-79,16,red,71.37262,35.97855,1,0.08229,0.0733,0.08229,Hi-MAG2017,GL071372E35979N,0.058,0.0,,2,probable,
-80,78,cyan,71.98616,35.81573,2,0.00734,0.00612,0.00734,,,,,,0,no match,dot labels unclear: 80/89
-81,74,cyan,72.20086,35.9819,1,0.03877,0.04922,0.04922,,,,,,0,no match,
-82,20,red,71.96916,35.85717,1,0.00121,0.0024,0.0024,,,,,,0,no match,
-83,57,red,74.93092,35.09712,1,,,0.0,,,,,,0,no match,
-84,75,cyan,73.37029,35.94811,1,0.70064,0.71014,0.71015,OSM,way/1286452727,0.693,0.24,,2,probable,
-85,46,red,72.77168,35.55205,1,,,0.0,,,,,,0,no match,
-87,72,cyan,72.53241,36.07826,1,1.1361,1.13678,1.14163,Hi-MAG2017,GL072538E36078N,1.126,0.0,,2,probable,
-88,50,red,71.92925,35.47833,1,0.02988,0.02244,0.02988,,,,,,0,no match,
-89,78,cyan,71.98616,35.81573,2,0.08674,0.08363,0.08674,OSM,way/1352489716,0.101,0.49,,4,possible,dot labels unclear: 80/89
-90,23,red,71.94991,35.82416,1,0.10178,0.09926,0.10375,,,,,,0,no match,
-91,15,red,71.48199,36.06595,2,0.00593,0.0035,0.00593,,,,,,0,no match,dot labels unclear: 91/94
-92,56,red,71.73403,35.24586,1,,,0.0,,,,,,0,no match,
-93,71,cyan,72.27414,36.15218,2,,,0.0,,,,,,0,no match,dot labels unclear: 93/105
-93,11,red,72.30648,36.18245,1,,,0.0,,,,,,0,no match,
-94,15,red,71.48199,36.06595,2,,,0.0,,,,,,0,no match,dot labels unclear: 91/94
-95,28,red,72.83576,35.76359,1,0.05479,0.0526,0.05479,OSM,way/1174621752,0.053,0.0,,2,probable,
-97,73,cyan,72.61309,35.99098,1,2.09123,2.07772,2.09123,Hi-MAG2017,GL072612E35994N,1.934,0.0,,2,probable,
-98,76,cyan,72.59635,35.94067,1,1.02971,1.00809,1.02971,OSM,way/350208953,1.002,0.02,,2,probable,
-99,77,cyan,72.33455,35.91155,1,1.62188,1.6022,1.62188,Hi-MAG2017,GL072334E35911N,1.523,0.0,,2,probable,
-101,47,red,72.30827,35.53981,2,0.00311,0.0024,0.00311,,,,,,0,no match,dot labels unclear: 17/101
-102,13,red,72.25087,36.15003,1,0.00322,0.002,0.00322,,,,,,0,no match,
-104,70,cyan,72.36049,36.21592,1,0.00261,0.0014,0.0028,,,,,,0,no match,
-105,71,cyan,72.27414,36.15218,2,,,0.0,,,,,,0,no match,dot labels unclear: 93/105
-105,14,red,72.27971,36.09121,1,,,0.0,,,,,,0,no match,
-106,10,red,72.02338,36.25774,1,,,0.0,,,,,,0,no match,
-107,2,red,72.68005,36.81918,1,0.01101,0.009,0.01101,,,,,,0,no match,
-108,68,cyan,71.97481,36.30839,1,0.0377,0.02869,0.0377,OSM,way/1565290527,0.02,0.44,,1,possible,
-109,22,red,72.11982,35.82709,1,,,0.0,,,,,,0,no match,
-110,26,red,71.49157,35.78182,1,0.01994,0.02,0.02,OSM,way/1174408008,0.013,0.26,,2,probable,
-111,35,red,71.51347,35.6537,1,0.07936,0.0699,0.07936,OSM,way/1173884867,0.067,0.47,,1,probable,
-112,12,red,71.80294,36.18006,1,0.23718,0.19887,0.23718,Hi-MAG2017,GL071799E36180N,0.125,0.16,,1,possible,
-113,19,red,71.54897,35.87063,1,0.03154,0.02964,0.03154,OSM,way/1174205127,0.028,0.29,,2,probable,
-114,29,red,71.88079,35.76055,1,0.00499,0.0048,0.00499,,,,,,0,no match,
-116,1,red,73.69314,36.87586,1,2.65197,2.6552,2.6552,OSM,way/29902437,2.688,0.05,Karambar Lake,2,probable,
-117,4,red,73.47046,36.76931,1,,,0.0,,,,,,0,no match,
-118,62,cyan,73.44652,36.89485,1,0.18788,0.18984,0.18984,OSM,relation/8269128,0.199,1.69,,2,possible,
-119,88,cyan,72.8456,35.59903,2,,,0.0,,,,,,0,no match,dot labels unclear: 23/119
-119,27,red,72.1677,35.77491,1,,,0.0,,,,,,0,no match,
-121,82,cyan,72.23337,35.72774,2,,,0.0,,,,,,0,no match,dot labels unclear: 121/124
-122,85,cyan,72.28888,35.6448,2,0.08816,0.08985,0.08985,OSM,way/1287003871,0.08,1.35,,1,possible,dot labels unclear: 122/125
-124,82,cyan,72.23337,35.72774,2,0.05165,0.04844,0.05313,OSM,way/491297353,0.082,0.25,,2,possible,"dot labels unclear: 121/124; SUPARCO 5 Jun lists ID 124 in Swat, dot falls in Chitral (district boundary data is coarse)"
-125,32,red,72.4257,35.72145,1,,,0.0,,,,,,0,no match,
-125,85,cyan,72.28888,35.6448,2,,,0.0,,,,,,0,no match,dot labels unclear: 122/125
-128,54,red,72.74275,35.34755,1,0.02139,0.0127,0.02139,,,,,,0,no match,
-129,33,red,73.16649,35.71468,1,0.15882,0.16691,0.16691,Hi-MAG2017,GL073166E35714N,0.137,0.0,,1,probable,
-131,80,cyan,72.19203,35.79762,1,0.56739,0.62436,0.62437,Hi-MAG2017,GL072193E35799N,0.496,0.0,,2,probable,
+cand_id,lake_id,suparco_id,match,ids_read_at_dot,dot_to_outline_km,suparco_area_km2,suparco_max2025_km2,inventory_area_km2,area_ratio,method
+C001,karambar_lake,116,probable,116,0.05,2.65197,2.6552,2.6535,1.00,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C002,khukush,97,probable,97,0.0,2.09123,2.07772,2.0243,0.97,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C003,shandur,87,probable,87,0.0,1.1361,1.13678,1.2737,1.12,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C004,bashkar_gol,99,probable,99,0.0,1.62188,1.6022,1.6182,1.00,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C005,atro_sar,59,probable,59,0.93,1.06471,1.343,1.0624,1.00,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C006,lake_c006,98,probable,98,0.02,1.02971,1.00809,1.0263,1.00,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C007,lake_c007,84,probable,84,0.24,0.70064,0.71014,0.6717,0.96,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C008,zhagi_chhat,131,probable,131,0.0,0.56739,0.62436,0.5473,0.96,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C009,andrab,35,probable,35,0.06,0.31719,0.395,0.2992,0.94,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C010,lake_c010,60,probable,60,0.91,0.31608,0.39,0.2973,0.94,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C011,lake_c011,20,probable,20,0.14,0.30939,0.399,0.2827,0.91,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C012,lake_c012,78,probable,78,0.54,0.25401,0.2522,0.2450,0.96,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C013,lake_c013,62,probable,62,1.26,0.18831,0.22,0.1639,0.87,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C014,rama,74,probable,74,0.0,0.17271,0.19605,0.1449,0.84,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C015,lake_c015,71,probable,71,0.26,0.19795,0.1501,0.1591,0.80,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C016,m0001,129,probable,129,0.0,0.15882,0.16691,0.1593,1.00,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C017,lake_c017,66,probable,66,0.11,0.07766,0.1,0.0816,1.05,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C018,lake_c018,79,probable,79,0.0,0.08229,0.0733,0.0805,0.98,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C019,lake_c019,111,probable,111,0.47,0.07936,0.0699,0.0714,0.90,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C020,lake_c020,75,probable,75,0.54,0.08322,0.0594,0.0702,0.84,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C021,m0002,95,probable,95,0.0,0.05479,0.0526,0.0502,0.92,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C022,katora,48,possible,47/48,0.89,0.77182,0.97,0.7595,0.98,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C023,godar_dhand,22,possible,7/22,0.11,0.47374,0.61,0.4755,1.00,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C023,godar_dhand,7,possible,7/22,0.11,0.45055,0.618,0.4755,1.06,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C024,kondol,7,possible,7/22/24,0.46,0.45055,0.618,0.4493,1.00,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C024,kondol,22,possible,7/22/24,0.46,0.47374,0.61,0.4493,0.95,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C024,kondol,24,possible,7/22/24,0.46,0.43658,0.595,0.4493,1.03,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C025,shetangud_dhand,24,possible,8/9/24,1.01,0.43658,0.595,0.3508,0.80,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C026,lake_c026,34,possible,33/34,0.82,0.08402,0.121,0.2337,2.78,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C027,lake_c027,21,possible,21,0.01,0.23321,0.318,0.2313,0.99,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C028,lake_c028,118,possible,118,1.69,0.18788,0.18984,0.1826,0.97,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C029,lake_c029,8,possible,8/9/24,0.67,0.18383,0.237,0.1814,0.99,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C029,lake_c029,9,possible,8/9/24,0.67,0.19084,0.243,0.1814,0.95,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C030,lake_c030,72,possible,72,0.18,0.21486,0.12821,0.1851,0.86,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C031,lake_c031,63,possible,63/67,0.92,0.18334,0.24,0.1600,0.87,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C032,suroor_ojorik,112,possible,112,0.16,0.23718,0.19887,0.1571,0.66,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C033,lake_c033,47,possible,47/48,1.13,0.1414,0.19,0.1477,1.04,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C034,lake_c034,32,possible,29/32,1.75,0.1897,0.236,0.1375,0.72,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C035,lake_c035,89,possible,80/89,0.49,0.08674,0.08363,0.0825,0.95,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C036,lake_c036,124,possible,121/124,0.25,0.05165,0.04844,0.0849,1.64,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C037,lake_c037,34,possible,33/34,0.27,0.08402,0.121,0.0826,0.98,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C038,m0003,122,possible,122/125,1.35,0.08816,0.08985,0.0677,0.77,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C039,lake_c039,23,possible,23/119,0.03,0.07351,0.093,0.0738,1.00,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C040,lake_c040,77,possible,77,1.82,0.0337,0.0275,0.0721,2.14,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
+C041,lake_c041,67,possible,63/67,0.79,0.05558,0.0682,0.0700,1.26,SARtale reconstruction from SUPARCO's 1 Jul 2026 status map and area table; see watched_inventory.json suparco_method
