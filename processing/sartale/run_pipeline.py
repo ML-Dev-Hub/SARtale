@@ -29,6 +29,7 @@ from sartale.lake_requests import RequestError
 from sartale.lakes import load_lakes
 from sartale import config
 from sartale.remote import fetch_lake_passes, shrink_cache
+from sartale.workpool import fetch_group, fetch_one, init_fetch_worker
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -64,37 +65,65 @@ def is_new_lake(out: Path, lake_id: str) -> bool:
     return not d.is_dir() or not any(d.glob("*.npz"))
 
 
+FETCH_WORKERS = 6  # lakes-fetch worker processes by default (--workers)
+
+
 def fetch_all(lakes, doc: dict, out: Path, session, fetch=fetch_lake_passes,
-              max_new_lakes: int | None = None) -> list[str]:
+              max_new_lakes: int | None = None, workers: int = 1, session_factory=None) -> list[str]:
     """Fetch pass by pass so one persistent failure does not stop the run. Returns one note per failed pass.
 
     `max_new_lakes`: fetch at most this many lakes that have no cached window yet (`is_new_lake`), in register order;
     the rest wait for the next run (a note says how many). Lakes already in the cache are always fetched. None: no
-    limit."""
+    limit. Which lakes are new is settled before the first pass is read.
+
+    `workers`: 1 fetches in this process with `session`, one pass after the other. More reads that many passes at once
+    in worker processes (`_ParallelFetch`), each with its own session from `session_factory` (default
+    `requests.Session`). Either way the files written, the failures returned and the log printed are the same: the
+    passes of a lake that share one cache file go to one worker in their order, and each pass's log is printed in the
+    sequential order once it is done."""
     import time
 
     failures, total, t0 = [], 0.0, time.time()
     new = [lake.id for lake in lakes if lake.id in doc and is_new_lake(out, lake.id)]
     waiting = set(new[max_new_lakes:]) if max_new_lakes is not None else set()
+    plan: list = []  # per lake in register order: a note, or (lake, its passes)
     for lake in lakes:
         if lake.id not in doc:
-            print(f"{lake.id}: not in passes.json, run lakes-search first")
-            continue
-        if lake.id in waiting:
-            continue
-        passes = [Pass(**row) for rows in doc[lake.id].values() for row in rows]
-        stats: dict = {}
-        cached = 0
-        for p in passes:
-            try:
-                cached += len(fetch(lake, [p], out, session, stats))
-            except Exception as e:  # noqa: BLE001 - keep going; the summary lists it
-                note = f"{lake.id} {p.date} {p.key}: {type(e).__name__}"  # no URL: it is signed
-                failures.append(note)
-                print(f"FAILED {note}", flush=True)
-        mb = stats.get("fetched", 0) / 1e6
-        total += mb
-        print(f"{lake.id}: {cached}/{len(passes)} passes cached, {mb:.1f} MB fetched, {stats.get('requests', 0)} requests", flush=True)
+            plan.append(f"{lake.id}: not in passes.json, run lakes-search first")
+        elif lake.id not in waiting:
+            plan.append((lake, [Pass(**row) for rows in doc[lake.id].values() for row in rows]))
+    pool = None
+    if workers > 1:
+        pool = _ParallelFetch([item for item in plan if not isinstance(item, str)], out, fetch, workers,
+                              session_factory)
+    try:
+        for item in plan:
+            if isinstance(item, str):
+                print(item)
+                continue
+            lake, passes = item
+            stats: dict = {}
+            cached = 0
+            for i, p in enumerate(passes):
+                if pool is None:
+                    n, note = fetch_one(fetch, lake, p, out, session, stats)
+                else:
+                    n, note, got, text = pool.result(lake.id, i)
+                    if text:
+                        sys.stdout.write(text)
+                        sys.stdout.flush()
+                    for k, v in got.items():
+                        stats[k] = stats.get(k, 0) + v
+                cached += n
+                if note:
+                    failures.append(note)
+                    print(f"FAILED {note}", flush=True)
+            mb = stats.get("fetched", 0) / 1e6
+            total += mb
+            print(f"{lake.id}: {cached}/{len(passes)} passes cached, {mb:.1f} MB fetched, {stats.get('requests', 0)} requests", flush=True)
+    finally:
+        if pool is not None:
+            pool.close()
     print(f"total {total:.1f} MB in {time.time() - t0:.0f} s")
     if waiting:
         print(f"{len(waiting)} new lakes wait for the next run (at most {max_new_lakes} new lakes per run): "
@@ -106,6 +135,53 @@ def fetch_all(lakes, doc: dict, out: Path, session, fetch=fetch_lake_passes,
     return failures
 
 
+class _ParallelFetch:
+    """The passes of `lakes` ([(lake, passes)]) submitted at once to `workers` processes (spawned, so the same on
+    Windows and Linux). One task per cache file: passes of a lake that share a file (same date, track and CRID) are
+    fetched by one worker in their order, so no two workers write one file and the later pass finds the earlier one's
+    window, as in the sequential run. `result(lake_id, i)` waits for the i-th pass of a lake."""
+
+    def __init__(self, lakes, out: Path, fetch, workers: int, session_factory=None):
+        import multiprocessing
+        from concurrent.futures import ProcessPoolExecutor
+
+        from sartale.remote import cache_path
+
+        if session_factory is None:
+            import requests
+            session_factory = requests.Session
+        groups: list[tuple] = []  # (lake, [pass index])
+        for lake, passes in lakes:
+            by_file: dict = {}
+            for i, p in enumerate(passes):
+                by_file.setdefault(cache_path(out, lake.id, p), []).append(i)
+            groups += [(lake, idx) for idx in by_file.values()]
+        self.at: dict = {}
+        self.ex = None
+        if not groups:
+            return
+        ctx = multiprocessing.get_context("spawn")
+        self.ex = ProcessPoolExecutor(max_workers=min(workers, len(groups)), mp_context=ctx,
+                                      initializer=init_fetch_worker,
+                                      initargs=(session_factory, [ctx.Lock() for _ in range(16)]))
+        passes_of = {lake.id: passes for lake, passes in lakes}
+        for lake, idx in groups:
+            fut = self.ex.submit(fetch_group, fetch, lake, [passes_of[lake.id][i] for i in idx], out)
+            for pos, i in enumerate(idx):
+                self.at[(lake.id, i)] = (fut, pos, lake, passes_of[lake.id][i])
+
+    def result(self, lake_id: str, i: int):
+        fut, pos, lake, p = self.at[(lake_id, i)]
+        try:
+            return fut.result()[pos]
+        except Exception as e:  # noqa: BLE001 - a worker that died: its passes fail like any other, the run goes on
+            return 0, f"{lake.id} {p.date} {p.key}: {type(e).__name__}", {}, ""
+
+    def close(self) -> None:
+        if self.ex is not None:
+            self.ex.shutdown(wait=True, cancel_futures=True)
+
+
 def cmd_lakes_fetch(args) -> None:
     """Cache a window for every selected pass of every lake in the register (restartable)."""
     import sys
@@ -114,7 +190,8 @@ def cmd_lakes_fetch(args) -> None:
 
     lakes = load_lakes(Path(args.lakes_in))
     doc = json.loads(Path(args.passes).read_text(encoding="utf-8"))["lakes"]
-    if fetch_all(lakes, doc, Path(args.out), requests.Session(), max_new_lakes=args.max_new_lakes):
+    if fetch_all(lakes, doc, Path(args.out), requests.Session(), max_new_lakes=args.max_new_lakes,
+                 workers=args.workers):
         sys.exit(1)
 
 
@@ -548,6 +625,13 @@ def cmd_lake_issue_accept(args) -> None:
     print(lake_id)
 
 
+def _positive(text: str) -> int:
+    n = int(text)
+    if n < 1:
+        raise argparse.ArgumentTypeError(f"must be at least 1, not {n}")
+    return n
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="run_pipeline")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -563,6 +647,9 @@ def build_parser() -> argparse.ArgumentParser:
     lf.add_argument("--max-new-lakes", type=int, default=None,
                     help="fetch at most N lakes with no cached window yet; the rest wait for the next run (the "
                          f"weekly refresh passes {config.FETCH_NEW_LAKES_PER_RUN}; default: no limit)")
+    lf.add_argument("--workers", type=_positive, default=FETCH_WORKERS,
+                    help=f"passes read at once, in worker processes (default {FETCH_WORKERS}; 1: one after the other "
+                         "in this process)")
     lf.set_defaults(func=cmd_lakes_fetch)
     lcs = sub.add_parser("lakes-cache-shrink", help="crop the cached windows to the lake zone plus "
                                                     f"{config.WINDOW_MARGIN_M:g} m in float16 and delete windows and "

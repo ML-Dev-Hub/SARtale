@@ -1,0 +1,47 @@
+"""Bounded concurrency for lakes-fetch (worker processes), with the sequential run's output.
+
+lakes-fetch runs in processes, not threads: h5py holds one global lock across every HDF5 call, and the range reads of
+a remote window happen inside those calls (HDF5 calls back into `remote.RangeFile.readinto`), so threads reading
+windows would wait on one another and fetch no faster. Each worker process has its own h5py, its own HTTP session
+(`requests.Session`, which takes the Earthdata login from ~/.netrc like the sequential run's) and, through
+`demmask.set_locks`, locks it shares with the other workers for the DEM files that several passes of a lake write.
+
+What a worker prints is captured and handed back with its result; the caller prints it in the sequential order.
+"""
+from __future__ import annotations
+
+import contextlib
+import io
+
+_SESSION = None  # the worker process's HTTP session (`init_fetch_worker`)
+
+
+def fetch_one(fetch, lake, p, out, session, stats: dict) -> tuple[int, str | None]:
+    """Fetch one pass as lakes-fetch always has: (windows cached, None), or (0, failure note) when it raises. The note
+    carries no URL (it is signed)."""
+    try:
+        return len(fetch(lake, [p], out, session, stats)), None
+    except Exception as e:  # noqa: BLE001 - keep going; the summary lists it
+        return 0, f"{lake.id} {p.date} {p.key}: {type(e).__name__}"
+
+
+def init_fetch_worker(session_factory, dem_locks) -> None:
+    """Set up a fetch worker process: one HTTP session for every pass it fetches, and the shared DEM-file locks."""
+    from sartale import demmask
+
+    global _SESSION
+    _SESSION = session_factory()
+    demmask.set_locks(dem_locks)
+
+
+def fetch_group(fetch, lake, passes, out) -> list[tuple[int, str | None, dict, str]]:
+    """In a worker process: fetch `passes` (those of one lake that share one cache file) one after the other, as the
+    sequential run would. Per pass: (windows cached, failure note or None, stats, what it printed)."""
+    results = []
+    for p in passes:
+        stats: dict = {}
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            n, note = fetch_one(fetch, lake, p, out, _SESSION, stats)
+        results.append((n, note, stats, buf.getvalue()))
+    return results
