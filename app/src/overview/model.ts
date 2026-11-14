@@ -1,4 +1,4 @@
-import { FROZEN_STATUSES, sortLakes, type Lake, type LakeStatusName } from "../lakes";
+import { FROZEN_STATUSES, hasLakeNow, isTrendPass, sortLakes, type Lake, type LakeStatusName } from "../lakes";
 
 export type OverviewFilter = "all" | "attention" | "alert" | "watch" | "open" | "frozen" | "above" | "changed" | "no-lake" | "suparco";
 export type SortKey = "status" | "name" | "area" | "change" | "share" | "latest" | "elevation";
@@ -110,23 +110,23 @@ export function matches(l: Lake, s: OverviewState): boolean {
 }
 
 /** The status track's newest valid, non-frozen reading, or null. */
-export function latestReadingOnTrack(l: Lake): { date: string; area: number } | null {
-  const pts = trendSeries(l);
+export function latestReadingOnTrack(l: Lake, minObservable: number): { date: string; area: number } | null {
+  const pts = trendSeries(l, minObservable);
   const last = pts[pts.length - 1];
   return last ? { date: last.date, area: last.area_km2 as number } : null;
 }
 
-function trendSeries(l: Lake): Lake["series"] {
+function trendSeries(l: Lake, minObservable: number): Lake["series"] {
   const track = l.status.track;
-  if (track === null) return [];
+  if (track === null || !hasLakeNow(l)) return [];
   return l.series
-    .filter((p) => p.track === track && p.excluded === null && p.area_km2 !== null && !p.frozen)
+    .filter((p) => p.track === track && isTrendPass(p, minObservable))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /** The status track's valid, non-frozen readings as time and area, oldest first. */
-export function trendPoints(l: Lake): { t: number; v: number }[] {
-  return trendSeries(l).map((p) => ({ t: Date.parse(p.date), v: p.area_km2 as number }));
+export function trendPoints(l: Lake, minObservable: number): { t: number; v: number }[] {
+  return trendSeries(l, minObservable).map((p) => ({ t: Date.parse(p.date), v: p.area_km2 as number }));
 }
 
 /** An SVG path through the points on their own scale; empty for fewer than two points. */
@@ -140,10 +140,10 @@ export function sparklinePath(pts: { t: number; v: number }[], w = 96, h = 24): 
   return pts.map((p, i) => `${i ? "L" : "M"}${x(p.t).toFixed(1)} ${y(p.v).toFixed(1)}`).join(" ");
 }
 
-function sortValue(l: Lake, key: Exclude<SortKey, "status">): number | string | null {
+function sortValue(l: Lake, key: Exclude<SortKey, "status">, minObservable: number): number | string | null {
   switch (key) {
     case "name": return l.name.toLowerCase();
-    case "area": return latestReadingOnTrack(l)?.area ?? null;
+    case "area": return latestReadingOnTrack(l, minObservable)?.area ?? null;
     case "change": return l.status.change_km2;
     case "share": return l.share_of_largest ?? null;
     case "latest": return l.status.latest_date;
@@ -154,18 +154,18 @@ function sortValue(l: Lake, key: Exclude<SortKey, "status">): number | string | 
 const byId = (a: Lake, b: Lake): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 /** Matching needs-attention lakes pinned first (status order), then the rest by the chosen sort, nulls last either way. */
-export function arrange(lakes: Lake[], s: OverviewState): { pinned: Lake[]; rows: Lake[] } {
+export function arrange(lakes: Lake[], s: OverviewState, minObservable: number): { pinned: Lake[]; rows: Lake[] } {
   const hits = lakes.filter((l) => matches(l, s));
   const pinned = sortLakes(hits.filter(needsAttention));
   const rest = hits.filter((l) => !needsAttention(l));
   const sign = s.dir === "asc" ? 1 : -1;
   if (s.sort === "status") {
     const ordered = sortLakes(rest);
-    return { pinned, rows: s.dir === "asc" ? ordered : ordered.reverse() };
+    return { pinned, rows: s.dir === "asc" ? ordered : [...ordered].reverse() };
   }
   const key = s.sort;
   const rows = [...rest].sort((a, b) => {
-    const va = sortValue(a, key), vb = sortValue(b, key);
+    const va = sortValue(a, key, minObservable), vb = sortValue(b, key, minObservable);
     if (va === null && vb === null) return byId(a, b);
     if (va === null) return 1;
     if (vb === null) return -1;
