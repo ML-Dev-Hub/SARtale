@@ -1,5 +1,8 @@
 import "./overview.css";
 import { formatDate } from "../format";
+import { renderOverviewPhone } from "./overviewPhone";
+import { isoDay, OV_CREDITS, OV_FOOTER, shortDate, signed, suparcoShort } from "./text";
+export { OV_CREDITS, OV_FOOTER, suparcoShort };
 import { droppedLine, isFrozen, levelMessage, type HeadlineCounts, type Lake, type LakesFile } from "../lakes";
 import { statusSlug } from "../lakeLocator";
 import { shareState } from "../share";
@@ -40,27 +43,6 @@ export function validCounts(c: unknown): c is HeadlineCounts {
   return COUNT_KEYS.every((k) => typeof o[k] === "number" && Number.isInteger(o[k]) && (o[k] as number) >= 0);
 }
 
-/** "9 Nov" from "2026-11-09". */
-const shortDate = (iso: string): string => formatDate(iso).replace(/ \d{4}$/, "");
-
-/** "+0.004" / "−0.004" (a true minus); no sign when it rounds to zero. */
-function signed(v: number): string {
-  const shown = Math.abs(v).toFixed(3);
-  return Number(shown) === 0 ? shown : `${v > 0 ? "+" : "−"}${shown}`;
-}
-
-/**
- * The SUPARCO part of a row's second line; a "possible" match is never shown. SUPARCO publishes no coordinates, so
- * without a probable match we only know that we found none, not that SUPARCO does not list the lake.
- */
-export function suparcoShort(l: Lake): string {
-  const s = l.suparco;
-  if (!s || s.match === "possible") return "no SUPARCO match";
-  return s.match === "probable" ? `SUPARCO ${s.id} (probable)` : `SUPARCO ${s.id}`;
-}
-
-const isoDay = (v: string | null | undefined): string | null => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) && Number.isFinite(Date.parse(v.slice(0, 10))) ? v.slice(0, 10) : null);
-
 /** "A", "A and B", "A, B and 2 more". */
 export function nameList(names: string[], max = 2): string {
   if (names.length <= 1) return names.join("");
@@ -90,11 +72,9 @@ const FILTER_CHIPS: { filter: OverviewFilter; label: string }[] = [
   { filter: "suparco", label: "SUPARCO-listed" },
 ];
 
-export const OV_FOOTER = "Screening on NISAR radar, not a warning. Official warnings come from PMD, NDMA, GBDMA and PDMA.";
-export const OV_CREDITS = "Lake inventories: HKH-PK-2020 (CC BY 4.0), Hi-MAG (CC BY 4.0), OpenStreetMap (ODbL). Radar: NASA–ISRO NISAR. Optical checks: Copernicus Sentinel-2.";
 const OV_NOTES = "Area: NISAR radar water area on the lake's status track, from its newest valid open-water pass, with the change against the baseline of earlier passes on that track; \"info only\" marks a lake whose radar water did not pass the Sentinel-2 check. % of largest extent: that area against the largest mapped outline (Hi-MAG 2008–2017, HKH-PK-2020, OpenStreetMap); \"Above\" means it is larger by more than twice the radar noise, \"Within noise\" that it is larger by less than that, and \"noise unknown\" that the noise could not be set. No share is given where the radar water failed the Sentinel-2 check, the outline lies mostly outside the radar window, or there is no outline. Trend: the valid readings of the status track; for a frozen lake it stops at the last open-water reading. SUPARCO numbers are our match by map position and area to SUPARCO's published PDGL IDs; SUPARCO does not publish coordinates.";
 
-export function createOverview(root: HTMLElement, opts: OverviewOptions): OverviewHandle {
+function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): OverviewHandle {
   const file = opts.file;
   const lakes = file.lakes;
   const minObs = file.constants.min_observable;
@@ -565,6 +545,42 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     destroy(): void {
       panel?.destroy();
       root.replaceChildren();
+    },
+  };
+}
+
+/** Widths up to this are a phone: the overview gets its own layout (overviewPhone.ts). */
+export const PHONE_QUERY = "(max-width: 760px)";
+
+/**
+ * The overview: the table layout, or on a phone its own layout. `isPhone` fixes the choice (tests); without it the layout
+ * follows the screen width and is drawn again, with the current state, when that crosses the phone width.
+ */
+export function createOverview(root: HTMLElement, opts: OverviewOptions): OverviewHandle {
+  let state = opts.state;
+  const mq = opts.isPhone === undefined ? window.matchMedia?.(PHONE_QUERY) : undefined;
+  const phoneNow = (): boolean => opts.isPhone ?? mq?.matches ?? false;
+  const mount = (phone: boolean): OverviewHandle => {
+    const o = { ...opts, state, onState: (s: OverviewState) => { state = s; opts.onState(s); } };
+    return phone ? renderOverviewPhone(root, o) : createDesktopOverview(root, o);
+  };
+  let phone = phoneNow();
+  let inner = mount(phone);
+  const onChange = (): void => {
+    if (phoneNow() === phone) return;
+    phone = !phone;
+    inner.destroy();
+    inner = mount(phone);
+  };
+  mq?.addEventListener?.("change", onChange);
+  return {
+    update(s) {
+      state = s;
+      inner.update(s);
+    },
+    destroy() {
+      mq?.removeEventListener?.("change", onChange);
+      inner.destroy();
     },
   };
 }
