@@ -5,6 +5,7 @@ import { freezeFacts, freezeHeadline, frozenAreaLine, isFrozen, levelMessage, pi
 import type { LakeChartFactory } from "../lakeWatchView";
 import { sentinel2Url } from "../links";
 import { nextRefresh } from "../overview/model";
+import { PHONE_QUERY } from "../overview/overviewView";
 import { statusChip } from "../overview/marks";
 import { provinceName } from "../provinces";
 import { renderExtent } from "./extent";
@@ -56,26 +57,40 @@ function trackCount(l: Lake): number {
   return read.size || (l.directions?.length ?? 0);
 }
 
-function header(lake: Lake, file: LakesFile): HTMLElement {
+/** "13 Nov": a date without its year, for the phone's one-line header. */
+const shortDay = (iso: string): string => formatDate(iso).replace(/ \d{4}$/, "");
+
+function header(lake: Lake, file: LakesFile, phone: boolean): HTMLElement {
   const sec = el("section", "lp-header");
   sec.dataset.role = "lp-header";
   sec.setAttribute("aria-labelledby", "lp-name");
 
   const top = el("div", "lp-top");
   const watched = file.counts?.watched ?? file.lakes.length;
-  top.append(link(`All ${watched} watched lakes`, "#lakes", "lp-back"));
+  top.append(link(phone ? "All lakes" : `All ${watched} watched lakes`, "#lakes", "lp-back"));
   const built = day(file.built);
-  if (built) top.append(el("p", "lp-built", `Data built ${built} · next refresh Mon ${formatDate(nextRefresh(file.built))}`));
+  if (built) {
+    const next = nextRefresh(file.built);
+    const text = phone ? `Data ${shortDay(file.built.slice(0, 10))} · next Mon ${shortDay(next)}` : `Data built ${built} · next refresh Mon ${formatDate(next)}`;
+    top.append(el("p", "lp-built", text));
+  }
   sec.append(top);
 
   const place = [lake.district, provinceName(lake.province)].filter((s): s is string => !!s).join(", ");
-  if (place) sec.append(el("p", "lp-place", place));
-
-  const title = el("div", "lp-title");
+  const placeEl = place ? el("p", "lp-place", place) : null;
   const h1 = el("h1", "lp-name", lake.name);
   h1.id = "lp-name";
-  title.append(h1, statusChip(lake.status.status));
-  sec.append(title);
+  if (phone) {
+    // On a phone the name comes first, the place under it, then the chip on its own line.
+    sec.append(h1);
+    if (placeEl) sec.append(placeEl);
+    sec.append(statusChip(lake.status.status));
+  } else {
+    if (placeEl) sec.append(placeEl);
+    const title = el("div", "lp-title");
+    title.append(h1, statusChip(lake.status.status));
+    sec.append(title);
+  }
 
   sec.append(el("p", "lp-suparco", suparcoLine(lake)));
 
@@ -215,10 +230,10 @@ function fillFreeze(lake: Lake): (body: HTMLElement) => boolean {
 }
 
 /** The change gauge, or null when the lake has no change reading to draw. */
-function gaugeBlock(lake: Lake, factor: number): HTMLElement | null {
+function gaugeBlock(lake: Lake, factor: number, phone: boolean): HTMLElement | null {
   if (!gaugeInput(lake, factor)) return null;
   return block("lp-gauge", gaugeHeading(lake), (body) => {
-    renderGauge(body, lake, factor);
+    renderGauge(body, lake, factor, phone);
     return body.childElementCount > 0;
   });
 }
@@ -255,7 +270,8 @@ function fillSources(lake: Lake, file: LakesFile, onBrief?: (l: Lake) => void): 
 
 /** The lake page (spec decision 5): header and message, then the gauge or frozen card, extent, picture, history, sources. */
 export function createLakePage(root: HTMLElement, opts: LakePageOptions): { destroy(): void } {
-  const page = el("div", "lp");
+  const phone = opts.isPhone ?? window.matchMedia?.(PHONE_QUERY).matches ?? false;
+  const page = el("div", phone ? "lp lp-phone" : "lp");
   root.replaceChildren(page);
   const lake = opts.file.lakes.find((l) => l.id === opts.lakeId);
   const onClick = (e: Event): void => {
@@ -271,7 +287,7 @@ export function createLakePage(root: HTMLElement, opts: LakePageOptions): { dest
     return { destroy: () => void root.replaceChildren() };
   }
 
-  page.append(header(lake, opts.file));
+  page.append(header(lake, opts.file, phone));
   if (opts.compare) {
     const sec = el("section", "lp-block");
     sec.dataset.role = "lp-compare";
@@ -283,8 +299,8 @@ export function createLakePage(root: HTMLElement, opts: LakePageOptions): { dest
     if (msg) page.append(msg);
     // Blocks whose content a later task fills (the gauge or frozen card, extent, history, sources) join here, in order.
     const factor = opts.file.constants.change_factor;
-    const top = isFrozen(lake) ? block("lp-freeze", "Frozen: no change reading while frozen", fillFreeze(lake)) : gaugeBlock(lake, factor);
-    const hist = { minObservable: opts.file.constants.min_observable, factor, createChart: opts.createChart };
+    const top = isFrozen(lake) ? block("lp-freeze", "Frozen: no change reading while frozen", fillFreeze(lake)) : gaugeBlock(lake, factor, phone);
+    const hist = { minObservable: opts.file.constants.min_observable, factor, createChart: opts.createChart, phone };
     const blocks = [
       top,
       block("lp-extent", "Largest recorded extent", (b) => (renderExtent(b, lake, opts.file.constants.min_observable), true)),

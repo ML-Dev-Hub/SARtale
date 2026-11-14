@@ -98,7 +98,7 @@ export function gaugeHeading(l: Lake): string {
 }
 
 /** Draws the gauge and its numbers into `el`. Draws nothing when `gaugeInput` has nothing. */
-export function renderGauge(el: HTMLElement, l: Lake, factor: number): void {
+export function renderGauge(el: HTMLElement, l: Lake, factor: number, phone = false): void {
   el.replaceChildren();
   const g = gaugeInput(l, factor);
   if (!g) return;
@@ -124,7 +124,8 @@ export function renderGauge(el: HTMLElement, l: Lake, factor: number): void {
   const z = s.z != null ? ` · z ${signed(s.z, 1)}` : "";
   el.append(p(`${passText} ${base.toFixed(3)} km² · change ${signed(g.change, 3)} km²${pctText} · noise ${g.noise.toFixed(3)} km²${z}${observable}`, "lp-gauge-numbers"));
 
-  const W = SVG_WIDTH;
+  // On a phone the drawing is 358 units wide, so its text keeps its size and the short labels fit.
+  const W = phone ? 358 : SVG_WIDTH;
   const geo = gaugeGeometry(g, W);
   const { x, band, extent } = geo;
   const inside = Math.abs(g.change) < band;
@@ -152,12 +153,12 @@ export function renderGauge(el: HTMLElement, l: Lake, factor: number): void {
     anchor = dir > 0 ? "end" : "start";
   }
   root.append(svg("text", { x: labelX, y: 20, "text-anchor": anchor, class: "lp-g-value" }, geo.label));
-  root.append(svg("text", { x: (x(-extent) + x(-band)) / 2, y: 100, "text-anchor": "middle", class: "lp-g-zone" }, "Smaller than usual"));
-  root.append(svg("text", { x: x(0), y: 100, "text-anchor": "middle", class: "lp-g-zone" }, `Within ±${band.toFixed(3)} km² (threshold)`));
-  root.append(svg("text", { x: (x(band) + x(extent)) / 2, y: 100, "text-anchor": "middle", class: "lp-g-zone" }, "Larger than usual"));
-  root.append(svg("text", { x: x(-extent), y: 124, "text-anchor": "start", class: "lp-g-tick" }, `−${extent.toFixed(3)} km²`));
-  root.append(svg("text", { x: x(0), y: 124, "text-anchor": "middle", class: "lp-g-tick" }, `0 = baseline ${base.toFixed(3)} km²`));
-  root.append(svg("text", { x: x(extent), y: 124, "text-anchor": "end", class: "lp-g-tick" }, `+${extent.toFixed(3)} km²`));
+  root.append(svg("text", { x: (x(-extent) + x(-band)) / 2, y: 100, "text-anchor": "middle", class: "lp-g-zone" }, phone ? "Smaller" : "Smaller than usual"));
+  root.append(svg("text", { x: x(0), y: 100, "text-anchor": "middle", class: "lp-g-zone" }, phone ? `Within ±${band.toFixed(3)}` : `Within ±${band.toFixed(3)} km² (threshold)`));
+  root.append(svg("text", { x: (x(band) + x(extent)) / 2, y: 100, "text-anchor": "middle", class: "lp-g-zone" }, phone ? "Larger" : "Larger than usual"));
+  root.append(svg("text", { x: x(-extent), y: 124, "text-anchor": "start", class: "lp-g-tick" }, phone ? `−${extent.toFixed(3)}` : `−${extent.toFixed(3)} km²`));
+  root.append(svg("text", { x: x(0), y: 124, "text-anchor": "middle", class: "lp-g-tick" }, phone ? `0 = ${base.toFixed(3)}` : `0 = baseline ${base.toFixed(3)} km²`));
+  root.append(svg("text", { x: x(extent), y: 124, "text-anchor": "end", class: "lp-g-tick" }, phone ? `+${extent.toFixed(3)}` : `+${extent.toFixed(3)} km²`));
   el.append(root);
 
   const notes: string[] = [];

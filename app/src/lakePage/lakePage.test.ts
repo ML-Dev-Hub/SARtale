@@ -5,7 +5,9 @@ import { fixtureMessage, frozenFixture, makeFile, makeLake } from "../fixtures";
 import { sentinel2Url } from "../links";
 import { provinceName } from "../provinces";
 import type { Lake } from "../lakes";
+import { rulesFor } from "../testCss";
 import { createLakePage } from "./lakePage";
+import lakeCss from "./lakePage.css?raw";
 
 vi.mock("../contacts", () => ({ authorityFor: () => null }));
 
@@ -123,5 +125,38 @@ describe("the lake page", () => {
     const el = document.createElement("div");
     createLakePage(el, { file: makeFile([watchLake]), lakeId: "passu", onRoute: vi.fn() }).destroy();
     expect(el.innerHTML).toBe("");
+  });
+});
+
+describe("the lake page on a phone", () => {
+  it("keeps the block order in one column", () => {
+    const el = page(watchLake, { isPhone: true });
+    expect(el.querySelector(".lp")!.classList.contains("lp-phone")).toBe(true);
+    expect(roles(el)).toEqual(["lp-header", "lp-message", "lp-gauge", "lp-extent", "lp-picture", "lp-history", "lp-sources"]);
+    expect(header(el).textContent).toContain("All lakes");
+    expect(header(el).textContent).not.toContain("watched lakes");
+    expect(header(el).textContent).toContain("Data 13 Nov · next Mon 16 Nov");
+  });
+  it("readings render as stacked rows on a phone", () => {
+    const el = page(watchLake, { isPhone: true });
+    expect(el.querySelector('[data-role="lp-history"] table')).toBeNull();
+    expect(el.querySelector('[data-role="lp-history"] [role="table"]')).toBeNull();
+    expect(el.querySelectorAll('[data-role="lp-reading"]').length).toBeGreaterThan(0);
+  });
+  it("draws the gauge at phone width with short labels", () => {
+    const svg = page(watchLake, { isPhone: true }).querySelector(".lp-gauge-svg")!;
+    expect(svg.getAttribute("viewBox")).toBe("0 0 358 130");
+    expect(svg.textContent).toContain("Smaller");
+    expect(svg.textContent).not.toContain("Smaller than usual");
+  });
+  it("the desktop page keeps its table and its watched-lakes link", () => {
+    const el = page(watchLake, { isPhone: false });
+    expect(el.querySelector('[data-role="lp-reading"]')).toBeNull();
+    expect(header(el).textContent).toContain("All 1 watched lakes");
+  });
+  it("phone controls, pass strip buttons included, are at least 44 px and nothing lowers it", () => {
+    expect(rulesFor(lakeCss, ".lp-phone :is(button, a, select)")).toContainEqual(expect.stringMatching(/min-height:\s*44px/));
+    for (const sel of [".lp-phone button", ".lp-phone a", ".lp-phone .lp-pass"])
+      for (const d of rulesFor(lakeCss, sel)) expect(d).not.toMatch(/(min-)?height:\s*([0-3]?\d|4[0-3])px/);
   });
 });

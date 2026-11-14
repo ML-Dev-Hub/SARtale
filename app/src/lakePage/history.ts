@@ -57,6 +57,8 @@ export interface HistoryOptions {
   minObservable: number;
   factor: number;
   createChart?: LakeChartFactory;
+  /** Draw the readings as stacked rows, not a table (a phone). */
+  phone?: boolean;
 }
 
 const NS = "http://www.w3.org/2000/svg";
@@ -90,6 +92,23 @@ function legend(data: ReturnType<typeof lakeChartData>, track: string, factor: n
   if (data.series.some((s) => s.band)) add(swatch((s) => s.append(shape("rect", { x: "0", y: "2", width: "22", height: "10", class: "lg-band" })), 22), `Baseline ± ${factor} × noise`);
   if (data.series.some((s) => s.rail)) add(swatch((s) => s.append(shape("circle", { cx: "7", cy: "7", r: "5", class: "lg-rail" }))), "No usable reading (own rail)");
   if (data.series.some((s) => s.version)) add(swatch((s) => s.append(shape("line", { x1: "7", y1: "0", x2: "7", y2: "14", class: "lg-version" }))), "Processing version change");
+  return ul;
+}
+
+/** One reading per row, stacked: date and area, then z, baseline and version, then the note. No sideways scroll. */
+function stacked(l: Lake, all: boolean): HTMLElement {
+  const ul = el("ul", "lp-reading-list");
+  for (const r of readingRows(l, all)) {
+    const li = el("li", "lp-reading");
+    li.dataset.role = "lp-reading";
+    const top = el("span", "lp-reading-top");
+    top.append(el("strong", undefined, r.d), el("span", "lp-reading-area", r.area === DASH ? DASH : `${r.area} km²`));
+    const mid = el("span", "lp-reading-mid");
+    mid.append(el("span", undefined, `z ${r.z} · baseline ${r.base}`), el("span", undefined, r.crid));
+    li.append(top, mid);
+    if (r.note) li.append(el("span", "lp-note", r.note));
+    ul.append(li);
+  }
   return ul;
 }
 
@@ -156,7 +175,7 @@ export function renderHistory(body: HTMLElement, l: Lake, o: HistoryOptions): bo
   const btn = el("button", "lp-btn lp-showall");
   btn.type = "button";
   const draw = (): void => {
-    holder.replaceChildren(table(l, all));
+    holder.replaceChildren(o.phone ? stacked(l, all) : table(l, all));
     btn.textContent = all ? `Show only the newest ${NEWEST}` : `Show all ${passes.length} readings`;
     btn.setAttribute("aria-expanded", String(all));
   };
