@@ -191,8 +191,10 @@ def test_a_forming_exclude_that_cannot_be_used_stops_the_load(tmp_path):
 
 
 def test_every_register_and_new_lake_has_district_and_province(tmp_path):
-    rows = load_json("processing/lakes_in.json") + [{k: v for k, v in r.items() if k != "batch"}
-                                                    for r in load_json("inventory/new_lakes.json")]
+    reg = load_json("processing/lakes_in.json")
+    on_register = {r["id"] for r in reg}  # the batches already appended to the register
+    rows = reg + [{k: v for k, v in r.items() if k != "batch"}
+                  for r in load_json("inventory/new_lakes.json") if r["id"] not in on_register]
     lakes = load_lakes(write_register(tmp_path, rows))
     assert all(l.district and l.province in ("GB", "KP") and l.district_source for l in lakes)
     with pytest.raises(ValueError, match="province"):
