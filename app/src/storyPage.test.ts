@@ -5,11 +5,12 @@ import { findBannedClaims } from "./content";
 import storyCopy from "./content/storyPage.json";
 import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
 import frozenJson from "./frozen/lakes.json";
-import { hasLakeNow, type Lake, type LakesFile } from "./lakes";
+import { hasLakeNow, splitChecks, type Lake, type LakesFile } from "./lakes";
 import { mapPin, renderStoryPage, statusClass, storyNumbers } from "./storyPage";
 
 /** The data this build ships. A rebuild replaces it, so tests on it check only what holds for any build. */
-const real = lakesJson as unknown as LakesFile;
+// loaded the way the app loads it (lakes.ts loadLakes): check rows with only a note move to check_notes
+const real = splitChecks(lakesJson as unknown as LakesFile);
 /** A frozen copy of the 23 Oct 2026 build, for the tests that check exact numbers. */
 const frozen = frozenJson as unknown as LakesFile;
 const opts = { onOpenLakes() {}, onOpenEvidence() {}, onFollowStory() {} };

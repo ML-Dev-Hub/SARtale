@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { findBannedClaims } from "./content";
 import { fixtureLakes, frozenFixture, olderFile, requestedLake, withRequestedLake } from "./fixtures";
-import { isLakesFile, keepValidLakes, sortLakes, type Lake, type LakesFile } from "./lakes";
+import { isLakesFile, keepValidLakes, sortLakes, splitChecks, type Lake, type LakesFile } from "./lakes";
 import { checkLine, createLakeWatchView, FORMING_LAYER, FORMING_NO_LAYER, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
 
 function setup(file: LakesFile | null = fixtureLakes, extra: Partial<Parameters<typeof createLakeWatchView>[1]> = {}) {
@@ -235,7 +235,7 @@ describe("Lake Watch", () => {
 
 describe("Lake Watch after an accept", () => {
   test("mounts the shipped data with a 12th lake that has no pass yet, and opens that lake", async () => {
-    const real = (await import("../public/data/lakes.json")).default as unknown as LakesFile;
+    const real = splitChecks((await import("../public/data/lakes.json")).default as unknown as LakesFile);
     const frozen = (await import("./frozen/lakes.json")).default as unknown as LakesFile;
     for (const base of [frozen, real]) {
       const file = withRequestedLake(base);

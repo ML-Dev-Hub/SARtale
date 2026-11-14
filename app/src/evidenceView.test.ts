@@ -3,9 +3,10 @@ import { afterEach, describe, expect, test } from "vitest";
 import lakesJson from "../public/data/lakes.json";
 import { findBannedClaims } from "./content";
 import { createEvidenceView } from "./evidenceView";
-import { iouRange, lakeTokens, opticalOverlapPhrase, type LakesFile } from "./lakes";
+import { iouRange, lakeTokens, opticalOverlapPhrase, splitChecks, type LakesFile } from "./lakes";
 
-const realLakes = lakesJson as unknown as LakesFile;
+// loaded the way the app loads it (lakes.ts loadLakes): check rows with only a note move to check_notes
+const realLakes = splitChecks(lakesJson as unknown as LakesFile);
 
 function open(lakes: LakesFile | null = realLakes) {
   const root = document.createElement("div");

@@ -6,9 +6,10 @@ import { mountOrShowError } from "./startup";
 import type { LakeRequest } from "./lakeRequests";
 import { findBannedClaims } from "./content";
 import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
-import { featuredLake, type LakesFile } from "./lakes";
+import { featuredLake, splitChecks, type LakesFile } from "./lakes";
 
-const realLakes = lakesJson as unknown as LakesFile;
+// loaded the way the app loads it (lakes.ts loadLakes): check rows with only a note move to check_notes
+const realLakes = splitChecks(lakesJson as unknown as LakesFile);
 const SUPARCO =
   "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days.";
 const BEAT_IDS = ["cloud-gap", "how-radar-sees", "lake-watch", "one-lake", "limits-next"];
