@@ -154,6 +154,21 @@ function sortValue(l: Lake, key: Exclude<SortKey, "status">, minObservable: numb
   }
 }
 
+/** Open-water lakes first, then the lakes with no open-water reading (not measured, ice, no lake); then newest pass, then name. */
+function byFamily(lakes: Lake[]): Lake[] {
+  const rank = new Map(lakes.map((l) => [l.id, statusDisplay(l).rank]));
+  return [...lakes].sort((a, b) => {
+    const ca = a.role === "control" ? 1 : 0;
+    const cb = b.role === "control" ? 1 : 0;
+    if (ca !== cb) return ca - cb;
+    if (rank.get(a.id) !== rank.get(b.id)) return (rank.get(a.id) as number) - (rank.get(b.id) as number);
+    const da = a.status.latest_date ?? "";
+    const db = b.status.latest_date ?? "";
+    if (da !== db) return da < db ? 1 : -1;
+    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+  });
+}
+
 const byId = (a: Lake, b: Lake): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 /** Matching needs-attention lakes pinned first (status order), then the rest by the chosen sort, nulls last either way. */
@@ -163,7 +178,7 @@ export function arrange(lakes: Lake[], s: OverviewState, minObservable: number):
   const rest = hits.filter((l) => !needsAttention(l));
   const sign = s.dir === "asc" ? 1 : -1;
   if (s.sort === "status") {
-    const ordered = sortLakes(rest);
+    const ordered = byFamily(rest);
     return { pinned, rows: s.dir === "asc" ? ordered : [...ordered].reverse() };
   }
   const key = s.sort;

@@ -91,6 +91,11 @@ describe("arrange", () => {
     expect(ids("unmeasured")).toEqual(["d", "e", "f", "g", "h"]);
     expect([ids("frozen").length, ids("breakup").length, ids("unmeasured").length]).toEqual([c.frozen, c.breakup, c.unmeasured]);
   });
+  it("by default open-water lakes come before not-measured, ice and no-lake lakes", () => {
+    const mk = (id: string, status: string): Lake => lake(id, {}, { status: status as Lake["status"]["status"], level: null, latest_date: "2026-11-09" });
+    const lakes = [mk("a", "Frozen (likely)"), mk("b", "Not observable"), mk("c", "No change"), mk("d", "Break-up likely"), mk("e", "No lake now")];
+    expect(arrange(lakes, DEFAULT_STATE, 0.5).rows.map((l) => l.id)).toEqual(["c", "b", "d", "a", "e"]);
+  });
   it("search covers name, id, district and SUPARCO id, ignoring case", () => {
     const hit = (q: string) => file.lakes.filter((l) => matches(l, { ...DEFAULT_STATE, q })).map((l) => l.id);
     expect(hit("HUNZA")).toEqual(["passu"]);

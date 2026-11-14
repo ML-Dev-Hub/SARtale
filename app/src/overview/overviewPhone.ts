@@ -229,7 +229,7 @@ export function renderOverviewPhone(root: HTMLElement, opts: OverviewOptions): O
     const r = latestReadingOnTrack(l, minObs);
     if (!r) return { value: "—", sub: "no reading yet" };
     if (l.status.status === "Not measurable") return { value: r.area.toFixed(3), sub: "info only" };
-    if (isFrozen(l)) return { value: r.area.toFixed(3), sub: `last open water ${shortDate(r.date)}` };
+    if (isFrozen(l)) return { value: r.area.toFixed(3), sub: statusDisplay(l).chip };
     const c = l.status.change_km2;
     return { value: r.area.toFixed(3), sub: typeof c === "number" && Number.isFinite(c) ? `${signed(c)} km²` : "" };
   };
@@ -258,6 +258,7 @@ export function renderOverviewPhone(root: HTMLElement, opts: OverviewOptions): O
     const share = shareState(l);
     const sharePct = share && typeof l.share_of_largest === "number" && Number.isFinite(l.share_of_largest)
       ? { value: `${share.pct}%`, sub: share.word }
+      : ["frozen", "breakup"].includes(d.family) ? { value: d.chip, sub: "" }
       : { value: "—", sub: l.lake_state === "no_lake" ? "no lake" : "not available" };
     const latest = isoDay(l.status.latest_date);
     const stats = el("span", "ovp-stats");

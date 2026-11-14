@@ -96,6 +96,8 @@ describe("views", () => {
     const buttons = [...root.querySelectorAll<HTMLElement>(".views button")];
     expect(buttons.map((b) => b.textContent)).toEqual(["Lake Watch", "How we know", "The story"]);
     expect(buttons.map((b) => b.dataset.role)).toEqual(["view-lakes", "view-evidence", "view-home"]);
+    expect(buttons[0].classList.contains("view-primary")).toBe(true);
+    expect(buttons.slice(1).some((b) => b.classList.contains("view-primary"))).toBe(false);
   });
 
   test("the nav's The story button goes to the start view", () => {

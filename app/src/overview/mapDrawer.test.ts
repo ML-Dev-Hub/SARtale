@@ -4,8 +4,6 @@ import { fixtureMessage, makeFile, makeLake } from "../fixtures";
 import type { Lake, LakesFile, LevelName } from "../lakes";
 import { mappedFixture } from "./mappedFixture";
 import { createReadyGate, pinElement } from "./mapDrawer";
-import { LEGEND_STATUSES } from "./drawerPanel";
-import { displayForStatus } from "./marks";
 import { loadMappedLakes, watchThisLakeUrl } from "./mappedLakes";
 import { DEFAULT_STATE, type MapDrawerFactory, type OverviewState } from "./model";
 import { createOverview } from "./overviewView";
@@ -162,21 +160,20 @@ describe("map drawer", () => {
     expect(text()).toContain(mappedFixture.notice.odbl);
     expect(text()).toContain(mappedFixture.notice.cc_by);
   });
-  it("the legend lists each family once: Frozen and Not measured once, Ice breaking up apart", async () => {
+  it("the legend lists one marker and label per family present, once", async () => {
     render();
     click(toggle());
     await tick();
-    const items = [...role("ov-legend").querySelectorAll("li")].map((li) => li.textContent);
-    expect(items).toEqual(["Alert: growing", "Watch", "Decrease noted", "No change", "Lake may be forming", "Frozen", "Ice breaking up", "No lake now", "Not measured", "Mapped, not watched yet"]);
-    const fams = LEGEND_STATUSES.map((s) => displayForStatus(s).family);
-    expect(new Set(fams).size).toBe(fams.length);
+    const items = [...role("ov-legend").querySelectorAll("li")];
+    expect(items.map((li) => li.textContent)).toEqual(["Alert: growing", "No change", "Frozen", "Mapped, not watched yet"]);
+    for (const li of items.slice(0, 3)) expect(li.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
-  it("a pin takes its family's shape and name", () => {
+  it("a pin takes its family's marker and name", () => {
     const l = lake("f", {}, { status: "Frozen (seen by Sentinel-2)", level: null });
     const b = pinElement(l, () => {});
     expect(b.dataset.family).toBe("frozen");
     expect(b.getAttribute("aria-label")).toBe("f, Frozen");
-    expect(b.querySelector("svg.ov-mark-fam-frozen")).not.toBeNull();
+    expect(b.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
   it("Close map closes the drawer", async () => {
     render();

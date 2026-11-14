@@ -106,6 +106,10 @@ describe("the lake page", () => {
   it("the frozen card heading names the family and its evidence", () => {
     expect(page(frozen).querySelector(".lp-freeze-head")!.textContent).toBe("Frozen: By air temperature since 18 Oct; no clear image");
   });
+  it("the frozen card's block title does not repeat Frozen", () => {
+    const p = page(frozen);
+    expect(p.querySelector('[data-role="lp-freeze"] h2')!.textContent).toBe("Ice");
+  });
   it("leaves out the place and the meta parts the data lacks", () => {
     const h = header(page(makeLake({ status: { ...makeLake().status, latest_date: null, track: null, looks: 0 }, series: [] })));
     expect(h.querySelector(".lp-place")).toBeNull();

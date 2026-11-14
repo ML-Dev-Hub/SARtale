@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi, type Mock } from "vitest";
 import { findBannedClaims } from "../content";
 import { fixtureMessage, frozenFixture, makeFile, makeLake } from "../fixtures";
-import { sortLakes, type Lake, type LakesFile, type LevelName } from "../lakes";
+import { type Lake, type LakesFile, type LevelName } from "../lakes";
 import { DEFAULT_STATE, type OverviewState } from "./model";
 import { createOverview, nameList } from "./overviewView";
 
@@ -204,17 +204,33 @@ describe("overview details", () => {
     render(makeFile([frozenFixture("ice")]));
     const c = cells("ov-row");
     expect(c[2]).toContain("0.159");
-    expect(c[2]).toContain("last open water 18 Sep");
+    expect(c[2]).toContain("Frozen");
     expect(role("ov-row")!.querySelector("path.ov-spark")!.getAttribute("d")!.match(/[ML]/g)).toHaveLength(5);
   });
-  it("by default the rows follow the status order of sortLakes, and descending reverses them (moved from the old list)", () => {
-    const rest = file.lakes.filter((l) => !["alert_lake", "forming_site", "watch_lake", "decrease_lake"].includes(l.id));
+  it("a frozen row shows the family word, not a dash, 'not available' or 'last open water'", () => {
+    render(makeFile([frozenFixture("ice")]));
+    const t = role("ov-row")!.textContent!;
+    expect(t).not.toContain("last open water");
+    expect(t).not.toContain("not available");
+    expect(cells("ov-row")[3]).toBe("Frozen");
+  });
+  it("the Frozen tile says how many were seen in Sentinel-2 and how many by air temperature", () => {
+    render(makeFile([frozenFixture("a", "Frozen (seen by Sentinel-2)"), frozenFixture("b", "Frozen (likely)"), frozenFixture("c", "Frozen (likely)")]));
+    expect(tile("frozen").querySelector(".ov-tile-sub")!.textContent).toBe("1 seen in Sentinel-2, 2 by air temperature");
+  });
+  it("a Not measured tile replaces Changed since last build when nothing changed", () => {
+    render(makeFile([lake("a", {}, { status: "Not observable", level: null })], { counts: { ...makeFile([]).counts!, changed: 0 } }));
+    expect(root.querySelector('[data-role="ov-tiles"] [data-filter="changed"]')).toBeNull();
+    expect(tile("unmeasured").textContent).toContain("Not measured");
+  });
+  it("by default the rows follow the family order (open water first, then ice, then no lake), and descending reverses them", () => {
+    const order = ["karambar_lake", "passu", "shazore", "shisper"];
     const ids = (dir: "asc" | "desc") => {
       render(file, { ...DEFAULT_STATE, dir });
       return [...roles("ov-row")].map((r) => r.dataset.id);
     };
-    expect(ids("asc")).toEqual(sortLakes(rest).map((l) => l.id));
-    expect(ids("desc")).toEqual(sortLakes(rest).map((l) => l.id).reverse());
+    expect(ids("asc")).toEqual(order);
+    expect(ids("desc")).toEqual([...order].reverse());
   });
   it("tile name lists read as a sentence", () => {
     expect(nameList([])).toBe("");

@@ -191,7 +191,8 @@
 .ov-mark-fam-nolake path { stroke: var(--dim); stroke-dasharray: none; }
 .ov-fam-unmeasured { border-style: dotted; border-color: var(--dim); }
 .ov-mark-fam-unmeasured path { stroke: var(--dim); stroke-dasharray: 1.5 2; }
-.ov-tag { overflow-wrap: anywhere; }
+.ov-sub.ov-tag { white-space: normal; text-overflow: clip; overflow-wrap: anywhere; max-height: 2.7em; }
+.ov-fam-word { color: var(--muted); font-weight: 500; }
 /* Tiles with a status mark use the same marks. */
 .ov-tile-label .ov-mark path { stroke-width: 2; }
 
@@ -220,9 +221,9 @@
 .ov-mapped-row { color: #d3dfe7; font-size: 14px; }
 .ov-mapped-switch { display: inline-flex; align-items: center; gap: 10px; min-height: 36px; }
 .ov-mapped-switch input { width: 18px; height: 18px; accent-color: var(--accent); }
-.ov-pin { display: block; width: 30px; height: 30px; padding: 3px; border: 0; border-radius: 50%; background: rgba(5, 13, 22, 0.72); cursor: pointer; }
-.ov-pin svg { display: block; width: 24px; height: 24px; overflow: visible; }
-.ov-pin[data-selected] { box-shadow: 0 0 0 2px #fff; background: var(--ground); }
+.ov-pin { display: block; width: 32px; height: 32px; padding: 2px; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.ov-pin svg { display: block; width: 28px; height: 28px; overflow: visible; }
+.ov-pin[data-selected] { z-index: 2; }
 .ov-pin:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ov-mapped-dot circle { fill: var(--dim); }
 .ov-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--panel-2); }
@@ -235,7 +236,8 @@
 .ov-card-link { align-self: flex-start; min-height: 40px; display: inline-flex; align-items: center; font-weight: 600; }
 .ov-legend { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 6px 12px; font-size: 13px; color: #d3dfe7; }
 .ov-legend li { display: flex; align-items: center; gap: 8px; }
-.ov-legend svg { flex: none; }
+.ov-legend svg { flex: none; display: block; }
+.ov-legend-mark { flex: none; display: inline-flex; }
 .ov-notices { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12.5px; }
 .ov-notices p { margin: 0; }
 .ov-locate { flex: none; min-height: 24px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: transparent; color: var(--accent); font-size: 12.5px; cursor: pointer; }

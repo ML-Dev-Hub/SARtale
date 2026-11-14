@@ -303,7 +303,7 @@ export function createLakePage(root: HTMLElement, opts: LakePageOptions): { dest
     if (msg) page.append(msg);
     // Blocks whose content a later task fills (the gauge or frozen card, extent, history, sources) join here, in order.
     const factor = opts.file.constants.change_factor;
-    const top = isFrozen(lake) ? block("lp-freeze", "Frozen: no change reading while frozen", fillFreeze(lake)) : gaugeBlock(lake, factor, phone);
+    const top = isFrozen(lake) ? block("lp-freeze", "Ice", fillFreeze(lake)) : gaugeBlock(lake, factor, phone);
     const hist = { minObservable: opts.file.constants.min_observable, factor, createChart: opts.createChart, phone };
     const blocks = [
       top,

@@ -1,15 +1,10 @@
 import { formatDate } from "../format";
 import { isFrozen, suparcoLine, type Lake } from "../lakes";
-import { displayForStatus, el, familyChip, familyMark, svg } from "./marks";
-import { statusDisplay } from "../statusDisplay";
+import { el, familyChip, svg } from "./marks";
+import { markerSvg, MARKER_LABELS } from "../statusMarkers";
+import { statusDisplay, type Family } from "../statusDisplay";
 import { SOURCE_LABELS, watchThisLakeUrl } from "./mappedLakes";
 import { latestReadingOnTrack, type MapDrawerFactory, type MappedLake, type MappedLakesFile } from "./model";
-
-/** One status per family, in the order of the legend: Frozen and Not measured each appear once, Ice breaking up apart. */
-export const LEGEND_STATUSES = [
-  "Alert: growing", "Watch", "Decrease noted", "No change", "Lake may be forming", "Frozen (likely)",
-  "Break-up likely", "No lake now", "Not observable",
-];
 
 export interface DrawerPanelOptions {
   lakes: Lake[];
@@ -68,10 +63,18 @@ export function createDrawerPanel(host: HTMLElement, opts: DrawerPanelOptions): 
   const legend = el("ul", "ov-legend");
   legend.dataset.role = "ov-legend";
   legend.setAttribute("aria-label", "Legend");
-  for (const s of LEGEND_STATUSES) {
+  // One entry per family present among the watched lakes, in the table's order: the pin's marker and its label.
+  const present = new Map<Family, number>();
+  for (const l of opts.lakes) {
+    const d = statusDisplay(l);
+    present.set(d.family, d.rank);
+  }
+  for (const [family] of [...present].sort((a, b) => a[1] - b[1])) {
     const li = el("li");
-    const d = displayForStatus(s);
-    li.append(familyMark(d, 14), d.chip);
+    li.dataset.family = family;
+    const mk = el("span", "ov-legend-mark");
+    mk.innerHTML = markerSvg(family, { size: 20 });
+    li.append(mk, MARKER_LABELS[family]);
     legend.append(li);
   }
   const dot = svg("svg", { viewBox: "0 0 20 20", width: "14", height: "14", "aria-hidden": "true", class: "ov-mapped-dot" });

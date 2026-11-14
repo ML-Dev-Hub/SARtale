@@ -63,7 +63,7 @@ const TEMPLATE = `
     <p class="brand">SARtale</p>
     <p class="sr-only" data-role="view-name" aria-live="polite">Lake Watch</p>
     <nav class="views" aria-label="Views">
-      <button type="button" class="view-btn" data-role="view-lakes" aria-pressed="false">Lake Watch</button>
+      <button type="button" class="view-btn view-primary" data-role="view-lakes" aria-pressed="false">Lake Watch</button>
       <button type="button" class="view-btn" data-role="view-evidence" aria-pressed="false">How we know</button>
       <button type="button" class="view-btn" data-role="view-home" aria-pressed="false">The story</button>
     </nav>
