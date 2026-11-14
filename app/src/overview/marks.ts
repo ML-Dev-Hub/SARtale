@@ -8,6 +8,8 @@ const SHAPES = {
   ring: "M10 3.5 a6.5 6.5 0 1 0 0.01 0 Z",
   hexagon: "M10 2 L17 6 L17 14 L10 18 L3 14 L3 6 Z",
   circle: "M10 4 a6 6 0 1 0 0.01 0 Z",
+  square: "M4.5 4.5 H15.5 V15.5 H4.5 Z",
+  dash: "M3 10 H17",
   crossed: "M3.5 3.5 H16.5 V16.5 H3.5 Z M3.5 16.5 L16.5 3.5",
 };
 
@@ -21,6 +23,11 @@ const STATUS_SHAPE: Record<string, string> = {
   "Frozen (seen by Sentinel-2)": SHAPES.hexagon,
   "Break-up likely": SHAPES.hexagon,
   "No lake now": SHAPES.crossed,
+  "Not enough NISAR looks yet": SHAPES.square,
+  "Not observable": SHAPES.square,
+  "Not measurable": SHAPES.square,
+  "Not yet validated against Sentinel-2": SHAPES.square,
+  "Not seen this pass": SHAPES.dash,
 };
 
 const SVG = "http://www.w3.org/2000/svg";

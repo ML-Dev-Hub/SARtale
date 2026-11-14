@@ -7,7 +7,7 @@ import { latestReadingOnTrack, type MapDrawerFactory, type MappedLake, type Mapp
 /** Every status the map can show, in the order of the legend. */
 export const LEGEND_STATUSES = [
   "Alert: growing", "Watch", "Decrease noted", "No change", "Lake may be forming", "Frozen (likely)",
-  "Frozen (seen by Sentinel-2)", "Break-up likely", "No lake now", "Not enough NISAR looks yet",
+  "Frozen (seen by Sentinel-2)", "Break-up likely", "No lake now", "Not enough NISAR looks yet", "Not seen this pass",
 ];
 
 export interface DrawerPanelOptions {
@@ -16,8 +16,10 @@ export interface DrawerPanelOptions {
   factory: MapDrawerFactory;
   loadMapped(): Promise<MappedLakesFile | null>;
   /** A watched lake was picked on the map: the overview selects its row. */
-  onSelect(id: string): void;
+  onSelect(id: string | null): void;
   onOpenLake(id: string): void;
+  /** The "Close map" button. */
+  onClose(): void;
 }
 
 export interface DrawerPanel {
@@ -47,6 +49,13 @@ export function createDrawerPanel(host: HTMLElement, opts: DrawerPanelOptions): 
   let selMapped: string | null = null;
   let gone = false;
 
+  const header = el("div", "ov-drawer-head");
+  const heading = el("h2", "ov-drawer-title", "Map");
+  const close = el("button", "ov-btn", "Close map");
+  close.type = "button";
+  close.dataset.role = "ov-map-close";
+  close.addEventListener("click", () => opts.onClose());
+  header.append(heading, close);
   const mapEl = el("div", "ov-map");
   mapEl.dataset.role = "ov-map";
   mapEl.setAttribute("aria-label", "Map of the watched lakes");
@@ -70,7 +79,7 @@ export function createDrawerPanel(host: HTMLElement, opts: DrawerPanelOptions): 
   legend.append(dotItem);
   const notices = el("div", "ov-notices");
   notices.dataset.role = "ov-notices";
-  host.replaceChildren(mapEl, switchRow, card, legend, notices);
+  host.replaceChildren(header, mapEl, switchRow, card, legend, notices);
 
   let once: Promise<MappedLakesFile | null> | null = null;
   const loadOnce = (): Promise<MappedLakesFile | null> => (once ??= opts.loadMapped());
@@ -80,9 +89,11 @@ export function createDrawerPanel(host: HTMLElement, opts: DrawerPanelOptions): 
     loadMapped: loadOnce,
     onPick: (id) => {
       if (mappedById.has(id)) {
+        selWatched = null; // the table's highlight goes; the host hears it as no selection
         selMapped = id;
         handle.highlight(id);
         drawCard();
+        opts.onSelect(null);
       } else if (lakeById.has(id)) {
         selMapped = null;
         opts.onSelect(id);
@@ -177,10 +188,11 @@ export function createDrawerPanel(host: HTMLElement, opts: DrawerPanelOptions): 
 
   return {
     setSelection(id) {
-      if (id !== selWatched) selMapped = null;
+      const changed = id !== selWatched;
+      if (changed) selMapped = null;
       selWatched = id;
       handle.highlight(selMapped ?? id);
-      drawCard();
+      if (changed) drawCard();
     },
     destroy() {
       gone = true;

@@ -274,15 +274,17 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     const sub = [l.district, suparcoShort(l)].filter(Boolean).join(" · ");
     const subEl = el("span", "ov-sub", sub);
     subEl.title = sub;
-    c.append(name, subEl);
+    const line = el("div", "ov-nameline");
+    line.append(name);
+    c.append(line, subEl);
     if (opts.mapDrawer) {
-      const locate = el("button", "ov-locate", "Show on map");
+      const locate = el("button", "ov-locate", "On map");
       locate.type = "button";
       locate.hidden = !state.map;
       locate.setAttribute("aria-pressed", String(state.sel === l.id));
       locate.setAttribute("aria-label", `Show ${l.name} on the map`);
       locate.addEventListener("click", () => set({ sel: l.id }));
-      c.append(locate);
+      line.append(locate);
     }
     if (pinned) {
       const m = levelMessage(l);
@@ -384,7 +386,6 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     if (state.sel === l.id) r.dataset.selected = "true";
     if (pinned) r.dataset.status = statusSlug(l.status.status);
     if (opts.mapDrawer && state.map) {
-      r.setAttribute("aria-pressed", String(state.sel === l.id));
       r.addEventListener("click", (e) => {
         if (!(e.target as Element).closest("button, a")) set({ sel: l.id });
       });
@@ -547,6 +548,7 @@ export function createOverview(root: HTMLElement, opts: OverviewOptions): Overvi
         factory: opts.mapDrawer,
         loadMapped: () => (mappedOnce ??= load()),
         onSelect: (id) => set({ sel: id }),
+        onClose: () => set({ map: false }),
         onOpenLake: opts.onOpenLake,
       });
     }

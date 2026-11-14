@@ -52,7 +52,7 @@
 
 /* ---- Table ---- */
 .ov-main { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
-.ov-table-wrap { flex: 999 1 720px; min-width: 0; overflow-x: auto; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); }
+.ov-table-wrap { flex: 999 0 1104px; min-width: 0; overflow-x: auto; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); }
 .ov-drawer { flex: 1 1 440px; max-width: 520px; min-width: 0; }
 .ov-table { display: flex; flex-direction: column; min-width: 1104px; }
 .ov-row {
@@ -218,8 +218,22 @@
 .ov-legend svg { flex: none; }
 .ov-notices { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12.5px; }
 .ov-notices p { margin: 0; }
-.ov-locate { align-self: flex-start; min-height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: transparent; color: var(--accent); font-size: 12.5px; cursor: pointer; }
+.ov-locate { flex: none; min-height: 24px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: transparent; color: var(--accent); font-size: 12.5px; cursor: pointer; }
 .ov-locate[hidden] { display: none; }
 .ov-locate[aria-pressed="true"] { border-color: var(--accent); }
 .ov[data-map="true"] .ov-row:not(.ov-row-head) { cursor: pointer; }
 .ov :focus-visible, .ov-drawer :focus-visible { outline-color: var(--accent); }
+.ov-nameline { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+.ov-nameline .ov-name { min-width: 0; }
+.ov-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ov-drawer-title { margin: 0; font-family: var(--display); font-size: 17px; font-weight: 700; color: #fff; }
+.ov-mark-not-seen-this-pass path { stroke-dasharray: none; stroke-width: 3; stroke-linecap: round; }
+/* The table keeps its full width. Beside it only when the page has room for both (1104 + 440 + gap + padding); else the drawer sits above it. */
+@media (max-width: 1639px) {
+  .ov[data-map="true"] .ov-main { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+  .ov[data-map="true"] .ov-drawer { order: -1; flex: none; max-width: none; width: 100%; }
+  .ov[data-map="true"] .ov-map { aspect-ratio: auto; height: 360px; }
+  .ov[data-map="true"] .ov-table-wrap { flex: none; }
+}
+/* With the map open the page widens, so the drawer can sit beside the full-width table on a large screen. */
+.lakes-view[data-mode="overview"]:has(.ov[data-map="true"]) { max-width: 1760px; }

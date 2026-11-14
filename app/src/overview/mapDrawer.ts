@@ -5,6 +5,27 @@ import type { MapDrawerFactory, MappedLakesFile } from "./model";
 
 const GREY = "#8ea3b0";
 
+/**
+ * Runs a callback once, when both the map style and the data are ready, whichever comes last. (Map.loaded() is no help:
+ * it stays false while tiles load, long after the one "load" event has fired.)
+ */
+export function createReadyGate<T>(): { styleReady(): void; dataReady(d: T): void; onReady(fn: (d: T) => void): void } {
+  let style = false;
+  let data: { v: T } | null = null;
+  let fn: ((d: T) => void) | null = null;
+  let done = false;
+  const check = (): void => {
+    if (done || !style || !data || !fn) return;
+    done = true;
+    fn(data.v);
+  };
+  return {
+    styleReady() { style = true; check(); },
+    dataReady(d) { data = { v: d }; check(); },
+    onReady(f) { fn = f; check(); },
+  };
+}
+
 /** One watched lake's pin: its status shape (never colour alone), a button named for the lake. */
 export function pinElement(l: Lake, onPick: (id: string) => void): HTMLButtonElement {
   const b = document.createElement("button");
@@ -25,6 +46,7 @@ export function pinElement(l: Lake, onPick: (id: string) => void): HTMLButtonEle
  * and the table and card still work. The base is the bundled MODIS picture, no outside tiles.
  */
 export const createMapDrawer: MapDrawerFactory = (el, { lakes, loadMapped, onPick }) => {
+  const gate = createReadyGate<MappedLakesFile>();
   const pins = new Map<string, HTMLButtonElement>();
   let map: import("maplibre-gl").Map | undefined;
   let ro: ResizeObserver | undefined;
@@ -81,6 +103,9 @@ export const createMapDrawer: MapDrawerFactory = (el, { lakes, loadMapped, onPic
         new maplibregl.Marker({ element: b }).setLngLat([l.lon, l.lat]).addTo(m);
       }
       applySel();
+      // The style is ready at MapLibre's "style.load" (or "load", if that came first); the listener is attached before that can fire.
+      m.once("style.load", () => gate.styleReady());
+      m.once("load", () => gate.styleReady());
       ro = new ResizeObserver(fit);
       ro.observe(el);
       fit();
@@ -107,10 +132,11 @@ export const createMapDrawer: MapDrawerFactory = (el, { lakes, loadMapped, onPic
         applySel();
         applyVisible();
       };
+      gate.onReady((f) => {
+        if (!gone) addMapped(f);
+      });
       const f = await loadMapped();
-      if (!f || gone) return;
-      if (m.loaded()) addMapped(f);
-      else m.once("load", () => addMapped(f));
+      if (f) gate.dataReady(f);
     } catch (err) {
       if (!gone) el.textContent = `Map unavailable (${err instanceof Error ? err.message : String(err)}). The table still works.`;
     }

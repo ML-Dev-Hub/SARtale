@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vite
 import { fixtureMessage, makeFile, makeLake } from "../fixtures";
 import type { Lake, LakesFile, LevelName } from "../lakes";
 import { mappedFixture } from "./mappedFixture";
+import { createReadyGate } from "./mapDrawer";
 import { loadMappedLakes, watchThisLakeUrl } from "./mappedLakes";
 import { DEFAULT_STATE, type MapDrawerFactory, type OverviewState } from "./model";
 import { createOverview } from "./overviewView";
@@ -57,6 +58,19 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
+describe("ready gate", () => {
+  it("fires once when the style is ready first", () => {
+    const g = createReadyGate<number>(); const fn = vi.fn(); g.onReady(fn);
+    g.styleReady(); expect(fn).not.toHaveBeenCalled(); g.dataReady(7); g.dataReady(8);
+    expect(fn).toHaveBeenCalledTimes(1); expect(fn).toHaveBeenCalledWith(7);
+  });
+  it("fires once when the data is ready first", () => {
+    const g = createReadyGate<number>(); const fn = vi.fn(); g.onReady(fn);
+    g.dataReady(7); expect(fn).not.toHaveBeenCalled(); g.styleReady(); g.styleReady();
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("map drawer", () => {
   it("is closed and has fetched nothing until opened", () => {
     render();
@@ -106,7 +120,10 @@ describe("map drawer", () => {
     render(file, { ...DEFAULT_STATE, map: true, sel: "shazore" });
     await tick();
     expect(fakeDrawer.highlighted).toBe("shazore");
-    expect(root.querySelector('[data-id="shazore"]')!.getAttribute("aria-pressed")).toBe("true");
+    const shazore = root.querySelector('[data-role="ov-row"][data-id="shazore"]')!;
+    expect(shazore.getAttribute("data-selected")).toBe("true");
+    expect(shazore.hasAttribute("aria-pressed")).toBe(false);
+    expect(shazore.querySelector("button.ov-locate")!.getAttribute("aria-pressed")).toBe("true");
     click(root.querySelector('[data-role="ov-row"][data-id="passu"]')!);
     expect(onState).toHaveBeenLastCalledWith(expect.objectContaining({ sel: "passu", map: true }));
   });
@@ -132,7 +149,7 @@ describe("map drawer", () => {
     expect(a.textContent).toBe("Watch this lake");
     expect(a.href).toBe(watchThisLakeUrl(mappedFixture.lakes[0]));
     expect(fakeDrawer.highlighted).toBe("m0001");
-    expect(onState).not.toHaveBeenCalledWith(expect.objectContaining({ sel: "m0001" }));
+    expect(onState).toHaveBeenLastCalledWith(expect.objectContaining({ sel: null }));
   });
   it("shows the legend and the ODbL and CC BY notices", async () => {
     render();
@@ -142,6 +159,13 @@ describe("map drawer", () => {
     expect(role("ov-legend").textContent).toContain("Mapped, not watched yet");
     expect(text()).toContain(mappedFixture.notice.odbl);
     expect(text()).toContain(mappedFixture.notice.cc_by);
+  });
+  it("Close map closes the drawer", async () => {
+    render();
+    click(toggle());
+    await tick();
+    click(role("ov-map-close"));
+    expect(onState).toHaveBeenLastCalledWith(expect.objectContaining({ map: false }));
   });
   it("the table stays usable when no map drawer is supplied", () => {
     document.body.innerHTML = "";
