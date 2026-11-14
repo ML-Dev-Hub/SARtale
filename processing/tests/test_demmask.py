@@ -78,3 +78,45 @@ def test_the_grid_key_changes_with_the_grid():
 def test_the_look_azimuths_are_the_fitted_ones(direction, az):
     from sartale import config
     assert config.DEM_LOOK_AZIMUTH_DEG[direction] == az and config.DEM_INCIDENCE_DEG == 40.0
+
+
+def test_stat_masks_keeps_the_dem_file_in_one_order_whatever_direction_comes_first(tmp_path, monkeypatch):
+    """Passes measured at the same time (lakes-fetch workers) add their masks in either order: the file is the same."""
+    monkeypatch.setattr(demmask, "layover_shadow", lambda dem, px, margin, az, *a: np.zeros((2, 2), bool))
+    xs, ys = np.array([0.0, 10.0]), np.array([10.0, 0.0])
+    contents = []
+    for first, second in (("D", "A"), ("A", "D")):
+        d = tmp_path / first
+        path = d / "dem" / f"glo30_{grid_key(xs, ys, 32643)}.npz"
+        path.parent.mkdir(parents=True)
+        np.savez_compressed(path, dem=np.zeros((4, 4), np.float32))
+        stat_masks(d, xs, ys, 32643, {first})
+        stat_masks(d, xs, ys, 32643, {second})
+        contents.append(path.read_bytes())
+    assert contents[0] == contents[1]
+
+
+def test_the_dem_download_times_out_instead_of_holding_the_lock(monkeypatch):
+    """read_dem runs under the DEM file's lock: its GDAL reads carry HTTP timeouts, so a hung read cannot hold it."""
+    import rasterio
+    import requests
+
+    class Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"features": [{"assets": {"data": {"href": "s3://copernicus-dem-30m/t.tif"}}}]}
+
+    seen = {}
+
+    def env(**kw):
+        seen.update(kw)
+        raise TimeoutError("stop here")
+
+    monkeypatch.setattr(requests, "post", lambda *a, **k: Resp())
+    monkeypatch.setattr(rasterio, "Env", env)
+    with pytest.raises(TimeoutError):
+        demmask.read_dem(np.array([500000.0, 500010.0]), np.array([4000010.0, 4000000.0]), 32643, 1)
+    assert int(seen["GDAL_HTTP_TIMEOUT"]) == demmask.DEM_HTTP_TIMEOUT_S > 0
+    assert int(seen["GDAL_HTTP_CONNECTTIMEOUT"]) == demmask.DEM_HTTP_CONNECT_TIMEOUT_S > 0

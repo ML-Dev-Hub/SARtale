@@ -63,18 +63,28 @@ def lee_filter(power: np.ndarray, box: int = LEE_BOX, enl: float = LEE_ENL) -> n
     return np.where(np.isfinite(m), out, np.nan)
 
 
-def water_mask(hh_db: np.ndarray, valid: np.ndarray, stat_mask: np.ndarray | None = None,
-               drop_db: float = DROP_DB) -> np.ndarray:
-    """D17 water: `valid` and HH (dB, Lee-filtered) at least `drop_db` below the window-median HH. The median is taken
-    over the valid pixels that `stat_mask` leaves in (True = left out of the statistics: layover and shadow), or over
-    every valid pixel without one (or when it would leave none)."""
+def water_reference(hh_db: np.ndarray, valid: np.ndarray, stat_mask: np.ndarray | None = None) -> float | None:
+    """The window-median HH (dB, Lee-filtered) D17 measures water against: over the valid pixels that `stat_mask` leaves
+    in (True = left out of the statistics: layover and shadow), or over every valid pixel without one (or when it
+    would leave none). None when no pixel is valid."""
     valid = np.asarray(valid, bool)
     use = valid if stat_mask is None else valid & ~np.asarray(stat_mask, bool)
     if not use.any():
         use = valid
     if not use.any():
+        return None
+    return float(np.median(np.asarray(hh_db)[use]))
+
+
+def water_mask(hh_db: np.ndarray, valid: np.ndarray, stat_mask: np.ndarray | None = None,
+               drop_db: float = DROP_DB, ref_db: float | None = None) -> np.ndarray:
+    """D17 water: `valid` and HH (dB, Lee-filtered) at least `drop_db` below the window-median HH (`water_reference`).
+    `ref_db`, when given, is that median as measured on the full 6 km window before the cache cropped it
+    (`lakebuild.window_reference`); `stat_mask` is then not used."""
+    valid = np.asarray(valid, bool)
+    ref = ref_db if ref_db is not None and np.isfinite(ref_db) else water_reference(hh_db, valid, stat_mask)
+    if ref is None:
         return np.zeros(valid.shape, bool)
-    ref = float(np.median(np.asarray(hh_db)[use]))
     with np.errstate(invalid="ignore"):
         return valid & (hh_db <= ref - drop_db)
 
@@ -86,7 +96,11 @@ def screen_passes(hh_db_by_pass: dict[str, np.ndarray]) -> dict[str, str]:
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)  # a window with no valid pixel has a NaN median
-        medians = {k: float(np.nanmedian(v)) for k, v in hh_db_by_pass.items()}
+        return screen_medians({k: float(np.nanmedian(v)) for k, v in hh_db_by_pass.items()})
+
+
+def screen_medians(medians: dict[str, float]) -> dict[str, str]:
+    """`screen_passes` on each pass's window-median HH (dB, despeckled; NaN for a window with no valid pixel)."""
     finite = [m for m in medians.values() if np.isfinite(m)]
     if not finite:  # no pass of the track has a valid pixel (e.g. the window lies in mask-0 coverage)
         return {k: "window has no valid HH pixels" for k in medians}
@@ -147,16 +161,25 @@ def window_stats(hh_db: np.ndarray, hv_db: np.ndarray) -> tuple[float, float]:
     return float(dark.sum() / n), float(np.nanmedian(np.where(valid, hv_db, np.nan)))
 
 
-def dark_mask(hh_db: np.ndarray, hv_db: np.ndarray, drop_db: float = DROP_DB) -> tuple[np.ndarray, np.ndarray]:
-    """Dark = HH and HV both at least `drop_db` below their window medians. Returns (dark, valid).
+def dark_medians(hh_db: np.ndarray, hv_db: np.ndarray) -> tuple[float, float] | None:
+    """The window medians (HH, HV dB) `dark_mask` compares with, over the pixels valid in both; None when none is."""
+    valid = np.isfinite(hh_db) & np.isfinite(hv_db)
+    if not valid.any():
+        return None
+    return float(np.median(np.asarray(hh_db)[valid])), float(np.median(np.asarray(hv_db)[valid]))
+
+
+def dark_mask(hh_db: np.ndarray, hv_db: np.ndarray, drop_db: float = DROP_DB,
+              ref: tuple[float, float] | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """Dark = HH and HV both at least `drop_db` below their window medians (`dark_medians`, or `ref` when given: the
+    medians of the full 6 km window before the cache cropped it). Returns (dark, valid).
 
     NaN pixels are valid=False and dark=False.
     """
     valid = np.isfinite(hh_db) & np.isfinite(hv_db)
     if not valid.any():
         return np.zeros(hh_db.shape, bool), valid
-    hh_med = np.nanmedian(np.where(valid, hh_db, np.nan))
-    hv_med = np.nanmedian(np.where(valid, hv_db, np.nan))
+    hh_med, hv_med = ref if ref is not None else dark_medians(hh_db, hv_db)
     with np.errstate(invalid="ignore"):
         dark = valid & (hh_db <= hh_med - drop_db) & (hv_db <= hv_med - drop_db)
     return dark, valid
@@ -187,27 +210,38 @@ def shadow_prone(median_dark_by_track: dict[str, np.ndarray], directions: dict[s
     return (asc & seen_light_desc) | (desc & seen_light_asc)
 
 
-def _ring(outline_polygon) -> list:
-    if isinstance(outline_polygon, dict):  # GeoJSON Polygon
-        return outline_polygon["coordinates"][0]
-    return list(outline_polygon)
+def outline_rings(outline_polygon) -> list[list]:
+    """The exterior ring (lon, lat vertices) of each part of an outline: a list of vertices (one ring), a GeoJSON
+    Polygon (one part) or a GeoJSON MultiPolygon (one ring per part). Holes are not used: an island counts as part
+    of its lake's zone, as it always has."""
+    if isinstance(outline_polygon, dict):
+        kind = outline_polygon.get("type")
+        if kind == "Polygon":
+            return [outline_polygon["coordinates"][0]]
+        if kind == "MultiPolygon":
+            return [part[0] for part in outline_polygon["coordinates"]]
+        raise ValueError(f"an outline must be a Polygon or MultiPolygon, got {kind!r}")
+    return [list(outline_polygon)]
 
 
 def outline_mask(shape, x, y, epsg, outline_polygon) -> np.ndarray:
-    """The outline itself, without the buffer, rasterised on the window grid (pixel centres inside it; an outline
-    narrower than a pixel takes every pixel it touches). Empty when the outline misses the grid."""
+    """The outline itself, without the buffer, rasterised on the window grid: the union of its parts (pixel centres
+    inside a part; a part narrower than a pixel takes every pixel it touches). Empty when the outline misses the
+    grid."""
     x, y = np.asarray(x, float), np.asarray(y, float)
     dx = float(x[1] - x[0]) if len(x) > 1 else 1.0
     dy = float(y[1] - y[0]) if len(y) > 1 else -1.0
     to_utm = Transformer.from_crs(4326, epsg, always_xy=True)
-    ring = [to_utm.transform(lon, lat) for lon, lat in _ring(outline_polygon)]
     transform = Affine(dx, 0, x[0] - dx / 2, 0, dy, y[0] - dy / 2)
-    poly = {"type": "Polygon", "coordinates": [ring]}
-    inside = geometry_mask([poly], out_shape=tuple(shape), transform=transform, invert=True)
-    if not inside.any():
-        # An outline narrower than a pixel can hold no pixel centre and still lie on the grid: take every pixel it
-        # touches instead (the 200 m buffer of the zone dwarfs the difference).
-        inside = geometry_mask([poly], out_shape=tuple(shape), transform=transform, invert=True, all_touched=True)
+    inside = np.zeros(tuple(shape), bool)
+    for ring_ll in outline_rings(outline_polygon):
+        poly = {"type": "Polygon", "coordinates": [[to_utm.transform(lon, lat) for lon, lat in ring_ll]]}
+        part = geometry_mask([poly], out_shape=tuple(shape), transform=transform, invert=True)
+        if not part.any():
+            # A part narrower than a pixel can hold no pixel centre and still lie on the grid: take every pixel it
+            # touches instead (the 200 m buffer of the zone dwarfs the difference).
+            part = geometry_mask([poly], out_shape=tuple(shape), transform=transform, invert=True, all_touched=True)
+        inside |= part
     return inside
 
 
@@ -215,8 +249,9 @@ def lake_zone(shape, x, y, epsg, lake: Lake, outline_polygon=None, half_km: floa
     """Boolean mask of the lake zone on the window grid.
 
     With `outline_polygon`: the outline rasterised and buffered by 200 m. It is either a list of
-    (lon, lat) WGS84 vertices (exterior ring) or a GeoJSON Polygon dict {"type": "Polygon",
-    "coordinates": [[[lon, lat], ...]]}. Without it: a circle around the lake's point (water area "in the
+    (lon, lat) WGS84 vertices (exterior ring), a GeoJSON Polygon dict {"type": "Polygon",
+    "coordinates": [[[lon, lat], ...]]} or a GeoJSON MultiPolygon, whose zone is the union of its parts, each
+    buffered by 200 m. Without it: a circle around the lake's point (water area "in the
     search window") of radius `half_km`, by default the lake's own `zone_radius_km` (1 km unless set).
     `x`, `y` are the window's UTM coordinate vectors (metres, pixel centres) in `epsg`.
     """
@@ -241,32 +276,32 @@ def lake_zone(shape, x, y, epsg, lake: Lake, outline_polygon=None, half_km: floa
 
 
 def outline_window_share(x, y, epsg, outline_polygon) -> float:
-    """Share of the outline's area (without the buffer) that lies on the window grid, 0 to 1."""
+    """Share of the outline's area (without the buffer) that lies on the window grid, 0 to 1. For a MultiPolygon,
+    the share of the union of its parts (their areas summed; a part narrower than a pixel counts the pixels it
+    touches, as lake_zone does)."""
     x, y = np.asarray(x, float), np.asarray(y, float)
     dx, dy = float(x[1] - x[0]), float(y[1] - y[0])
     to_utm = Transformer.from_crs(4326, epsg, always_xy=True)
-    ring = [to_utm.transform(lon, lat) for lon, lat in _ring(outline_polygon)]
-    xs, ys = np.array([p[0] for p in ring]), np.array([p[1] for p in ring])
-    area = 0.5 * abs(float(np.dot(xs, np.roll(ys, 1)) - np.dot(ys, np.roll(xs, 1))))  # shoelace, m²
+    area = 0.0
+    for ring_ll in outline_rings(outline_polygon):
+        ring = [to_utm.transform(lon, lat) for lon, lat in ring_ll]
+        xs, ys = np.array([p[0] for p in ring]), np.array([p[1] for p in ring])
+        area += 0.5 * abs(float(np.dot(xs, np.roll(ys, 1)) - np.dot(ys, np.roll(xs, 1))))  # shoelace, m²
     if area == 0:
         return 0.0
-    transform = Affine(dx, 0, x[0] - dx / 2, 0, dy, y[0] - dy / 2)
-    poly = {"type": "Polygon", "coordinates": [ring]}
-    inside = geometry_mask([poly], out_shape=(len(y), len(x)), transform=transform, invert=True)
-    if not inside.any():  # narrower than a pixel: as lake_zone, count the pixels it touches
-        inside = geometry_mask([poly], out_shape=(len(y), len(x)), transform=transform, invert=True, all_touched=True)
+    inside = outline_mask((len(y), len(x)), x, y, epsg, outline_polygon)
     return min(1.0, float(inside.sum()) * abs(dx * dy) / area)
 
 
 def pass_water(hh_db: np.ndarray, valid: np.ndarray, zone: np.ndarray, pixel_m: float,
-               stat_mask: np.ndarray | None = None) -> dict:
+               stat_mask: np.ndarray | None = None, ref_db: float | None = None) -> dict:
     """Water in one pass (D17, `water_mask`): Lee-filtered HH `hh_db`, its `valid` pixels, the lake `zone`, and the
     layover/shadow `stat_mask` left out of the window median.
 
     Returns area_km2; observable_share (valid share of the zone pixels, 0.0 for an empty zone); valid (count of
     observable zone pixels); water (the water mask over the whole window).
     """
-    water = water_mask(hh_db, valid, stat_mask)
+    water = water_mask(hh_db, valid, stat_mask, ref_db=ref_db)
     observable = zone & np.asarray(valid, bool)
     n_zone = int(zone.sum())
     return {

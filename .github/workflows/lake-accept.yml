@@ -179,6 +179,8 @@ jobs:
             decide refuse-changed
           elif [ "$code" -eq 1 ] && grep -qx 'lake-issue-accept: This request was approved before the new check existed. A team member must accept it again.' "$RUNNER_TEMP/accept.err"; then
             decide refuse-migrated
+          elif [ "$code" -eq 1 ] && grep -qx 'lake-issue-accept: The point is outside Gilgit-Baltistan and Khyber Pakhtunkhwa.' "$RUNNER_TEMP/accept.err"; then
+            decide refuse-outside
           elif [ "$code" -eq 1 ] && grep -q '^lake-issue-accept: ' "$RUNNER_TEMP/accept.err"; then
             decide refuse-unchecked
           else
@@ -246,6 +248,7 @@ jobs:
         if: >-
           needs.rebuild.outputs.decision == 'refuse-changed' ||
           needs.rebuild.outputs.decision == 'refuse-migrated' ||
+          needs.rebuild.outputs.decision == 'refuse-outside' ||
           needs.rebuild.outputs.decision == 'refuse-unchecked'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -256,6 +259,9 @@ jobs:
               > "$RUNNER_TEMP/refused.md"
           elif [ "$DECISION" = refuse-migrated ]; then
             printf '%s\n' "This request was approved before the new check existed. A team member must accept it again." \
+              > "$RUNNER_TEMP/refused.md"
+          elif [ "$DECISION" = refuse-outside ]; then
+            printf '%s\n' "The point is outside Gilgit-Baltistan and Khyber Pakhtunkhwa. SARtale watches lakes in these two provinces only, so this lake was not added." \
               > "$RUNNER_TEMP/refused.md"
           else
             printf '%s\n' "This request has no checked entry that can be accepted, so nothing was rebuilt." \
@@ -389,7 +395,7 @@ jobs:
         if: >-
           always() && needs.gate.outputs.decision == 'allowed' &&
           needs.rebuild.outputs.decision != 'refuse-changed' && needs.rebuild.outputs.decision != 'refuse-unchecked' &&
-          needs.rebuild.outputs.decision != 'refuse-migrated' &&
+          needs.rebuild.outputs.decision != 'refuse-migrated' && needs.rebuild.outputs.decision != 'refuse-outside' &&
           steps.install.outputs.result != 'changed' && steps.install.outputs.result != 'stale' &&
           steps.commit.outputs.result != 'stale' &&
           steps.live.outputs.result != 'withdrawn' &&

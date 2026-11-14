@@ -609,15 +609,16 @@ def test_the_reason_never_claims_what_the_evidence_cannot_show():
 def test_the_lakes_freeze_command_sets_each_lake_again_and_is_idempotent(tmp_path, monkeypatch, capsys):
     import json
 
+    from conftest import DISTRICT_FIELDS
     from sartale import freeze, run_pipeline
     lakes_in = tmp_path / "lakes_in.json"
     lakes_in.write_text(json.dumps([
         {"id": "shazore", "name": "Shazore", "lon": 72.1741, "lat": 35.7794, "role": "watch", "coord_source": "x",
          "outline": None, "downstream": None, "downstream_source": None, "elevation_m": 4181,
-         "elevation_source": "Copernicus DEM GLO-30"},
+         "elevation_source": "Copernicus DEM GLO-30", **DISTRICT_FIELDS},
         {"id": "dry", "name": "Dry", "lon": 72.0, "lat": 35.7, "role": "watch", "coord_source": "x",
          "outline": None, "downstream": None, "downstream_source": None, "lake_state": "no_lake",
-         "lake_state_source": "a dry basin"}]), encoding="utf-8")
+         "lake_state_source": "a dry basin", **DISTRICT_FIELDS}]), encoding="utf-8")
     dry = {**shazore_entry(), "id": "dry", "lake_state": "no_lake",
            "status": {"status": "No lake now", "track": "084A", "latest_date": "2026-10-30", "looks": 7, "reason": "r"}}
     out = tmp_path / "out"

@@ -45,19 +45,32 @@ runs:
       working-directory: processing
       run: python -m sartale.run_pipeline lakes-search
 
-    - name: Fetch the passes (retried once)
+    - name: Fetch the passes (retried once; at most 12 lakes new to the cache per run; 4 passes at once)
+      # A lake with no cached window yet costs a full fetch of every pass; the rest wait for next week's run.
+      # 4 worker processes, not the default 6: the standard private-repo runner has 2 vCPUs and 7 GB. The reads wait
+      # on the network, so 4 keep both cores busy; 4 processes take well under 2 GB; 4 connections stay gentle on NASA.
       shell: bash -el {0}
       working-directory: processing
       run: |
-        python -m sartale.run_pipeline lakes-fetch || {
+        python -m sartale.run_pipeline lakes-fetch --max-new-lakes 12 --workers 4 || {
           echo "lakes-fetch failed; retrying once"
-          python -m sartale.run_pipeline lakes-fetch
+          python -m sartale.run_pipeline lakes-fetch --max-new-lakes 12 --workers 4
         }
 
     - name: Remove the Earthdata login
       if: always()
       shell: bash
       run: rm -f ~/.netrc
+
+    - name: Shrink the NISAR window cache (cropped float16 windows, listed passes and register lakes only)
+      # Crops any window still at the full 6 km in float32/64 (a cache saved before the crop) after measuring its
+      # full-window statistics, so the build reads the same windows as a fresh fetch, and keeps the saved cache
+      # small. Reads the Copernicus DEM (public) when the lake's is not kept. Needs no login.
+      shell: bash -el {0}
+      working-directory: processing
+      run: |
+        unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
+        python -m sartale.run_pipeline lakes-cache-shrink
 
     - name: Save the NISAR window cache
       # only after a fetch that went through; a failed one keeps the last good cache
@@ -126,11 +139,12 @@ runs:
       # After the freeze check: a lake gets a level only with a current Sentinel-2 check (made for this water method,
       # zone and lake point; the others are reused from the published lakes.json). Needs no login (Earth Search is
       # open). Fails soft inside the command: a failed check leaves that lake "Not yet validated against Sentinel-2".
+      # 4 lakes at once (the default): threads in one process, waiting on Earth Search and Sentinel-2 reads.
       shell: bash -el {0}
       working-directory: processing
       run: |
         unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
-        python -m sartale.run_pipeline lakes-check --stale-only
+        python -m sartale.run_pipeline lakes-check --stale-only --workers 4
 
     - name: Compare with the published passes (fails when too many would be dropped)
       shell: bash -el {0}

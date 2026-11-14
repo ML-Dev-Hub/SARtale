@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import hashlib
 import os
+import threading
+import zlib
 from pathlib import Path
 
 import numpy as np
@@ -27,8 +29,28 @@ STAC_URL = "https://earth-search.aws.element84.com/v1/search"
 DEM_COLLECTION = "cop-dem-glo-30"
 SOURCE = "Copernicus DEM GLO-30 (Earth Search)"
 OFFLINE_ENV = "SARTALE_DEM_OFFLINE"
+DEM_HTTP_TIMEOUT_S = 120  # GDAL_HTTP_TIMEOUT of one DEM read (seconds)
+DEM_HTTP_CONNECT_TIMEOUT_S = 30  # GDAL_HTTP_CONNECTTIMEOUT
 NO_DEM_LIMIT = ("no Copernicus DEM for this build: the window median that water is measured against uses every valid "
                 "pixel, terrain in radar layover or shadow included")
+
+# Every pass of a lake on one grid shares one DEM file, which `stat_masks` reads, adds its look direction's mask to and
+# writes back. Workers that measure passes at the same time (lakes-fetch processes, lakes-check threads) take the lock of
+# the file first, so no mask is lost and the file is downloaded once. Locks are striped by a stable hash of the path (not
+# `hash()`, which differs per process). In one process these are thread locks; lakes-fetch hands its worker processes
+# locks shared between them (`set_locks`).
+_LOCKS: list = [threading.Lock() for _ in range(16)]
+
+
+def set_locks(locks) -> None:
+    """Use `locks` (a non-empty list of lock objects, e.g. multiprocessing locks shared by worker processes)."""
+    global _LOCKS
+    _LOCKS = list(locks)
+
+
+def _lock_for(path: Path):
+    key = os.path.normcase(os.path.abspath(path)).encode("utf-8", "surrogatepass")
+    return _LOCKS[zlib.crc32(key) % len(_LOCKS)]
 
 
 def local_incidence(dem: np.ndarray, px: float, look_az_deg: float, inc_deg: float) -> np.ndarray:
@@ -94,8 +116,11 @@ def read_dem(xs: np.ndarray, ys: np.ndarray, epsg: int, margin: int) -> np.ndarr
         raise RuntimeError("no Copernicus DEM tile over the window")
     transform = Affine(dx, 0, X[0] - dx / 2, 0, dy, Y[0] - dy / 2)
     out = np.full((len(Y), len(X)), np.nan, np.float32)
+    # Timeouts: this runs under the DEM file's lock (`stat_masks`), so a hung read must not hold it, and every worker
+    # waiting on it, for good. A timed-out read raises, and the pass goes on without the mask, as with no network.
     env = dict(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif",
-               GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2")
+               GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2", GDAL_HTTP_TIMEOUT=str(DEM_HTTP_TIMEOUT_S),
+               GDAL_HTTP_CONNECTTIMEOUT=str(DEM_HTTP_CONNECT_TIMEOUT_S))
     for it in items:
         href = it["assets"]["data"]["href"].replace("s3://copernicus-dem-30m/",
                                                     "https://copernicus-dem-30m.s3.amazonaws.com/")
@@ -125,6 +150,13 @@ def stat_masks(lake_dir: Path, xs, ys, epsg: int, directions, log=print) -> dict
     px = abs(float(xs[1] - xs[0]))
     margin = int(round(config.DEM_MARGIN_M / px))
     path = Path(lake_dir) / "dem" / f"glo30_{grid_key(xs, ys, epsg)}.npz"
+    with _lock_for(path):
+        return _stat_masks_locked(path, xs, ys, epsg, px, margin, directions, lake_dir, log)
+
+
+def _stat_masks_locked(path: Path, xs, ys, epsg: int, px: float, margin: int, directions, lake_dir, log):
+    """`stat_masks` once the DEM file's lock is held. The file is written with its entries in one order (the DEM,
+    then the masks by name), so it is the same whichever direction's mask was added first."""
     kept: dict[str, np.ndarray] = {}
     if path.is_file():
         with np.load(path) as z:
@@ -152,6 +184,6 @@ def stat_masks(lake_dir: Path, xs, ys, epsg: int, directions, log=print) -> dict
     if changed:
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_name(path.stem + ".tmp.npz")
-        np.savez_compressed(tmp, **kept)
+        np.savez_compressed(tmp, **{k: kept[k] for k in ["dem", *sorted(set(kept) - {"dem"})]})
         os.replace(tmp, path)
     return out

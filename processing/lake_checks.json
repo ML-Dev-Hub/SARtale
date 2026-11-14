@@ -12,12 +12,12 @@
   "radar_km2": 4.524900000000001,
   "optical_km2": 4.3673,
   "area_error_pct": 3.608636915256575,
-  "iou": 0.6628394045927145,
+  "iou": 0.662870500233754,
   "zone_valid_share": 0.9931098001725465,
-  "window_radar_km2": 9.0253,
-  "window_optical_km2": 4.402,
-  "window_area_error_pct": 105.02726033621079,
-  "window_iou": 0.3592861047559272,
+  "window_radar_km2": 8.5807,
+  "window_optical_km2": 4.401400000000001,
+  "window_area_error_pct": 94.95387831144633,
+  "window_iou": 0.3762283872745969,
   "key": {
    "method": "D17",
    "zone": {
@@ -25,7 +25,9 @@
     "lat": 36.333,
     "outline": "outlines/attabad_osm.geojson",
     "outline_sha256": "fa01e9eaa65af1d22a6ef4507a5acfe4e75b68c4c283dd3f01f46b5a376c3e72"
-   }
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
   }
  },
  {
@@ -43,10 +45,10 @@
   "area_error_pct": -15.1304347826087,
   "iou": 0.5779317169717961,
   "zone_valid_share": 1.0,
-  "window_radar_km2": 7.8319,
-  "window_optical_km2": 6.6437,
-  "window_area_error_pct": 17.884612490028147,
-  "window_iou": 0.4065314768211277,
+  "window_radar_km2": 2.4547000000000003,
+  "window_optical_km2": 2.0820000000000003,
+  "window_area_error_pct": 17.901056676272812,
+  "window_iou": 0.33648549123582266,
   "key": {
    "method": "D17",
    "zone": {
@@ -54,7 +56,9 @@
     "lat": 36.458,
     "outline": "outlines/passu_osm.geojson",
     "outline_sha256": "4cb368039bbafa5f9d943fcad3dc525b885dbe05265302534e20fa05d9a43f73"
-   }
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
   }
  },
  {
@@ -72,17 +76,19 @@
   "area_error_pct": -11.529126213592226,
   "iou": 0.5608040201005026,
   "zone_valid_share": 1.0,
-  "window_radar_km2": 5.7542,
-  "window_optical_km2": 0.7289,
-  "window_area_error_pct": 689.4361366442585,
-  "window_iou": 0.044381081255235516,
+  "window_radar_km2": 2.4031000000000002,
+  "window_optical_km2": 0.4471,
+  "window_area_error_pct": 437.4860210243794,
+  "window_iou": 0.08686699206833436,
   "key": {
    "method": "D17",
    "zone": {
     "lon": 74.07906,
     "lat": 36.6214,
     "radius_km": 0.3
-   }
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
   }
  },
  {
@@ -100,10 +106,10 @@
   "area_error_pct": 3.980503655564583,
   "iou": 0.6728847435043305,
   "zone_valid_share": 0.8073327222731439,
-  "window_radar_km2": 3.5167,
-  "window_optical_km2": 2.3804000000000003,
-  "window_area_error_pct": 47.735674676524944,
-  "window_iou": 0.2507900820836957,
+  "window_radar_km2": 1.3225,
+  "window_optical_km2": 1.0357,
+  "window_area_error_pct": 27.691416433330108,
+  "window_iou": 0.3423269581056466,
   "key": {
    "method": "D17",
    "zone": {
@@ -111,7 +117,646 @@
     "lat": 35.7794,
     "outline": "outlines/shazore_s2_2026.geojson",
     "outline_sha256": "6a74a2ef08e8d851270a3b8f712d45a2278ecace9d71212c1da3f0fa8eb438d3"
-   }
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "karambar_lake",
+  "nisar_date": "2026-07-19",
+  "nisar_track": "164D",
+  "s2_date": "2026-07-18",
+  "s2_id": "S2C_43SCA_20260718_0_L2A",
+  "days_apart": 1,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 3.4383000000000004,
+  "optical_km2": 2.4605,
+  "area_error_pct": 39.73989026620606,
+  "iou": 0.6837357995090484,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 6.7386,
+  "window_optical_km2": 6.3451,
+  "window_area_error_pct": 6.201635908023507,
+  "window_iou": 0.27244877118932537,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 73.704127,
+    "lat": 36.87936,
+    "outline": "outlines/karambar_lake.geojson",
+    "outline_sha256": "b75f145decb53e43bc86677b32f7fc542529f8c738072e925e691ad64f2658e8"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "khukush",
+  "nisar_date": "2026-09-12",
+  "nisar_track": "084A",
+  "s2_date": "2026-09-09",
+  "s2_id": "S2C_43SBV_20260909_0_L2A",
+  "days_apart": 3,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 2.1947,
+  "optical_km2": 2.1131,
+  "area_error_pct": 3.8616251005631486,
+  "iou": 0.858572784537061,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 4.752800000000001,
+  "window_optical_km2": 2.2028000000000003,
+  "window_area_error_pct": 115.76175776284727,
+  "window_iou": 0.40468929862471476,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 72.612688,
+    "lat": 35.994413,
+    "outline": "outlines/khukush.geojson",
+    "outline_sha256": "6f01ff4dfe9f11589651df54d2a09f4cc37f488a7e243c779c4ddc8eae23da8c"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "shandur",
+  "nisar_date": "2026-07-19",
+  "nisar_track": "164D",
+  "s2_date": "2026-07-18",
+  "s2_id": "S2C_43SBA_20260718_0_L2A",
+  "days_apart": 1,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 2.1067,
+  "optical_km2": 0.5427000000000001,
+  "area_error_pct": 288.18868619863645,
+  "iou": 0.2575469906967913,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 8.4123,
+  "window_optical_km2": 0.5446,
+  "window_area_error_pct": 1444.6749908189497,
+  "window_iou": 0.06464994651135147,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 72.537359,
+    "lat": 36.078593,
+    "outline": "outlines/shandur.geojson",
+    "outline_sha256": "170cbe3787384eca4ff8e7ee2eb5a9eaa1ca090751538c89b95366e5abca470d"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "bashkar_gol",
+  "nisar_date": "2026-09-12",
+  "nisar_track": "084A",
+  "s2_date": "2026-09-09",
+  "s2_id": "S2C_42SYE_20260909_0_L2A",
+  "days_apart": 3,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 1.8127,
+  "optical_km2": 1.6360000000000001,
+  "area_error_pct": 10.800733496332509,
+  "iou": 0.8297432088285229,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 5.565300000000001,
+  "window_optical_km2": 1.9117000000000002,
+  "window_area_error_pct": 191.11785321964743,
+  "window_iou": 0.2862106929058006,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 72.334402,
+    "lat": 35.911968,
+    "outline": "outlines/bashkar_gol.geojson",
+    "outline_sha256": "77a3dc04eee2695ee8878b7ec78dd3a300e6fa050e4d580eb6a82260efedf13b"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "atro_sar",
+  "nisar_date": "2026-08-17",
+  "nisar_track": "063D",
+  "s2_date": "2026-08-17",
+  "s2_id": "S2C_43SCA_20260817_0_L2A",
+  "days_apart": 0,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 1.4585000000000001,
+  "optical_km2": 1.118,
+  "area_error_pct": 30.4561717352415,
+  "iou": 0.7409960132441381,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 4.0937,
+  "window_optical_km2": 2.4905,
+  "window_area_error_pct": 64.37261594057419,
+  "window_iou": 0.28836708736914196,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 73.64615,
+    "lat": 36.644067,
+    "outline": "outlines/atro_sar.geojson",
+    "outline_sha256": "37d936aa08bb4e6feb3b45a3fc5a234a4c76e98a032dc0792c1a8252a0db0b2a"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "lake_c006",
+  "nisar_date": "2026-08-19",
+  "nisar_track": "084A",
+  "s2_date": "2026-08-17",
+  "s2_id": "S2C_43SBV_20260817_0_L2A",
+  "days_apart": 2,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.9493,
+  "optical_km2": 1.0738,
+  "area_error_pct": -11.594337865524311,
+  "iou": 0.8173733381243262,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 3.4765,
+  "window_optical_km2": 1.3155000000000001,
+  "window_area_error_pct": 164.27213987077155,
+  "window_iou": 0.2715934722037946,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 72.594339,
+    "lat": 35.944233,
+    "outline": "outlines/lake_c006.geojson",
+    "outline_sha256": "fb436f054c2cf1ed7dfc6cc274cf022af4576746a7057727f7d144529ad376c5"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "lake_c007",
+  "nisar_date": "2026-08-17",
+  "nisar_track": "063D",
+  "s2_date": "2026-08-17",
+  "s2_id": "S2C_43SCV_20260817_0_L2A",
+  "days_apart": 0,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.8066,
+  "optical_km2": 0.0014,
+  "area_error_pct": 57514.285714285725,
+  "iou": 0.0013632420374271904,
+  "zone_valid_share": 0.9998688610582913,
+  "window_radar_km2": 2.8058,
+  "window_optical_km2": 0.5116,
+  "window_area_error_pct": 448.436278342455,
+  "window_iou": 0.06299666752114842,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 73.364776,
+    "lat": 35.945076,
+    "outline": "outlines/lake_c007.geojson",
+    "outline_sha256": "197ca38a5d4a2bf2d00f4b89b70ccfb294f18bbea0cf6ac0f08eb8ef684b8399"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "zhagi_chhat",
+  "nisar_date": "2026-09-12",
+  "nisar_track": "084A",
+  "s2_date": "2026-09-11",
+  "s2_id": "S2A_43SBV_20260911_1_L2A",
+  "days_apart": 1,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.8069000000000001,
+  "optical_km2": 0.5679000000000001,
+  "area_error_pct": 42.08487409755238,
+  "iou": 0.6411603199236003,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 3.2443,
+  "window_optical_km2": 1.6204,
+  "window_area_error_pct": 100.21599605035793,
+  "window_iou": 0.2679055462885738,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 72.194106,
+    "lat": 35.799475,
+    "outline": "outlines/zhagi_chhat.geojson",
+    "outline_sha256": "ec95e9deb338753175c36d1cf52d3d69d6349696fb7cc032ba947a169730f647"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "andrab",
+  "nisar_date": "2026-09-12",
+  "nisar_track": "084A",
+  "s2_date": "2026-09-09",
+  "s2_id": "S2C_43SBV_20260909_0_L2A",
+  "days_apart": 3,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.248,
+  "optical_km2": 0.30660000000000004,
+  "area_error_pct": -19.112850619699945,
+  "iou": 0.589567211235311,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 2.3298,
+  "window_optical_km2": 0.4844,
+  "window_area_error_pct": 380.9661436829067,
+  "window_iou": 0.09617107466988666,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 72.512109,
+    "lat": 35.645805,
+    "outline": "outlines/andrab.geojson",
+    "outline_sha256": "ccbcb5d7f7f86393ecc8f738de9eadd4f7f7d5499abc6f94f62cb3a6940fc27a"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "lake_c010",
+  "nisar_date": "2026-06-30",
+  "nisar_track": "063D",
+  "s2_date": "2026-06-28",
+  "s2_id": "S2C_43SCA_20260628_0_L2A",
+  "days_apart": 2,
+  "s2_window_cloud_pct": 0.2,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.3286,
+  "optical_km2": 0.2816,
+  "area_error_pct": 16.690340909090903,
+  "iou": 0.7121212121212122,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 1.1333,
+  "window_optical_km2": 0.5529000000000001,
+  "window_area_error_pct": 104.97377464279252,
+  "window_iou": 0.1913240073477462,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 73.95457,
+    "lat": 36.264717,
+    "outline": "outlines/lake_c010.geojson",
+    "outline_sha256": "66946196db797a67a2020137723b4fc02f75391d98c7e5a31c43f8e773cc7244"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "lake_c011",
+  "nisar_date": "2026-09-10",
+  "nisar_track": "063D",
+  "s2_date": "2026-09-09",
+  "s2_id": "S2C_43SBV_20260909_0_L2A",
+  "days_apart": 1,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.4152,
+  "optical_km2": 0.022600000000000002,
+  "area_error_pct": 1737.1681415929202,
+  "iou": 0.05443159922928709,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 3.1988000000000003,
+  "window_optical_km2": 0.09430000000000001,
+  "window_area_error_pct": 3292.152704135737,
+  "window_iou": 0.017425155250718326,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 72.798167,
+    "lat": 35.623888,
+    "outline": "outlines/lake_c011.geojson",
+    "outline_sha256": "b36556d3f894e43d1b94caf1399792316a377134b79fdeb1730bb78954c97113"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "lake_c012",
+  "nisar_date": "2026-08-24",
+  "nisar_track": "156A",
+  "s2_date": "2026-08-27",
+  "s2_id": "S2C_43SDU_20260827_0_L2A",
+  "days_apart": 3,
+  "s2_window_cloud_pct": 0.2,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.3099,
+  "optical_km2": 0.0061,
+  "area_error_pct": 4980.32786885246,
+  "iou": 0.011523687580025609,
+  "zone_valid_share": 0.9998686629892304,
+  "window_radar_km2": 2.8518000000000003,
+  "window_optical_km2": 0.0235,
+  "window_area_error_pct": 12035.319148936172,
+  "window_iou": 0.001811783561548378,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 74.761124,
+    "lat": 34.839399,
+    "outline": "outlines/lake_c012.geojson",
+    "outline_sha256": "ab10488d7e297e321a41bfe92b6f0a60a592ecfa141b0cdf5cee659673e6e0b0"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "lake_c013",
+  "nisar_date": "2026-08-17",
+  "nisar_track": "063D",
+  "s2_date": "2026-08-17",
+  "s2_id": "S2C_43SCA_20260817_0_L2A",
+  "days_apart": 0,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.1836,
+  "optical_km2": 0.23070000000000002,
+  "area_error_pct": -20.416124837451235,
+  "iou": 0.697255223269152,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 1.7221000000000002,
+  "window_optical_km2": 0.6336,
+  "window_area_error_pct": 171.79608585858588,
+  "window_iou": 0.12783070809594485,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 73.406199,
+    "lat": 36.64235,
+    "outline": "outlines/lake_c013.geojson",
+    "outline_sha256": "3a926577bf38cfc5f137d2f4317e8bcdbb386047cee3acdd52439cf3b0bc8332"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "rama",
+  "nisar_date": "2026-06-30",
+  "nisar_track": "063D",
+  "s2_date": "2026-06-30",
+  "s2_id": "S2B_43SDV_20260630_0_L2A",
+  "days_apart": 0,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.21960000000000002,
+  "optical_km2": 0.14070000000000002,
+  "area_error_pct": 56.076759061833684,
+  "iou": 0.6317934782608695,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 1.6621000000000001,
+  "window_optical_km2": 0.3932,
+  "window_area_error_pct": 322.71108850457784,
+  "window_iou": 0.10923417345782287,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 74.785665,
+    "lat": 35.330114,
+    "outline": "outlines/rama.geojson",
+    "outline_sha256": "2cdfdbb2aff7f5bd48a690ffe0431c34df3e522e04d853742f9581aff319c9db"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "lake_c015",
+  "nisar_date": "2026-08-29",
+  "nisar_track": "055A",
+  "s2_date": "2026-08-29",
+  "s2_id": "S2B_43SFU_20260829_0_L2A",
+  "days_apart": 0,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.23370000000000002,
+  "optical_km2": 0.16440000000000002,
+  "area_error_pct": 42.153284671532845,
+  "iou": 0.6705832983634075,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 2.3584,
+  "window_optical_km2": 0.7427,
+  "window_area_error_pct": 217.54409586643328,
+  "window_iou": 0.19886341670854757,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 76.517178,
+    "lat": 34.81333,
+    "outline": "outlines/lake_c015.geojson",
+    "outline_sha256": "1ab4c4b331a9fa7cff602bb4cb08a1987303a390229eead35991ed5a1a17804e"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "lake_c017",
+  "note": "no clear Sentinel-2 scene within 3 days in the open-water season (15 Jun\u201330 Sep)",
+  "season": "15 Jun\u201330 Sep",
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 74.616053,
+    "lat": 35.192717,
+    "outline": "outlines/lake_c017.geojson",
+    "outline_sha256": "6af23bbf22e6560e66db3083658bdab64538c0d03a4d58cc62dea31aa989b2fd"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  },
+  "season_pass": "2026-09-29 156A"
+ },
+ {
+  "lake": "lake_c018",
+  "nisar_date": "2026-08-31",
+  "nisar_track": "084A",
+  "s2_date": "2026-08-30",
+  "s2_id": "S2C_42SYE_20260830_0_L2A",
+  "days_apart": 1,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.1228,
+  "optical_km2": 0.0892,
+  "area_error_pct": 37.668161434977584,
+  "iou": 0.6072782410917361,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 1.5708,
+  "window_optical_km2": 0.2726,
+  "window_area_error_pct": 476.22890682318416,
+  "window_iou": 0.08314237029202656,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 71.373013,
+    "lat": 35.979567,
+    "outline": "outlines/lake_c018.geojson",
+    "outline_sha256": "c352ea4be0ec6b0b8a7b4f02f76f99e2751867ac3c5929a157857d78e89629d3"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32642
+  }
+ },
+ {
+  "lake": "lake_c019",
+  "nisar_date": "2026-09-12",
+  "nisar_track": "084A",
+  "s2_date": "2026-09-09",
+  "s2_id": "S2C_42SYE_20260909_0_L2A",
+  "days_apart": 3,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.0782,
+  "optical_km2": 0.0078000000000000005,
+  "area_error_pct": 902.5641025641025,
+  "iou": 0.08723135271807839,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 1.6373,
+  "window_optical_km2": 0.23600000000000002,
+  "window_area_error_pct": 593.7711864406779,
+  "window_iou": 0.0732168433113721,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 71.516438,
+    "lat": 35.658561,
+    "outline": "outlines/lake_c019.geojson",
+    "outline_sha256": "6f63f50a135502221038cab5626d1524bd00b748dbee64a99633eeca55f7ee0b"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32642
+  }
+ },
+ {
+  "lake": "lake_c020",
+  "nisar_date": "2026-09-29",
+  "nisar_track": "156A",
+  "s2_date": "2026-10-01",
+  "s2_id": "S2B_43SDU_20261001_0_L2A",
+  "days_apart": 2,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.10590000000000001,
+  "optical_km2": 0.0656,
+  "area_error_pct": 61.43292682926828,
+  "iou": 0.4978165938864629,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 3.2057,
+  "window_optical_km2": 0.647,
+  "window_area_error_pct": 395.47140649149924,
+  "window_iou": 0.07138487208008899,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 74.637775,
+    "lat": 34.914277,
+    "outline": "outlines/lake_c020.geojson",
+    "outline_sha256": "f8afb4c1e4dea689361521a1edfb95e1c0eda16bb6399fa28d291fb24e644d18"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "katora",
+  "nisar_date": "2026-09-12",
+  "nisar_track": "084A",
+  "s2_date": "2026-09-11",
+  "s2_id": "S2A_42SYE_20260911_1_L2A",
+  "days_apart": 1,
+  "s2_window_cloud_pct": 0.0,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.7596,
+  "optical_km2": 0.6685,
+  "area_error_pct": 13.62752430815259,
+  "iou": 0.8015642740002523,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 2.7753,
+  "window_optical_km2": 1.8348,
+  "window_area_error_pct": 51.2589928057554,
+  "window_iou": 0.354557207498384,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 72.34594,
+    "lat": 35.367338,
+    "outline": "outlines/katora.geojson",
+    "outline_sha256": "334cbad3a9e13cfeedbc37aba5998cf61aba282ad7079197043de45935e34040"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
+  }
+ },
+ {
+  "lake": "godar_dhand",
+  "nisar_date": "2026-09-12",
+  "nisar_track": "084A",
+  "s2_date": "2026-09-09",
+  "s2_id": "S2C_43SBV_20260909_0_L2A",
+  "days_apart": 3,
+  "s2_window_cloud_pct": 0.1,
+  "scope": "zone",
+  "season": "15 Jun\u201330 Sep",
+  "radar_km2": 0.5019,
+  "optical_km2": 0.4534,
+  "area_error_pct": 10.696956329951474,
+  "iou": 0.8014331510465774,
+  "zone_valid_share": 1.0,
+  "window_radar_km2": 2.137,
+  "window_optical_km2": 0.6928000000000001,
+  "window_area_error_pct": 208.45842956120092,
+  "window_iou": 0.19855993223210505,
+  "key": {
+   "method": "D17",
+   "zone": {
+    "lon": 72.513988,
+    "lat": 35.422236,
+    "outline": "outlines/godar_dhand.geojson",
+    "outline_sha256": "53c369c2823a954561a68a75350683a14aa888cf6e7f5794b09da80062dfebe3"
+   },
+   "window_margin_m": 1500.0,
+   "grid_epsg": 32643
   }
  }
 ]

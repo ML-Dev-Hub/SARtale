@@ -257,3 +257,32 @@ def test_lake_zone_circle_uses_the_lakes_own_radius():
     zone = lake_zone((100, 100), X, Y, EPSG, small)
     assert zone[50, 50] and not zone[50, 85] and zone.sum() == pytest.approx(np.pi * 30 ** 2, rel=0.03)
     assert lake_zone((100, 100), X, Y, EPSG, small, half_km=0.1).sum() == pytest.approx(np.pi * 10 ** 2, rel=0.08)
+
+
+def _square_ll(i0, i1):
+    """A square ring (lon, lat) over grid pixels i0..i1 in both axes."""
+    to_ll = Transformer.from_crs(EPSG, 4326, always_xy=True)
+    corners = [(X[i0], Y[i0]), (X[i1], Y[i0]), (X[i1], Y[i1]), (X[i0], Y[i1]), (X[i0], Y[i0])]
+    return [list(to_ll.transform(cx, cy)) for cx, cy in corners]
+
+
+def test_a_multipart_outline_zone_is_the_union_of_its_buffered_parts():
+    from sartale.lakewater import outline_mask, outline_window_share
+    a, b = _square_ll(10, 20), _square_ll(70, 85)
+    multi = {"type": "MultiPolygon", "coordinates": [[a], [b]]}
+    lake = centre_lake()
+    zone = lake_zone((100, 100), X, Y, EPSG, lake, outline_polygon=multi)
+    za = lake_zone((100, 100), X, Y, EPSG, lake, outline_polygon={"type": "Polygon", "coordinates": [a]})
+    zb = lake_zone((100, 100), X, Y, EPSG, lake, outline_polygon={"type": "Polygon", "coordinates": [b]})
+    assert np.array_equal(zone, za | zb)
+    assert zone[15, 15] and zone[78, 78] and not zone[50, 50]  # both parts, not the gap between them
+    inside = outline_mask((100, 100), X, Y, EPSG, multi)
+    assert np.array_equal(inside, outline_mask((100, 100), X, Y, EPSG, {"type": "Polygon", "coordinates": [a]})
+                          | outline_mask((100, 100), X, Y, EPSG, {"type": "Polygon", "coordinates": [b]}))
+    assert outline_window_share(X, Y, EPSG, multi) == pytest.approx(1.0, abs=0.05)
+    # one part past the window edge: the share is of the union's area
+    off = _square_ll(10, 20)
+    shift = Transformer.from_crs(EPSG, 4326, always_xy=True)
+    far = [list(shift.transform(X[10] + 5000 + dx, Y[10] - dy)) for dx, dy in ((0, 0), (100, 0), (100, 100), (0, 100), (0, 0))]
+    half = {"type": "MultiPolygon", "coordinates": [[off], [far]]}
+    assert outline_window_share(X, Y, EPSG, half) == pytest.approx(0.5, abs=0.05)

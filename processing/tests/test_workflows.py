@@ -398,6 +398,15 @@ def test_rebuild_action_order():
     assert at("pytest tests -q") < at("npm test -- --run")
     assert "npm ci --ignore-scripts" in runs[at("npm test -- --run")]
     assert runs[at("lakes-fetch")].count("run_pipeline lakes-fetch") == 2, "lakes-fetch is retried once"
+    assert runs[at("lakes-fetch")].count("--max-new-lakes 12") == 2, "at most 12 new lakes per run, the retry too"
+    # 4 worker processes on the 2-vCPU, 7 GB runner (the reads wait on the network), the retry too; 4 checks at once
+    assert runs[at("lakes-fetch")].count("--workers 4") == 2
+    assert "--workers 4" in runs[check]
+    # the restored cache is cropped to float16 windows after the fetch, before the build reads it, without the login
+    shrink = at("lakes-cache-shrink")
+    assert at("lakes-fetch") < shrink < at("lakes-build")
+    assert "--dry-run" not in runs[shrink]
+    assert "unset EARTHDATA_USERNAME EARTHDATA_PASSWORD" in runs[shrink]
     assert any(u.startswith("mamba-org/setup-micromamba@") for u in uses)
     restore = next(s for s in steps if str(s.get("uses", "")).startswith("actions/cache/restore@"))
     assert restore["with"]["path"] == "data/lakes"

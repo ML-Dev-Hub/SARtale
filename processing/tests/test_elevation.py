@@ -22,9 +22,9 @@ def test_the_lake_surface_is_the_low_flat_part_of_the_circle():
 
 REGISTER = """[
   {"id": "a", "name": "A", "lon": 72.0, "lat": 35.0, "role": "watch",
-   "coord_source": "x {y}", "outline": null, "downstream": null, "downstream_source": null},
+   "coord_source": "x {y}", "outline": null, "downstream": null, "downstream_source": null, "district": "Chitral", "province": "KP", "district_source": "test districts"},
   {"id": "b", "name": "B", "lon": 72.1, "lat": 35.1, "role": "watch",
-   "coord_source": "x", "outline": null, "downstream": null, "downstream_source": null,
+   "coord_source": "x", "outline": null, "downstream": null, "downstream_source": null, "district": "Chitral", "province": "KP", "district_source": "test districts",
    "limits": ["a limit with } and \\" in it"]}
 ]
 """

@@ -24,6 +24,7 @@ SCL_BAD = (0, 1, 3, 8, 9, 10)
 # Snow/ice is never water, and never a clear view either: a frozen or snow-covered lake reads as dry ground, so a
 # pixel under snow or ice is left out of `valid` (and of the zone's clear share) as cloud is.
 SCL_SNOW = 11
+SCL_TERRAIN_SHADOW = 2  # shadow of the terrain on a clear day: not a clear view for the absence check
 # Cloud shadow, medium and high cloud, thin cirrus: pixels within CLOUD_EDGE_BUFFER_M of these are not clear either.
 # Their edges are often unflagged haze or shadow that MNDWI reads as water (Shisper, 16 Oct 2026: 14.5% "water" on
 # bare soil next to cloud shadow, in a zone 80.6% clear).
@@ -175,7 +176,8 @@ def read_scene(scene: dict, x: np.ndarray, y: np.ndarray, epsg: int) -> dict:
     window's transform and CRS, and the pixel size in metres."""
     west, south, east, north = _grid_bounds(x, y)
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif",
-                      GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2"):
+                      GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2",
+                      GDAL_HTTP_TIMEOUT="120", GDAL_HTTP_CONNECTTIMEOUT="30"):
         with rasterio.open(_href(scene, "green")) as g:
             px = abs(g.transform.a)
             pad = int(np.ceil(CLOUD_EDGE_BUFFER_M / px)) + 2
@@ -216,6 +218,7 @@ def grid_scene(scene: dict, raw: dict, x, y, epsg: int, buffer_m: float = None) 
     # edges read as water in MNDWI.
     unclear10 = bad10 | near_cloud(scl, raw["px"], buffer_m)
     snow10 = scl == SCL_SNOW
+    shadow10 = scl == SCL_TERRAIN_SHADOW
     water10 = mndwi_water(_reflectance(scene, "green", green), _reflectance(scene, "swir16", swir))
     water10 &= ~snow10 & ~unclear10
 
@@ -228,6 +231,7 @@ def grid_scene(scene: dict, raw: dict, x, y, epsg: int, buffer_m: float = None) 
     inside = to_grid(np.ones(green.shape, np.float32))  # >0 where the padded read covers the grid
     covered = to_grid((green > 0).astype(np.float32))  # scene pixels actually present
     bad, unclear, wfrac, sfrac = to_grid(bad10), to_grid(unclear10), to_grid(water10), to_grid(snow10)
+    shadow_frac = to_grid(shadow10)
     present = covered >= 0.5
     # Snow or ice is not a clear view: a frozen or snow-covered lake reads as dry ground in MNDWI.
     valid = present & (unclear + sfrac < 0.5)
@@ -236,7 +240,11 @@ def grid_scene(scene: dict, raw: dict, x, y, epsg: int, buffer_m: float = None) 
     cloud_share = float(np.clip(bad[seen] / inside[seen], 0, 1).mean()) if seen.any() else 1.0
     # Clear of cloud, shadow, no data and the cloud edge, snow or not: what the freeze check (lakes-freeze) counts as seen.
     clear = present & (unclear < 0.5)
+    # Terrain shadow stays in `valid` (the cross-check and the freeze check count it as seen); only the absence check
+    # leaves it out of the clear view (`zone_water`), where a shadowed slope or a dark river reads as water.
+    terrain_shadow = present & (shadow_frac >= 0.5)
     return {"water": (wfrac >= 0.5) & valid, "valid": valid, "snow": snow, "clear": clear,
+            "terrain_shadow": terrain_shadow,
             "window_cloud_share": cloud_share, "invalid_share": float(1 - valid.mean())}
 
 
@@ -252,6 +260,21 @@ def optical_on_grid(scene: dict, x: np.ndarray, y: np.ndarray, epsg: int) -> dic
     and invalid_share.
     """
     return grid_scene(scene, read_scene(scene, x, y, epsg), x, y, epsg)
+
+
+def optical_on_window(scene: dict, radar: dict) -> dict:
+    """`optical_on_grid` over the full 6 km window the radar window (`lakebuild.radar_water_masks`) was cropped from,
+    so the window cloud share is the whole window's, as before the cache was cropped; every mask is then cut to the
+    radar window's grid."""
+    x, y, epsg = radar["x"], radar["y"], radar["epsg"]
+    fx, fy = radar.get("full_x"), radar.get("full_y")
+    if fx is None or fy is None or (len(fx) == len(x) and len(fy) == len(y)):
+        return optical_on_grid(scene, x, y, epsg)
+    full = optical_on_grid(scene, fx, fy, epsg)
+    ix = np.flatnonzero(np.isin(np.round(fx, 2), np.round(x, 2)))
+    iy = np.flatnonzero(np.isin(np.round(fy, 2), np.round(y, 2)))
+    shape = (len(fy), len(fx))
+    return {k: (v[np.ix_(iy, ix)] if isinstance(v, np.ndarray) and v.shape == shape else v) for k, v in full.items()}
 
 
 def zone_valid_share(valid: np.ndarray, zone: np.ndarray) -> float:
@@ -318,7 +341,7 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
         x, y, epsg = radar["x"], radar["y"], radar["epsg"]
         if scene["id"] not in optical:
             try:
-                optical[scene["id"]] = optical_on_grid(scene, x, y, epsg)
+                optical[scene["id"]] = optical_on_window(scene, radar)
             except Exception as e:  # noqa: BLE001 - a scene that will not read is skipped, and said so
                 log(f"{lake.id} {pass_id} vs {scene['id']}: unreadable ({type(e).__name__})")
                 optical[scene["id"]] = None
@@ -368,7 +391,7 @@ ABSENCE_SOURCE = "Sentinel-2 L2A (Earth Search), MNDWI water in the lake zone"
 # What a scene must show to count, stored with the evidence (`rule`).
 ABSENCE_RULE = (f"at least {MIN_ZONE_VALID:.0%} of the lake zone clear of cloud, shadow, snow and ice, and snow or ice "
                 f"on no more than {ABSENCE_MAX_SNOW_SHARE:.0%} of it, pixels within {CLOUD_EDGE_BUFFER_M:.0f} m of cloud or "
-                f"cloud shadow not clear; the state changes on two such scenes at least {ABSENCE_CONFIRM_DAYS} days "
+                f"cloud shadow, and pixels the scene classes as terrain shadow (SCL 2), not clear; the state changes on two such scenes at least {ABSENCE_CONFIRM_DAYS} days "
                 "apart")
 
 
@@ -381,9 +404,8 @@ def no_view_since(date: str, searched: str) -> bool:
 def absence_grid(lake, pixel_m: float = ABSENCE_PIXEL_M):
     """A UTM grid (x, y, epsg) of `pixel_m` pixels over the lake's 6 km search box, north up."""
     from pyproj import Transformer
-    from sartale.lakes import lake_bbox
-    zone = int((lake.lon + 180) // 6) + 1
-    epsg = (32600 if lake.lat >= 0 else 32700) + zone
+    from sartale.lakes import lake_bbox, lake_epsg
+    epsg = lake_epsg(lake)
     lon0, lat0, lon1, lat1 = lake_bbox(lake)
     tr = Transformer.from_crs(4326, epsg, always_xy=True)
     xs, ys = tr.transform([lon0, lon0, lon1, lon1], [lat0, lat1, lat0, lat1])
@@ -392,18 +414,24 @@ def absence_grid(lake, pixel_m: float = ABSENCE_PIXEL_M):
     return x, y, epsg
 
 
-def zone_water(lake, opt: dict, x, y, epsg) -> dict:
+def zone_water(lake, opt: dict, x, y, epsg, exclude: np.ndarray | None = None) -> dict:
     """Water share and area of the lake zone in one optical reading, over the zone pixels seen clear, with the share
-    of the zone seen clear (not cloud, shadow, no data, snow or ice) and the share under snow or ice."""
+    of the zone seen clear (not cloud, shadow, terrain shadow, no data, snow or ice) and the share under snow or ice.
+    The zone is the lake's zone without `exclude` (a bool grid: water that is always there, such as a river)."""
     from sartale.lakebuild import _load_outline
     from sartale.lakewater import lake_zone
     zone = lake_zone((len(y), len(x)), x, y, epsg, lake, outline_polygon=_load_outline(lake))
+    if exclude is not None:
+        zone = zone & ~np.asarray(exclude, bool)
     px = float(abs(x[1] - x[0]))
-    seen = zone & opt["valid"]
+    clear = opt["valid"]
+    if opt.get("terrain_shadow") is not None:
+        clear = clear & ~np.asarray(opt["terrain_shadow"], bool)
+    seen = zone & clear
     n_seen = int(seen.sum())
     water = int((opt["water"] & seen).sum())
     snow = opt.get("snow")
-    return {"zone_valid_share": zone_valid_share(opt["valid"], zone),
+    return {"zone_valid_share": zone_valid_share(clear, zone),
             "snow_share": zone_valid_share(snow, zone) if snow is not None else 0.0,
             "water_share": (water / n_seen) if n_seen else 0.0,
             "water_km2": water * px ** 2 / 1e6}
@@ -415,11 +443,12 @@ def qualifies(w: dict) -> bool:
     return w["zone_valid_share"] >= MIN_ZONE_VALID and w["snow_share"] <= ABSENCE_MAX_SNOW_SHARE
 
 
-def scene_row(scene: dict, w: dict) -> dict:
-    """One qualifying scene as the evidence records it."""
+def scene_row(scene: dict, w: dict, threshold: float | None = None) -> dict:
+    """One qualifying scene as the evidence records it, with the threshold it was judged by (None: the site's season
+    at that date is not assessed)."""
     return {"date": scene["date"], "s2_id": scene["id"], "water_share": round(w["water_share"], 4),
             "water_km2": round(w["water_km2"], 4), "zone_valid_share": round(w["zone_valid_share"], 3),
-            "snow_share": round(w["snow_share"], 4)}
+            "snow_share": round(w["snow_share"], 4), "threshold": threshold}
 
 
 def _brief(row: dict) -> dict:
@@ -452,14 +481,18 @@ def step(state: dict, row: dict, threshold: float) -> dict:
 
 
 def absence_check(lake, today: str, prior: dict | None = None, log=print, max_scenes: int | None = None,
-                  zone: dict | None = None, threshold: float | None = None) -> dict | None:
+                  zone: dict | None = None, rule_lake=None) -> dict | None:
     """Dated evidence on whether a site with no lake now is still empty, from the Sentinel-2 scenes whose lake zone is
     clear and snow-free (`qualifies`), and the site's forming state (`step`): one scene above the site's threshold is
     only pending; two at least ABSENCE_CONFIRM_DAYS apart make "Lake may be forming". Runs all year: the lake that
     matters most can form in spring (Shisper's 2022 lake filled in March-April and burst on 7 May), and a winter
     scene counts when the zone is clear of cloud, snow and ice.
 
-    With `prior` (the last evidence, from the same rule, zone and threshold), the scenes after its date are tried,
+    The forming rule (`lakebuild.forming_rule`: share, seasons and excluded outline) is the register's for `lake`, or
+    that of `rule_lake` (a trial lake, for a back-test). A scene in a season with no share is recorded and counts as a
+    clear view, but never moves the state.
+
+    With `prior` (the last evidence, from the same rule, zone and forming rule), the scenes after its date are tried,
     newest first, up to ABSENCE_MAX_SCENES, and every qualifying one is applied to its state, oldest first. Without
     it, the last ABSENCE_FIRST_LOOKBACK_DAYS are searched, newest first, until the newest qualifying scene and one at
     least ABSENCE_CONFIRM_DAYS older are found (or ABSENCE_FIRST_SCENES are tried), and those are applied to the
@@ -467,20 +500,22 @@ def absence_check(lake, today: str, prior: dict | None = None, log=print, max_sc
     `no_view_since` set once it is more than ABSENCE_STALE_DAYS old), so the site never implies a recent check.
 
     Returns the newest qualifying scene ({"date", "s2_id", "water_share", "water_km2", "zone_valid_share",
-    "snow_share"}) with "forming", "pending_scene", "confirmed", "threshold", "checked" (the run that found the
+    "snow_share"}) with "forming", "pending_scene", "confirmed", "threshold" (the newest scene's; None when not assessed),
+    "forming_rule", "checked" (the run that found the
     scene), "searched" (the last run that searched), "no_view_since", "rule", "source" and "zone" (the zone key,
     `lakebuild.absence_zone`), or None when there is no evidence at all.
     """
-    from sartale.lakebuild import absence_zone, forming_share
+    from sartale.lakebuild import absence_zone, exclude_mask, forming_rule, forming_threshold
     from sartale.lakes import lake_bbox
+    rule_lake = rule_lake or lake
     zone = zone if zone is not None else absence_zone(lake)
-    threshold = threshold if threshold is not None else (forming_share(lake) or 0.0)
     t = Date.fromisoformat(today)
     if prior:
         start, limit = prior["date"], max_scenes or ABSENCE_MAX_SCENES
     else:
         start, limit = (t - timedelta(days=ABSENCE_FIRST_LOOKBACK_DAYS)).isoformat(), max_scenes or ABSENCE_FIRST_SCENES
     x, y, epsg = absence_grid(lake)
+    exclude = exclude_mask(rule_lake, x, y, epsg)
     scenes = [_scene(f, t) for f in search_scenes(lake_bbox(lake), start, today)]
     scenes = [s for s in scenes if s["cloud"] <= ABSENCE_MAX_TILE_CLOUD and (not prior or s["date"] > prior["date"])
               and all(k in s["assets"] for k in ("green", "swir16", "scl"))]
@@ -492,14 +527,14 @@ def absence_check(lake, today: str, prior: dict | None = None, log=print, max_sc
         except Exception as e:  # noqa: BLE001 - an unreadable scene is skipped, and said so
             log(f"{lake.id} absence vs {scene['id']}: unreadable ({type(e).__name__})")
             continue
-        w = zone_water(lake, opt, x, y, epsg)
+        w = zone_water(lake, opt, x, y, epsg, exclude=exclude)
         ok = qualifies(w)
         log(f"{lake.id} absence vs {scene['id']} ({scene['date']}): zone seen clear "
             f"{100 * w['zone_valid_share']:.1f}%, snow/ice {100 * w['snow_share']:.2f}%, water "
             f"{100 * w['water_share']:.2f}% of the clear zone ({w['water_km2']:.4f} km2): "
             f"{'used' if ok else 'skipped (the zone is not both clear and snow-free)'}")
         if ok:
-            rows.append(scene_row(scene, w))
+            rows.append(scene_row(scene, w, forming_threshold(rule_lake, scene["date"])))
             # A first check needs the newest scene and one far enough before it to know the state.
             if not prior and (Date.fromisoformat(rows[0]["date"]) - Date.fromisoformat(rows[-1]["date"])).days \
                     >= ABSENCE_CONFIRM_DAYS:
@@ -513,8 +548,9 @@ def absence_check(lake, today: str, prior: dict | None = None, log=print, max_sc
     state = ({k: prior.get(k) for k in ("pending_scene", "confirmed")} | {"forming": bool(prior.get("forming"))}
              if prior else start_state())
     for row in sorted(rows, key=lambda r: (r["date"], r["s2_id"])):
-        state = step(state, row, threshold)
+        if row["threshold"] is not None:  # a season with no share is only a clear view
+            state = step(state, row, row["threshold"])
     latest = rows[0]
-    return {**latest, **state, "threshold": threshold, "checked": today, "searched": today,
+    return {**latest, **state, "forming_rule": forming_rule(rule_lake), "checked": today, "searched": today,
             "no_view_since": no_view_since(latest["date"], today), "rule": ABSENCE_RULE, "source": ABSENCE_SOURCE,
             "zone": zone}
