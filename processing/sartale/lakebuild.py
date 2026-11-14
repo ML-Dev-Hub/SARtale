@@ -63,6 +63,9 @@ METHOD = {
               f"{config.LEE_BOX} Lee filter (ENL {config.LEE_ENL:g}) on linear HH power; HV is not used for water"),
     "lee_box": config.LEE_BOX, "lee_enl": config.LEE_ENL, "drop_db": config.DROP_DB, "polarisation": "HH",
     "zone": "the mapped outline buffered 200 m, or a circle around the lake point; no shadow rule inside it",
+    "window": (f"the 6 km search window cropped to the zone plus {config.WINDOW_MARGIN_M:g} m on every side; the window "
+               "median is taken over that crop"),
+    "window_margin_m": config.WINDOW_MARGIN_M,
     "window_statistics": ("the window-median HH leaves out radar layover and shadow from the Copernicus GLO-30 DEM "
                           f"(look azimuth {config.DEM_LOOK_AZIMUTH_DEG['A']:g} degrees ascending, "
                           f"{config.DEM_LOOK_AZIMUTH_DEG['D']:g} descending, incidence {config.DEM_INCIDENCE_DEG:g} "
@@ -159,7 +162,8 @@ def _read_cache(lake_dir: Path, limits: list[str], listed: set[tuple[str, str, s
     """Every cached window `<date>_<key>_<CRID>.npz`, whatever its CRID. A file whose name does not have those three
     parts is skipped, and so is one whose (date, key, CRID) is not in `listed` (when a list is given: the passes
     the catalogue lists now). When one date and track is cached under more than one CRID (a pass reprocessed into
-    a newer release), the latest CRID is used and the others are noted."""
+    a newer release), the latest CRID is used and the others are noted. HH and HV are read as float64 whatever the
+    window stores (float16 since the crop, `remote.crop_window`)."""
     files: dict[tuple[str, str], dict[str, Path]] = {}
     for f in sorted(lake_dir.glob("*.npz")):
         parts = f.stem.split("_")
@@ -576,10 +580,11 @@ def validation_of(check: dict | None) -> dict | None:
 
 
 def check_key(lake: Lake) -> dict:
-    """What a Sentinel-2 check of a lake was made for, stored with it as `key`: the water method (config.METHOD_ID) and
-    the zone (`absence_zone`: the register point, and the circle's radius or the outline file's SHA-256). A check made
-    for another method, zone or point is stale."""
-    return {"method": config.METHOD_ID, "zone": absence_zone(lake)}
+    """What a Sentinel-2 check of a lake was made for, stored with it as `key`: the water method (config.METHOD_ID), the
+    zone (`absence_zone`: the register point, and the circle's radius or the outline file's SHA-256) and the margin the
+    cached windows are cropped with (config.WINDOW_MARGIN_M: the crop moves the window median radar water is measured
+    against). A check made for another method, zone, point or margin is stale."""
+    return {"method": config.METHOD_ID, "zone": absence_zone(lake), "window_margin_m": config.WINDOW_MARGIN_M}
 
 
 def is_current(row: dict | None, lake: Lake) -> bool:

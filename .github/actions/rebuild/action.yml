@@ -45,19 +45,29 @@ runs:
       working-directory: processing
       run: python -m sartale.run_pipeline lakes-search
 
-    - name: Fetch the passes (retried once)
+    - name: Fetch the passes (retried once; at most 12 lakes new to the cache per run)
+      # A lake with no cached window yet costs a full fetch of every pass; the rest wait for next week's run.
       shell: bash -el {0}
       working-directory: processing
       run: |
-        python -m sartale.run_pipeline lakes-fetch || {
+        python -m sartale.run_pipeline lakes-fetch --max-new-lakes 12 || {
           echo "lakes-fetch failed; retrying once"
-          python -m sartale.run_pipeline lakes-fetch
+          python -m sartale.run_pipeline lakes-fetch --max-new-lakes 12
         }
 
     - name: Remove the Earthdata login
       if: always()
       shell: bash
       run: rm -f ~/.netrc
+
+    - name: Shrink the NISAR window cache (cropped float16 windows, listed passes and register lakes only)
+      # Crops any window still at the full 6 km in float32/64 (a cache saved before the crop), so the build reads
+      # the same windows as a fresh fetch, and keeps the saved cache small. Needs no login.
+      shell: bash -el {0}
+      working-directory: processing
+      run: |
+        unset EARTHDATA_USERNAME EARTHDATA_PASSWORD
+        python -m sartale.run_pipeline lakes-cache-shrink
 
     - name: Save the NISAR window cache
       # only after a fetch that went through; a failed one keeps the last good cache

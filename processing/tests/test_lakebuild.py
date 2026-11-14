@@ -736,3 +736,12 @@ def test_the_committed_outlines_give_the_same_key_as_their_git_blobs():
         geo = lambda b: (lambda d: d["features"][0] if d.get("type") == "FeatureCollection" else d)(json.loads(b))
         a, b = geo(raw), geo(raw.replace(b"\r\n", b"\n"))
         assert outline_digest(a.get("geometry", a)) == outline_digest(b.get("geometry", b)), f.name
+
+
+def test_a_check_made_before_the_crop_is_stale():
+    from sartale.lakebuild import METHOD, absence_zone, check_key, is_current
+    lake = make_lake("alpha")
+    assert check_key(lake)["window_margin_m"] == config.WINDOW_MARGIN_M
+    assert not is_current({"lake": lake.id, "key": {"method": "D17", "zone": absence_zone(lake)}, "iou": 0.6}, lake)
+    assert is_current({"lake": lake.id, "key": check_key(lake), "iou": 0.6}, lake)
+    assert METHOD["window_margin_m"] == config.WINDOW_MARGIN_M

@@ -1,5 +1,5 @@
-"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-build, lakes-check, lakes-absence,
-lakes-absence-backtest, lakes-freeze, lakes-elevation, lakes-diff, lake-issues, lake-issue-accept."""
+"""SARtale Lake Watch pipeline CLI: lakes-search, lakes-fetch, lakes-cache-shrink, lakes-build, lakes-check,
+lakes-absence, lakes-absence-backtest, lakes-freeze, lakes-elevation, lakes-diff, lake-issues, lake-issue-accept."""
 import argparse
 import json
 import os
@@ -27,7 +27,8 @@ from sartale.freeze import restatus
 from sartale.lakecheck import check_lake
 from sartale.lake_requests import RequestError
 from sartale.lakes import load_lakes
-from sartale.remote import fetch_lake_passes
+from sartale import config
+from sartale.remote import fetch_lake_passes, shrink_cache
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -57,14 +58,29 @@ def cmd_lakes_search(args) -> None:
         sys.exit(1)
 
 
-def fetch_all(lakes, doc: dict, out: Path, session, fetch=fetch_lake_passes) -> list[str]:
-    """Fetch pass by pass so one persistent failure does not stop the run. Returns one note per failed pass."""
+def is_new_lake(out: Path, lake_id: str) -> bool:
+    """A lake with no cached window yet (its folder holds no .npz)."""
+    d = Path(out) / lake_id
+    return not d.is_dir() or not any(d.glob("*.npz"))
+
+
+def fetch_all(lakes, doc: dict, out: Path, session, fetch=fetch_lake_passes,
+              max_new_lakes: int | None = None) -> list[str]:
+    """Fetch pass by pass so one persistent failure does not stop the run. Returns one note per failed pass.
+
+    `max_new_lakes`: fetch at most this many lakes that have no cached window yet (`is_new_lake`), in register order;
+    the rest wait for the next run (a note says how many). Lakes already in the cache are always fetched. None: no
+    limit."""
     import time
 
     failures, total, t0 = [], 0.0, time.time()
+    new = [lake.id for lake in lakes if lake.id in doc and is_new_lake(out, lake.id)]
+    waiting = set(new[max_new_lakes:]) if max_new_lakes is not None else set()
     for lake in lakes:
         if lake.id not in doc:
             print(f"{lake.id}: not in passes.json, run lakes-search first")
+            continue
+        if lake.id in waiting:
             continue
         passes = [Pass(**row) for rows in doc[lake.id].values() for row in rows]
         stats: dict = {}
@@ -80,6 +96,9 @@ def fetch_all(lakes, doc: dict, out: Path, session, fetch=fetch_lake_passes) -> 
         total += mb
         print(f"{lake.id}: {cached}/{len(passes)} passes cached, {mb:.1f} MB fetched, {stats.get('requests', 0)} requests", flush=True)
     print(f"total {total:.1f} MB in {time.time() - t0:.0f} s")
+    if waiting:
+        print(f"{len(waiting)} new lakes wait for the next run (at most {max_new_lakes} new lakes per run): "
+              + ", ".join(lid for lid in new if lid in waiting))
     if failures:
         print(f"{len(failures)} passes failed (rerun lakes-fetch to retry):")
         for n in failures:
@@ -95,8 +114,25 @@ def cmd_lakes_fetch(args) -> None:
 
     lakes = load_lakes(Path(args.lakes_in))
     doc = json.loads(Path(args.passes).read_text(encoding="utf-8"))["lakes"]
-    if fetch_all(lakes, doc, Path(args.out), requests.Session()):
+    if fetch_all(lakes, doc, Path(args.out), requests.Session(), max_new_lakes=args.max_new_lakes):
         sys.exit(1)
+
+
+def cmd_lakes_cache_shrink(args) -> None:
+    """Crop the cached windows to the lake zone plus the margin in float16, delete the windows the catalogue no longer
+    lists and the folders of lakes not in the register; print MB per lake before and after."""
+    lakes = load_lakes(Path(args.lakes_in))
+    cache = Path(args.cache)
+    if not cache.is_dir():
+        print(f"no window cache at {cache}")
+        return
+    report = shrink_cache(cache, lakes, read_listed(cache / PASSES_JSON), dry_run=args.dry_run)
+    verb = "would leave" if args.dry_run else "now"
+    for row in report:
+        gone = f"; removed {len(row['removed'])}: {', '.join(row['removed'])}" if row["removed"] else ""
+        print(f"{row['id']}: {row['mb_before']:.1f} MB, {verb} {row['mb_after']:.1f} MB{gone}")
+    before, after = sum(r["mb_before"] for r in report), sum(r["mb_after"] for r in report)
+    print(f"total {before:.1f} MB, {verb} {after:.1f} MB" + (" (dry run: nothing changed)" if args.dry_run else ""))
 
 
 def write_json_atomic(path: Path, doc) -> None:
@@ -524,7 +560,17 @@ def build_parser() -> argparse.ArgumentParser:
     lf.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
     lf.add_argument("--passes", default=str(REPO_ROOT / "data" / "lakes" / "passes.json"))
     lf.add_argument("--out", default=str(REPO_ROOT / "data" / "lakes"))
+    lf.add_argument("--max-new-lakes", type=int, default=None,
+                    help="fetch at most N lakes with no cached window yet; the rest wait for the next run (the "
+                         f"weekly refresh passes {config.FETCH_NEW_LAKES_PER_RUN}; default: no limit)")
     lf.set_defaults(func=cmd_lakes_fetch)
+    lcs = sub.add_parser("lakes-cache-shrink", help="crop the cached windows to the lake zone plus "
+                                                    f"{config.WINDOW_MARGIN_M:g} m in float16 and delete windows and "
+                                                    "lake folders no longer needed (keeps each lake's DEM)")
+    lcs.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
+    lcs.add_argument("--cache", default=str(REPO_ROOT / "data" / "lakes"))
+    lcs.add_argument("--dry-run", action="store_true", help="report what would change; change nothing")
+    lcs.set_defaults(func=cmd_lakes_cache_shrink)
     lb = sub.add_parser("lakes-build", help="build lakes.json and per-lake images from the cached windows")
     lb.add_argument("--lakes-in", default=str(REPO_ROOT / "processing" / "lakes_in.json"))
     lb.add_argument("--cache", default=str(REPO_ROOT / "data" / "lakes"))

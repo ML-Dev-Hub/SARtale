@@ -15,6 +15,14 @@ LEE_ENL = 4.0  # equivalent number of looks of the Lee filter (the median GCOV n
 DEM_LOOK_AZIMUTH_DEG = {"A": 255.0, "D": 105.0}  # ground azimuth of the look, from north, clockwise
 DEM_INCIDENCE_DEG = 40.0
 DEM_MARGIN_M = 3000.0  # DEM read this far past the window, so terrain outside it can cast shadow into it
+# The window cache (lakes-fetch, data/lakes) keeps each pass cropped to the lake zone (outline buffered 200 m, or the
+# circle) plus WINDOW_MARGIN_M on every side, inside the 6 km search window, with HH, HV and looks as CACHE_DTYPE.
+# The window median D17 measures water against is taken over the cropped window. A Sentinel-2 check records the
+# margin in its key (lakebuild.check_key), so a change of margin re-checks every lake. float16 keeps 3 significant
+# digits of linear power down to about -42 dB (subnormal below), far finer than the 3 dB water rule.
+WINDOW_MARGIN_M = 1500.0
+CACHE_DTYPE = "float16"
+FETCH_NEW_LAKES_PER_RUN = 12  # the weekly refresh fetches at most this many lakes new to the cache (lakes-fetch)
 BRIGHT_PASS_DB = 3.0  # a pass whose window-median HH is further than this from its track median is excluded
 # Second per-track screen (ruling R-F1): robust z-score, (value - track median) / max(1.4826 * MAD, floor),
 # of each pass's window dark-pixel share and window-median HV. |z| > OUTLIER_Z excludes the pass.
