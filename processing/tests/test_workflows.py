@@ -399,6 +399,9 @@ def test_rebuild_action_order():
     assert "npm ci --ignore-scripts" in runs[at("npm test -- --run")]
     assert runs[at("lakes-fetch")].count("run_pipeline lakes-fetch") == 2, "lakes-fetch is retried once"
     assert runs[at("lakes-fetch")].count("--max-new-lakes 12") == 2, "at most 12 new lakes per run, the retry too"
+    # 4 worker processes on the 2-vCPU, 7 GB runner (the reads wait on the network), the retry too; 4 checks at once
+    assert runs[at("lakes-fetch")].count("--workers 4") == 2
+    assert "--workers 4" in runs[check]
     # the restored cache is cropped to float16 windows after the fetch, before the build reads it, without the login
     shrink = at("lakes-cache-shrink")
     assert at("lakes-fetch") < shrink < at("lakes-build")
