@@ -117,8 +117,6 @@ a:hover { color: #b8ecfa; }
 
 /* Lake Watch */
 .lw-body { display: grid; gap: 14px; }
-.lw-headline { font-family: var(--display); font-size: 1.6rem; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; max-width: 52ch; }
-.lw-headline a { color: #fff; text-decoration: underline; text-decoration-color: rgba(125, 216, 242, 0.6); text-decoration-thickness: 2px; text-underline-offset: 5px; }
 .lw-screening { color: var(--muted); font-size: 0.92rem; }
 .lw-chip { justify-self: start; padding: 1px 10px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 0.78rem; font-weight: 700; background: var(--panel-2); white-space: nowrap; }
 /* The levels. Alert: growing is a solid fill with a mark (▲) and a heavier border; Watch an amber outline; Decrease
@@ -286,7 +284,6 @@ body > #app > .maturity { margin: 24px 40px 0; display: inline-block; }
   .views { order: 3; flex: 1 1 100%; margin: 0; gap: 0; }
   .view-btn { flex: 1 1 0; padding: 0 6px; font-size: 0.92rem; text-align: center; }
   .shell[data-view="home"] .sp-cover-body { padding-top: 150px; }
-  .lw-headline { font-size: 1.2rem; }
   .lw-title { font-size: 1.55rem; }
   .ls-quote { font-size: 1.1rem; }
   .chart, .lw-chart { min-height: 220px; }

@@ -1,11 +1,11 @@
 import "./lakePage.css";
 import { authorityFor } from "../contacts";
-import { formatDate } from "../format";
-import { isFrozen, levelMessage, suparcoLine, type Lake, type LakesFile } from "../lakes";
+import { dataUrl, formatDate } from "../format";
+import { isFrozen, levelMessage, picturedPassFrozen, suparcoLine, type Lake, type LakesFile } from "../lakes";
 import type { LakeChartFactory } from "../lakeWatchView";
 import { sentinel2Url } from "../links";
 import { nextRefresh } from "../overview/model";
-import { statusChip } from "../overview/overviewView";
+import { statusChip } from "../overview/marks";
 import { provinceName } from "../provinces";
 import { renderCompare, type MaskDecoder } from "./compare";
 
@@ -94,6 +94,7 @@ function message(lake: Lake): HTMLElement | null {
   const sec = el("section", "lp-message");
   sec.dataset.role = "lp-message";
   sec.dataset.level = m.level;
+  sec.dataset.status = lake.status.status.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   sec.setAttribute("aria-label", "First message");
   sec.append(el("h2", "lp-message-title", m.title));
 
@@ -125,21 +126,56 @@ function message(lake: Lake): HTMLElement | null {
     actions.append(a);
   }
   todo.append(text, actions);
-  sec.append(todo, el("p", "lp-official", OFFICIAL_WARNINGS));
+  sec.append(todo);
+  // The message text normally ends with this sentence. It shows once: added here only when the text lacks it.
+  if (!m.do.includes(OFFICIAL_WARNINGS)) sec.append(el("p", "lp-official", OFFICIAL_WARNINGS));
   return sec;
 }
 
-/** An empty block that a later task fills: a heading and a slot. */
-function block(role: string, heading: string): HTMLElement {
+/**
+ * A block with a heading and its content, or null when there is nothing to show yet: a block no task has filled is not
+ * drawn, so the page never shows a bare heading.
+ */
+function block(role: string, heading: string, fill: (body: HTMLElement) => boolean): HTMLElement | null {
   const sec = el("section", "lp-block");
   sec.dataset.role = role;
   sec.setAttribute("aria-labelledby", `${role}-h`);
   const h = el("h2", undefined, heading);
   h.id = `${role}-h`;
-  const slot = el("div", "lp-slot");
-  slot.dataset.slot = role;
-  sec.append(h, slot);
+  const body = el("div", "lp-slot");
+  body.dataset.slot = role;
+  if (!fill(body)) return null;
+  sec.append(h, body);
   return sec;
+}
+
+/** The latest HH picture with the water layer over it, and what it shows. The water layer is hidden while the lake is frozen. */
+function fillPicture(lake: Lake): (body: HTMLElement) => boolean {
+  return (body) => {
+    const hh = lake.images?.latest_hh ?? null;
+    const hidden = isFrozen(lake) || picturedPassFrozen(lake);
+    const water = hidden ? null : lake.images?.water ?? null;
+    if (!hh && !water) {
+      body.append(el("p", "lp-none", "No radar picture yet"));
+      return true;
+    }
+    const stack = el("div", "lp-stack");
+    const img = (path: string, alt: string, cls: string): HTMLImageElement => {
+      const i = el("img", cls);
+      i.src = dataUrl(path);
+      i.alt = alt;
+      return i;
+    };
+    if (hh) stack.append(img(hh, `Latest HH radar picture of ${lake.name}, north up`, "lp-img lp-img-hh"));
+    if (water) stack.append(img(water, `Water pixels for ${lake.name}, north up`, "lp-img lp-img-water"));
+    body.append(stack);
+    const when = day(lake.images?.date);
+    const parts = [when ? `pass of ${when}` : null, lake.images?.track ? `track ${lake.images.track}` : null].filter(Boolean);
+    const what = hh ? "Latest HH radar picture" : "Water pixels";
+    body.append(el("p", "lp-caption", `${what}${parts.length ? `: ${parts.join(", ")}` : ""}. North up${water ? ", water layer over it" : ""}.`));
+    if (hidden && lake.images?.water) body.append(el("p", "lp-caption", "Water layer hidden: not an open-water measurement while frozen."));
+    return true;
+  };
 }
 
 /** The lake page (spec decision 5): header and message, then the gauge or frozen card, extent, picture, history, sources. */
@@ -170,13 +206,8 @@ export function createLakePage(root: HTMLElement, opts: LakePageOptions): { dest
   } else {
     const msg = isFrozen(lake) ? null : message(lake);
     if (msg) page.append(msg);
-    page.append(
-      isFrozen(lake) ? block("lp-freeze", "Lake ice") : block("lp-gauge", "Change against baseline"),
-      block("lp-extent", "Largest recorded extent"),
-      block("lp-picture", "Radar picture"),
-      block("lp-history", "History"),
-      block("lp-sources", "Sources and limits"),
-    );
+    // Blocks whose content a later task fills (the gauge or frozen card, extent, history, sources) join here, in order.
+    for (const sec of [block("lp-picture", "Radar picture", fillPicture(lake))]) if (sec) page.append(sec);
   }
   return { destroy: () => void root.replaceChildren() };
 }

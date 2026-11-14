@@ -253,14 +253,6 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     document.title = next === "home" ? "SARtale" : `SARtale · ${VIEW_NAMES[next]}`;
   }
 
-  root.addEventListener("click", (e) => {
-    // The Lake Watch headline links to the cloud gap, which is the first beat of the story.
-    if ((e.target as Element).closest?.('a[href="#cloud-gap"]')) {
-      e.preventDefault();
-      lakeStory.go(0);
-      showView("story");
-    }
-  });
   q("home").addEventListener("click", () => showView("home"));
   for (const [name, btn] of Object.entries(viewButtons)) {
     btn.addEventListener("click", () => {

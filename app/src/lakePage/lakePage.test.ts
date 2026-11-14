@@ -29,8 +29,11 @@ const roles = (el: HTMLElement): string[] => [...el.querySelectorAll<HTMLElement
 const header = (el: HTMLElement): HTMLElement => el.querySelector<HTMLElement>('[data-role="lp-header"]')!;
 
 describe("the lake page", () => {
-  it("orders the blocks as the spec says", () => expect(roles(page(watchLake))).toEqual(["lp-header", "lp-message", "lp-gauge", "lp-extent", "lp-picture", "lp-history", "lp-sources"]));
-  it("a frozen lake swaps the gauge for the frozen card and has no message", () => expect(roles(page(frozen))).toEqual(["lp-header", "lp-freeze", "lp-extent", "lp-picture", "lp-history", "lp-sources"]));
+  it("draws the header, the message and the filled blocks in order, and no block that has nothing in it yet", () => {
+    expect(roles(page(watchLake))).toEqual(["lp-header", "lp-message", "lp-picture"]);
+    expect(page(watchLake).querySelectorAll("h2").length).toBe(2);
+  });
+  it("a frozen lake has no message", () => expect(roles(page(frozen))).toEqual(["lp-header", "lp-picture"]));
   it("a lake without a level has no message", () => expect(roles(page(makeLake()))).not.toContain("lp-message"));
   it("the message has the four parts and the actions", () => {
     const m = page(watchLake).querySelector('[data-role="lp-message"]')!;
@@ -44,6 +47,24 @@ describe("the lake page", () => {
     expect(m.textContent).toContain(msg.title);
     expect(m.textContent).toContain(msg.what);
     expect(m.textContent).toContain(msg.since!);
+  });
+  it("the official-warnings sentence shows exactly once", () => {
+    expect(page(watchLake).textContent!.split("Official warnings come from PMD, NDMA, GBDMA and PDMA.").length - 1).toBe(1);
+    const bare = makeLake({ ...watchLake, id: "bare", status: { ...watchLake.status, message: { ...watchLake.status.message!, do: "Check recent optical imagery." } } });
+    expect(page(bare).textContent!.split("Official warnings come from PMD, NDMA, GBDMA and PDMA.").length - 1).toBe(1);
+  });
+  it("the radar picture shows the HH image and the water layer, with the pass and track", () => {
+    const l = makeLake({ images: { latest_hh: "lakes/lake_a/latest_hh.webp", water: "lakes/lake_a/water.webp", date: "2026-11-09", track: "055A" } });
+    const b = page(l).querySelector('[data-role="lp-picture"]')!;
+    expect([...b.querySelectorAll("img")].map((i) => i.getAttribute("src"))).toEqual(["data/lakes/lake_a/latest_hh.webp", "data/lakes/lake_a/water.webp"]);
+    expect(b.querySelector(".lp-caption")!.textContent).toContain("pass of 9 Nov 2026, track 055A");
+  });
+  it("the radar picture says so when there is none, and hides the water layer while frozen", () => {
+    expect(page(makeLake({ images: null })).querySelector('[data-role="lp-picture"]')!.textContent).toContain("No radar picture yet");
+    const f = frozenFixture("shazore", "Frozen (likely)", { images: { latest_hh: "lakes/shazore/latest_hh.webp", water: "lakes/shazore/water.webp" } });
+    const b = page(f).querySelector('[data-role="lp-picture"]')!;
+    expect(b.querySelectorAll("img")).toHaveLength(1);
+    expect(b.textContent).toContain("Water layer hidden");
   });
   it("no authority button when authorityFor gives none", () => expect(page(watchLake).querySelector('[data-action="authority"]')).toBeNull());
   it("an unknown lake id says so", () => {
