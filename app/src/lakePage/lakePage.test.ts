@@ -97,6 +97,15 @@ describe("the lake page", () => {
     expect(h.querySelector(".ov-chip")!.textContent).toBe("Watch");
     expect(h.querySelector(".lp-meta")!.textContent).toBe("Latest assessment 9 Nov 2026 · track 055A · 9 valid looks · 1 track");
   });
+  it("the header chip is the family with its evidence line", () => {
+    const h = header(page(frozenFixture("shazore", "Frozen (seen by Sentinel-2)")));
+    expect(h.querySelector(".ov-chip")!.textContent).toBe("Frozen");
+    expect(h.querySelector(".lp-tag")!.textContent).toBe("Seen in Sentinel-2 since 18 Oct");
+    expect(header(page(makeLake({ status: { ...makeLake().status, status: "Not observable" } }))).querySelector(".ov-chip")!.textContent).toBe("Not measured");
+  });
+  it("the frozen card heading names the family and its evidence", () => {
+    expect(page(frozen).querySelector(".lp-freeze-head")!.textContent).toBe("Frozen: By air temperature since 18 Oct; no clear image");
+  });
   it("leaves out the place and the meta parts the data lacks", () => {
     const h = header(page(makeLake({ status: { ...makeLake().status, latest_date: null, track: null, looks: 0 }, series: [] })));
     expect(h.querySelector(".lp-place")).toBeNull();

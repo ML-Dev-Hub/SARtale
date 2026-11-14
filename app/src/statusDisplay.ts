@@ -49,7 +49,7 @@ const since = (iso: string | null | undefined): string => {
 
 export function statusDisplay(lake: Lake, constants?: { min_looks?: number }): StatusDisplay {
   const s = lake.status;
-  const levelSince = since(s.level_since ?? lake.freeze?.since);
+  const levelSince = since(s.level_since);
   const fz = since(lake.freeze?.since);
   switch (s.status) {
     case "Alert: growing": return make("alert", levelSince);

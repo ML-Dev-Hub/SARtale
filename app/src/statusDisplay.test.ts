@@ -41,6 +41,12 @@ describe("statusDisplay", () => {
     expect(statusDisplay(withStatus("Watch", { level_since: null })).tag).toBe("");
   });
 
+  it("does not borrow the freeze date for a level family", () => {
+    const l = frozenFixture("f");
+    expect(l.freeze?.since).toBeTruthy();
+    expect(statusDisplay({ ...l, status: { ...l.status, status: "Watch", level_since: null } }).tag).toBe("");
+  });
+
   it("ranks the families in display order", () => {
     const lakes: Lake[] = [withStatus("Alert: growing"), withStatus("Watch"), withStatus("Decrease noted"), withStatus("Lake may be forming"),
       withStatus("No change"), withStatus("Not observable"), frozenFixture("b", "Break-up likely"), frozenFixture("f"), withStatus("No lake now")];

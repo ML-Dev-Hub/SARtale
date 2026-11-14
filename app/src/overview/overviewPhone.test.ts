@@ -71,6 +71,15 @@ describe("overview on a phone", () => {
     render(makeFile([lake("passu")]));
     expect(root.querySelector('[data-role="ovp-attention"]')).toBeNull();
   });
+  it("a card gives the family chip and the evidence line; a frozen lake reads Frozen with its evidence", () => {
+    render(file);
+    const sha = role("ovp-list").querySelector<HTMLElement>("[data-id=\"shazore\"]")!;
+    expect(sha.querySelector(".ov-chip")!.textContent).toBe("Frozen");
+    expect(sha.querySelector(".ov-tag")!.textContent).toBe("By air temperature; no clear image");
+    const alert = card().querySelector<HTMLElement>("[data-id=\"alert_lake\"]")!;
+    expect(alert.querySelector(".ov-chip")!.textContent).toBe("Alert: growing");
+    expect(alert.querySelector(".ov-tag")!.textContent).toMatch(/^since /);
+  });
   it("count chips filter and write the URL state", () => {
     render(file);
     click(root.querySelector('[data-role="ovp-chips"] [data-filter="frozen"]')!);
