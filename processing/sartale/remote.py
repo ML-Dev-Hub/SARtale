@@ -163,36 +163,64 @@ def to_cache_dtype(a: np.ndarray) -> np.ndarray:
         return np.where(a > 0, np.clip(a, fi.smallest_subnormal, fi.max), a).astype(dt)
 
 
+DROPPED_LAYERS = ("looks",)  # read by nothing in the pipeline: not kept in a cropped window
+
+
 def crop_window(win: dict, rows: slice, cols: slice, margin_m: float = config.WINDOW_MARGIN_M) -> dict:
-    """The window cut to `rows`, `cols`: HH, HV and looks as `config.CACHE_DTYPE` (float16, `to_cache_dtype`), the
-    mask as uint8, x and y sliced, every other entry (epsg, bbox, ...) kept, and the margin it was cut with as
-    `crop_m`."""
-    out = dict(win)
+    """The window cut to `rows`, `cols`: HH and HV as `config.CACHE_DTYPE` (float16, `to_cache_dtype`), the mask as
+    uint8, x and y sliced (the full axes kept as `full_x`, `full_y`), `DROPPED_LAYERS` left out, every other entry
+    (epsg, bbox, ...) kept, and the margin it was cut with as `crop_m`."""
+    out = {k: v for k, v in win.items() if k not in DROPPED_LAYERS}
     hh = np.asarray(win["hh"])
-    for k in ("hh", "hv", "looks", "mask"):
+    for k in ("hh", "hv", "mask"):
         a = win.get(k)
         if a is None or np.ndim(a) != 2 or np.shape(a) != hh.shape:
             continue
         a = np.asarray(a)[rows, cols]
         out[k] = a.astype(np.uint8) if k == "mask" else to_cache_dtype(a)
     out["x"], out["y"] = np.asarray(win["x"])[cols], np.asarray(win["y"])[rows]
+    # the full window's axes: lakes-check measures a scene's cloud over the whole 6 km window, as before the crop
+    out["full_x"], out["full_y"] = np.asarray(win.get("full_x", win["x"])), np.asarray(win.get("full_y", win["y"]))
     out["crop_m"] = np.float64(margin_m)
     return out
 
 
-def _cropped(lake: Lake, win: dict) -> dict:
-    """`win` cropped for `lake` (`crop_box`, `crop_window`), with the zone-plus-margin bounds it was cut for as
-    `crop_bounds`, so `cached_window_fits` can tell when the lake's zone outgrows the crop."""
+def full_window_reference(win: dict, crid: str, key: str, lake_dir: Path) -> dict:
+    """The statistics of the full (uncropped) window `win` the build compares pixels with (`lakebuild.window_reference`),
+    on HH and HV with the GCOV validity rule applied by the pass's CRID as the build applies it (`lakebuild.remask`),
+    and `dem_grid`: the key of the full window's DEM in `lake_dir`/dem/ (`demmask.grid_key`)."""
+    from sartale import demmask
+    from sartale.lakebuild import remask, window_reference
+
+    class _Z(dict):
+        files = property(lambda self: list(self.keys()))
+
+    hh, hv = remask(_Z(win), crid)
     epsg = int(win["epsg"])
+    xs, ys = np.round(np.asarray(win["x"], float), 2), np.round(np.asarray(win["y"], float), 2)
+    ref = window_reference(hh, hv, xs, ys, epsg, key[-1], lake_dir)
+    return {**ref, "dem_grid": np.str_(demmask.grid_key(xs, ys, epsg))}
+
+
+def _cropped(lake: Lake, win: dict, crid: str, key: str, lake_dir: Path) -> dict:
+    """`win` cropped for `lake` (`crop_box`, `crop_window`), carrying its full-window statistics
+    (`full_window_reference`, measured before the crop) and the zone-plus-margin bounds it was cut for as `crop_bounds`,
+    so `cached_window_fits` can tell when the lake's zone outgrows the crop."""
+    epsg = int(win["epsg"])
+    ref = full_window_reference(win, crid, key, lake_dir)
     rows, cols = crop_box(lake, win["x"], win["y"], epsg)
-    return {**crop_window(win, rows, cols), "crop_bounds": crop_bounds(lake, epsg)}
+    return {**crop_window(win, rows, cols), **ref, "crop_bounds": crop_bounds(lake, epsg)}
 
 
 def _crop_still_fits(z, lake: Lake) -> bool:
     """For a cropped window: cut with the current margin, for zone bounds that hold the lake's current ones (an outline
     or a radius that grew needs a wider window)."""
+    from sartale.lakebuild import REF_KEYS
+
     if float(z["crop_m"]) != config.WINDOW_MARGIN_M or "crop_bounds" not in z.files:
         return False
+    if not all(v in z.files for v in REF_KEYS.values()):
+        return False  # cropped before the full-window statistics were kept: they cannot be had again
     have = np.asarray(z["crop_bounds"], float)
     need = crop_bounds(lake, int(z["epsg"]))
     tol = 0.5  # metres
@@ -251,7 +279,7 @@ def fetch_lake_passes(lake: Lake, passes: list[Pass], cache_dir: Path, session=N
         part = path.with_name(path.name + ".part")
         holder: list = []
         try:
-            win = _cropped(lake, read_window(session, p.url, bbox, holder))
+            win = _cropped(lake, read_window(session, p.url, bbox, holder), p.crid, p.key, path.parent)
             with open(part, "wb") as fh:
                 np.savez_compressed(fh, **win, bbox=np.asarray(bbox, float))
             part.replace(path)
@@ -289,13 +317,18 @@ def shrink_cache(cache_dir: Path, lakes: list[Lake], listed: dict | None, dry_ru
     For each register lake: delete the windows the catalogue no longer lists (`listed`, from passes.json as
     `lakebuild.read_listed` reads it; a lake it lists nothing for, or no list at all, keeps every window) and any
     .npz.part left by a broken fetch, and crop every uncropped window that still fits the lake's search box to the
-    zone plus `config.WINDOW_MARGIN_M` in float16 (`crop_window`), written as .part and renamed. Each lake's `dem/`
-    is kept. Folders of lakes no longer in the register are deleted. Files at the top of the cache (passes.json, logs)
-    are left alone. With `dry_run` nothing changes and the sizes are what the shrink would leave.
+    zone plus `config.WINDOW_MARGIN_M` in float16 (`crop_window`), keeping its full-window statistics
+    (`full_window_reference`, measured first), written as .part and renamed. In each lake's `dem/`, the DEM of every
+    window's full grid is kept (lakes-fetch measures new passes with it) and a DEM of any other grid (the build of a
+    cropped cache reads none) is deleted. Folders of lakes no longer in the register are deleted. Files at the top of
+    the cache (passes.json, logs) are left alone. With `dry_run` nothing changes (no DEM is read either) and the sizes
+    are what the shrink would leave, give or take the few bytes of the statistics.
 
     Returns per lake {"id", "mb_before", "mb_after", "removed": [names]}: the register lakes first, in register
     order, then each deleted folder (mb_after 0, removed ["<id>/"])."""
     import io as _io
+
+    from sartale.demmask import grid_key
 
     cache_dir = Path(cache_dir)
     ids = {lake.id for lake in lakes}
@@ -312,6 +345,7 @@ def shrink_cache(cache_dir: Path, lakes: list[Lake], listed: dict | None, dry_ru
             after -= _mb(f)
             if not dry_run:
                 f.unlink()
+        grids: set[str] = set()
         for f in sorted(d.glob("*.npz")):
             parts = tuple(f.stem.split("_"))
             if mine and len(parts) == 3 and all(parts) and parts not in mine:
@@ -325,15 +359,31 @@ def shrink_cache(cache_dir: Path, lakes: list[Lake], listed: dict | None, dry_ru
                     arrays = {k: z[k] for k in z.files}
             except (OSError, ValueError):
                 continue  # unreadable: lakes-fetch reads it again (cached_window_fits)
-            if "crop_m" in arrays or not cached_window_fits(f, lake):
-                continue  # already cropped, or read for an earlier position: lakes-fetch reads it again
+            if "dem_grid" in arrays:
+                grids.add(str(arrays["dem_grid"]))
+            elif "x" in arrays and "y" in arrays and "epsg" in arrays and len(arrays["x"]) > 1:
+                grids.add(grid_key(np.round(arrays["x"], 2), np.round(arrays["y"], 2), int(arrays["epsg"])))
+            if "crop_m" in arrays or len(parts) != 3 or not all(parts) or not cached_window_fits(f, lake):
+                continue  # already cropped, not a pass window, or read for an earlier position: lakes-fetch reads it
+            if dry_run:
+                epsg = int(arrays["epsg"])
+                cropped = crop_window(arrays, *crop_box(lake, arrays["x"], arrays["y"], epsg))
+            else:
+                cropped = _cropped(lake, arrays, parts[2], parts[1], d)
             buf = _io.BytesIO()
-            np.savez_compressed(buf, **_cropped(lake, arrays))
+            np.savez_compressed(buf, **cropped)
             after += buf.getbuffer().nbytes / 1e6 - _mb(f)
             if not dry_run:
                 part = f.with_name(f.name + ".part")
                 part.write_bytes(buf.getvalue())
                 os.replace(part, f)
+        if grids and (d / "dem").is_dir():
+            for f in sorted((d / "dem").glob("glo30_*.npz")):
+                if f.stem.removeprefix("glo30_") not in grids:
+                    removed.append(f"dem/{f.name}")
+                    after -= _mb(f)
+                    if not dry_run:
+                        f.unlink()
         report.append({"id": lake.id, "mb_before": round(before, 2), "mb_after": round(after, 2),
                        "removed": removed})
     for d in sorted(p for p in cache_dir.iterdir() if p.is_dir()):

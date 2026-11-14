@@ -330,7 +330,8 @@ def test_crop_window_keeps_float16_power_and_records_the_margin(circle_lake_1km)
     win = _window(circle_lake_1km)
     rows, cols = remote.crop_box(circle_lake_1km, win["x"], win["y"], int(win["epsg"]))
     out = remote.crop_window(win, rows, cols)
-    assert out["hh"].dtype == out["hv"].dtype == out["looks"].dtype == np.float16
+    assert out["hh"].dtype == out["hv"].dtype == np.float16
+    assert "looks" not in out  # read by nothing in the pipeline
     assert out["mask"].dtype == np.uint8
     assert out["hh"].shape == (rows.stop - rows.start, cols.stop - cols.start) == out["mask"].shape
     np.testing.assert_array_equal(out["x"], win["x"][cols])
@@ -368,18 +369,27 @@ def test_shrink_cache_drops_unlisted_windows_and_unregistered_lakes_and_keeps_de
     lake = circle_lake_1km
     _save_full(tmp_path / lake.id / "2026-06-18_055A_P05023.npz", lake)
     _save_full(tmp_path / lake.id / "2026-06-30_055A_P05023.npz", lake)  # no longer in the catalogue
-    (tmp_path / lake.id / "dem").mkdir()
-    (tmp_path / lake.id / "dem" / "glo30_abc.npz").write_bytes(b"dem")
+    from sartale.demmask import grid_key
+    x, y, epsg = _grid(lake)
+    full_dem = tmp_path / lake.id / "dem" / f"glo30_{grid_key(np.round(x, 2), np.round(y, 2), epsg)}.npz"
+    full_dem.parent.mkdir()
+    # the full window's grid: lakes-fetch measures new passes with it
+    np.savez_compressed(full_dem, dem=np.zeros((W_N + 600, W_N + 600), np.float32))
+    (tmp_path / lake.id / "dem" / "glo30_0123456789abcdef.npz").write_bytes(b"old")  # a grid no window has
     _save_full(tmp_path / "batura" / "2026-06-18_055A_P05023.npz", lake)  # not in the register
     (tmp_path / "passes.json").write_text("{}", encoding="utf-8")
     report = remote.shrink_cache(tmp_path, [lake], listed={lake.id: {("2026-06-18", "055A", "P05023")}})
     assert sorted(p.name for p in (tmp_path / lake.id).iterdir()) == ["2026-06-18_055A_P05023.npz", "dem"]
     assert not (tmp_path / "batura").exists()
-    assert (tmp_path / "passes.json").exists() and (tmp_path / lake.id / "dem" / "glo30_abc.npz").exists()
+    assert (tmp_path / "passes.json").exists() and full_dem.exists()
+    assert [f.name for f in (tmp_path / lake.id / "dem").iterdir()] == [full_dem.name]
     with np.load(tmp_path / lake.id / "2026-06-18_055A_P05023.npz") as z:
         assert z["hh"].dtype == np.float16 and float(z["crop_m"]) == 1500.0
-        assert "bbox" in z.files
-    assert report[0]["id"] == lake.id and report[0]["removed"] == ["2026-06-30_055A_P05023.npz"]
+        assert "bbox" in z.files and "looks" not in z.files
+        assert np.isfinite(float(z["ref_water_all_db"])) and str(z["dem_grid"]) == full_dem.stem[6:]
+        assert len(z["full_x"]) == len(z["full_y"]) == W_N  # the full window grid, for lakes-check
+    assert report[0]["id"] == lake.id
+    assert report[0]["removed"] == ["2026-06-30_055A_P05023.npz", "dem/glo30_0123456789abcdef.npz"]
     assert report[0]["mb_after"] < report[0]["mb_before"]
     assert any(r["id"] == "batura" and r["mb_after"] == 0 for r in report)
     assert remote.cached_window_fits(tmp_path / lake.id / "2026-06-18_055A_P05023.npz", lake)
@@ -428,5 +438,21 @@ def test_fetch_saves_a_cropped_float16_window(tmp_path, fixture_h5):
     (path,) = remote.fetch_lake_passes(_mk_lake(), [_pass()], tmp_path / "cache", FakeSession(fixture_h5))
     with np.load(path) as z:
         assert z["hh"].dtype == z["hv"].dtype == np.float16 and float(z["crop_m"]) == config.WINDOW_MARGIN_M
+        assert np.isfinite(float(z["ref_water_all_db"])) and "looks" not in z.files
         assert z["hh"].shape[1] * 100.0 == pytest.approx(2 * (1000 + 1500), abs=200)  # the fixture's 100 m grid
     assert remote.cached_window_fits(path, _mk_lake())
+
+
+def test_a_window_cropped_without_its_full_window_statistics_is_fetched_again(tmp_path, circle_lake_1km):
+    """A window cropped before the statistics were kept (the first version of the crop) cannot give them back: it does
+    not fit, so lakes-fetch reads the pass again."""
+    from sartale.lakebuild import REF_KEYS
+    lake = circle_lake_1km
+    path = tmp_path / lake.id / "2026-06-18_055A_P05023.npz"
+    _save_full(path, lake)
+    remote.shrink_cache(tmp_path, [lake], listed=None)
+    assert remote.cached_window_fits(path, lake)
+    with np.load(path) as z:
+        arrays = {k: z[k] for k in z.files if k not in REF_KEYS.values()}
+    np.savez_compressed(path, **arrays)
+    assert not remote.cached_window_fits(path, lake)

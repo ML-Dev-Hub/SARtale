@@ -63,18 +63,28 @@ def lee_filter(power: np.ndarray, box: int = LEE_BOX, enl: float = LEE_ENL) -> n
     return np.where(np.isfinite(m), out, np.nan)
 
 
-def water_mask(hh_db: np.ndarray, valid: np.ndarray, stat_mask: np.ndarray | None = None,
-               drop_db: float = DROP_DB) -> np.ndarray:
-    """D17 water: `valid` and HH (dB, Lee-filtered) at least `drop_db` below the window-median HH. The median is taken
-    over the valid pixels that `stat_mask` leaves in (True = left out of the statistics: layover and shadow), or over
-    every valid pixel without one (or when it would leave none)."""
+def water_reference(hh_db: np.ndarray, valid: np.ndarray, stat_mask: np.ndarray | None = None) -> float | None:
+    """The window-median HH (dB, Lee-filtered) D17 measures water against: over the valid pixels that `stat_mask` leaves
+    in (True = left out of the statistics: layover and shadow), or over every valid pixel without one (or when it
+    would leave none). None when no pixel is valid."""
     valid = np.asarray(valid, bool)
     use = valid if stat_mask is None else valid & ~np.asarray(stat_mask, bool)
     if not use.any():
         use = valid
     if not use.any():
+        return None
+    return float(np.median(np.asarray(hh_db)[use]))
+
+
+def water_mask(hh_db: np.ndarray, valid: np.ndarray, stat_mask: np.ndarray | None = None,
+               drop_db: float = DROP_DB, ref_db: float | None = None) -> np.ndarray:
+    """D17 water: `valid` and HH (dB, Lee-filtered) at least `drop_db` below the window-median HH (`water_reference`).
+    `ref_db`, when given, is that median as measured on the full 6 km window before the cache cropped it
+    (`lakebuild.window_reference`); `stat_mask` is then not used."""
+    valid = np.asarray(valid, bool)
+    ref = ref_db if ref_db is not None and np.isfinite(ref_db) else water_reference(hh_db, valid, stat_mask)
+    if ref is None:
         return np.zeros(valid.shape, bool)
-    ref = float(np.median(np.asarray(hh_db)[use]))
     with np.errstate(invalid="ignore"):
         return valid & (hh_db <= ref - drop_db)
 
@@ -86,7 +96,11 @@ def screen_passes(hh_db_by_pass: dict[str, np.ndarray]) -> dict[str, str]:
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)  # a window with no valid pixel has a NaN median
-        medians = {k: float(np.nanmedian(v)) for k, v in hh_db_by_pass.items()}
+        return screen_medians({k: float(np.nanmedian(v)) for k, v in hh_db_by_pass.items()})
+
+
+def screen_medians(medians: dict[str, float]) -> dict[str, str]:
+    """`screen_passes` on each pass's window-median HH (dB, despeckled; NaN for a window with no valid pixel)."""
     finite = [m for m in medians.values() if np.isfinite(m)]
     if not finite:  # no pass of the track has a valid pixel (e.g. the window lies in mask-0 coverage)
         return {k: "window has no valid HH pixels" for k in medians}
@@ -147,16 +161,25 @@ def window_stats(hh_db: np.ndarray, hv_db: np.ndarray) -> tuple[float, float]:
     return float(dark.sum() / n), float(np.nanmedian(np.where(valid, hv_db, np.nan)))
 
 
-def dark_mask(hh_db: np.ndarray, hv_db: np.ndarray, drop_db: float = DROP_DB) -> tuple[np.ndarray, np.ndarray]:
-    """Dark = HH and HV both at least `drop_db` below their window medians. Returns (dark, valid).
+def dark_medians(hh_db: np.ndarray, hv_db: np.ndarray) -> tuple[float, float] | None:
+    """The window medians (HH, HV dB) `dark_mask` compares with, over the pixels valid in both; None when none is."""
+    valid = np.isfinite(hh_db) & np.isfinite(hv_db)
+    if not valid.any():
+        return None
+    return float(np.median(np.asarray(hh_db)[valid])), float(np.median(np.asarray(hv_db)[valid]))
+
+
+def dark_mask(hh_db: np.ndarray, hv_db: np.ndarray, drop_db: float = DROP_DB,
+              ref: tuple[float, float] | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """Dark = HH and HV both at least `drop_db` below their window medians (`dark_medians`, or `ref` when given: the
+    medians of the full 6 km window before the cache cropped it). Returns (dark, valid).
 
     NaN pixels are valid=False and dark=False.
     """
     valid = np.isfinite(hh_db) & np.isfinite(hv_db)
     if not valid.any():
         return np.zeros(hh_db.shape, bool), valid
-    hh_med = np.nanmedian(np.where(valid, hh_db, np.nan))
-    hv_med = np.nanmedian(np.where(valid, hv_db, np.nan))
+    hh_med, hv_med = ref if ref is not None else dark_medians(hh_db, hv_db)
     with np.errstate(invalid="ignore"):
         dark = valid & (hh_db <= hh_med - drop_db) & (hv_db <= hv_med - drop_db)
     return dark, valid
@@ -259,14 +282,14 @@ def outline_window_share(x, y, epsg, outline_polygon) -> float:
 
 
 def pass_water(hh_db: np.ndarray, valid: np.ndarray, zone: np.ndarray, pixel_m: float,
-               stat_mask: np.ndarray | None = None) -> dict:
+               stat_mask: np.ndarray | None = None, ref_db: float | None = None) -> dict:
     """Water in one pass (D17, `water_mask`): Lee-filtered HH `hh_db`, its `valid` pixels, the lake `zone`, and the
     layover/shadow `stat_mask` left out of the window median.
 
     Returns area_km2; observable_share (valid share of the zone pixels, 0.0 for an empty zone); valid (count of
     observable zone pixels); water (the water mask over the whole window).
     """
-    water = water_mask(hh_db, valid, stat_mask)
+    water = water_mask(hh_db, valid, stat_mask, ref_db=ref_db)
     observable = zone & np.asarray(valid, bool)
     n_zone = int(zone.sum())
     return {

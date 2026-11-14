@@ -29,16 +29,18 @@ from sartale.lakestatus import (
 )
 from sartale.lakewater import (
     dark_mask,
+    dark_medians,
     despeckle,
     lake_zone,
     lee_filter,
     outline_mask,
     outline_window_share,
     pass_water,
+    screen_medians,
     screen_outliers,
-    screen_passes,
     shadow_prone,
     water_mask,
+    water_reference,
     window_stats,
 )
 from sartale.render import render_frame, shared_stretch
@@ -63,8 +65,9 @@ METHOD = {
               f"{config.LEE_BOX} Lee filter (ENL {config.LEE_ENL:g}) on linear HH power; HV is not used for water"),
     "lee_box": config.LEE_BOX, "lee_enl": config.LEE_ENL, "drop_db": config.DROP_DB, "polarisation": "HH",
     "zone": "the mapped outline buffered 200 m, or a circle around the lake point; no shadow rule inside it",
-    "window": (f"the 6 km search window cropped to the zone plus {config.WINDOW_MARGIN_M:g} m on every side; the window "
-               "median is taken over that crop"),
+    "window": (f"the cache keeps each pass cropped to the zone plus {config.WINDOW_MARGIN_M:g} m on every side, with "
+               "the window statistics (medians, dark share) of its full 6 km search window, measured before the crop; "
+               "areas and screens use those"),
     "window_margin_m": config.WINDOW_MARGIN_M,
     "window_statistics": ("the window-median HH leaves out radar layover and shadow from the Copernicus GLO-30 DEM "
                           f"(look azimuth {config.DEM_LOOK_AZIMUTH_DEG['A']:g} degrees ascending, "
@@ -163,7 +166,8 @@ def _read_cache(lake_dir: Path, limits: list[str], listed: set[tuple[str, str, s
     parts is skipped, and so is one whose (date, key, CRID) is not in `listed` (when a list is given: the passes
     the catalogue lists now). When one date and track is cached under more than one CRID (a pass reprocessed into
     a newer release), the latest CRID is used and the others are noted. HH and HV are read as float64 whatever the
-    window stores (float16 since the crop, `remote.crop_window`)."""
+    window stores (float16 since the crop, `remote.crop_window`). A cropped window carries the statistics of its full
+    6 km window (`window_reference`) as `ref`; an uncropped one has `ref` None and the build measures them."""
     files: dict[tuple[str, str], dict[str, Path]] = {}
     for f in sorted(lake_dir.glob("*.npz")):
         parts = f.stem.split("_")
@@ -182,8 +186,81 @@ def _read_cache(lake_dir: Path, limits: list[str], listed: set[tuple[str, str, s
             hh, hv = remask(z, crid)
             passes.append({"date": date, "key": key, "id": f"{date}_{key}", "crid": crid,
                            "hh": hh, "hv": hv, "x": np.asarray(z["x"], float),
-                           "y": np.asarray(z["y"], float), "epsg": int(z["epsg"])})
+                           "y": np.asarray(z["y"], float), "epsg": int(z["epsg"]), "ref": stored_reference(z),
+                           "full_x": np.asarray(z["full_x"] if "full_x" in z.files else z["x"], float),
+                           "full_y": np.asarray(z["full_y"] if "full_y" in z.files else z["y"], float)})
     return passes
+
+
+# The statistics of a pass's full 6 km window that the build compares pixels with, stored as scalars in a cropped
+# cache window (`remote.crop_window`), so the crop changes no number: the despeckled window-median HH of the bright/dark
+# screen; the window medians of HH and HV the dark rule (dark share, summer core, core contrast) compares with; the
+# dark share; and the Lee-filtered window-median HH D17 measures water against, with the DEM layover/shadow mask
+# (`water`) and without it (`water_all`, used when the mask could not be had: `water_dem` 0).
+REF_KEYS = {"screen_hh": "ref_screen_hh_db", "dark_hh": "ref_dark_hh_db", "dark_hv": "ref_dark_hv_db",
+            "dark_share": "ref_dark_share", "water": "ref_water_db", "water_all": "ref_water_all_db",
+            "water_dem": "ref_water_dem"}
+
+
+def window_reference(hh: np.ndarray, hv: np.ndarray, xs, ys, epsg: int, direction: str, lake_dir: Path) -> dict:
+    """The full-window statistics (`REF_KEYS`, as npz entries) of one pass's masked linear HH and HV on its window grid
+    (`xs`, `ys` in `epsg`), measured exactly as `_analyse`, `screen_all`, `summer_cores`, `core_metrics` and
+    `pass_water` measure them on an uncropped window. The DEM layover/shadow mask of the look `direction` ("A"/"D") is
+    read through `demmask.stat_masks` (kept in `lake_dir`/dem/ for the full window's grid). NaN for a statistic with
+    no valid pixel."""
+    xs, ys = np.round(np.asarray(xs, float), 2), np.round(np.asarray(ys, float), 2)
+    hh_db, hv_db = to_db(despeckle(hh)), to_db(despeckle(hv))
+    hh_w = to_db(lee_filter(hh))
+    w_valid = np.isfinite(hh_w) & np.isfinite(lee_filter(hv))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        screen = float(np.nanmedian(hh_db))
+    dm = dark_medians(hh_db, hv_db)
+    share, _ = window_stats(hh_db, hv_db)
+    masks = demmask.stat_masks(lake_dir, xs, ys, epsg, {direction})
+    sm = (masks or {}).get(direction)
+    water, water_all = water_reference(hh_w, w_valid, sm), water_reference(hh_w, w_valid, None)
+    nan = float("nan")
+    vals = {"screen_hh": screen, "dark_hh": dm[0] if dm else nan, "dark_hv": dm[1] if dm else nan,
+            "dark_share": share, "water": nan if water is None else water,
+            "water_all": nan if water_all is None else water_all, "water_dem": 1.0 if sm is not None else 0.0}
+    return {REF_KEYS[k]: np.float64(v) for k, v in vals.items()}
+
+
+def stored_reference(z) -> dict | None:
+    """The full-window statistics a cropped cache window stores (`window_reference`), by `REF_KEYS` name; None when the
+    window has none (an uncropped window: the build measures them on its pixels)."""
+    if not all(v in z.files for v in REF_KEYS.values()):
+        return None
+    return {k: float(z[v]) for k, v in REF_KEYS.items()}
+
+
+def _dark_ref(p: dict) -> tuple[float, float] | None:
+    r = p.get("ref")
+    return (r["dark_hh"], r["dark_hv"]) if r else None
+
+
+def water_ref_of(p: dict) -> float | None:
+    """The stored full-window D17 reference of pass `p` (with the DEM mask when it was had), or None to measure it."""
+    r = p.get("ref")
+    if not r:
+        return None
+    return r["water"] if r["water_dem"] and np.isfinite(r["water"]) else r["water_all"]
+
+
+def lake_stat_masks(passes: list[dict], lake_dir: Path, xs, ys, epsg: int, directions, limits: list[str] | None):
+    """`demmask.stat_masks` for the passes that measure their own window statistics (no stored `ref`); None, and no
+    DEM read, when every pass stores them. Notes `demmask.NO_DEM_LIMIT` in `limits` (if given) when some pass's water
+    reference goes without the DEM mask."""
+    masks = None
+    if any(p.get("ref") is None for p in passes):
+        masks = demmask.stat_masks(lake_dir, xs, ys, epsg, set(directions))
+        if masks is None and limits is not None:
+            limits.append(demmask.NO_DEM_LIMIT)
+    if limits is not None and demmask.NO_DEM_LIMIT not in limits and any(
+            p.get("ref") and not p["ref"]["water_dem"] for p in passes):
+        limits.append(demmask.NO_DEM_LIMIT)
+    return masks
 
 
 def remask(z, crid: str) -> tuple[np.ndarray, np.ndarray]:
@@ -310,7 +387,7 @@ def _write_images(lake_out: Path, good: list[dict], latest: dict, zone, ys, pref
 
     # The water the area counts (D17): no shadow rule inside the zone, so no hatching.
     water = np.zeros(zone.shape + (4,), np.uint8)
-    water[water_mask(latest["hh_w"], latest["w_valid"], stat_mask) & zone] = WATER_RGBA
+    water[water_mask(latest["hh_w"], latest["w_valid"], stat_mask, ref_db=water_ref_of(latest)) & zone] = WATER_RGBA
     _save_webp(_north_up(water, ys), lake_out / f"{prefix}water.webp")
     rel = f"lakes/{lake_out.name}"
     return {"latest_hh": f"{rel}/{prefix}latest_hh.webp", "water": f"{rel}/{prefix}water.webp"}
@@ -337,7 +414,7 @@ def pass_images(lake: Lake, cache_dir: Path, out_dir: Path, pass_id: str, prefix
     if chosen is None:
         return None
     zone = lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=_load_outline(lake))
-    masks = demmask.stat_masks(lake_dir, xs, ys, epsg, set(directions.values()))
+    masks = lake_stat_masks(passes, lake_dir, xs, ys, epsg, directions.values(), None)
     return _write_images(Path(out_dir) / "lakes" / lake.id, good, chosen, zone, ys, prefix,
                          stat_mask_of(masks, chosen["key"]))
 
@@ -353,15 +430,31 @@ def screen_all(by_track: dict[str, list[dict]], manual: dict[str, str] | None = 
     manual = config.MANUAL_EXCLUSIONS if manual is None else manual
     excluded: dict[str, str] = {}
     for ps in by_track.values():
-        excluded.update(screen_passes({p["id"]: p["hh_db"] for p in ps}))
+        excluded.update(screen_medians({p["id"]: _screen_median(p) for p in ps}))
     for ps in by_track.values():
-        stats = {p["id"]: window_stats(p["hh_db"], p["hv_db"]) for p in ps if p["id"] not in excluded}
+        stats = {p["id"]: _window_stats_of(p) for p in ps if p["id"] not in excluded}
         excluded.update(screen_outliers({k: v[0] for k, v in stats.items()}, {k: v[1] for k, v in stats.items()}))
     for ps in by_track.values():
         for p in ps:
             if p["id"] in manual and p["id"] not in excluded:
                 excluded[p["id"]] = manual[p["id"]]
     return excluded
+
+
+def _screen_median(p: dict) -> float:
+    """The despeckled window-median HH of the bright/dark screen: stored for a cropped window, else measured."""
+    if p.get("ref"):
+        return p["ref"]["screen_hh"]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)  # a window with no valid pixel has a NaN median
+        return float(np.nanmedian(p["hh_db"]))
+
+
+def _window_stats_of(p: dict) -> tuple[float, float]:
+    """`window_stats` (dark share, window-median HV): stored for a cropped window, else measured."""
+    if p.get("ref"):
+        return p["ref"]["dark_share"], p["ref"]["dark_hv"]
+    return window_stats(p["hh_db"], p["hv_db"])
 
 
 def season_dark(by_track: dict[str, list[dict]], excluded: dict[str, str]) -> dict[str, tuple[np.ndarray, np.ndarray]]:
@@ -373,8 +466,22 @@ def season_dark(by_track: dict[str, list[dict]], excluded: dict[str, str]) -> di
         if ok:
             med_hh = _nanmedian0(np.stack([p["hh_db"] for p in ok]))
             med_hv = _nanmedian0(np.stack([p["hv_db"] for p in ok]))
-            out[k] = dark_mask(med_hh, med_hv)
+            out[k] = dark_mask(med_hh, med_hv, ref=_season_ref(ok))
     return out
+
+
+def _season_ref(ok: list[dict]) -> tuple[float, float] | None:
+    """The window medians the season-median image of a track is compared with when its windows are cropped: the median,
+    over the track's passes, of each pass's stored full-window medians (the full-window median of the median image
+    itself cannot be had from cropped windows). None, to measure them on the image, while any pass is uncropped."""
+    refs = [_dark_ref(p) for p in ok]
+    if any(r is None for r in refs):
+        return None
+    hh = [r[0] for r in refs if np.isfinite(r[0])]
+    hv = [r[1] for r in refs if np.isfinite(r[1])]
+    if not hh or not hv:
+        return None
+    return float(np.median(hh)), float(np.median(hv))
 
 
 def stat_mask_of(masks: dict[str, np.ndarray] | None, key: str) -> np.ndarray | None:
@@ -420,23 +527,25 @@ def summer_cores(by_track: dict[str, list[dict]], excluded: dict[str, str], zone
     for k, ps in by_track.items():
         summer = [p for p in ps if p["id"] not in excluded and p["id"] not in frozen and in_season(p["date"])]
         if summer:
-            frac = np.mean([dark_mask(p["hh_db"], p["hv_db"])[0] for p in summer], axis=0)
+            frac = np.mean([dark_mask(p["hh_db"], p["hv_db"], ref=_dark_ref(p))[0] for p in summer], axis=0)
             out[k] = (zone & not_shadow & (frac >= 0.5), len(summer))
     return out
 
 
-def core_metrics(hh_db: np.ndarray, hv_db: np.ndarray, core: np.ndarray) -> dict | None:
+def core_metrics(hh_db: np.ndarray, hv_db: np.ndarray, core: np.ndarray,
+                 ref: tuple[float, float] | None = None) -> dict | None:
     """The lake core of one pass against its window: core median minus window median of the valid pixels, in dB, for
     HH and HV (a calibration change moves both, so it cancels), and the share of the core's valid pixels that are
-    dark. None when the core has no valid pixel."""
-    dark, valid = dark_mask(hh_db, hv_db)
+    dark. `ref`: the full-window medians a cropped window stores. None when the core has no valid pixel."""
+    dark, valid = dark_mask(hh_db, hv_db, ref=ref)
     c = core & valid
     if not c.any():
         return None
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        hh = float(np.median(hh_db[c]) - np.median(hh_db[valid]))
-        hv = float(np.median(hv_db[c]) - np.median(hv_db[valid]))
+        win_hh, win_hv = ref if ref is not None else (np.median(hh_db[valid]), np.median(hv_db[valid]))
+        hh = float(np.median(hh_db[c]) - win_hh)
+        hv = float(np.median(hv_db[c]) - win_hv)
     return {"core_contrast_hh_db": round(hh, 3), "core_contrast_hv_db": round(hv, 3),
             "core_dark_share": round(float((dark & c).sum() / c.sum()), 3)}
 
@@ -582,8 +691,8 @@ def validation_of(check: dict | None) -> dict | None:
 def check_key(lake: Lake) -> dict:
     """What a Sentinel-2 check of a lake was made for, stored with it as `key`: the water method (config.METHOD_ID), the
     zone (`absence_zone`: the register point, and the circle's radius or the outline file's SHA-256) and the margin the
-    cached windows are cropped with (config.WINDOW_MARGIN_M: the crop moves the window median radar water is measured
-    against). A check made for another method, zone, point or margin is stale."""
+    cached windows are cropped with (config.WINDOW_MARGIN_M: the radar water a check compares is read from the cropped
+    float16 windows). A check made for another method, zone, point or margin is stale."""
     return {"method": config.METHOD_ID, "zone": absence_zone(lake), "window_margin_m": config.WINDOW_MARGIN_M}
 
 
@@ -664,12 +773,10 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
     flags = (prior or {}).get("flags") or {}
     frozen_ids = {f"{d}_{k}" for (d, k), v in flags.items() if v}
     cores = summer_cores(by_track, excluded, zone, shadow, frozen_ids)
-    masks = demmask.stat_masks(lake_dir, xs, ys, epsg, set(directions.values()))
-    if masks is None:
-        limits.append(demmask.NO_DEM_LIMIT)
+    masks = lake_stat_masks(passes, lake_dir, xs, ys, epsg, directions.values(), limits)
     series: list[SeriesPoint] = []
     for p in sorted(passes, key=lambda q: (q["date"], q["key"])):
-        w = pass_water(p["hh_w"], p["w_valid"], zone, px, stat_mask_of(masks, p["key"]))
+        w = pass_water(p["hh_w"], p["w_valid"], zone, px, stat_mask_of(masks, p["key"]), ref_db=water_ref_of(p))
         reason = excluded.get(p["id"])
         point = {"date": p["date"], "track": p["key"], "area_km2": None if reason else w["area_km2"],
                  "observable_share": w["observable_share"], "excluded": reason, "crid": p["crid"]}
@@ -678,7 +785,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
             point["diagnostic_km2"] = w["area_km2"] if w["valid"] else None
         if p["key"] in cores:
             # The lake core against its window, for the freeze check's radar break-up test (lakes-freeze).
-            point.update(core_metrics(p["hh_db"], p["hv_db"], cores[p["key"]][0]) or {})
+            point.update(core_metrics(p["hh_db"], p["hv_db"], cores[p["key"]][0], ref=_dark_ref(p)) or {})
         if p["id"] in frozen_ids and lake.lake_state == "lake":
             point["frozen"] = True  # the last freeze check's flag; lakes-freeze sets it again
         series.append(point)
@@ -882,14 +989,16 @@ def radar_water_context(lake: Lake, cache_dir: Path):
         if not state:
             epsg, _, _, excluded, directions, _ = _analyse(passes, xs, ys, limits)
             state.update(epsg=epsg, excluded=excluded,
-                         masks=demmask.stat_masks(lake_dir, xs, ys, epsg, set(directions.values())),
+                         masks=lake_stat_masks(passes, lake_dir, xs, ys, epsg, directions.values(), None),
                          zone=lake_zone((len(ys), len(xs)), xs, ys, epsg, lake, outline_polygon=outline))
         if pass_id in state["excluded"]:
             raise ValueError(f"{lake.id} {pass_id} was excluded: {state['excluded'][pass_id]}")
         p = next(q for q in passes if q["id"] == pass_id)
-        window = water_mask(p["hh_w"], p["w_valid"], stat_mask_of(state["masks"], p["key"]))
+        window = water_mask(p["hh_w"], p["w_valid"], stat_mask_of(state["masks"], p["key"]), ref_db=water_ref_of(p))
         zone = state["zone"]
-        return {"window": window, "zone_mask": window & zone, "zone": zone, "x": xs, "y": ys, "epsg": state["epsg"]}
+        return {"window": window, "zone_mask": window & zone, "zone": zone, "x": xs, "y": ys, "epsg": state["epsg"],
+                "full_x": _common_axis([q["full_x"] for q in passes]),
+                "full_y": _common_axis([q["full_y"] for q in passes])}
 
     return masks_for
 
@@ -897,9 +1006,9 @@ def radar_water_context(lake: Lake, cache_dir: Path):
 def radar_water_masks(lake: Lake, cache_dir: Path, pass_id: str) -> dict:
     """Radar water of one cached pass, by the same rule `build_lake` counts area with.
 
-    `pass_id` is `<date>_<key>`. Returns {"window": D17 water over the whole window, "zone_mask": the same limited
-    to the lake zone, "zone": the zone itself (outline if the lake has a readable one, else the 1 km circle), "x",
-    "y", "epsg"}. KeyError if the pass is not usable, ValueError if the screen excluded it.
+    `pass_id` is `<date>_<key>`. Returns {"window": D17 water over the whole (cached) window, "zone_mask": the same
+    limited to the lake zone, "zone": the zone itself (outline if the lake has a readable one, else the 1 km circle),
+    "x", "y", "epsg", and "full_x", "full_y": the axes of the full 6 km window the cached one was cropped from}. KeyError if the pass is not usable, ValueError if the screen excluded it.
     """
     return radar_water_context(lake, cache_dir)(pass_id)
 

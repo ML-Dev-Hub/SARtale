@@ -745,3 +745,107 @@ def test_a_check_made_before_the_crop_is_stale():
     assert not is_current({"lake": lake.id, "key": {"method": "D17", "zone": absence_zone(lake)}, "iou": 0.6}, lake)
     assert is_current({"lake": lake.id, "key": check_key(lake), "iou": 0.6}, lake)
     assert METHOD["window_margin_m"] == config.WINDOW_MARGIN_M
+
+
+def _full_window_cache(cache, lake, seed=0):
+    """Ten full 6 km windows (600 x 600 at 10 m) on two tracks, with values float16 can hold exactly, a dark lake (500 m
+    disc) at the point, a bright ridge and a dark slope outside the 1.5 km crop margin (which move the window median
+    when cropped away), and one bright pass that the screen excludes."""
+    from sartale.lakes import lake_bbox
+    n, px = 600, 10.0
+    cx, cy = Transformer.from_crs(4326, EPSG, always_xy=True).transform(lake.lon, lake.lat)
+    x = cx - (n // 2) * px + np.arange(n) * px
+    y = cy + (n // 2) * px - np.arange(n) * px
+    xx, yy = np.meshgrid(x, y)
+    lake_px = (xx - cx) ** 2 + (yy - cy) ** 2 < 500.0 ** 2
+    ridge = xx > cx + 2600.0  # outside the crop (zone 1000 m + margin 1500 m)
+    slope = yy < cy - 2700.0
+    rng = np.random.default_rng(seed)
+    dates = ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24", "2026-08-05"]
+    d = Path(cache) / lake.id
+    d.mkdir(parents=True, exist_ok=True)
+    for key in ("156A", "063D"):
+        for i, date in enumerate(dates):
+            base = np.full((n, n), 0.08)
+            base[ridge] = 0.6
+            base[slope] = 0.004
+            base[lake_px] = 0.003 * (1.0 + 0.15 * i)  # the lake brightens a little pass by pass
+            speckle = rng.gamma(5.0, 1 / 5.0, (n, n))
+            scale = 10 ** (12 / 10) if (key == "063D" and i == 2) else 1.0  # a pass the bright screen excludes
+            hh = (base * speckle * scale).astype(np.float16).astype(np.float64)
+            hv = (base * 0.2 * rng.gamma(5.0, 1 / 5.0, (n, n)) * scale).astype(np.float16).astype(np.float64)
+            hh[:3, :40] = np.nan
+            hv[:3, :40] = np.nan
+            np.savez_compressed(d / f"{date}_{key}_P05023.npz", hh=hh, hv=hv, looks=np.full((n, n), 5.0, np.float32),
+                                mask=np.ones((n, n), np.uint8), x=x, y=y, epsg=EPSG,
+                                bbox=np.asarray(lake_bbox(lake), float))
+    return x, y
+
+
+def _fake_stat_masks(cx):
+    """A DEM layover/shadow mask on any grid: everything east of cx + 2000 m is left out of the window statistics."""
+    def stat_masks(lake_dir, xs, ys, epsg, directions, log=print):
+        m = np.broadcast_to(np.asarray(xs, float)[None, :] > cx + 2000.0, (len(ys), len(xs))).copy()
+        return {d: m for d in directions}
+    return stat_masks
+
+
+@pytest.mark.parametrize("with_dem", [False, True])
+def test_a_cropped_cache_builds_the_same_areas_and_levels_as_the_full_windows(tmp_path, monkeypatch, with_dem):
+    """Equivalence of the crop: the cropped float16 windows carry their full window's statistics, so every pass's area,
+    observable share, exclusion, z and the level equal those of the full windows exactly. The fixture's pixels are
+    float16-exact and the zone lies 1.5 km inside the crop (the filters reach 30 m), so the tolerance is zero; on real
+    data only float16 rounding of the pixels themselves remains."""
+    import shutil
+    from sartale import demmask, remote
+    from sartale.lakebuild import check_key, radar_water_masks
+    lake = make_lake("alpha")
+    full = tmp_path / "full"
+    _full_window_cache(full, lake)
+    if with_dem:
+        cx, _ = Transformer.from_crs(4326, EPSG, always_xy=True).transform(lake.lon, lake.lat)
+        monkeypatch.setattr(demmask, "stat_masks", _fake_stat_masks(cx))
+    cropped = tmp_path / "cropped"
+    shutil.copytree(full, cropped)
+    remote.shrink_cache(cropped, [lake], listed=None)
+    for f in (cropped / lake.id).glob("*.npz"):
+        with np.load(f) as z:
+            assert z["hh"].dtype == np.float16 and max(z["hh"].shape) <= 501 and "looks" not in z.files
+            assert float(z["ref_water_dem"]) == (1.0 if with_dem else 0.0)
+    check = {"lake": "alpha", "iou": 0.7, "nisar_date": "2026-07-12", "s2_date": "2026-07-12", "key": check_key(lake)}
+    a = build_lakes([lake], full, tmp_path / "out_full", "t", checks=[check])["lakes"][0]
+    b = build_lakes([lake], cropped, tmp_path / "out_cropped", "t", checks=[check])["lakes"][0]
+    keys = ("date", "track", "area_km2", "observable_share", "excluded", "z", "diagnostic_km2")
+    assert [{k: p.get(k) for k in keys} for p in b["series"]] == [{k: p.get(k) for k in keys} for p in a["series"]]
+    assert any(p["excluded"] for p in a["series"]) and any(p["area_km2"] for p in a["series"])
+    assert b["status"]["level"] == a["status"]["level"] and b["status"]["status"] == a["status"]["status"]
+    assert b["excluded"] == a["excluded"]
+    assert (demmask.NO_DEM_LIMIT in b["limits"]) == (demmask.NO_DEM_LIMIT in a["limits"])
+    # the water mask itself, on the cropped grid
+    pid = next(f"{p['date']}_{p['track']}" for p in a["series"] if p["area_km2"])
+    wa, wb = radar_water_masks(lake, full, pid), radar_water_masks(lake, cropped, pid)
+    ix = np.flatnonzero(np.isin(np.round(wa["x"], 2), np.round(wb["x"], 2)))
+    iy = np.flatnonzero(np.isin(np.round(wa["y"], 2), np.round(wb["y"], 2)))
+    np.testing.assert_array_equal(wa["zone_mask"][np.ix_(iy, ix)], wb["zone_mask"])
+    assert wa["zone_mask"].sum() == wb["zone_mask"].sum() > 0
+
+
+def test_cropping_without_the_stored_statistics_would_move_the_areas(tmp_path):
+    """The fixture is a real test of the crop: measured on the cropped pixels alone, the window median moves and so do
+    the areas (what the first, rejected version of the crop did)."""
+    import shutil
+    from sartale import remote
+    from sartale.lakebuild import REF_KEYS
+    lake = make_lake("alpha")
+    full = tmp_path / "full"
+    _full_window_cache(full, lake)
+    cropped = tmp_path / "cropped"
+    shutil.copytree(full, cropped)
+    remote.shrink_cache(cropped, [lake], listed=None)
+    for f in (cropped / lake.id).glob("*.npz"):
+        with np.load(f) as z:
+            arrays = {k: z[k] for k in z.files if k not in REF_KEYS.values()}
+        np.savez_compressed(f, **arrays)
+    a = build_lakes([lake], full, tmp_path / "o1", "t")["lakes"][0]["series"]
+    b = build_lakes([lake], cropped, tmp_path / "o2", "t")["lakes"][0]["series"]
+    assert [p["area_km2"] for p in a] != [p["area_km2"] for p in b]

@@ -261,6 +261,21 @@ def optical_on_grid(scene: dict, x: np.ndarray, y: np.ndarray, epsg: int) -> dic
     return grid_scene(scene, read_scene(scene, x, y, epsg), x, y, epsg)
 
 
+def optical_on_window(scene: dict, radar: dict) -> dict:
+    """`optical_on_grid` over the full 6 km window the radar window (`lakebuild.radar_water_masks`) was cropped from,
+    so the window cloud share is the whole window's, as before the cache was cropped; every mask is then cut to the
+    radar window's grid."""
+    x, y, epsg = radar["x"], radar["y"], radar["epsg"]
+    fx, fy = radar.get("full_x"), radar.get("full_y")
+    if fx is None or fy is None or (len(fx) == len(x) and len(fy) == len(y)):
+        return optical_on_grid(scene, x, y, epsg)
+    full = optical_on_grid(scene, fx, fy, epsg)
+    ix = np.flatnonzero(np.isin(np.round(fx, 2), np.round(x, 2)))
+    iy = np.flatnonzero(np.isin(np.round(fy, 2), np.round(y, 2)))
+    shape = (len(fy), len(fx))
+    return {k: (v[np.ix_(iy, ix)] if isinstance(v, np.ndarray) and v.shape == shape else v) for k, v in full.items()}
+
+
 def zone_valid_share(valid: np.ndarray, zone: np.ndarray) -> float:
     """Share of the lake zone's pixels that Sentinel-2 sees clear; 0.0 for an empty zone."""
     zone = np.asarray(zone, bool)
@@ -325,7 +340,7 @@ def check_lake(lake, cache_dir, series: list[dict], days: int = 3, max_cloud: fl
         x, y, epsg = radar["x"], radar["y"], radar["epsg"]
         if scene["id"] not in optical:
             try:
-                optical[scene["id"]] = optical_on_grid(scene, x, y, epsg)
+                optical[scene["id"]] = optical_on_window(scene, radar)
             except Exception as e:  # noqa: BLE001 - a scene that will not read is skipped, and said so
                 log(f"{lake.id} {pass_id} vs {scene['id']}: unreadable ({type(e).__name__})")
                 optical[scene["id"]] = None

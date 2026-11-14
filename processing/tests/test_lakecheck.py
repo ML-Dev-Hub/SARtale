@@ -823,3 +823,25 @@ def test_an_unusable_exclusion_file_stops_the_absence_check_instead_of_being_dro
             exclude_mask(trial, x, y, epsg)
         with pytest.raises(ValueError, match="forming_exclude"):
             forming_rule(trial)
+
+
+def test_the_scene_is_read_over_the_full_window_a_cropped_radar_window_came_from(monkeypatch):
+    """The pair choice ranks scenes by their cloud over the whole 6 km window: with a cropped cache window the scene is
+    read over the full window's grid (window cloud as before the crop) and its masks are cut to the cropped grid."""
+    seen = []
+
+    def fake(scene, x, y, epsg):
+        seen.append((len(x), len(y)))
+        xx, yy = np.meshgrid(x, y)
+        return {"water": xx + yy, "valid": xx > 0, "window_cloud_share": float(len(x)), "invalid_share": 0.0}
+
+    monkeypatch.setattr(lakecheck, "optical_on_grid", fake)
+    fx, fy = 1000.0 + 10 * np.arange(60), 5000.0 - 10 * np.arange(50)
+    radar = {"x": fx[10:40], "y": fy[5:25], "epsg": 32643, "full_x": fx, "full_y": fy}
+    opt = lakecheck.optical_on_window({"id": "s"}, radar)
+    assert seen == [(60, 50)] and opt["window_cloud_share"] == 60.0
+    xx, yy = np.meshgrid(radar["x"], radar["y"])
+    np.testing.assert_array_equal(opt["water"], xx + yy)
+    seen.clear()
+    lakecheck.optical_on_window({"id": "s"}, {**radar, "full_x": None})  # an uncropped window: its own grid
+    assert seen == [(30, 20)]

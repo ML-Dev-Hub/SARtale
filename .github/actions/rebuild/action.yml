@@ -61,8 +61,9 @@ runs:
       run: rm -f ~/.netrc
 
     - name: Shrink the NISAR window cache (cropped float16 windows, listed passes and register lakes only)
-      # Crops any window still at the full 6 km in float32/64 (a cache saved before the crop), so the build reads
-      # the same windows as a fresh fetch, and keeps the saved cache small. Needs no login.
+      # Crops any window still at the full 6 km in float32/64 (a cache saved before the crop) after measuring its
+      # full-window statistics, so the build reads the same windows as a fresh fetch, and keeps the saved cache
+      # small. Reads the Copernicus DEM (public) when the lake's is not kept. Needs no login.
       shell: bash -el {0}
       working-directory: processing
       run: |
