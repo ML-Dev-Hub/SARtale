@@ -188,21 +188,22 @@
   "s2_window_cloud_pct": 0.0,
   "scope": "zone",
   "season": "15 Jun\u201330 Sep",
-  "radar_km2": 2.2287,
-  "optical_km2": 0.5423,
-  "area_error_pct": 310.9717868338558,
-  "iou": 0.24326992103374012,
+  "radar_km2": 2.1067,
+  "optical_km2": 0.5427000000000001,
+  "area_error_pct": 288.18868619863645,
+  "iou": 0.2575469906967913,
   "zone_valid_share": 1.0,
-  "window_radar_km2": 7.7229,
-  "window_optical_km2": 0.5439,
-  "window_area_error_pct": 1319.911748483177,
-  "window_iou": 0.0702883258457515,
+  "window_radar_km2": 8.4123,
+  "window_optical_km2": 0.5446,
+  "window_area_error_pct": 1444.6749908189497,
+  "window_iou": 0.06464994651135147,
   "key": {
    "method": "D17",
    "zone": {
     "lon": 72.537359,
     "lat": 36.078593,
-    "radius_km": 1.0
+    "outline": "outlines/shandur.geojson",
+    "outline_sha256": "170cbe3787384eca4ff8e7ee2eb5a9eaa1ca090751538c89b95366e5abca470d"
    },
    "window_margin_m": 1500.0
   }
