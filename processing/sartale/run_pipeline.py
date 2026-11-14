@@ -80,7 +80,7 @@ def fetch_all(lakes, doc: dict, out: Path, session, fetch=fetch_lake_passes,
 
     `workers`: 1 fetches in this process with `session`, one pass after the other. More reads that many passes at once
     in worker processes (`_ParallelFetch`), each with its own session from `session_factory` (default
-    `requests.Session`). Either way the files written, the failures returned and the log printed are the same: the
+    `requests.Session`); `session` is then not used. A pass whose worker process dies fails alone (`WORKER_DIED`). Either way the files written, the failures returned and the log printed are the same: the
     passes of a lake that share one cache file go to one worker in their order, and each pass's log is printed in the
     sequential order once it is done."""
     import time
@@ -137,51 +137,119 @@ def fetch_all(lakes, doc: dict, out: Path, session, fetch=fetch_lake_passes,
     return failures
 
 
+WORKER_DIED = "WorkerDied"  # the failure note of a pass whose worker process died (an OOM kill, a segfault)
+
+
 class _ParallelFetch:
     """The passes of `lakes` ([(lake, passes)]) submitted at once to `workers` processes (spawned, so the same on
     Windows and Linux). One task per cache file: passes of a lake that share a file (same date, track and CRID) are
     fetched by one worker in their order, so no two workers write one file and the later pass finds the earlier one's
-    window, as in the sequential run. `result(lake_id, i)` waits for the i-th pass of a lake."""
+    window, as in the sequential run. `result(lake_id, i)` waits for the i-th pass of a lake.
+
+    A worker process that dies breaks the whole pool: the standard library then fails every unfinished task and kills
+    the other workers. So when the pool breaks (`_recover`), the tasks that had finished keep their results; the tasks
+    that were running then (marked in shared memory by `workpool.fetch_group`) are run again one at a time, each alone
+    in a fresh one-worker pool, so a task that kills its worker again fails alone (`WORKER_DIED`); then the tasks not
+    yet started go to a fresh pool. Each pool gets fresh DEM-file locks (a killed worker may have held one). The `.part`
+    and DEM `.tmp.npz` files left by killed workers are deleted at `close`, when no worker runs."""
 
     def __init__(self, lakes, out: Path, fetch, workers: int, session_factory=None):
         import multiprocessing
-        from concurrent.futures import ProcessPoolExecutor
 
         from sartale.remote import cache_path
 
         if session_factory is None:
             import requests
             session_factory = requests.Session
-        groups: list[tuple] = []  # (lake, [pass index])
+        self.out, self.fetch, self.workers, self.session_factory = out, fetch, workers, session_factory
+        self.lake_ids = [lake.id for lake, _ in lakes]
+        self.groups: list[tuple] = []  # (lake, [its passes sharing one cache file])
+        self.at: dict = {}  # (lake id, pass index) -> (group, position in it)
         for lake, passes in lakes:
             by_file: dict = {}
             for i, p in enumerate(passes):
                 by_file.setdefault(cache_path(out, lake.id, p), []).append(i)
-            groups += [(lake, idx) for idx in by_file.values()]
-        self.at: dict = {}
+            for idx in by_file.values():
+                for pos, i in enumerate(idx):
+                    self.at[(lake.id, i)] = (len(self.groups), pos)
+                self.groups.append((lake, [passes[i] for i in idx]))
+        self.done: dict[int, list] = {}
+        self.fut: dict = {}
         self.ex = None
-        if not groups:
+        self.broke = False
+        self.ctx = multiprocessing.get_context("spawn")
+        self.state = self.ctx.RawArray("b", max(len(self.groups), 1))
+        self._submit(list(range(len(self.groups))))
+
+    def _pool(self, n: int):
+        from concurrent.futures import ProcessPoolExecutor
+
+        return ProcessPoolExecutor(max_workers=n, mp_context=self.ctx, initializer=init_fetch_worker,
+                                   initargs=(self.session_factory, [self.ctx.Lock() for _ in range(16)], self.state))
+
+    def _task(self, ex, g: int):
+        lake, passes = self.groups[g]
+        self.state[g] = 0
+        return ex.submit(fetch_group, self.fetch, lake, passes, self.out, g)
+
+    def _submit(self, gs: list[int]) -> None:
+        self.ex = self._pool(min(self.workers, len(gs))) if gs else None
+        for g in gs:
+            self.fut[g] = self._task(self.ex, g)
+
+    def _failed(self, g: int, name: str) -> list:
+        lake, passes = self.groups[g]
+        return [(0, f"{lake.id} {p.date} {p.key}: {name}", {}, "") for p in passes]
+
+    def _settle(self, g: int, fut) -> bool:
+        """Record `fut`'s outcome for group g when it has one other than a broken pool; False when the pool broke."""
+        from concurrent.futures.process import BrokenProcessPool
+
+        try:
+            self.done[g] = fut.result()
+        except BrokenProcessPool:
+            return False
+        except Exception as e:  # noqa: BLE001 - e.g. a result that would not pickle: that group fails, as a pass
+            self.done[g] = self._failed(g, type(e).__name__)
+        return True
+
+    def _recover(self) -> None:
+        """The pool broke: keep what finished, run the tasks that were running alone, the rest in a fresh pool."""
+        from sartale.workpool import STARTED
+
+        self.broke = True
+        self.ex.shutdown(wait=True)  # its processes are gone or being killed; wait for them
+        unfinished = []
+        for g, fut in self.fut.items():  # every future of a broken pool is done: a result, an error or "broken"
+            if g not in self.done and not self._settle(g, fut):
+                unfinished.append(g)
+        running = [g for g in unfinished if self.state[g] == STARTED]
+        if not running:  # broke before any task started (the worker set-up failed): nothing to isolate
+            for g in unfinished:
+                self.done[g] = self._failed(g, WORKER_DIED)
+            self.ex = None
             return
-        ctx = multiprocessing.get_context("spawn")
-        self.ex = ProcessPoolExecutor(max_workers=min(workers, len(groups)), mp_context=ctx,
-                                      initializer=init_fetch_worker,
-                                      initargs=(session_factory, [ctx.Lock() for _ in range(16)]))
-        passes_of = {lake.id: passes for lake, passes in lakes}
-        for lake, idx in groups:
-            fut = self.ex.submit(fetch_group, fetch, lake, [passes_of[lake.id][i] for i in idx], out)
-            for pos, i in enumerate(idx):
-                self.at[(lake.id, i)] = (fut, pos, lake, passes_of[lake.id][i])
+        for g in running:  # one at a time: a worker that dies again may hold a DEM lock nobody else then waits for
+            with self._pool(1) as ex:
+                if not self._settle(g, self._task(ex, g)):
+                    self.done[g] = self._failed(g, WORKER_DIED)
+        self._submit([g for g in unfinished if g not in running])
 
     def result(self, lake_id: str, i: int):
-        fut, pos, lake, p = self.at[(lake_id, i)]
-        try:
-            return fut.result()[pos]
-        except Exception as e:  # noqa: BLE001 - a worker that died: its passes fail like any other, the run goes on
-            return 0, f"{lake.id} {p.date} {p.key}: {type(e).__name__}", {}, ""
+        g, pos = self.at[(lake_id, i)]
+        while g not in self.done:
+            if not self._settle(g, self.fut[g]):
+                self._recover()
+        return self.done[g][pos]
 
     def close(self) -> None:
         if self.ex is not None:
             self.ex.shutdown(wait=True, cancel_futures=True)
+        if self.broke:  # files a killed worker was writing when the pool broke; no worker runs now
+            for lid in self.lake_ids:
+                d = Path(self.out) / lid
+                for f in [*d.glob("*.npz.part"), *(d / "dem").glob("*.tmp.npz")]:
+                    f.unlink(missing_ok=True)
 
 
 def cmd_lakes_fetch(args) -> None:

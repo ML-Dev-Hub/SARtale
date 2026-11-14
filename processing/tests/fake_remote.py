@@ -69,3 +69,21 @@ class FakeSession:
         data = self._bytes(url)
         chunk = data[a: b + 1]
         return FakeResponse(url, 206, {"Content-Range": f"bytes {a}-{a + len(chunk) - 1}/{len(data)}"}, chunk)
+
+
+class CrashingFetch:
+    """A `fetch` for lakes-fetch: `remote.fetch_lake_passes`, except for the pass on `date` of lake `lake_id`, where
+    the worker process dies at once (`os._exit`, as an OOM kill or a segfault would) or, with `how="raise"`, raises
+    RuntimeError (the sequential run's equivalent, which cannot survive its own process dying)."""
+
+    def __init__(self, lake_id: str, date: str, how: str = "exit"):
+        self.lake_id, self.date, self.how = lake_id, date, how
+
+    def __call__(self, lake, passes, out, session, stats):
+        from sartale.remote import fetch_lake_passes
+
+        if lake.id == self.lake_id and any(p.date == self.date for p in passes):
+            if self.how == "exit":
+                os._exit(1)
+            raise RuntimeError("worker died")
+        return fetch_lake_passes(lake, passes, out, session, stats)

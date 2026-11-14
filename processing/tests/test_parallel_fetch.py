@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import numpy as np
 import pytest
 
-from fake_remote import FakeRemote
+from fake_remote import CrashingFetch, FakeRemote
 from gcov_fixture import write_gcov
 from sartale import config, demmask, run_pipeline
 from sartale.gcov import read_layer
@@ -71,7 +71,7 @@ def _scenario(tmp_path, ids=("a", "b", "c")):
     return h5, doc, files, fail, flaky
 
 
-def _run(tmp_path, name, ids, workers, latency=0.0, max_new_lakes=None, prepare=None):
+def _run(tmp_path, name, ids, workers, latency=0.0, max_new_lakes=None, prepare=None, fetch=None):
     h5, doc, files, fail, flaky = _scenario(tmp_path, ids)
     out = tmp_path / name
     out.mkdir()
@@ -86,8 +86,9 @@ def _run(tmp_path, name, ids, workers, latency=0.0, max_new_lakes=None, prepare=
     buf = io.StringIO()
     t = time.perf_counter()
     with contextlib.redirect_stdout(buf):
+        kw = {} if fetch is None else {"fetch": fetch}
         failures = run_pipeline.fetch_all(lakes, doc, out, remote(), max_new_lakes=max_new_lakes, workers=workers,
-                                          session_factory=remote)
+                                          session_factory=remote, **kw)
     took = time.perf_counter() - t
     return out, failures, buf.getvalue(), took
 
@@ -138,6 +139,24 @@ def test_both_look_directions_keep_their_mask_in_the_shared_dem_file(sequential_
     assert names == ["dem", *sorted(names[1:])], "kept in one order, whichever pass added its mask first"
 
 
+def test_a_worker_that_dies_fails_only_its_own_pass(tmp_path):
+    """A pass whose worker process dies (os._exit: an OOM kill, a segfault) fails alone: the pool is rebuilt, the passes
+    that were running beside it are fetched again, and files, failures and log equal a sequential run in which that
+    pass raised."""
+    seq_out, seq_failures, seq_log, _ = _run(tmp_path, "seq", ("a", "b", "c"), 1,
+                                             fetch=CrashingFetch("a", "2026-07-13", how="raise"))
+    par_out, par_failures, par_log, _ = _run(tmp_path, "par", ("a", "b", "c"), 4,
+                                             fetch=CrashingFetch("a", "2026-07-13"))
+    died = run_pipeline.WORKER_DIED
+    assert par_failures == ["a 2026-07-13 156A: " + died, "b 2026-07-14 156A: HTTPError"]
+    assert [f.replace("RuntimeError", died) for f in seq_failures] == par_failures
+    assert _log(seq_log.replace("RuntimeError", died)) == _log(par_log)
+    assert "a: 4/5 passes cached" in par_log and "c: 3/3 passes cached" in par_log
+    seq, par = _files(seq_out), _files(par_out)
+    assert sorted(seq) == sorted(par), "every other window is fetched, and no temporary file is left"
+    assert not [n for n in seq if seq[n] != par[n]]
+
+
 def test_max_new_lakes_holds_under_concurrency(tmp_path):
     def old_lake(out):
         (out / "a" / "2026-06-30_156A_P05023.npz").write_bytes(b"x")  # "a" already has a cached window
@@ -171,10 +190,15 @@ def _check_lake(lid):
                 downstream=None, downstream_source=None)
 
 
+SPANS: list = []  # (start, end) of each fake check
+
+
 def _fake_check(lake, cache, series):
     """Later lakes answer first (so a parallel run finishes out of order); one lake fails; each logs a line."""
     i = CHECK_IDS.index(lake.id)
+    t = time.perf_counter()
     time.sleep(0.05 * (len(CHECK_IDS) - i))
+    SPANS.append((t, time.perf_counter()))
     print(f"{lake.id}: scene log line")
     if lake.id == "k3":
         raise TimeoutError("Earth Search")
@@ -199,22 +223,23 @@ def _check_run(tmp_path, name, workers, monkeypatch, capsys):
     monkeypatch.setattr(run_pipeline, "load_lakes", lambda p: [_check_lake(i) for i in CHECK_IDS])
     monkeypatch.setattr(run_pipeline, "check_lake", _fake_check)
     capsys.readouterr()
-    t = time.perf_counter()
+    SPANS.clear()
     run_pipeline.main(["lakes-check", "--out", str(out), "--cache", str(tmp_path), "--checks", str(out / "c.json"),
                        "--stale-only", "--workers", str(workers)])
-    took = time.perf_counter() - t
+    spans = sorted(SPANS)
+    overlapped = any(b[0] < a[1] for a, b in zip(spans, spans[1:]))
     log = [re.sub(r"\[\d+ s\]$", "[N s]", re.sub(r"\(\d+ s\)$", "(N s)", ln))
            for ln in capsys.readouterr().out.replace(str(out), "OUT").splitlines()]
-    return _files(out), log, took
+    return _files(out), log, overlapped
 
 
 def test_parallel_lakes_check_equals_the_sequential_one(tmp_path, monkeypatch, capsys):
-    seq_files, seq_log, seq_s = _check_run(tmp_path, "seq", 1, monkeypatch, capsys)
-    par_files, par_log, par_s = _check_run(tmp_path, "par", 4, monkeypatch, capsys)
+    seq_files, seq_log, seq_overlap = _check_run(tmp_path, "seq", 1, monkeypatch, capsys)
+    par_files, par_log, par_overlap = _check_run(tmp_path, "par", 4, monkeypatch, capsys)
     assert seq_files == par_files
     assert seq_log == par_log
     assert seq_log.index("k1: scene log line") < seq_log.index("k3: scene log line") < seq_log.index("k6: scene log line")
-    assert par_s < 0.7 * seq_s, "the checks ran at the same time"
+    assert not seq_overlap and par_overlap, "with 4 workers the checks run at the same time"
 
 
 def test_lakes_check_takes_a_worker_count():
