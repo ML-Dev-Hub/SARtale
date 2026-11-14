@@ -128,6 +128,7 @@ function message(lake: Lake): HTMLElement | null {
     a.target = "_blank";
     a.rel = "noopener noreferrer";
     actions.append(a);
+    if (authority.note) actions.append(el("p", "lp-authority-note", authority.note));
   }
   todo.append(text, actions);
   sec.append(todo);

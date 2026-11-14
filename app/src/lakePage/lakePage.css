@@ -132,3 +132,4 @@
 .lp-limits ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .lp-block > .lp-slot > .lp-btn[data-action="brief"] { align-self: flex-start; background: transparent; cursor: pointer; font: inherit; font-weight: 600; }
 @media (max-width: 640px) { .lp-source { grid-template-columns: 1fr; } }
+.lp-authority-note { color: var(--muted); font-size: 13px; margin: 0; flex-basis: 100%; }

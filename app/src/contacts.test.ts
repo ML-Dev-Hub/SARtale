@@ -16,16 +16,19 @@ describe("contacts", () => {
     expect(lakes.filter((l) => !l.province)).toEqual([]);
   });
   it("GB lakes get GBDMA and KP lakes PDMA", () => {
-    expect(authorityFor("GB")!.id).toBe("GBDMA");
+    expect(authorityFor("GB")!.id).toBe("NDMA");
     expect(authorityFor("KP")!.id).toBe("PDMA-KP");
     expect(authorityFor(null)).toBeNull();
   });
-  it("each verified URL is https on the authority's own domain and has a check date", () => {
-    for (const a of Object.values(AUTHORITIES)) expect(a.checked).toMatch(/^2026-\d\d-\d\d$/);
-    expect(new URL(AUTHORITIES.KP.url!).protocol).toBe("https:");
-    expect(new URL(AUTHORITIES.KP.url!).hostname).toBe("pdma.gov.pk");
-    // GBDMA stays null until a URL is verified on its own domain; a non-null value must be a gov.pk https URL.
-    if (AUTHORITIES.GB.url) { const u = new URL(AUTHORITIES.GB.url); expect(u.protocol).toBe("https:"); expect(u.hostname).toMatch(/gbdma\.(gog|gov)\.pk$/); }
+  it("each URL is https on the authority's own domain and has a check date", () => {
+    for (const a of Object.values(AUTHORITIES)) {
+      const u = new URL(a.url!);
+      expect(u.protocol).toBe("https:");
+      expect(u.hostname).toBe(a.domain);
+      expect(a.checked).toMatch(/^2026-\d\d-\d\d$/);
+    }
+    expect(AUTHORITIES.GB.domain).toBe("ndma.gov.pk");
+    expect(AUTHORITIES.KP.domain).toBe("pdma.gov.pk");
   });
   it("SARtale shows no phone number or email of its own", () => expect(JSON.stringify(AUTHORITIES)).not.toMatch(/@|\+92|\btel:/));
   it("the lake page shows the lake's own authority", () => {
@@ -36,10 +39,18 @@ describe("contacts", () => {
     expect(a.textContent).toBe("Contact PDMA");
     expect(a.href).toBe(AUTHORITIES.KP.url);
   });
-  it("a GB lake shows no authority button while the GBDMA URL is unverified", () => {
-    const el = document.createElement("div");
-    const l = makeLake({ province: "GB", status: { ...makeLake().status, status: "Watch", level: "Watch", message: fixtureMessage("Watch", "Lake A") } });
-    createLakePage(el, { file: makeFile([l]), lakeId: l.id, onRoute: vi.fn() });
-    expect(el.querySelector('a[data-action="authority"]') !== null).toBe(AUTHORITIES.GB.url !== null);
+  it("a GB lake shows Contact NDMA with its URL and the note; a KP lake has no note", () => {
+    const mk = (province: "GB" | "KP") => {
+      const el = document.createElement("div");
+      const l = makeLake({ province, status: { ...makeLake().status, status: "Watch", level: "Watch", message: fixtureMessage("Watch", "Lake A") } });
+      createLakePage(el, { file: makeFile([l]), lakeId: l.id, onRoute: vi.fn() });
+      return el;
+    };
+    const gb = mk("GB");
+    const a = gb.querySelector<HTMLAnchorElement>('a[data-action="authority"]')!;
+    expect(a.textContent).toBe("Contact NDMA");
+    expect(a.href).toBe(AUTHORITIES.GB.url);
+    expect(gb.querySelector(".lp-authority-note")!.textContent).toBe(AUTHORITIES.GB.note);
+    expect(mk("KP").querySelector(".lp-authority-note")).toBeNull();
   });
 });
