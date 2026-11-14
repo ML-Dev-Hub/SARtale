@@ -120,10 +120,10 @@ describe("overview on a phone", () => {
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(first.textContent).toContain("What to do");
   });
-  it("the bottom bar has List, Map and Share list", () => {
+  it("the bottom bar has List and Map", () => {
     render(file);
-    expect([...role("ovp-bar").querySelectorAll("a, button")].map((e) => e.textContent)).toEqual(["List", "Map", "Share list"]);
-    expect(role("ovp-bar").querySelector("a")!.getAttribute("href")).toBe("#share");
+    expect([...role("ovp-bar").querySelectorAll("a, button")].map((e) => e.textContent)).toEqual(["List", "Map"]);
+    expect(root.querySelector('a[href="#share"]')).toBeNull();
   });
   it("opens the map from the bar when a map drawer is given", () => {
     document.body.innerHTML = "";

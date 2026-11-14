@@ -193,10 +193,7 @@ export function renderOverviewPhone(root: HTMLElement, opts: OverviewOptions): O
     opts.onState(state);
     draw();
   });
-  const shareLink = el("a", "ovp-bar-item");
-  shareLink.href = "#share";
-  shareLink.append(icon("M10 13 V3 M6 7 L10 3 L14 7 M4 11 V17 H16 V11", 20, 20, 1.8), "Share list");
-  bar.append(listBtn, mapBtn, shareLink);
+  bar.append(listBtn, mapBtn);
 
   // ---- The map, full screen above the list ---------------------------------------------------------------------------
   const sheet = el("div", "ovp-sheet");

@@ -315,9 +315,9 @@
 .ovp-lake-sub { color: #a9bdca; font-size: 14px; overflow-wrap: anywhere; }
 .ovp-stats { display: grid; grid-template-columns: 1.3fr 1fr 0.9fr; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .ovp-stat { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
-.ovp-stat-label { color: #a9bdca; font-size: 12px; }
+.ovp-stat-label { color: #a9bdca; font-size: 14px; }
 .ovp-stat-value { font-size: 16px; font-weight: 700; }
-.ovp-stat-sub { color: #d3dfe7; font-size: 13px; }
+.ovp-stat-sub { color: #d3dfe7; font-size: 14px; }
 .ovp-empty { margin: 0; color: #d3dfe7; }
 .ovp-footer { display: flex; flex-direction: column; gap: 6px; padding-top: 14px; border-top: 1px solid var(--line); }
 .ovp-footer-main { margin: 0; color: #fff; font-size: 15px; font-weight: 600; }
@@ -325,12 +325,12 @@
 
 /* Bottom bar and the full-screen map */
 .ovp-bar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   border-top: 1px solid var(--line-strong); background: var(--panel-2);
 }
 .ovp-bar-item {
   min-height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0;
-  border: 0; border-radius: 0; background: none; color: #d3dfe7; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer;
+  border: 0; border-radius: 0; background: none; color: #d3dfe7; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer;
 }
 .ovp-bar-item[hidden] { display: none; }
 .ovp-bar-item[aria-current="page"] { color: var(--accent); font-weight: 700; box-shadow: inset 0 3px 0 var(--accent); }
@@ -339,3 +339,7 @@
 .ovp-sheet .ov-drawer { max-width: none; width: 100%; }
 .ovp-sheet .ov-map { aspect-ratio: 1.6 / 1; min-height: 0; width: 100%; }
 .ovp-sheet :is(.ov-btn, .ov-card-link, .ov-locate) { min-height: 44px; }
+.ovp-sheet :is(button, a, select, input, label):not(.ov-pin):not(.maplibregl-ctrl *) { min-height: 44px; }
+.ovp-sheet :is(.ov-mapped-switch, .ov-mapped-switch input) { min-height: 44px; }
+.ovp-sheet .ov-mapped-switch input { min-width: 24px; }
+.ovp-sheet :is(.ov-sub, .ov-facts dt, .ov-card-note, .ov-card-hint, .ov-legend, .ov-notices, .ov-locate) { font-size: 14px; }
