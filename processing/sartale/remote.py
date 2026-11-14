@@ -155,12 +155,14 @@ def crop_box(lake: Lake, x: np.ndarray, y: np.ndarray, epsg: int,
 def to_cache_dtype(a: np.ndarray) -> np.ndarray:
     """`a` as `config.CACHE_DTYPE` (float16). A positive value stays positive and finite: it is clipped into
     [smallest subnormal, largest finite] (about 6e-8 to 65504, -72 to +48 dB in power), so a very dark pixel does not
-    become 0 (no dB) and a bright point target does not become inf. NaN, 0 and negative values are kept."""
+    become 0 (no dB) and a bright point target does not become inf. NaN and 0 are kept; a negative value (invalid
+    power) is only kept finite."""
     dt = np.dtype(config.CACHE_DTYPE)
     fi = np.finfo(dt)
     a = np.asarray(a, np.float64)
     with np.errstate(invalid="ignore"):
-        return np.where(a > 0, np.clip(a, fi.smallest_subnormal, fi.max), a).astype(dt)
+        a = np.where(a > 0, np.clip(a, fi.smallest_subnormal, fi.max), a)
+        return np.where(a < 0, np.maximum(a, -fi.max), a).astype(dt)
 
 
 DROPPED_LAYERS = ("looks",)  # read by nothing in the pipeline: not kept in a cropped window
@@ -202,12 +204,18 @@ def full_window_reference(win: dict, crid: str, key: str, lake_dir: Path) -> dic
     return {**ref, "dem_grid": np.str_(demmask.grid_key(xs, ys, epsg))}
 
 
-def _cropped(lake: Lake, win: dict, crid: str, key: str, lake_dir: Path) -> dict:
+def _cropped(lake: Lake, win: dict, crid: str, key: str, lake_dir: Path) -> dict | None:
     """`win` cropped for `lake` (`crop_box`, `crop_window`), carrying its full-window statistics
     (`full_window_reference`, measured before the crop) and the zone-plus-margin bounds it was cut for as `crop_bounds`,
-    so `cached_window_fits` can tell when the lake's zone outgrows the crop."""
+    so `cached_window_fits` can tell when the lake's zone outgrows the crop.
+
+    None when the DEM layover/shadow mask of the full window could not be had (network, or offline with no DEM kept):
+    the D17 reference would then be the unmasked median for good, since the crop throws away the pixels to measure it
+    again. The caller keeps the window uncropped, and a later shrink crops it once the DEM can be read."""
     epsg = int(win["epsg"])
     ref = full_window_reference(win, crid, key, lake_dir)
+    if not float(ref["ref_water_dem"]):
+        return None
     rows, cols = crop_box(lake, win["x"], win["y"], epsg)
     return {**crop_window(win, rows, cols), **ref, "crop_bounds": crop_bounds(lake, epsg)}
 
@@ -221,6 +229,8 @@ def _crop_still_fits(z, lake: Lake) -> bool:
         return False
     if not all(v in z.files for v in REF_KEYS.values()):
         return False  # cropped before the full-window statistics were kept: they cannot be had again
+    if not float(z["ref_water_dem"]):
+        return False  # its reference was measured without the DEM mask: read the pass again
     have = np.asarray(z["crop_bounds"], float)
     need = crop_bounds(lake, int(z["epsg"]))
     tol = 0.5  # metres
@@ -279,7 +289,12 @@ def fetch_lake_passes(lake: Lake, passes: list[Pass], cache_dir: Path, session=N
         part = path.with_name(path.name + ".part")
         holder: list = []
         try:
-            win = _cropped(lake, read_window(session, p.url, bbox, holder), p.crid, p.key, path.parent)
+            full = read_window(session, p.url, bbox, holder)
+            win = _cropped(lake, full, p.crid, p.key, path.parent)
+            if win is None:
+                print(f"kept {lake.id} {p.date} {p.key} uncropped: the DEM layover/shadow mask could not be read "
+                      "(lakes-cache-shrink crops it once it can)", flush=True)
+                win = full
             with open(part, "wb") as fh:
                 np.savez_compressed(fh, **win, bbox=np.asarray(bbox, float))
             part.replace(path)
@@ -370,6 +385,10 @@ def shrink_cache(cache_dir: Path, lakes: list[Lake], listed: dict | None, dry_ru
                 cropped = crop_window(arrays, *crop_box(lake, arrays["x"], arrays["y"], epsg))
             else:
                 cropped = _cropped(lake, arrays, parts[2], parts[1], d)
+                if cropped is None:
+                    print(f"{lake.id}: {f.name} left uncropped: the DEM layover/shadow mask could not be read "
+                          "(the next shrink tries again)", flush=True)
+                    continue
             buf = _io.BytesIO()
             np.savez_compressed(buf, **cropped)
             after += buf.getbuffer().nbytes / 1e6 - _mb(f)

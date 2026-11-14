@@ -56,6 +56,18 @@ def no_sleep(monkeypatch):
     monkeypatch.setattr(remote, "_sleep", lambda s: None)
 
 
+@pytest.fixture(autouse=True)
+def dem_ok(monkeypatch):
+    """A DEM layover/shadow mask (nothing left out) on any grid, as when the Copernicus DEM can be read: windows are
+    cropped. A test of a DEM that cannot be read sets `stat_masks` to return None."""
+    from sartale import demmask
+    monkeypatch.setattr(demmask, "stat_masks", _zero_masks)
+
+
+def _zero_masks(lake_dir, xs, ys, epsg, directions, log=print):
+    return {d: np.zeros((len(ys), len(xs)), bool) for d in directions}
+
+
 @pytest.fixture
 def fixture_h5(tmp_path):
     return write_gcov(tmp_path / "g.h5")
@@ -455,4 +467,45 @@ def test_a_window_cropped_without_its_full_window_statistics_is_fetched_again(tm
     with np.load(path) as z:
         arrays = {k: z[k] for k in z.files if k not in REF_KEYS.values()}
     np.savez_compressed(path, **arrays)
+    assert not remote.cached_window_fits(path, lake)
+
+
+def _no_dem(monkeypatch):
+    from sartale import demmask
+    monkeypatch.setattr(demmask, "stat_masks", lambda *a, **k: None)
+
+
+def test_shrink_leaves_a_window_whole_when_the_dem_cannot_be_read(tmp_path, circle_lake_1km, monkeypatch, capsys):
+    lake = circle_lake_1km
+    path = tmp_path / lake.id / "2026-06-18_055A_P05023.npz"
+    _save_full(path, lake)
+    before = path.read_bytes()
+    _no_dem(monkeypatch)
+    remote.shrink_cache(tmp_path, [lake], listed=None)
+    assert path.read_bytes() == before and "left uncropped" in capsys.readouterr().out
+    from sartale import demmask
+    monkeypatch.setattr(demmask, "stat_masks", _zero_masks)
+    remote.shrink_cache(tmp_path, [lake], listed=None)  # the DEM is back: the next shrink crops it
+    with np.load(path) as z:
+        assert float(z["crop_m"]) == config.WINDOW_MARGIN_M and float(z["ref_water_dem"]) == 1.0
+
+
+def test_fetch_keeps_the_window_whole_when_the_dem_cannot_be_read(tmp_path, fixture_h5, monkeypatch, capsys):
+    _no_dem(monkeypatch)
+    (path,) = remote.fetch_lake_passes(_mk_lake(), [_pass()], tmp_path / "cache", FakeSession(fixture_h5))
+    with np.load(path) as z:
+        assert "crop_m" not in z.files and min(z["hh"].shape) >= 60 and "bbox" in z.files
+    assert "uncropped" in capsys.readouterr().out
+    assert remote.cached_window_fits(path, _mk_lake())  # kept: the shrink crops it once the DEM can be read
+
+
+def test_a_window_cropped_with_a_reference_measured_without_the_dem_is_fetched_again(tmp_path, circle_lake_1km):
+    lake = circle_lake_1km
+    path = tmp_path / lake.id / "2026-06-18_055A_P05023.npz"
+    _save_full(path, lake)
+    remote.shrink_cache(tmp_path, [lake], listed=None)
+    assert remote.cached_window_fits(path, lake)
+    with np.load(path) as z:
+        arrays = {k: z[k] for k in z.files}
+    np.savez_compressed(path, **{**arrays, "ref_water_dem": np.float64(0.0)})
     assert not remote.cached_window_fits(path, lake)

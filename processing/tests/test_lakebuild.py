@@ -810,8 +810,11 @@ def test_a_cropped_cache_builds_the_same_areas_and_levels_as_the_full_windows(tm
     remote.shrink_cache(cropped, [lake], listed=None)
     for f in (cropped / lake.id).glob("*.npz"):
         with np.load(f) as z:
-            assert z["hh"].dtype == np.float16 and max(z["hh"].shape) <= 501 and "looks" not in z.files
-            assert float(z["ref_water_dem"]) == (1.0 if with_dem else 0.0)
+            if with_dem:
+                assert z["hh"].dtype == np.float16 and max(z["hh"].shape) <= 501 and "looks" not in z.files
+                assert float(z["ref_water_dem"]) == 1.0
+            else:  # no DEM mask to measure the reference with: the windows stay whole until one can be read
+                assert "crop_m" not in z.files and z["hh"].shape == (600, 600)
     check = {"lake": "alpha", "iou": 0.7, "nisar_date": "2026-07-12", "s2_date": "2026-07-12", "key": check_key(lake)}
     a = build_lakes([lake], full, tmp_path / "out_full", "t", checks=[check])["lakes"][0]
     b = build_lakes([lake], cropped, tmp_path / "out_cropped", "t", checks=[check])["lakes"][0]
@@ -830,13 +833,16 @@ def test_a_cropped_cache_builds_the_same_areas_and_levels_as_the_full_windows(tm
     assert wa["zone_mask"].sum() == wb["zone_mask"].sum() > 0
 
 
-def test_cropping_without_the_stored_statistics_would_move_the_areas(tmp_path):
+def test_cropping_without_the_stored_statistics_would_move_the_areas(tmp_path, monkeypatch):
     """The fixture is a real test of the crop: measured on the cropped pixels alone, the window median moves and so do
-    the areas (what the first, rejected version of the crop did)."""
+    the areas (what the first, rejected version of the crop did). The build now refuses such windows, so the control
+    measures them the old way: a window that is not marked cropped."""
     import shutil
-    from sartale import remote
+    from sartale import demmask, remote
     from sartale.lakebuild import REF_KEYS
     lake = make_lake("alpha")
+    cx, _ = Transformer.from_crs(4326, EPSG, always_xy=True).transform(lake.lon, lake.lat)
+    monkeypatch.setattr(demmask, "stat_masks", _fake_stat_masks(cx))
     full = tmp_path / "full"
     _full_window_cache(full, lake)
     cropped = tmp_path / "cropped"
@@ -844,8 +850,56 @@ def test_cropping_without_the_stored_statistics_would_move_the_areas(tmp_path):
     remote.shrink_cache(cropped, [lake], listed=None)
     for f in (cropped / lake.id).glob("*.npz"):
         with np.load(f) as z:
-            arrays = {k: z[k] for k in z.files if k not in REF_KEYS.values()}
+            arrays = {k: z[k] for k in z.files if k not in REF_KEYS.values() and k != "crop_m"}
         np.savez_compressed(f, **arrays)
     a = build_lakes([lake], full, tmp_path / "o1", "t")["lakes"][0]["series"]
     b = build_lakes([lake], cropped, tmp_path / "o2", "t")["lakes"][0]["series"]
     assert [p["area_km2"] for p in a] != [p["area_km2"] for p in b]
+
+
+def _cropped_copy(tmp_path, monkeypatch, name="cropped"):
+    import shutil
+    from sartale import demmask, remote
+    lake = make_lake("alpha")
+    full = tmp_path / "full"
+    if not full.exists():
+        _full_window_cache(full, lake)
+    cx, _ = Transformer.from_crs(4326, EPSG, always_xy=True).transform(lake.lon, lake.lat)
+    monkeypatch.setattr(demmask, "stat_masks", _fake_stat_masks(cx))
+    cropped = tmp_path / name
+    shutil.copytree(full, cropped)
+    remote.shrink_cache(cropped, [lake], listed=None)
+    return lake, full, cropped
+
+
+def test_a_cropped_window_without_its_full_window_reference_is_excluded_not_measured(tmp_path, monkeypatch):
+    from sartale.lakebuild import NO_REFERENCE_REASON, REF_KEYS
+    lake, full, cropped = _cropped_copy(tmp_path, monkeypatch)
+    f = cropped / lake.id / "2026-07-24_156A_P05023.npz"
+    with np.load(f) as z:
+        arrays = {k: z[k] for k in z.files if k not in REF_KEYS.values()}
+    np.savez_compressed(f, **arrays)  # cropped by the first version of the crop: no stored statistics
+    a = build_lakes([lake], full, tmp_path / "o1", "t")["lakes"][0]
+    b = build_lakes([lake], cropped, tmp_path / "o2", "t")["lakes"][0]
+    bad = next(p for p in b["series"] if (p["date"], p["track"]) == ("2026-07-24", "156A"))
+    assert bad["excluded"] == NO_REFERENCE_REASON and bad["area_km2"] is None and bad["diagnostic_km2"] is None
+    assert {"pass": "2026-07-24_156A", "reason": NO_REFERENCE_REASON} in b["excluded"]
+    others = [(p["date"], p["track"], p["area_km2"]) for p in b["series"] if p is not bad]
+    assert others == [(p["date"], p["track"], p["area_km2"]) for p in a["series"]
+                      if (p["date"], p["track"]) != ("2026-07-24", "156A")]
+
+
+def test_a_lake_mixing_cropped_and_uncropped_windows_measures_each_on_its_full_window(tmp_path, monkeypatch):
+    """An uncropped window in a lake whose other windows are cropped is cut to the crop by the alignment, so its
+    statistics are measured first, on its own full pixels: the areas equal those of the all-full build."""
+    import shutil
+    lake, full, cropped = _cropped_copy(tmp_path, monkeypatch)
+    for name in ("2026-06-18_156A_P05023.npz", "2026-07-12_063D_P05023.npz", "2026-08-05_063D_P05023.npz"):
+        shutil.copy(full / lake.id / name, cropped / lake.id / name)  # back to the full window
+    with np.load(cropped / lake.id / "2026-06-18_156A_P05023.npz") as z:
+        assert "crop_m" not in z.files
+    keys = ("date", "track", "area_km2", "observable_share", "excluded", "z")
+    a = build_lakes([lake], full, tmp_path / "o1", "t")["lakes"][0]
+    b = build_lakes([lake], cropped, tmp_path / "o2", "t")["lakes"][0]
+    assert [{k: p.get(k) for k in keys} for p in b["series"]] == [{k: p.get(k) for k in keys} for p in a["series"]]
+    assert b["status"]["status"] == a["status"]["status"]

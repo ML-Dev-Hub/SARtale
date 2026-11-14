@@ -166,8 +166,14 @@ def _read_cache(lake_dir: Path, limits: list[str], listed: set[tuple[str, str, s
     parts is skipped, and so is one whose (date, key, CRID) is not in `listed` (when a list is given: the passes
     the catalogue lists now). When one date and track is cached under more than one CRID (a pass reprocessed into
     a newer release), the latest CRID is used and the others are noted. HH and HV are read as float64 whatever the
-    window stores (float16 since the crop, `remote.crop_window`). A cropped window carries the statistics of its full
-    6 km window (`window_reference`) as `ref`; an uncropped one has `ref` None and the build measures them."""
+    window stores (float16 since the crop, `remote.crop_window`).
+
+    The build never measures window statistics on a crop. A cropped window carries the statistics of its full 6 km
+    window (`window_reference`) as `ref`. A cropped window without them (cropped before they were kept) is read but
+    marked `unusable` (`NO_REFERENCE_REASON`): the screens exclude it and nothing is measured on it. An uncropped window
+    has `ref` None and the build measures them on its pixels, unless the lake also has cropped windows: `_align` then
+    cuts every window to the crop, so each uncropped window's statistics are measured here first, on its own full
+    pixels, before the alignment."""
     files: dict[tuple[str, str], dict[str, Path]] = {}
     for f in sorted(lake_dir.glob("*.npz")):
         parts = f.stem.split("_")
@@ -184,12 +190,24 @@ def _read_cache(lake_dir: Path, limits: list[str], listed: set[tuple[str, str, s
             limits.append(f"ignored {by_crid[other].name}: the same pass is cached as {crid}")
         with np.load(by_crid[crid]) as z:
             hh, hv = remask(z, crid)
-            passes.append({"date": date, "key": key, "id": f"{date}_{key}", "crid": crid,
-                           "hh": hh, "hv": hv, "x": np.asarray(z["x"], float),
-                           "y": np.asarray(z["y"], float), "epsg": int(z["epsg"]), "ref": stored_reference(z),
-                           "full_x": np.asarray(z["full_x"] if "full_x" in z.files else z["x"], float),
-                           "full_y": np.asarray(z["full_y"] if "full_y" in z.files else z["y"], float)})
+            p = {"date": date, "key": key, "id": f"{date}_{key}", "crid": crid,
+                 "hh": hh, "hv": hv, "x": np.asarray(z["x"], float),
+                 "y": np.asarray(z["y"], float), "epsg": int(z["epsg"]), "ref": stored_reference(z),
+                 "cropped": "crop_m" in z.files,
+                 "full_x": np.asarray(z["full_x"] if "full_x" in z.files else z["x"], float),
+                 "full_y": np.asarray(z["full_y"] if "full_y" in z.files else z["y"], float)}
+            if p["cropped"] and p["ref"] is None:
+                p["unusable"] = NO_REFERENCE_REASON
+            passes.append(p)
+    if any(p["cropped"] for p in passes):
+        for p in passes:
+            if not p["cropped"]:
+                ref = window_reference(p["hh"], p["hv"], p["x"], p["y"], p["epsg"], p["key"][-1], lake_dir)
+                p["ref"] = {k: float(ref[name]) for k, name in REF_KEYS.items()}
     return passes
+
+
+NO_REFERENCE_REASON = "cached window lacks its full-window reference; re-fetch needed"
 
 
 # The statistics of a pass's full 6 km window that the build compares pixels with, stored as scalars in a cropped
@@ -253,7 +271,7 @@ def lake_stat_masks(passes: list[dict], lake_dir: Path, xs, ys, epsg: int, direc
     DEM read, when every pass stores them. Notes `demmask.NO_DEM_LIMIT` in `limits` (if given) when some pass's water
     reference goes without the DEM mask."""
     masks = None
-    if any(p.get("ref") is None for p in passes):
+    if any(p.get("ref") is None and not p.get("unusable") for p in passes):
         masks = demmask.stat_masks(lake_dir, xs, ys, epsg, set(directions))
         if masks is None and limits is not None:
             limits.append(demmask.NO_DEM_LIMIT)
@@ -428,9 +446,9 @@ def screen_all(by_track: dict[str, list[dict]], manual: dict[str, str] | None = 
     Passes carry despeckled `hh_db`/`hv_db`.
     """
     manual = config.MANUAL_EXCLUSIONS if manual is None else manual
-    excluded: dict[str, str] = {}
+    excluded: dict[str, str] = {p["id"]: p["unusable"] for ps in by_track.values() for p in ps if p.get("unusable")}
     for ps in by_track.values():
-        excluded.update(screen_medians({p["id"]: _screen_median(p) for p in ps}))
+        excluded.update(screen_medians({p["id"]: _screen_median(p) for p in ps if p["id"] not in excluded}))
     for ps in by_track.values():
         stats = {p["id"]: _window_stats_of(p) for p in ps if p["id"] not in excluded}
         excluded.update(screen_outliers({k: v[0] for k, v in stats.items()}, {k: v[1] for k, v in stats.items()}))
@@ -474,6 +492,12 @@ def _season_ref(ok: list[dict]) -> tuple[float, float] | None:
     """The window medians the season-median image of a track is compared with when its windows are cropped: the median,
     over the track's passes, of each pass's stored full-window medians (the full-window median of the median image
     itself cannot be had from cropped windows). None, to measure them on the image, while any pass is uncropped."""
+    # An approximation, accepted by the owner (task 4 review, I3): the full-window median of the per-track season-median
+    # image depends on the set of passes, which changes every week, so it cannot be stored per pass. It feeds only the
+    # shadow-prone pixels of the summer core (freeze radar break-up test, the freeze check's S2 target of a lake without
+    # an outline), never areas, screens or levels. Measured on the 7 lakes of 14 Nov 2026 against the full windows:
+    # summer_ref core contrast moved by at most 0.08 dB at the measured lakes and 0.31 dB at Shisper (no-lake site, not
+    # used); no freeze state changed.
     refs = [_dark_ref(p) for p in ok]
     if any(r is None for r in refs):
         return None
@@ -782,7 +806,7 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
                  "observable_share": w["observable_share"], "excluded": reason, "crid": p["crid"]}
         if reason:
             # What the left-out pass read, so the chart can mark it; never used by the status (area_km2 is null).
-            point["diagnostic_km2"] = w["area_km2"] if w["valid"] else None
+            point["diagnostic_km2"] = w["area_km2"] if w["valid"] and not p.get("unusable") else None
         if p["key"] in cores:
             # The lake core against its window, for the freeze check's radar break-up test (lakes-freeze).
             point.update(core_metrics(p["hh_db"], p["hv_db"], cores[p["key"]][0], ref=_dark_ref(p)) or {})
@@ -1008,7 +1032,8 @@ def radar_water_masks(lake: Lake, cache_dir: Path, pass_id: str) -> dict:
 
     `pass_id` is `<date>_<key>`. Returns {"window": D17 water over the whole (cached) window, "zone_mask": the same
     limited to the lake zone, "zone": the zone itself (outline if the lake has a readable one, else the 1 km circle),
-    "x", "y", "epsg", and "full_x", "full_y": the axes of the full 6 km window the cached one was cropped from}. KeyError if the pass is not usable, ValueError if the screen excluded it.
+    "x", "y", "epsg", and "full_x", "full_y": the axes of the full 6 km window the cached one was cropped from}.
+    KeyError if the pass is not usable, ValueError if the screen excluded it.
     """
     return radar_water_context(lake, cache_dir)(pass_id)
 
