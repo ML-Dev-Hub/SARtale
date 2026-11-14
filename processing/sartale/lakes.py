@@ -195,3 +195,10 @@ def lake_bbox(lake: Lake, half_km: float = 3.0) -> tuple[float, float, float, fl
     dlat = half_km / KM_PER_DEG_LAT
     dlon = half_km / (KM_PER_DEG_LAT * math.cos(math.radians(lake.lat)))
     return (lake.lon - dlon, lake.lat - dlat, lake.lon + dlon, lake.lat + dlat)
+
+
+def lake_epsg(lake: Lake) -> int:
+    """The EPSG code of the WGS84 UTM zone the lake point lies in (326xx north, 327xx south). Every measurement of the
+    lake is made on a grid in this zone, whatever zone a NISAR frame was delivered in (`lakebuild._align`)."""
+    zone = int((lake.lon + 180) // 6) + 1
+    return (32600 if lake.lat >= 0 else 32700) + zone

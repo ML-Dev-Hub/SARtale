@@ -403,9 +403,8 @@ def no_view_since(date: str, searched: str) -> bool:
 def absence_grid(lake, pixel_m: float = ABSENCE_PIXEL_M):
     """A UTM grid (x, y, epsg) of `pixel_m` pixels over the lake's 6 km search box, north up."""
     from pyproj import Transformer
-    from sartale.lakes import lake_bbox
-    zone = int((lake.lon + 180) // 6) + 1
-    epsg = (32600 if lake.lat >= 0 else 32700) + zone
+    from sartale.lakes import lake_bbox, lake_epsg
+    epsg = lake_epsg(lake)
     lon0, lat0, lon1, lat1 = lake_bbox(lake)
     tr = Transformer.from_crs(4326, epsg, always_xy=True)
     xs, ys = tr.transform([lon0, lon0, lon1, lon1], [lat0, lat1, lat0, lat1])

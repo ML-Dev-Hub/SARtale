@@ -155,6 +155,85 @@ def test_build_drops_track_with_no_overlap(tmp_path):
     assert "single viewing direction" in lk["limits"]
 
 
+def write_zone_pass(cache, lake, date, key, epsg, px=20.0, n=200, water_m=500.0):
+    """A north-up window in UTM `epsg` (pixel centres at k * px + px / 2, as NISAR posts them), centred on the lake,
+    with a dark disc of radius `water_m` (metres on the ground) at the lake point."""
+    cx, cy = Transformer.from_crs(4326, epsg, always_xy=True).transform(lake.lon, lake.lat)
+    x0 = np.floor(cx / px) * px + px / 2 - (n // 2) * px
+    y0 = np.floor(cy / px) * px + px / 2 + (n // 2) * px
+    x, y = x0 + np.arange(n) * px, y0 - np.arange(n) * px
+    xx, yy = np.meshgrid(x, y)
+    water = (xx - cx) ** 2 + (yy - cy) ** 2 < water_m ** 2
+    rng = np.random.default_rng(abs(hash((date, key))) % 10000)
+    hh = np.where(water, 0.002, 0.1) * rng.uniform(0.95, 1.05, (n, n))
+    d = Path(cache) / lake.id
+    d.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(d / f"{date}_{key}_P05023.npz", hh=hh, hv=hh / 5, looks=np.ones((n, n)),
+                        mask=np.ones((n, n), np.uint8), x=x, y=y, epsg=epsg)
+
+
+def _edge_lake():
+    # 71.99 E lies in UTM zone 42, 0.01 degrees (about 900 m) west of the zone 43 edge
+    return make_lake("edge", lon=71.99, lat=35.4)
+
+
+def test_passes_delivered_in_two_utm_zones_are_measured_on_the_lake_zone_grid(tmp_path):
+    from sartale.lakebuild import _align, _read_cache
+    from sartale.lakes import lake_epsg
+    cache = tmp_path / "c"
+    a = _edge_lake()
+    assert lake_epsg(a) == 32642
+    # the zone 43 pass comes first by date: the grid zone is the lake's, not the first pass's
+    write_zone_pass(cache, a, "2026-06-18", "084A", 32643)
+    write_zone_pass(cache, a, "2026-06-25", "164D", 32642)
+    limits: list[str] = []
+    passes, xs, ys = _align(_read_cache(cache / "edge", limits), limits, a)
+    assert sorted(p["key"] for p in passes) == ["084A", "164D"]
+    assert all(p["epsg"] == 32642 and p["hh"].shape == (len(ys), len(xs)) for p in passes)
+    assert np.allclose(np.diff(xs), 20.0) and np.allclose(np.mod(xs, 20.0), 10.0)  # the zone 42 window's own lattice
+    native = next(p for p in passes if p["key"] == "164D")
+    assert np.isfinite(native["hh"]).all()  # the window in the lake's zone keeps its pixels as they are
+    assert np.isfinite(next(p for p in passes if p["key"] == "084A")["hh"]).all()  # no pixel made up at the edges
+    assert not any("ignored" in s for s in limits)
+    assert limits == ["Track 084A comes in another UTM zone (EPSG:32643); its windows are resampled (nearest "
+                      "neighbour) onto the lake's grid (EPSG:32642)."]
+
+
+def test_a_lake_seen_in_two_utm_zones_measures_the_same_area_in_both(tmp_path):
+    """The disc is 0.785 km2 (1963 pixels of 20 m). Nearest neighbour moves the disc's edge by at most one pixel, so the
+    two tracks agree within 1.5% (about 30 pixels, a fifth of the 157-pixel rim) and each is within 3% of the disc."""
+    cache, out = tmp_path / "c", tmp_path / "o"
+    a = _edge_lake()
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12", "2026-07-24", "2026-08-05"]:
+        write_zone_pass(cache, a, d, "084A", 32643)
+        write_zone_pass(cache, a, d, "164D", 32642)
+    lk = build_lakes([a], cache, out, "t")["lakes"][0]
+    by_track: dict[str, list[float]] = {}
+    for p in lk["series"]:
+        by_track.setdefault(p["track"], []).append(p["area_km2"])
+    assert sorted(by_track) == ["084A", "164D"] and all(len(v) == 5 for v in by_track.values())
+    disc = np.pi * 0.5 ** 2
+    m42, m43 = np.median(by_track["164D"]), np.median(by_track["084A"])
+    assert abs(m43 - m42) / m42 < 0.015
+    assert abs(m42 - disc) / disc < 0.03 and abs(m43 - disc) / disc < 0.03
+    assert not any("ignored" in s for s in lk["limits"])
+
+
+def test_the_freeze_and_check_readers_see_a_two_zone_lake_on_the_lake_zone_grid(tmp_path):
+    from sartale.lakebuild import freeze_masks, radar_water_masks
+    cache = tmp_path / "c"
+    a = _edge_lake()
+    for d in ["2026-06-18", "2026-06-30", "2026-07-12"]:
+        write_zone_pass(cache, a, d, "084A", 32643)
+        write_zone_pass(cache, a, d, "164D", 32642)
+    r = radar_water_masks(a, cache, "2026-06-30_084A")  # lakes-check reads the moved pass
+    assert r["epsg"] == 32642 and r["window"].shape == (len(r["y"]), len(r["x"]))
+    assert np.isin(r["x"], r["full_x"]).all() and np.isin(r["y"], r["full_y"]).all()
+    assert abs(r["zone_mask"].sum() * 400 / 1e6 - np.pi * 0.25) / (np.pi * 0.25) < 0.03
+    f = freeze_masks(a, cache)
+    assert f["epsg"] == 32642 and np.array_equal(f["x"], r["x"]) and np.array_equal(f["y"], r["y"])
+
+
 def _outline_around(lake, half_m, shift_m=0.0):
     """A square outline (GeoJSON Feature) of half-width `half_m` around the lake, shifted east by `shift_m`."""
     to_ll = Transformer.from_crs(EPSG, 4326, always_xy=True)

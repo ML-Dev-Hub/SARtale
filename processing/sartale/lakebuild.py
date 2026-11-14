@@ -13,7 +13,7 @@ from sartale import config
 from sartale.catalog import PROVISIONAL, STANDARD
 from sartale.gcov import apply_mask
 from sartale.lakecheck import ABSENCE_RULE, in_season
-from sartale.lakes import Lake, exclude_geometry
+from sartale.lakes import Lake, exclude_geometry, lake_epsg
 from sartale.lakes import DEFAULT_ZONE_KM
 from sartale import demmask
 from sartale.lakestatus import (
@@ -349,19 +349,94 @@ def _crop(p: dict, xs: np.ndarray, ys: np.ndarray) -> tuple[np.ndarray, np.ndarr
     return p["hh"][sel], p["hv"][sel]
 
 
+def _lattice(lo: float, hi: float, step: float, offset: float, descending: bool) -> np.ndarray:
+    """The pixel centres k * step + offset within [lo, hi], rounded to the cm as the alignment compares them."""
+    k0, k1 = int(np.ceil((lo - offset) / step - 1e-9)), int(np.floor((hi - offset) / step + 1e-9))
+    axis = np.round(np.arange(k0, k1 + 1) * step + offset, 2)
+    return axis[::-1] if descending else axis
+
+
+def _outer_lattice(lo: float, hi: float, step: float, offset: float, descending: bool) -> np.ndarray:
+    """The pixel centres k * step + offset from the last one at or below `lo` to the first one at or above `hi`."""
+    k0, k1 = int(np.floor((lo - offset) / step + 1e-9)), int(np.ceil((hi - offset) / step - 1e-9))
+    return _lattice(k0 * step + offset, k1 * step + offset, step, offset, descending)
+
+
+def reproject_window(p: dict, epsg: int, step: tuple[float, float] | None = None,
+                     offset: tuple[float, float] | None = None) -> dict:
+    """Pass `p` (a cached window, `_read_cache`) moved onto a grid in UTM `epsg` by nearest neighbour.
+
+    NISAR delivers each frame in the UTM zone of the frame, so near a zone edge one lake gets windows in two zones. The
+    new grid has the pixel size `step` (x, y) and pixel-centre `offset` (x, y: centres at k * step + offset) of the
+    lake's own grid (by default the window's own), so a moved window lines up pixel for pixel with the windows
+    delivered in `epsg`. It covers the largest north-up rectangle inside the window's footprint, so no pixel is made up
+    at the edges. Each new pixel takes HH and HV of the window pixel whose centre is nearest: no value is blended (a
+    NaN stays NaN, every pixel keeps single-pixel speckle), as the crop `_align` makes of a window already in `epsg`
+    keeps its pixels as they are. `full_x` / `full_y` (the axes of the full 6 km window, over which lakes-check reads
+    the cloud share) become the lattice that covers the full window's footprint. The stored full-window statistics
+    (`ref`) are scalars measured on the window as delivered, and stay as they are."""
+    src = int(p["epsg"])
+    x, y = np.asarray(p["x"], float), np.asarray(p["y"], float)
+    dx, dy = float(x[1] - x[0]), float(y[1] - y[0])
+    sx, sy = step or (abs(dx), abs(dy))
+    ox, oy = offset or (float(x[0]) % sx, float(y[0]) % sy)
+    fwd = Transformer.from_crs(src, epsg, always_xy=True)
+    # the footprint's four sides, through the outer pixel centres, in the new zone
+    left, _ = fwd.transform(np.full(len(y), x.min()), y)
+    right, _ = fwd.transform(np.full(len(y), x.max()), y)
+    _, top = fwd.transform(x, np.full(len(x), y.max()))
+    _, bottom = fwd.transform(x, np.full(len(x), y.min()))
+    xs = _lattice(float(np.max(left)), float(np.min(right)), sx, ox, dx < 0)
+    ys = _lattice(float(np.max(bottom)), float(np.min(top)), sy, oy, dy < 0)
+    gx, gy = np.meshgrid(xs, ys)
+    bx, by = Transformer.from_crs(epsg, src, always_xy=True).transform(gx, gy)
+    ix, iy = np.rint((bx - x[0]) / dx).astype(int), np.rint((by - y[0]) / dy).astype(int)
+    inside = (ix >= 0) & (ix < len(x)) & (iy >= 0) & (iy < len(y))
+    moved = {}
+    for name in ("hh", "hv"):
+        a = np.full(gx.shape, np.nan)
+        a[inside] = np.asarray(p[name], float)[iy[inside], ix[inside]]
+        moved[name] = a
+    fx, fy = np.asarray(p["full_x"], float), np.asarray(p["full_y"], float)
+    cx, cy = fwd.transform(np.array([fx.min(), fx.min(), fx.max(), fx.max()]),
+                           np.array([fy.min(), fy.max(), fy.min(), fy.max()]))
+    full_x = _outer_lattice(min(float(np.min(cx)), float(xs.min())), max(float(np.max(cx)), float(xs.max())),
+                            sx, ox, dx < 0)
+    full_y = _outer_lattice(min(float(np.min(cy)), float(ys.min())), max(float(np.max(cy)), float(ys.max())),
+                            sy, oy, dy < 0)
+    return {**p, **moved, "x": xs, "y": ys, "epsg": int(epsg), "full_x": full_x, "full_y": full_y, "from_epsg": src}
+
+
 def _align(passes: list[dict], limits: list[str], lake: Lake):
     """Crop every pass to the x/y intersection of the usable tracks. Returns (passes, xs, ys).
 
-    A track whose window shares no pixel coordinates with the others is dropped and noted. Tracks whose
+    The grid is in the UTM zone of the lake point (`lake_epsg`), whatever zone the first pass came in. A window
+    delivered in another zone is first moved onto that zone's grid (`reproject_window`, nearest neighbour, with the
+    pixel size and pixel-centre offset of the windows delivered in the lake's zone when there are any), and its track
+    is noted. A track whose window shares no pixel coordinates with the others is dropped and noted. Tracks whose
     window holds the lake point are taken first, then those with more passes.
     """
-    epsg = passes[0]["epsg"]
+    epsg = lake_epsg(lake)
+    native = [p for p in passes if p["epsg"] == epsg and len(p["x"]) > 1 and len(p["y"]) > 1]
+    step = offset = None
+    if native:
+        n = native[0]
+        step = (abs(float(n["x"][1] - n["x"][0])), abs(float(n["y"][1] - n["y"][0])))
+        offset = (float(n["x"][0]) % step[0], float(n["y"][0]) % step[1])
+    moved: dict[str, int] = {}
+    aligned = []
+    for p in passes:
+        if p["epsg"] != epsg:
+            moved.setdefault(p["key"], int(p["epsg"]))
+            p = reproject_window(p, epsg, step, offset)
+        aligned.append(p)
+    for k, src in sorted(moved.items()):
+        limits.append(f"Track {k} comes in another UTM zone (EPSG:{src}); its windows are resampled (nearest "
+                      f"neighbour) onto the lake's grid (EPSG:{epsg}).")
+    passes = aligned
     lx, ly = Transformer.from_crs(4326, epsg, always_xy=True).transform(lake.lon, lake.lat)
     tracks: dict[str, list[dict]] = {}
     for p in passes:
-        if p["epsg"] != epsg:
-            limits.append(f"ignored {p['id']}: UTM zone differs from the rest of the lake")
-            continue
         tracks.setdefault(p["key"], []).append(p)
     xs = ys = None
     kept = []
