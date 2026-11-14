@@ -6,6 +6,7 @@ from datetime import date as Date
 from pathlib import Path
 from typing import Literal
 
+OUTLINES_DIR = Path(__file__).resolve().parents[1] / "outlines"  # processing/outlines/
 ROLES = ("watch", "control", "story")
 KM_PER_DEG_LAT = 111.32
 # What recent imagery shows at the site. "lake": a lake is there. "unconfirmed": the dark radar area may not be a
@@ -55,6 +56,29 @@ class Lake:
     # to it. Needs a source.
     elevation_m: float | None = None
     elevation_source: str | None = None
+
+
+def exclude_geometry(lake_id: str, path: str, root: Path | None = None) -> dict:
+    """The Polygon or MultiPolygon geometry of a `forming_exclude` file. A relative path is read from the processing
+    folder; the file must lie under `root` (default processing/outlines/). A missing or unreadable file, or one that
+    holds no polygon, raises: a dropped exclusion would let a river read as a forming lake."""
+    root = (OUTLINES_DIR if root is None else Path(root)).resolve()
+    p = Path(path)
+    p = (p if p.is_absolute() else root.parent / p).resolve()
+    bad = f"Lake {lake_id}: forming_exclude {str(path)!r}"
+    if root not in p.parents:
+        raise ValueError(f"{bad} must be a file under {root}")
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise ValueError(f"{bad} cannot be read ({type(e).__name__})") from None
+    if isinstance(doc, dict) and doc.get("type") == "FeatureCollection":
+        doc = (doc.get("features") or [None])[0]
+    geometry = doc.get("geometry") if isinstance(doc, dict) and doc.get("type") == "Feature" else doc
+    if not isinstance(geometry, dict) or geometry.get("type") not in ("Polygon", "MultiPolygon") \
+            or not geometry.get("coordinates"):
+        raise ValueError(f"{bad} must hold a Polygon or MultiPolygon")
+    return geometry
 
 
 def _season_days(start: str, end: str) -> set[int]:
@@ -128,6 +152,8 @@ def load_lakes(path: Path) -> list[Lake]:
         exclude = row.get("forming_exclude")
         if exclude is not None and not str(row.get("forming_exclude_source") or "").strip():
             raise ValueError(f"Lake {lake_id}: forming_exclude needs a forming_exclude_source")
+        if exclude is not None:
+            exclude_geometry(lake_id, exclude)
         limits = row.get("limits", [])
         if not isinstance(limits, list) or not all(isinstance(t, str) and t.strip() for t in limits):
             raise ValueError(f"Lake {lake_id}: limits must be a list of non-empty strings")

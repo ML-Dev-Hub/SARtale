@@ -153,11 +153,34 @@ def test_forming_seasons_must_not_overlap_and_apply_only_to_no_lake_sites(tmp_pa
 
 def test_forming_seasons_and_exclusion_are_read(tmp_path):
     rows = [{**SEASON, "start": "12-01", "end": "02-10", "share": 0.3}, SEASON]
-    (x,) = load_lakes(write(tmp_path, [{**NO_LAKE_ROW, "forming_seasons": rows, "forming_exclude": "outlines/r.geojson",
+    (x,) = load_lakes(write(tmp_path, [{**NO_LAKE_ROW, "forming_seasons": rows, "forming_exclude": "outlines/passu_osm.geojson",
                                         "forming_exclude_source": "the river"}]))
     assert [(s.start, s.end, s.share) for s in x.forming_seasons] == [("12-01", "02-10", 0.3), ("03-15", "06-15", None)]
-    assert (x.forming_exclude, x.forming_exclude_source) == ("outlines/r.geojson", "the river")
+    assert (x.forming_exclude, x.forming_exclude_source) == ("outlines/passu_osm.geojson", "the river")
     with pytest.raises(ValueError, match="forming_exclude_source"):
-        load_lakes(write(tmp_path, [{**NO_LAKE_ROW, "forming_exclude": "outlines/r.geojson"}]))
+        load_lakes(write(tmp_path, [{**NO_LAKE_ROW, "forming_exclude": "outlines/passu_osm.geojson"}]))
     (plain,) = load_lakes(write(tmp_path, [NO_LAKE_ROW]))
     assert plain.forming_seasons == () and plain.forming_exclude is None
+
+
+def _exclude_row(path):
+    return {**NO_LAKE_ROW, "forming_exclude": str(path), "forming_exclude_source": "the river"}
+
+
+def test_a_forming_exclude_that_cannot_be_used_stops_the_load(tmp_path):
+    from sartale import lakes
+    with pytest.raises(ValueError, match="forming_exclude.*missing.geojson.*cannot be read"):
+        load_lakes(write(tmp_path, [_exclude_row("outlines/missing.geojson")]))
+    outside = tmp_path / "river.geojson"
+    outside.write_text(json.dumps({"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]}))
+    with pytest.raises(ValueError, match="must be a file under"):
+        load_lakes(write(tmp_path, [_exclude_row(outside)]))
+    with pytest.raises(ValueError, match="must be a file under"):
+        load_lakes(write(tmp_path, [_exclude_row("outlines/../lakes_in.json")]))
+    point = lakes.OUTLINES_DIR / "_tmp_point_test.geojson"
+    point.write_text(json.dumps({"type": "Feature", "properties": {}, "geometry": {"type": "Point", "coordinates": [0, 0]}}))
+    try:
+        with pytest.raises(ValueError, match="Polygon or MultiPolygon"):
+            load_lakes(write(tmp_path, [_exclude_row("outlines/_tmp_point_test.geojson")]))
+    finally:
+        point.unlink()

@@ -13,7 +13,7 @@ from sartale import config
 from sartale.catalog import PROVISIONAL, STANDARD
 from sartale.gcov import apply_mask
 from sartale.lakecheck import ABSENCE_RULE, in_season
-from sartale.lakes import Lake
+from sartale.lakes import Lake, exclude_geometry
 from sartale.lakes import DEFAULT_ZONE_KM
 from sartale import demmask
 from sartale.lakestatus import (
@@ -487,25 +487,25 @@ def forming_threshold(lake: Lake, iso_date: str) -> float | None:
     return forming_share(lake)
 
 
-def _exclude_feature(lake: Lake) -> dict | None:
-    return _outline_feature(replace(lake, outline=lake.forming_exclude)) if lake.forming_exclude else None
-
-
 def forming_rule(lake: Lake) -> dict:
     """What decides a site's forming state besides the scenes: the default share, the seasons, and the digest of the
     outline left out of the zone. The evidence stores it and is carried only while it is the same."""
-    feature = _exclude_feature(lake)
     return {"share": forming_share(lake),
             "seasons": [{"start": s.start, "end": s.end, "share": s.share} for s in lake.forming_seasons],
-            "exclude": outline_digest(feature["geometry"]) if feature else None}
+            "exclude": outline_digest(exclude_geometry(lake.id, lake.forming_exclude)) if lake.forming_exclude else None}
 
 
 def exclude_mask(lake: Lake, x, y, epsg) -> np.ndarray | None:
-    """The `forming_exclude` outline on the grid (True inside it), or None when the site has none or it is unreadable."""
-    feature = _exclude_feature(lake)
-    if feature is None:
+    """The `forming_exclude` outline on the grid (True inside it), or None when the site has none. A file that is
+    missing, unreadable or not a polygon raises (`lakes.exclude_geometry`)."""
+    if not lake.forming_exclude:
         return None
-    return outline_mask((len(y), len(x)), x, y, epsg, feature["geometry"])
+    geometry = exclude_geometry(lake.id, lake.forming_exclude)
+    polygons = geometry["coordinates"] if geometry["type"] == "MultiPolygon" else [geometry["coordinates"]]
+    mask = np.zeros((len(y), len(x)), bool)
+    for coords in polygons:
+        mask |= outline_mask((len(y), len(x)), x, y, epsg, {"type": "Polygon", "coordinates": coords})
+    return mask
 
 
 def is_forming(absence: dict | None) -> bool:

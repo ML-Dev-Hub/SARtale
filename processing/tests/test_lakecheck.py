@@ -728,8 +728,9 @@ def test_the_exclusion_outline_leaves_the_zone():
 
 
 def _khurdopin():
-    from sartale.lakes import load_lakes
-    return next(l for l in load_lakes(Path(__file__).resolve().parents[1] / "lakes_in.json") if l.id == "khurdopin")
+    """A fixture site built here (not the shipped register, whose settings change): no lake now, forming share 16%."""
+    from dataclasses import replace
+    return replace(_absent_lake(), id="khurdopin", forming_share=0.16, forming_share_source="t")
 
 
 def _khurdopin_with_melt_season():
@@ -771,6 +772,8 @@ def test_the_exclusion_outline_of_the_rule_lake_is_applied_to_the_zone(monkeypat
     ring = [[lake.lon + sx * 0.002, lake.lat + sy * 0.002] for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))]
     path = tmp_path / "river.geojson"
     path.write_text(json.dumps({"type": "Polygon", "coordinates": [ring]}), encoding="utf-8")
+    from sartale import lakes
+    monkeypatch.setattr(lakes, "OUTLINES_DIR", tmp_path)
     trial = replace(lake, forming_exclude=str(path), forming_exclude_source="t")
     seen = []
     monkeypatch.setattr(lakecheck, "search_scenes", lambda *a: _scenes(("S2_A", "2026-07-01", 5.0)))
@@ -808,3 +811,15 @@ def test_forming_threshold_follows_the_season_and_wraps_the_year_end():
         == [base, None, None, base]
     assert [forming_threshold(lake, d) for d in ("2026-11-30", "2026-12-01", "2027-01-20", "2027-02-10", "2027-02-11")] \
         == [base, 0.3, 0.3, 0.3, base]
+
+
+def test_an_unusable_exclusion_file_stops_the_absence_check_instead_of_being_dropped(tmp_path):
+    from dataclasses import replace
+    from sartale.lakebuild import exclude_mask, forming_rule
+    x, y, epsg = lakecheck.absence_grid(_absent_lake())
+    for name in ("missing.geojson", "../lakes_in.json"):
+        trial = replace(_absent_lake(), forming_exclude=str(tmp_path / name), forming_exclude_source="t")
+        with pytest.raises(ValueError, match="forming_exclude"):
+            exclude_mask(trial, x, y, epsg)
+        with pytest.raises(ValueError, match="forming_exclude"):
+            forming_rule(trial)
