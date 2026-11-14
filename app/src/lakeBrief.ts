@@ -1,5 +1,8 @@
-import { freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, hasLevel, isFrozen, isTrendPass, levelMessage, loadLakes, methodLimits, processingVersions, statusSentence, type Lake, type LakesFile } from "./lakes";
+import { freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, hasLevel, isFrozen, isTrendPass, levelMessage, loadLakes, methodLimits, processingVersions, statusSentence, suparcoLine, type Lake, type LakesFile } from "./lakes";
 import { checkLine } from "./lakeWatchView";
+import { extentView } from "./lakePage/extent";
+import { gaugeInput } from "./lakePage/gauge";
+import { provinceName } from "./provinces";
 import { formatDate } from "./format";
 
 const PASS_ROWS = 6;
@@ -40,6 +43,27 @@ export function briefMessage(lake: Lake): string {
 <p><strong>${esc(m.do)}</strong></p>${since}
 </div>
 `;
+}
+
+/** The gauge numbers and the largest extent as plain lines (the page draws them as the gauge and the extent block). */
+function readingBlock(lake: Lake, file: LakesFile): string {
+  const lines: string[] = [];
+  const g = gaugeInput(lake, file.constants.change_factor);
+  const sg = (v: number): string => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(3)}`;
+  if (g) {
+    const base = lake.status.baseline_km2 as number;
+    lines.push(`Baseline ${base.toFixed(3)} km²; change ${sg(g.change)} km²; noise ±${g.noise.toFixed(3)} km²${g.floorApplied ? " (noise floor applied)" : ""}; decision band ±${g.band.toFixed(3)} km².`);
+  }
+  const e = extentView(lake, file.constants.min_observable);
+  lines.push("reason" in e ? `Largest recorded extent: ${e.reason}` : `Largest recorded extent: ${e.pct}. ${e.latest} ${e.largest}`);
+  return lines.map((t) => `<p class="lake-brief-reading">${esc(t)}</p>`).join("");
+}
+
+/** District, province and the SUPARCO line; a probable match is named as ours, never as SUPARCO's. */
+function placeLine(lake: Lake): string {
+  const place = [lake.district, provinceName(lake.province)].filter((x): x is string => !!x).join(", ") || "District unknown";
+  const probable = lake.suparco?.match === "probable" ? " (our match by map position and area to SUPARCO's published IDs, not an official SUPARCO match)" : "";
+  return `${place}. ${suparcoLine(lake)}${probable}.`;
 }
 
 const zText = (z: number | null | undefined): string =>
@@ -86,11 +110,13 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): strin
     : "";
   return `<section class="lake-brief" aria-label="Lake brief">
 ${briefMessage(lake)}<h1>${esc(lake.name)}</h1>
-<p class="lake-brief-meta">Coordinates ${lake.lat.toFixed(4)}, ${lake.lon.toFixed(4)}. Source: ${esc(lake.coord_source)}</p>${outline}
+<p class="lake-brief-meta">${esc(placeLine(lake))}</p>
+<p class="lake-brief-meta">Coordinates${lake.lat.toFixed(4)}, ${lake.lon.toFixed(4)}. Source: ${esc(lake.coord_source)}</p>${outline}
 <p class="lake-brief-meta">Measures: ${esc(lake.area_label)}. Brief made ${esc(formatDate(localIsoDate(generatedAt)))}.</p>
 <p class="lake-brief-meta">${esc(dataLine(lake, file))}</p>
 <h2>Status</h2>
 <p class="lake-brief-status">${esc(statusSentence(lake, file.constants.change_factor))}</p>
+${isFrozen(lake) ? "" : readingBlock(lake, file)}
 ${ice}<h2>${passesHead}</h2>
 ${passes}${checks}
 <h2>Excluded passes</h2>
@@ -99,6 +125,7 @@ ${lake.excluded.length ? list(lake.excluded.map((x) => `${x.pass}: ${x.reason}`)
 ${list(methodLimits(file))}${lakeLimits}
 <h2>Downstream</h2>
 <p>${downstream}</p>
+<p class="lake-brief-meta">Processing versions: ${esc(processingVersions(file.crid))}.</p>
 <p class="lake-brief-footer">Indicative screening from NISAR data (${esc(processingVersions(file.crid))}). Not an official warning. Official warnings come from PMD, NDMA, GBDMA and PDMA. Built ${esc(file.built)}.</p>
 </section>`;
 }

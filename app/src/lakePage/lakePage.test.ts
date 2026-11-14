@@ -30,10 +30,18 @@ const header = (el: HTMLElement): HTMLElement => el.querySelector<HTMLElement>('
 
 describe("the lake page", () => {
   it("draws the header, the message and the filled blocks in order, and no block that has nothing in it yet", () => {
-    expect(roles(page(watchLake))).toEqual(["lp-header", "lp-message", "lp-gauge", "lp-extent", "lp-picture", "lp-history"]);
-    expect(page(watchLake).querySelectorAll("h2").length).toBe(5);
+    expect(roles(page(watchLake))).toEqual(["lp-header", "lp-message", "lp-gauge", "lp-extent", "lp-picture", "lp-history", "lp-sources"]);
+    expect(page(watchLake).querySelectorAll("h2").length).toBe(6);
   });
-  it("a frozen lake has no message", () => expect(roles(page(frozen))).toEqual(["lp-header", "lp-freeze", "lp-extent", "lp-picture", "lp-history"]));
+  it("a frozen lake has no message", () => expect(roles(page(frozen))).toEqual(["lp-header", "lp-freeze", "lp-extent", "lp-picture", "lp-history", "lp-sources"]));
+  it("the sources block lists the sources and limits and prints the brief", () => {
+    const onBrief = vi.fn();
+    const b = page(watchLake, { onBrief }).querySelector<HTMLElement>('[data-role="lp-sources"]')!;
+    expect(b.textContent).toContain("Coordinates");
+    expect(b.querySelector("h3")!.textContent).toBe("Limits");
+    b.querySelector<HTMLButtonElement>('button[data-action="brief"]')!.click();
+    expect(onBrief).toHaveBeenCalledWith(watchLake);
+  });
   it("a lake without a level has no message", () => expect(roles(page(makeLake()))).not.toContain("lp-message"));
   it("the message has the four parts and the actions", () => {
     const m = page(watchLake).querySelector('[data-role="lp-message"]')!;

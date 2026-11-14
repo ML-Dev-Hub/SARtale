@@ -11,6 +11,7 @@ import { renderExtent } from "./extent";
 import { renderCompare, type MaskDecoder } from "./compare";
 import { historyHeading, renderHistory } from "./history";
 import { gaugeHeading, gaugeInput, renderGauge } from "./gauge";
+import { limitsList, sourceRows } from "./sources";
 
 export interface LakePageOptions {
   file: LakesFile;
@@ -221,6 +222,36 @@ function gaugeBlock(lake: Lake, factor: number): HTMLElement | null {
   });
 }
 
+/** Sources and limits: where each fact comes from, what the method and this lake cannot do, and the printed brief. */
+function fillSources(lake: Lake, file: LakesFile, onBrief?: (l: Lake) => void): (body: HTMLElement) => boolean {
+  return (body) => {
+    const dl = el("dl", "lp-sources-list");
+    for (const r of sourceRows(lake, file)) {
+      const row = el("div", "lp-source");
+      row.append(el("dt", undefined, r.k), el("dd", undefined, r.v));
+      dl.append(row);
+    }
+    body.append(dl);
+    const limits = limitsList(lake, file);
+    if (limits.length) {
+      const d = el("div", "lp-limits");
+      d.append(el("h3", undefined, "Limits"));
+      const ul = el("ul");
+      for (const t of limits) ul.append(el("li", undefined, t));
+      d.append(ul);
+      body.append(d);
+    }
+    if (onBrief) {
+      const b = el("button", "lp-btn", "Print lake brief");
+      b.type = "button";
+      b.dataset.action = "brief";
+      b.addEventListener("click", () => onBrief(lake));
+      body.append(b);
+    }
+    return true;
+  };
+}
+
 /** The lake page (spec decision 5): header and message, then the gauge or frozen card, extent, picture, history, sources. */
 export function createLakePage(root: HTMLElement, opts: LakePageOptions): { destroy(): void } {
   const page = el("div", "lp");
@@ -258,6 +289,7 @@ export function createLakePage(root: HTMLElement, opts: LakePageOptions): { dest
       block("lp-extent", "Largest recorded extent", (b) => (renderExtent(b, lake, opts.file.constants.min_observable), true)),
       block("lp-picture", "Radar picture", fillPicture(lake)),
       block("lp-history", historyHeading(lake), (b) => renderHistory(b, lake, hist)),
+      block("lp-sources", "Sources and limits", fillSources(lake, opts.file, opts.onBrief)),
     ];
     for (const sec of blocks) if (sec) page.append(sec);
   }
