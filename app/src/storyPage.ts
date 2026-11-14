@@ -4,7 +4,9 @@ import "./storyPage.css";
 import copyJson from "./content/storyPage.json";
 import { dataUrl, formatDate } from "./format";
 import { mountAddLake, requestLine, shownRequests, type LakeRequest } from "./lakeRequests";
-import { alertLakes, cloudLooks, FROZEN_AREA, hasLakeNow, iouRange, isFrozen, lakesNow, levelMessage, mayBeForming, opticalOverlapPhrase, picturedPassFrozen, type Lake, type LakesFile } from "./lakes";
+import { MARKER_LABELS, markerSvg } from "./statusMarkers";
+import { familyCounts, frozenBreakdown, statusDisplay, type Family } from "./statusDisplay";
+import { alertLakes, cloudLooks, FROZEN_AREA, hasLakeNow, iouRange, isFrozen, lakesNow, levelMessage, opticalOverlapPhrase, picturedPassFrozen, type Lake, type LakesFile } from "./lakes";
 
 const copy = copyJson;
 const DASH = "—";
@@ -286,8 +288,8 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
         el(
           "div",
           "sp-actions",
-          button(c.followLabel, "sp-btn-primary", opts.onFollowStory),
-          button(c.openLabel, "sp-btn-ghost", opts.onOpenLakes),
+          button(c.openLabel, "sp-btn-primary", opts.onOpenLakes),
+          button(c.followLabel, "sp-btn-ghost", opts.onFollowStory),
           Object.assign(link("#videos", c.videosLabel), { className: "sp-btn sp-btn-ghost" }),
         ),
         stats,
@@ -372,32 +374,91 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const lakes = [...(file?.lakes ?? [])].sort((x, y) => (latestArea(y) ?? -1) - (latestArea(x) ?? -1));
   for (const l of lakes) {
     const pos = mapPin(l.lon, l.lat);
-    if (pos) {
-      const pin = el("span", hasLakeNow(l) ? "sp-pin" : mayBeForming(l) ? "sp-pin sp-pin-nolake sp-pin-forming" : "sp-pin sp-pin-nolake");
-      pin.style.left = pos.left;
-      pin.style.top = pos.top;
-      pin.title = hasLakeNow(l) ? l.name : `${l.name}: ${l.status.status}`;
-      mapEl.append(pin);
-    }
+    if (!pos) continue;
+    const fam = statusDisplay(l, file?.constants).family;
+    const pin = el("span", `sp-pin sp-pin-svg${fam === "nolake" ? " sp-pin-nolake" : ""}`);
+    pin.dataset.family = fam;
+    pin.innerHTML = markerSvg(fam, { size: 20 });
+    pin.style.left = pos.left;
+    pin.style.top = pos.top;
+    pin.title = hasLakeNow(l) ? l.name : `${l.name}: ${l.status.status}`;
+    mapEl.append(pin);
+  }
+  // The lake list: one row per status family (attention first), each opening its lakes in place.
+  const ATTENTION: Family[] = ["alert", "watch", "decrease", "forming"];
+  const GLYPH: Record<string, string> = { triangle: "▲", diamond: "◆", down: "▼", circle: "●", hexagon: "⬢", square: "■", crossed: "✕", ring: "○" };
+  const lakeCard = (l: Lake): HTMLElement => {
+    const d = statusDisplay(l, file?.constants);
     const meta = [l.status.track, l.status.latest_date ? formatDate(l.status.latest_date) : null].filter(Boolean).join(" · ");
-    // A frozen lake's area is greyed and says what it is not.
-    const area = latestArea(l);
-    const areaEl = isFrozen(l) && area !== null
-      ? text("div", "sp-lake-area sp-lake-area-frozen", `${areaText(area)}, ${FROZEN_AREA}`)
-      : text("div", "sp-lake-area", areaText(area));
-    listEl.append(
-      el(
-        "div",
-        "sp-lake",
-        el("div", "sp-lake-name", text("div", "sp-lake-title", l.name), text("div", "sp-lake-meta", meta || DASH)),
-        el("div", "sp-lake-right", text("div", `sp-lake-status ${statusClass(l.status.status)}`, l.status.status), areaEl),
-      ),
-    );
+    const glyph = text("span", "sp-lake-mark", GLYPH[d.mark] ?? "●");
+    glyph.setAttribute("aria-hidden", "true");
+    const chip = el("div", `sp-lake-status ${statusClass(l.status.status)}${d.dashed ? " sp-dashed" : ""}`, glyph, ` ${d.chip}`);
+    const right = el("div", "sp-lake-right", chip);
+    if (d.tag) right.append(text("div", "sp-lake-tag", d.tag));
+    // An area only where it is an open-water reading: not for frozen, unmeasured or no-lake sites.
+    const area = ["alert", "watch", "decrease", "nochange", "forming"].includes(d.family) ? latestArea(l) : null;
+    if (area !== null) right.append(text("div", "sp-lake-area", areaText(area)));
+    const name = el("div", "sp-lake-name", text("div", "sp-lake-title", l.name));
+    if (meta) name.append(text("div", "sp-lake-meta", meta));
+    return el("div", "sp-lake", name, right);
+  };
+  const byFamily = new Map<Family, Lake[]>();
+  for (const l of lakes) {
+    const f = statusDisplay(l, file?.constants).family;
+    byFamily.set(f, [...(byFamily.get(f) ?? []), l]);
+  }
+  const counts = familyCounts(file?.lakes ?? []);
+  const frozenSplit = frozenBreakdown(file?.lakes ?? []);
+  const families = [...byFamily.entries()].sort((x, y) => statusDisplay(x[1][0], file?.constants).rank - statusDisplay(y[1][0], file?.constants).rank);
+  if (file && lakes.length && !families.some(([f]) => ATTENTION.includes(f))) {
+    listEl.append(text("p", "sp-levels-calm sp-muted", "No lake is at Alert, Watch or Decrease noted now."));
+  }
+  families.forEach(([fam, group]) => {
+    const first = statusDisplay(group[0], file?.constants);
+    const open = ATTENTION.includes(fam);
+    const id = `sp-family-${fam}`;
+    const n = counts[fam] ?? group.length;
+    const summary = fam === "frozen" ? `: ${frozenSplit.seen} seen in Sentinel-2, ${frozenSplit.temperature} by air temperature` : "";
+    const glyph = text("span", "sp-lake-mark", GLYPH[first.mark] ?? "●");
+    glyph.setAttribute("aria-hidden", "true");
+    const toggle = el("button", "sp-family-toggle", glyph, text("span", "sp-family-name", `${first.chip} ${n}${summary}`));
+    toggle.type = "button";
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.setAttribute("aria-controls", id);
+    const body = el("div", "sp-family-list");
+    body.id = id;
+    body.hidden = !open;
+    for (const l of group) body.append(lakeCard(l));
+    toggle.addEventListener("click", () => {
+      const now = toggle.getAttribute("aria-expanded") !== "true";
+      toggle.setAttribute("aria-expanded", String(now));
+      body.hidden = !now;
+    });
+    const row = el("div", "sp-family", toggle, body);
+    row.dataset.family = fam;
+    row.dataset.count = String(group.length);
+    listEl.append(row);
+  });
+  const requestsEl = el("div", "sp-requests");
+  listEl.append(requestsEl);
+  if (file && lakes.length) {
+    const all = text("button", "sp-btn sp-btn-ghost sp-levels-all", `Open Lake Watch for all ${lakes.length} lakes`);
+    all.type = "button";
+    all.addEventListener("click", opts.onOpenLakes);
+    cleanups.push(() => all.removeEventListener("click", opts.onOpenLakes));
+    listEl.append(all);
   }
   const mapCredit = text("figcaption", "sp-map-credit", w.mapCredit);
-  const mapKey = el("figcaption", "sp-map-key", el("span", "sp-key-pin"), ` ${w.keyWatched} `);
-  if (file?.lakes.some((l) => !hasLakeNow(l) && !mayBeForming(l))) mapKey.append(el("span", "sp-key-pin sp-key-nolake"), ` ${w.keyNoLake} `);
-  if (file?.lakes.some(mayBeForming)) mapKey.append(el("span", "sp-key-pin sp-key-nolake sp-key-forming"), ` ${w.keyForming} `);
+  const mapKey = el("figcaption", "sp-map-key");
+  for (const [fam] of families) {
+    const entry = el("span", `sp-key-item${fam === "nolake" ? " sp-key-nolake" : ""}`);
+    entry.dataset.family = fam;
+    const icon = el("span", "sp-key-icon");
+    icon.setAttribute("aria-hidden", "true");
+    icon.innerHTML = markerSvg(fam, { size: 14 });
+    entry.append(icon, ` ${MARKER_LABELS[fam]}`);
+    mapKey.append(entry);
+  }
   mapKey.append(el("span", "sp-key-pin sp-key-request"), ` ${w.keyRequested}`);
   mapEl.append(mapKey, mapCredit);
   const requestEls: HTMLElement[] = [];
@@ -423,7 +484,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
         el("div", "sp-lake-name", text("div", "sp-lake-title", r.name), text("div", "sp-lake-meta", `${r.lat.toFixed(2)} °N, ${r.lon.toFixed(2)} °E`)),
         el("div", "sp-lake-right", text("div", "sp-request-line", requestLine(r))),
       );
-      listEl.append(card);
+      requestsEl.append(card);
       requestEls.push(card);
     }
   };

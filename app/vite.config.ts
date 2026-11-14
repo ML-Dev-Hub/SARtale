@@ -71,7 +71,7 @@ export default defineConfig({
   test: {
     environment: "node",
     // The phone test reads overview.css as text (?raw); Vitest blanks CSS files unless they are listed here.
-    css: { include: [/overview.css/, /lakePage.css/] },
+    css: { include: [/overview.css/, /lakePage.css/, /storyPage.css/] },
     include: ["src/**/*.test.ts"],
     // Test-only: SARTALE_LAKES_JSON runs the tests against another lakes.json in place of the shipped one (e.g. a
     // build where lakes are frozen). No test may assume a lake's freeze state or any status the weather changes.
