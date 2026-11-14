@@ -12,12 +12,12 @@
   "radar_km2": 4.524900000000001,
   "optical_km2": 4.3673,
   "area_error_pct": 3.608636915256575,
-  "iou": 0.6628394045927145,
+  "iou": 0.662870500233754,
   "zone_valid_share": 0.9931098001725465,
-  "window_radar_km2": 9.0253,
-  "window_optical_km2": 4.402,
-  "window_area_error_pct": 105.02726033621079,
-  "window_iou": 0.3592861047559272,
+  "window_radar_km2": 8.5807,
+  "window_optical_km2": 4.401400000000001,
+  "window_area_error_pct": 94.95387831144633,
+  "window_iou": 0.3762283872745969,
   "key": {
    "method": "D17",
    "zone": {
@@ -25,7 +25,8 @@
     "lat": 36.333,
     "outline": "outlines/attabad_osm.geojson",
     "outline_sha256": "fa01e9eaa65af1d22a6ef4507a5acfe4e75b68c4c283dd3f01f46b5a376c3e72"
-   }
+   },
+   "window_margin_m": 1500.0
   }
  },
  {
@@ -43,10 +44,10 @@
   "area_error_pct": -15.1304347826087,
   "iou": 0.5779317169717961,
   "zone_valid_share": 1.0,
-  "window_radar_km2": 7.8319,
-  "window_optical_km2": 6.6437,
-  "window_area_error_pct": 17.884612490028147,
-  "window_iou": 0.4065314768211277,
+  "window_radar_km2": 2.4547000000000003,
+  "window_optical_km2": 2.0820000000000003,
+  "window_area_error_pct": 17.901056676272812,
+  "window_iou": 0.33648549123582266,
   "key": {
    "method": "D17",
    "zone": {
@@ -54,7 +55,8 @@
     "lat": 36.458,
     "outline": "outlines/passu_osm.geojson",
     "outline_sha256": "4cb368039bbafa5f9d943fcad3dc525b885dbe05265302534e20fa05d9a43f73"
-   }
+   },
+   "window_margin_m": 1500.0
   }
  },
  {
@@ -72,17 +74,18 @@
   "area_error_pct": -11.529126213592226,
   "iou": 0.5608040201005026,
   "zone_valid_share": 1.0,
-  "window_radar_km2": 5.7542,
-  "window_optical_km2": 0.7289,
-  "window_area_error_pct": 689.4361366442585,
-  "window_iou": 0.044381081255235516,
+  "window_radar_km2": 2.4031000000000002,
+  "window_optical_km2": 0.4471,
+  "window_area_error_pct": 437.4860210243794,
+  "window_iou": 0.08686699206833436,
   "key": {
    "method": "D17",
    "zone": {
     "lon": 74.07906,
     "lat": 36.6214,
     "radius_km": 0.3
-   }
+   },
+   "window_margin_m": 1500.0
   }
  },
  {
@@ -100,10 +103,10 @@
   "area_error_pct": 3.980503655564583,
   "iou": 0.6728847435043305,
   "zone_valid_share": 0.8073327222731439,
-  "window_radar_km2": 3.5167,
-  "window_optical_km2": 2.3804000000000003,
-  "window_area_error_pct": 47.735674676524944,
-  "window_iou": 0.2507900820836957,
+  "window_radar_km2": 1.3225,
+  "window_optical_km2": 1.0357,
+  "window_area_error_pct": 27.691416433330108,
+  "window_iou": 0.3423269581056466,
   "key": {
    "method": "D17",
    "zone": {
@@ -111,7 +114,8 @@
     "lat": 35.7794,
     "outline": "outlines/shazore_s2_2026.geojson",
     "outline_sha256": "6a74a2ef08e8d851270a3b8f712d45a2278ecace9d71212c1da3f0fa8eb438d3"
-   }
+   },
+   "window_margin_m": 1500.0
   }
  }
 ]
