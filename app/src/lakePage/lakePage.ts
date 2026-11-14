@@ -69,7 +69,7 @@ function header(lake: Lake, file: LakesFile, phone: boolean): HTMLElement {
   const watched = file.counts?.watched ?? file.lakes.length;
   top.append(link(phone ? "All lakes" : `All ${watched} watched lakes`, "#lakes", "lp-back"));
   const built = day(file.built);
-  if (built) {
+  if (built && Number.isFinite(Date.parse(file.built))) {
     const next = nextRefresh(file.built);
     const text = phone ? `Data ${shortDay(file.built.slice(0, 10))} · next Mon ${shortDay(next)}` : `Data built ${built} · next refresh Mon ${formatDate(next)}`;
     top.append(el("p", "lp-built", text));
