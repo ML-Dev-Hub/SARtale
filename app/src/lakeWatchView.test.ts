@@ -2,57 +2,38 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { findBannedClaims } from "./content";
 import { fixtureLakes, frozenFixture, olderFile, requestedLake, withRequestedLake } from "./fixtures";
-import { isLakesFile, keepValidLakes, sortLakes, splitChecks, type Lake, type LakesFile } from "./lakes";
+import { isLakesFile, keepValidLakes, splitChecks, type Lake, type LakesFile } from "./lakes";
 import { checkLine, createLakeWatchView, FORMING_LAYER, FORMING_NO_LAYER, lakeChartData, openingLake, type LakeChartData } from "./lakeWatchView";
 
 function setup(file: LakesFile | null = fixtureLakes, extra: Partial<Parameters<typeof createLakeWatchView>[1]> = {}) {
   const root = document.createElement("div");
   document.body.append(root);
   const charts: LakeChartData[] = [];
-  const picks: string[] = [];
   const view = createLakeWatchView(root, {
     lakes: file,
     createChart: (_el, data) => {
       charts.push(data);
       return { destroy() {} };
     },
-    createLocator: (_el, _lakes, _onPick) => ({ highlight: (id) => void picks.push(id), destroy() {} }),
     ...extra,
   });
-  return { root, view, charts, picks };
+  return { root, view, charts };
 }
 
 afterEach(() => {
   document.body.innerHTML = "";
 });
 
-const rowIds = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>("[data-lake-id]")].map((e) => e.dataset.lakeId);
+/** The status chip in the lake's panel. The list moved to the overview (overview/overviewView.test.ts). */
+const detailChip = (root: HTMLElement) => root.querySelector<HTMLElement>('[data-role="lw-detail"] .lw-chip')!;
 
 describe("Lake Watch", () => {
   test("test_opens_on_the_first_lake_with_pictures", () => {
-    const { root, picks } = setup();
+    const { root } = setup();
     const first = openingLake(fixtureLakes.lakes);
     const area = (l: Lake) => Math.max(-1, ...l.series.filter((p) => p.excluded === null && p.area_km2 !== null).slice(-1).map((p) => p.area_km2!));
     for (const l of fixtureLakes.lakes) expect(area(first)).toBeGreaterThanOrEqual(area(l));
-    expect(root.querySelector('.lw-row[aria-pressed="true"]')?.getAttribute("data-lake-id")).toBe(first.id);
     expect(root.querySelector(".lw-title")?.textContent).toBe(first.name);
-    expect(picks).toContain(first.id);
-  });
-
-  test("test_list_rows_carry_a_radar_thumbnail", () => {
-    const { root } = setup();
-    for (const lake of fixtureLakes.lakes) {
-      const t = root.querySelector(`[data-lake-id="${lake.id}"] .lw-thumb`)!;
-      expect(t.getAttribute("aria-hidden")).toBe("true");
-      const srcs = [...t.querySelectorAll("img")].map((i) => i.getAttribute("src"));
-      expect(srcs).toEqual([lake.images?.latest_hh, lake.images?.water].filter(Boolean).map((x) => `data/${x}`));
-      expect(t.hasAttribute("data-empty")).toBe(srcs.length === 0);
-    }
-  });
-
-  test("test_lake_list_order_matches_sortLakes", () => {
-    const { root } = setup();
-    expect(rowIds(root)).toEqual(sortLakes(fixtureLakes.lakes).map((l) => l.id));
   });
 
   test("test_headline_sums_cloud_window_looks", () => {
@@ -102,16 +83,6 @@ describe("Lake Watch", () => {
     const { root, view } = setup();
     for (const l of fixtureLakes.lakes) view.select(l.id);
     expect(findBannedClaims(root.textContent!)).toEqual([]);
-  });
-
-  test("test_keyboard_select_with_enter", () => {
-    const { root, picks } = setup();
-    const row = root.querySelector<HTMLButtonElement>('[data-lake-id="stable"]')!;
-    expect(row.tagName).toBe("BUTTON");
-    row.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
-    expect(row.getAttribute("aria-pressed")).toBe("true");
-    expect(root.querySelector('[data-role="lw-detail"]')!.textContent).toContain("Fixture stable");
-    expect(picks).toContain("stable");
   });
 
   test("one chart series per track, excluded passes kept apart", () => {
@@ -172,9 +143,13 @@ describe("Lake Watch", () => {
     const picked: string[] = [];
     const { root } = setup(fixtureLakes, { onSelect: (id) => void picked.push(id) });
     expect(picked).toEqual([]);
-    const id = fixtureLakes.lakes[1].id;
-    root.querySelector<HTMLButtonElement>(`[data-lake-id="${id}"]`)!.click();
-    expect(picked).toEqual([id]);
+    root.querySelector<HTMLButtonElement>(".lw-alert-open")!.click();
+    expect(picked).toEqual(["grow-new"]);
+  });
+
+  test("the lake's page links back to the overview", () => {
+    const { root } = setup();
+    expect(root.querySelector('[data-role="lw-back"]')!.getAttribute("href")).toBe("#lakes");
   });
 
   test("too few looks hides the chart and any area number even with series points", () => {
@@ -227,23 +202,20 @@ describe("Lake Watch", () => {
     expect(note.hidden).toBe(false);
     expect(note.textContent).toContain("Future lake");
     expect(note.textContent).toContain("Reload the page");
-    expect(rowIds(root)).toHaveLength(fixtureLakes.lakes.length);
+    expect(root.querySelector(".lw-title")?.textContent).toBe(openingLake(fixtureLakes.lakes).name);
     const plain = setup(fixtureLakes).root.querySelector<HTMLElement>('[data-role="lw-dropped"]')!;
     expect(plain.hidden).toBe(true);
   });
 });
 
 describe("Lake Watch after an accept", () => {
-  test("mounts the shipped data with a 12th lake that has no pass yet, and opens that lake", async () => {
+  test("mounts the shipped data with a lake that has no pass yet, and opens that lake", async () => {
     const real = splitChecks((await import("../public/data/lakes.json")).default as unknown as LakesFile);
     const frozen = (await import("./frozen/lakes.json")).default as unknown as LakesFile;
     for (const base of [frozen, real]) {
       const file = withRequestedLake(base);
-      const { root } = setup(file);
-      expect(rowIds(root)).toHaveLength(base.lakes.length + 1);
-      expect(rowIds(root)).toContain(requestedLake.id);
-      root.querySelector<HTMLElement>(`.lw-row[data-lake-id="${requestedLake.id}"]`)!.click();
-      expect(root.querySelector('.lw-row[aria-pressed="true"]')?.getAttribute("data-lake-id")).toBe(requestedLake.id);
+      const { root, view } = setup(file);
+      view.select(requestedLake.id);
       expect(root.querySelector(".lw-title")?.textContent).toBe(requestedLake.name);
       expect(root.textContent).not.toMatch(/NaN|undefined|\{\w+\}/);
       expect(findBannedClaims(root.textContent ?? "")).toEqual([]);
@@ -257,8 +229,11 @@ describe("Lake Watch: alert levels", () => {
   const byId = (id: string) => fixtureLakes.lakes.find((l) => l.id === id)!;
 
   test("each level has its own chip; an Alert carries a mark as well as its colour", () => {
-    const { root } = setup(fixtureLakes);
-    const chip = (id: string) => root.querySelector(`[data-lake-id="${id}"] .lw-chip`)!;
+    const { root, view } = setup(fixtureLakes);
+    const chip = (id: string) => {
+      view.select(id);
+      return detailChip(root);
+    };
     expect(chip("grow-new").className).toContain("lw-status-alert-growing");
     expect(chip("grow-new").textContent).toBe("▲ Alert: growing");
     expect(chip("grow-new").querySelector(".lw-chip-mark")!.getAttribute("aria-hidden")).toBe("true");
@@ -266,12 +241,6 @@ describe("Lake Watch: alert levels", () => {
     expect(chip("shrink").className).toContain("lw-status-decrease-noted");
     expect(chip("stable").className).toContain("lw-status-no-change");
     expect(chip("stable").textContent).toBe("No change");
-  });
-
-  test("the lake list shows the level and sorts an Alert first, then Watch, then Decrease noted", () => {
-    const { root } = setup(fixtureLakes);
-    expect(rowIds(root).slice(0, 4)).toEqual(["grow-new", "grow-old", "shrink", "stable"]);
-    expect(root.querySelector('[data-lake-id="grow-new"] .lw-sentence')!.textContent).toMatch(/^Alert: growing: \+0\.031 km²/);
   });
 
   test("a banner over Lake Watch names every lake at Alert and opens it", () => {
@@ -335,12 +304,17 @@ describe("Lake Watch: a lakes.json made before the levels", () => {
     const older = olderFile();
     expect(isLakesFile(older)).toBe(true);
     expect(keepValidLakes(older).lakes).toHaveLength(3);
-    const { root } = setup(older);
-    expect(rowIds(root)).toHaveLength(3);
-    const chips = [...root.querySelectorAll(".lw-row .lw-chip")].map((c) => c.textContent);
+    const { root, view } = setup(older);
+    const chips = older.lakes.map((l) => {
+      view.select(l.id);
+      return detailChip(root).textContent;
+    });
     expect(chips.sort()).toEqual(["Growing", "Shrinking", "Stable"]);
     expect(root.querySelector<HTMLElement>('[data-role="lw-alert-banner"]')!.hidden).toBe(true);
-    expect(root.querySelector('[data-role="lw-message"]')).toBeNull();
+    for (const l of older.lakes) {
+      view.select(l.id);
+      expect(root.querySelector('[data-role="lw-message"]')).toBeNull();
+    }
     // a status this page does not know, in a build that has the levels, still drops that lake only
     const bad = { ...fixtureLakes, lakes: [...fixtureLakes.lakes, { ...fixtureLakes.lakes[2], id: "odd", status: { ...fixtureLakes.lakes[2].status, status: "Growing" } }] };
     expect(keepValidLakes(bad).dropped_lakes).toEqual(["Fixture stable"]);
@@ -425,18 +399,13 @@ describe("checkLine", () => {
 describe("a frozen lake", () => {
   const file = (): LakesFile => ({ ...fixtureLakes, lakes: [...fixtureLakes.lakes, frozenFixture("ice"), frozenFixture("ice-s2", "Frozen (seen by Sentinel-2)")] });
 
-  test("its row has the frozen chip and an Ice tag; other rows have none", () => {
-    const { root } = setup(file());
-    const row = root.querySelector('[data-lake-id="ice"]')!;
-    expect(row.querySelector(".lw-chip")?.className).toContain("lw-status-frozen-likely");
-    expect(row.querySelector(".lw-chip")?.textContent).toBe("Frozen (likely)");
-    expect(row.querySelector('[data-role="lw-ice"]')?.textContent).toBe("Ice");
-    expect(root.querySelector('[data-lake-id="ice-s2"] .lw-chip')?.className).toContain("lw-status-frozen-seen-by-sentinel-2");
-    expect(root.querySelector('[data-lake-id="stable"] [data-role="lw-ice"]')).toBeNull();
-    // sorted after Change not confirmed yet, before Stable
-    const ids = rowIds(root);
-    expect(ids.indexOf("ice")).toBeLessThan(ids.indexOf("stable"));
-    expect(ids.indexOf("ice")).toBeGreaterThan(ids.indexOf("shrink"));
+  test("its panel has the frozen chip", () => {
+    const { root, view } = setup(file());
+    view.select("ice");
+    expect(detailChip(root).className).toContain("lw-status-frozen-likely");
+    expect(detailChip(root).textContent).toBe("Frozen (likely)");
+    view.select("ice-s2");
+    expect(detailChip(root).className).toContain("lw-status-frozen-seen-by-sentinel-2");
   });
 
   test("its detail shows the freeze card and greys the area with what it is not", () => {
@@ -478,7 +447,7 @@ describe("a frozen lake", () => {
     expect(rows.filter((r) => r.children[4].textContent === "Yes")).toHaveLength(5);
   });
 
-  test("a lake that is not frozen shows its freeze check as a note, no Ice tag and no greyed area", () => {
+  test("a lake that is not frozen shows its freeze check as a note and no greyed area", () => {
     const open = { ...frozenFixture("warm"), status: fixtureLakes.lakes.find((l) => l.id === "stable")!.status, series: [] };
     open.freeze = { ...open.freeze!, state: "open", since: null, cold_run_days: 0, warm_run_days: 5, s2_searched: false, frozen_passes: 0, reason: "Not frozen by the freeze rule (7 days in a row below 0 °C and 30 freezing degree-days since 1 Sep), so the usual assessment applies. Air temperature alone cannot show that the lake is open." };
     const { root, view } = setup({ ...fixtureLakes, lakes: [...fixtureLakes.lakes, open] });
@@ -488,17 +457,15 @@ describe("a frozen lake", () => {
     expect(card.textContent).toContain("Air temperature alone cannot show that the lake is open.");
     expect(card.textContent).toContain("Sentinel-2: not checked (the lake is not cold).");
     expect(root.querySelector('[data-role="lw-frozen-area"]')).toBeNull();
-    expect(root.querySelector('[data-lake-id="warm"] [data-role="lw-ice"]')).toBeNull();
   });
 
-  test("an older lakes.json without freeze fields shows no freeze card and no Ice tag", async () => {
+  test("an older lakes.json without freeze fields shows no freeze card", async () => {
     const old = (await import("./frozen/lakes.json")).default as unknown as LakesFile;
     const { root, view } = setup(old);
     for (const l of old.lakes) {
       view.select(l.id);
       expect(root.querySelector('[data-role="lw-freeze"]')).toBeNull();
     }
-    expect(root.querySelector('[data-role="lw-ice"]')).toBeNull();
   });
 });
 
@@ -512,7 +479,6 @@ describe("a frozen lake's radar picture", () => {
     expect(detail.querySelector(".lw-img-water")).toBeNull();
     expect(detail.querySelector(".lw-img-hh")).not.toBeNull();
     expect(detail.querySelector('[data-role="lw-water-hidden"]')?.textContent).toBe("Water layer hidden: not an open-water measurement while frozen.");
-    expect(root.querySelector('[data-lake-id="ice"] .lw-thumb-water')).toBeNull();
     // an open lake keeps its layer, unless its pictured pass was itself taken while frozen (review m2)
     const stable = fixtureLakes.lakes.find((l) => l.id === "stable")!.status;
     const open = { ...ice, id: "warm", status: stable, images: { ...ice.images!, date: "2026-09-18", track: "084A" } };

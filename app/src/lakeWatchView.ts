@@ -26,15 +26,14 @@ export interface LakeChartData {
 /** Draws area per track. The uPlot version lives in chart.ts; tests pass a fake. */
 export type LakeChartFactory = (el: HTMLElement, data: LakeChartData) => { destroy(): void };
 
-/** Marks every lake on a small map. Lazy MapLibre in lakeLocator.ts; absent in tests. */
+/** Marks every lake on a small map. Lazy MapLibre in lakeLocator.ts; the overview's map drawer takes it over (Task 15). */
 export type LocatorFactory = (el: HTMLElement, lakes: Lake[], onPick: (id: string) => void) => { highlight(id: string): void; destroy(): void };
 
 export interface LakeWatchOptions {
   lakes: LakesFile | null;
   createChart?: LakeChartFactory;
-  createLocator?: LocatorFactory;
   onBrief?: (lake: Lake) => void;
-  /** Called when the person picks a lake (list row or map pin), not when the view opens on one. */
+  /** Called when the person picks a lake (from the Alert banner), not when the view opens on one. */
   onSelect?: (id: string) => void;
 }
 
@@ -54,13 +53,8 @@ const TEMPLATE = `
   <p class="lw-headline"><a href="#cloud-gap" data-role="lw-headline"></a></p>
   <p class="lw-screening" data-role="lw-screening">Indicative screening on provisional NISAR data. Official warnings come from PMD, NDMA, GBDMA and PDMA.</p>
   <p class="lw-note" data-role="lw-dropped" role="status" hidden></p>
-  <div class="lw-grid">
-    <nav class="lw-list-wrap" aria-label="Lakes">
-      <div class="lw-locator" data-role="lw-locator" aria-label="Where the lakes are"></div>
-      <ul class="lw-list" data-role="lw-list"></ul>
-    </nav>
-    <article class="card lw-detail" data-role="lw-detail" aria-live="polite"></article>
-  </div>
+  <p class="lw-back"><a href="#lakes" data-role="lw-back">All watched lakes</a></p>
+  <article class="card lw-detail" data-role="lw-detail" aria-live="polite"></article>
 </div>`;
 
 const utcSeconds = (iso: string): number => Date.parse(`${iso}T00:00:00Z`) / 1000;
@@ -193,7 +187,6 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   q("lw-empty").hidden = has;
   q("lw-body").hidden = !has;
   let chart: { destroy(): void } | undefined;
-  let locator: { highlight(id: string): void; destroy(): void } | undefined;
   // Sites the data list but this version of the page cannot read: say so rather than drop them silently.
   const dropped = file ? droppedLine(file) : null;
   const droppedEl = q(has ? "lw-dropped" : "lw-dropped-empty");
@@ -216,44 +209,6 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   }
   if (alerts.length) banner.append(el("p", "lw-note", "Official warnings come from PMD, NDMA, GBDMA and PDMA."));
 
-  const listEl = q("lw-list");
-  const rows = new Map<string, HTMLButtonElement>();
-  for (const lake of sortLakes(lakes)) {
-    const li = el("li");
-    const b = el("button", "lw-row");
-    b.type = "button";
-    b.dataset.lakeId = lake.id;
-    b.dataset.control = String(lake.role === "control");
-    b.setAttribute("aria-pressed", "false");
-    const text = el("span", "lw-row-text");
-    const chips = el("span", "lw-chips");
-    chips.append(chip(lake));
-    if (isFrozen(lake)) {
-      // A frozen lake reads at a glance in the list: an "Ice" tag beside the status.
-      const ice = el("span", "lw-ice", "Ice");
-      ice.dataset.role = "lw-ice";
-      ice.title = "Probably under ice: no growing or shrinking verdict";
-      chips.append(ice);
-    }
-    text.append(
-      chips,
-      el("span", "lw-name", lake.name),
-      el("span", "lw-sentence", statusSentence(lake, file!.constants.change_factor)),
-      el("span", "lw-coord", `Coordinates: ${lake.coord_source}`),
-    );
-    b.append(thumb(lake), text);
-    b.addEventListener("click", () => choose(lake.id));
-    b.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        choose(lake.id);
-      }
-    });
-    rows.set(lake.id, b);
-    li.append(b);
-    listEl.append(li);
-  }
-
   const detail = q("lw-detail");
 
   /** The status pill. A level carries its name in words and, for an Alert, a mark too: never colour alone. */
@@ -267,23 +222,6 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     }
     c.append(lake.status.status);
     return c;
-  }
-
-  /** A small radar picture for a list row: latest HH with the water pixels on top. Decorative; the row text names the lake. */
-  function thumb(lake: Lake): HTMLElement {
-    const t = el("span", "lw-thumb");
-    t.setAttribute("aria-hidden", "true");
-    const water = isFrozen(lake) || picturedPassFrozen(lake) ? null : lake.images?.water; // not open water then
-    for (const [path, cls] of [[lake.images?.latest_hh, "lw-thumb-hh"], [water, "lw-thumb-water"]] as const) {
-      if (!path) continue;
-      const i = el("img", cls);
-      i.src = dataUrl(path);
-      i.alt = "";
-      i.loading = "lazy";
-      t.append(i);
-    }
-    if (!t.childElementCount) t.dataset.empty = "true";
-    return t;
   }
 
   function pictures(lake: Lake): HTMLElement {
@@ -495,9 +433,7 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
   function select(id: string): boolean {
     const lake = lakes.find((l) => l.id === id);
     if (!lake) return false;
-    for (const [rid, b] of rows) b.setAttribute("aria-pressed", String(rid === id));
     render(lake);
-    locator?.highlight(id);
     return true;
   }
 
@@ -511,7 +447,6 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     }
   }
 
-  if (opts.createLocator) locator = opts.createLocator(q("lw-locator"), lakes, (id) => choose(id));
   // Open on a lake from the start, so the panel shows radar pictures and a chart instead of an empty prompt.
   select(openingLake(lakes, file!.constants.min_observable).id);
 
@@ -519,7 +454,6 @@ export function createLakeWatchView(root: HTMLElement, opts: LakeWatchOptions): 
     select: (id) => void select(id),
     destroy: () => {
       chart?.destroy();
-      locator?.destroy();
       root.innerHTML = "";
     },
   };
