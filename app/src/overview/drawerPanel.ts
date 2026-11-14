@@ -1,13 +1,14 @@
 import { formatDate } from "../format";
 import { isFrozen, suparcoLine, type Lake } from "../lakes";
-import { el, statusChip, statusMark, svg } from "./marks";
+import { displayForStatus, el, familyChip, familyMark, svg } from "./marks";
+import { statusDisplay } from "../statusDisplay";
 import { SOURCE_LABELS, watchThisLakeUrl } from "./mappedLakes";
 import { latestReadingOnTrack, type MapDrawerFactory, type MappedLake, type MappedLakesFile } from "./model";
 
-/** Every status the map can show, in the order of the legend. */
+/** One status per family, in the order of the legend: Frozen and Not measured each appear once, Ice breaking up apart. */
 export const LEGEND_STATUSES = [
   "Alert: growing", "Watch", "Decrease noted", "No change", "Lake may be forming", "Frozen (likely)",
-  "Frozen (seen by Sentinel-2)", "Break-up likely", "No lake now", "Not enough NISAR looks yet", "Not seen this pass",
+  "Break-up likely", "No lake now", "Not observable",
 ];
 
 export interface DrawerPanelOptions {
@@ -69,7 +70,8 @@ export function createDrawerPanel(host: HTMLElement, opts: DrawerPanelOptions): 
   legend.setAttribute("aria-label", "Legend");
   for (const s of LEGEND_STATUSES) {
     const li = el("li");
-    li.append(statusMark(s, 14), s);
+    const d = displayForStatus(s);
+    li.append(familyMark(d, 14), d.chip);
     legend.append(li);
   }
   const dot = svg("svg", { viewBox: "0 0 20 20", width: "14", height: "14", "aria-hidden": "true", class: "ov-mapped-dot" });
@@ -104,7 +106,9 @@ export function createDrawerPanel(host: HTMLElement, opts: DrawerPanelOptions): 
   function watchedCard(l: Lake): HTMLElement {
     const box = el("div", "ov-card");
     const head = el("div", "ov-card-head");
-    head.append(el("h3", "ov-card-title", l.name), statusChip(l.status.status));
+    const d = statusDisplay(l);
+    head.append(el("h3", "ov-card-title", l.name), familyChip(d));
+    if (d.tag) head.append(el("span", "ov-card-note", d.tag));
     const r = latestReadingOnTrack(l, opts.minObservable);
     const area = l.lake_state === "no_lake" ? "No lake now" : r ? `${r.area.toFixed(3)} km² (NISAR radar${isFrozen(l) ? ", last open water" : ""})` : "No reading yet";
     const ext = l.largest_extent;

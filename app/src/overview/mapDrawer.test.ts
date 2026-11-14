@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vite
 import { fixtureMessage, makeFile, makeLake } from "../fixtures";
 import type { Lake, LakesFile, LevelName } from "../lakes";
 import { mappedFixture } from "./mappedFixture";
-import { createReadyGate } from "./mapDrawer";
+import { createReadyGate, pinElement } from "./mapDrawer";
+import { LEGEND_STATUSES } from "./drawerPanel";
+import { displayForStatus } from "./marks";
 import { loadMappedLakes, watchThisLakeUrl } from "./mappedLakes";
 import { DEFAULT_STATE, type MapDrawerFactory, type OverviewState } from "./model";
 import { createOverview } from "./overviewView";
@@ -159,6 +161,22 @@ describe("map drawer", () => {
     expect(role("ov-legend").textContent).toContain("Mapped, not watched yet");
     expect(text()).toContain(mappedFixture.notice.odbl);
     expect(text()).toContain(mappedFixture.notice.cc_by);
+  });
+  it("the legend lists each family once: Frozen and Not measured once, Ice breaking up apart", async () => {
+    render();
+    click(toggle());
+    await tick();
+    const items = [...role("ov-legend").querySelectorAll("li")].map((li) => li.textContent);
+    expect(items).toEqual(["Alert: growing", "Watch", "Decrease noted", "No change", "Lake may be forming", "Frozen", "Ice breaking up", "No lake now", "Not measured", "Mapped, not watched yet"]);
+    const fams = LEGEND_STATUSES.map((s) => displayForStatus(s).family);
+    expect(new Set(fams).size).toBe(fams.length);
+  });
+  it("a pin takes its family's shape and name", () => {
+    const l = lake("f", {}, { status: "Frozen (seen by Sentinel-2)", level: null });
+    const b = pinElement(l, () => {});
+    expect(b.dataset.family).toBe("frozen");
+    expect(b.getAttribute("aria-label")).toBe("f, Frozen");
+    expect(b.querySelector("svg.ov-mark-fam-frozen")).not.toBeNull();
   });
   it("Close map closes the drawer", async () => {
     render();

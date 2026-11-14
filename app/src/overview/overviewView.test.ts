@@ -90,6 +90,31 @@ describe("overview", () => {
     render(file);
     expect(chip("Watch").querySelector("svg[aria-hidden]")).not.toBeNull();
   });
+  it("Frozen lakes share one chip and differ in the tag line", () => {
+    render(makeFile([frozenFixture("fz_s2", "Frozen (seen by Sentinel-2)"), frozenFixture("fz_air", "Frozen (likely)")]));
+    const status = (id: string) => root.querySelector<HTMLElement>(`[data-role="ov-row"][data-id="${id}"] .ov-c-status`)!;
+    expect(status("fz_s2").querySelector(".ov-chip")!.textContent).toBe("Frozen");
+    expect(status("fz_air").querySelector(".ov-chip")!.textContent).toBe("Frozen");
+    expect(status("fz_s2").querySelector(".ov-tag")!.textContent).toMatch(/^Seen in Sentinel-2/);
+    expect(status("fz_air").querySelector(".ov-tag")!.textContent).toMatch(/^By air temperature/);
+  });
+  it("the five not-measured statuses all show the chip Not measured", () => {
+    const names = ["Not measurable", "Not yet validated against Sentinel-2", "Not observable", "Not enough NISAR looks yet", "Not seen this pass"] as const;
+    render(makeFile(names.map((s, i) => lake(`nm${i}`, {}, { status: s, level: null }))));
+    const chips = [...root.querySelectorAll(".ov-c-status .ov-chip")].map((c) => c.textContent);
+    expect(chips).toEqual(Array(5).fill("Not measured"));
+    expect(new Set([...root.querySelectorAll(".ov-c-status .ov-tag")].map((t) => t.textContent)).size).toBe(5);
+  });
+  it("the filter chips for Frozen, Ice breaking up and Not measured count families", () => {
+    const f = makeFile([
+      frozenFixture("a", "Frozen (likely)"), frozenFixture("b", "Frozen (seen by Sentinel-2)"), frozenFixture("c", "Break-up likely"),
+      lake("d", {}, { status: "Not observable", level: null }),
+    ]);
+    render(f);
+    const n = (k: string) => root.querySelector(`[data-role="ov-filters"] [data-filter="${k}"] .ov-filter-count`)!.textContent;
+    expect([n("frozen"), n("breakup"), n("unmeasured")]).toEqual(["2", "1", "1"]);
+    expect(root.querySelector('[data-role="ov-tiles"] [data-filter="frozen"] .ov-tile-value')!.textContent).toBe("2");
+  });
   it("long names carry a title", () => {
     const name = "Unnamed lake C006 on the Diamer–Ghizer divide above the valley";
     render(makeFile([makeLake({ name })]));

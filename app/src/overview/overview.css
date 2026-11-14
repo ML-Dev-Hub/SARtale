@@ -172,6 +172,26 @@
 .ov-mark-no-lake-now path { stroke: var(--dim); stroke-dasharray: none; }
 .ov-status-not-enough-nisar-looks-yet, .ov-status-not-observable, .ov-status-not-measurable,
 .ov-status-not-yet-validated-against-sentinel-2, .ov-status-not-seen-this-pass { border-style: dotted; border-color: var(--dim); }
+/* Families (statusDisplay): the chip and marker of each family; a dashed outline is a state that is not a settled reading. */
+.ov-fam-alert { background: var(--alert); border: 2px solid var(--alert); color: var(--alert-ink); font-weight: 800; }
+.ov-mark-fam-alert path { fill: var(--alert); stroke: var(--alert-ink); stroke-dasharray: none; }
+.ov-fam-watch { background: var(--panel); border: 2px solid var(--warm); color: var(--warm); font-weight: 700; }
+.ov-mark-fam-watch path { fill: var(--warm); stroke: var(--warm-ink); stroke-dasharray: none; }
+.ov-fam-decrease { border-color: var(--decrease); color: var(--decrease); }
+.ov-mark-fam-decrease path { fill: var(--decrease); stroke: var(--ground); stroke-dasharray: none; }
+.ov-fam-forming { border-style: dashed; border-color: var(--accent); color: var(--accent); }
+.ov-mark-fam-forming path { stroke: var(--accent); stroke-dasharray: 3 2; }
+.ov-fam-nochange { border-color: var(--line-strong); color: var(--accent); }
+.ov-mark-fam-nochange path { fill: var(--accent); stroke: var(--ground); stroke-dasharray: none; }
+.ov-fam-frozen { background: var(--ice); border-color: var(--ice); color: var(--ground); font-weight: 700; }
+.ov-mark-fam-frozen path { fill: var(--ice); stroke: var(--ground); stroke-dasharray: none; }
+.ov-fam-breakup { border-style: dotted; border-color: var(--ice); color: var(--ice); }
+.ov-mark-fam-breakup path { fill: none; stroke: var(--ice); stroke-dasharray: 2 2; }
+.ov-fam-nolake { border-color: var(--line-strong); color: var(--muted); }
+.ov-mark-fam-nolake path { stroke: var(--dim); stroke-dasharray: none; }
+.ov-fam-unmeasured { border-style: dotted; border-color: var(--dim); }
+.ov-mark-fam-unmeasured path { stroke: var(--dim); stroke-dasharray: 1.5 2; }
+.ov-tag { overflow-wrap: anywhere; }
 /* Tiles with a status mark use the same marks. */
 .ov-tile-label .ov-mark path { stroke-width: 2; }
 

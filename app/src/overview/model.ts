@@ -1,6 +1,7 @@
 import { FROZEN_STATUSES, hasLakeNow, isTrendPass, sortLakes, type Lake, type LakeStatusName } from "../lakes";
+import { statusDisplay } from "../statusDisplay";
 
-export type OverviewFilter = "all" | "attention" | "alert" | "watch" | "open" | "frozen" | "above" | "changed" | "no-lake" | "suparco";
+export type OverviewFilter = "all" | "attention" | "alert" | "watch" | "open" | "frozen" | "breakup" | "unmeasured" | "above" | "changed" | "no-lake" | "suparco";
 export type SortKey = "status" | "name" | "area" | "change" | "share" | "latest" | "elevation";
 
 export interface OverviewState {
@@ -15,7 +16,7 @@ export interface OverviewState {
 
 export const DEFAULT_STATE: OverviewState = { show: "all", district: null, q: "", sort: "status", dir: "asc", map: false, sel: null };
 
-const FILTERS: OverviewFilter[] = ["all", "attention", "alert", "watch", "open", "frozen", "above", "changed", "no-lake", "suparco"];
+const FILTERS: OverviewFilter[] = ["all", "attention", "alert", "watch", "open", "frozen", "breakup", "unmeasured", "above", "changed", "no-lake", "suparco"];
 const SORT_KEYS: SortKey[] = ["status", "name", "area", "change", "share", "latest", "elevation"];
 
 /** The sort each column header sets; the trend column sorts by the change. */
@@ -91,7 +92,9 @@ function passesFilter(l: Lake, show: OverviewFilter): boolean {
     case "alert": return l.status.status === "Alert: growing";
     case "watch": return l.status.status === "Watch";
     case "open": return (l.lake_state === undefined || l.lake_state === "lake" || l.lake_state === "unconfirmed") && !isFrozenLake(l);
-    case "frozen": return isFrozenLake(l);
+    case "frozen": return statusDisplay(l).family === "frozen";
+    case "breakup": return statusDisplay(l).family === "breakup";
+    case "unmeasured": return statusDisplay(l).family === "unmeasured";
     case "above": return l.above_largest === true;
     case "changed": return l.previous_status != null && l.previous_status !== l.status.status;
     case "no-lake": return l.lake_state === "no_lake";

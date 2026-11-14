@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeFile, makeLake } from "../fixtures";
 import type { Lake } from "../lakes";
+import { familyCounts } from "../statusDisplay";
 import {
   DEFAULT_STATE, SORT_FOR_COLUMN, arrange, latestReadingOnTrack, matches, needsAttention, nextRefresh, overviewQuery,
   parseOverviewHash, sparklinePath, trendPoints,
@@ -75,6 +76,20 @@ describe("arrange", () => {
     expect(ids("open")).not.toContain("shazore");
     expect(ids("open")).toContain("passu");
     expect(ids("all")).toHaveLength(8);
+  });
+  it("the Frozen and Not measured filters follow the families, and their counts match familyCounts", () => {
+    const mk = (id: string, status: string): Lake => lake(id, {}, { status: status as Lake["status"]["status"], level: null });
+    const lakes = [
+      mk("a", "Frozen (likely)"), mk("b", "Frozen (seen by Sentinel-2)"), mk("c", "Break-up likely"),
+      mk("d", "Not measurable"), mk("e", "Not yet validated against Sentinel-2"), mk("f", "Not observable"),
+      mk("g", "Not enough NISAR looks yet"), mk("h", "Not seen this pass"), mk("i", "No change"),
+    ];
+    const ids = (show: OverviewFilter) => lakes.filter((l) => matches(l, { ...DEFAULT_STATE, show })).map((l) => l.id);
+    const c = familyCounts(lakes);
+    expect(ids("frozen")).toEqual(["a", "b"]);
+    expect(ids("breakup")).toEqual(["c"]);
+    expect(ids("unmeasured")).toEqual(["d", "e", "f", "g", "h"]);
+    expect([ids("frozen").length, ids("breakup").length, ids("unmeasured").length]).toEqual([c.frozen, c.breakup, c.unmeasured]);
   });
   it("search covers name, id, district and SUPARCO id, ignoring case", () => {
     const hit = (q: string) => file.lakes.filter((l) => matches(l, { ...DEFAULT_STATE, q })).map((l) => l.id);
