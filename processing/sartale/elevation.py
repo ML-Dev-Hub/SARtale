@@ -52,7 +52,8 @@ def lake_elevation(lake) -> tuple[float, str] | None:
     if item is None:
         return None
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif",
-                      GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2"):
+                      GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2",
+                      GDAL_HTTP_TIMEOUT="120", GDAL_HTTP_CONNECTTIMEOUT="30"):
         with rasterio.open(_https(item["assets"]["data"]["href"])) as ds:
             t = ds.transform  # geographic: degrees per pixel
             dy_m = abs(t.e) * 111_320.0

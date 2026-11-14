@@ -176,7 +176,8 @@ def read_scene(scene: dict, x: np.ndarray, y: np.ndarray, epsg: int) -> dict:
     window's transform and CRS, and the pixel size in metres."""
     west, south, east, north = _grid_bounds(x, y)
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif",
-                      GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2"):
+                      GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2",
+                      GDAL_HTTP_TIMEOUT="120", GDAL_HTTP_CONNECTTIMEOUT="30"):
         with rasterio.open(_href(scene, "green")) as g:
             px = abs(g.transform.a)
             pad = int(np.ceil(CLOUD_EDGE_BUFFER_M / px)) + 2
