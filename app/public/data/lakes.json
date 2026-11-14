@@ -13189,7 +13189,8 @@
      "outline": "outlines/attabad_osm.geojson",
      "outline_sha256": "fa01e9eaa65af1d22a6ef4507a5acfe4e75b68c4c283dd3f01f46b5a376c3e72"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13219,7 +13220,8 @@
      "outline": "outlines/passu_osm.geojson",
      "outline_sha256": "4cb368039bbafa5f9d943fcad3dc525b885dbe05265302534e20fa05d9a43f73"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13248,7 +13250,8 @@
      "lat": 36.6214,
      "radius_km": 0.3
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13278,7 +13281,8 @@
      "outline": "outlines/shazore_s2_2026.geojson",
      "outline_sha256": "6a74a2ef08e8d851270a3b8f712d45a2278ecace9d71212c1da3f0fa8eb438d3"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13308,7 +13312,8 @@
      "outline": "outlines/karambar_lake.geojson",
      "outline_sha256": "b75f145decb53e43bc86677b32f7fc542529f8c738072e925e691ad64f2658e8"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13338,7 +13343,8 @@
      "outline": "outlines/khukush.geojson",
      "outline_sha256": "6f01ff4dfe9f11589651df54d2a09f4cc37f488a7e243c779c4ddc8eae23da8c"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13368,7 +13374,8 @@
      "outline": "outlines/shandur.geojson",
      "outline_sha256": "170cbe3787384eca4ff8e7ee2eb5a9eaa1ca090751538c89b95366e5abca470d"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13398,7 +13405,8 @@
      "outline": "outlines/bashkar_gol.geojson",
      "outline_sha256": "77a3dc04eee2695ee8878b7ec78dd3a300e6fa050e4d580eb6a82260efedf13b"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13428,7 +13436,8 @@
      "outline": "outlines/atro_sar.geojson",
      "outline_sha256": "37d936aa08bb4e6feb3b45a3fc5a234a4c76e98a032dc0792c1a8252a0db0b2a"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13458,7 +13467,8 @@
      "outline": "outlines/lake_c006.geojson",
      "outline_sha256": "fb436f054c2cf1ed7dfc6cc274cf022af4576746a7057727f7d144529ad376c5"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13488,7 +13498,8 @@
      "outline": "outlines/lake_c007.geojson",
      "outline_sha256": "197ca38a5d4a2bf2d00f4b89b70ccfb294f18bbea0cf6ac0f08eb8ef684b8399"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13518,7 +13529,8 @@
      "outline": "outlines/zhagi_chhat.geojson",
      "outline_sha256": "ec95e9deb338753175c36d1cf52d3d69d6349696fb7cc032ba947a169730f647"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13548,7 +13560,8 @@
      "outline": "outlines/andrab.geojson",
      "outline_sha256": "ccbcb5d7f7f86393ecc8f738de9eadd4f7f7d5499abc6f94f62cb3a6940fc27a"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13578,7 +13591,8 @@
      "outline": "outlines/lake_c010.geojson",
      "outline_sha256": "66946196db797a67a2020137723b4fc02f75391d98c7e5a31c43f8e773cc7244"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13608,7 +13622,8 @@
      "outline": "outlines/lake_c011.geojson",
      "outline_sha256": "b36556d3f894e43d1b94caf1399792316a377134b79fdeb1730bb78954c97113"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13638,7 +13653,8 @@
      "outline": "outlines/lake_c012.geojson",
      "outline_sha256": "ab10488d7e297e321a41bfe92b6f0a60a592ecfa141b0cdf5cee659673e6e0b0"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13668,7 +13684,8 @@
      "outline": "outlines/lake_c013.geojson",
      "outline_sha256": "3a926577bf38cfc5f137d2f4317e8bcdbb386047cee3acdd52439cf3b0bc8332"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13698,7 +13715,8 @@
      "outline": "outlines/rama.geojson",
      "outline_sha256": "2cdfdbb2aff7f5bd48a690ffe0431c34df3e522e04d853742f9581aff319c9db"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13728,7 +13746,8 @@
      "outline": "outlines/lake_c015.geojson",
      "outline_sha256": "1ab4c4b331a9fa7cff602bb4cb08a1987303a390229eead35991ed5a1a17804e"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13743,7 +13762,8 @@
      "outline": "outlines/lake_c017.geojson",
      "outline_sha256": "6af23bbf22e6560e66db3083658bdab64538c0d03a4d58cc62dea31aa989b2fd"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    },
    "season_pass": "2026-09-29 156A"
   },
@@ -13774,7 +13794,8 @@
      "outline": "outlines/lake_c018.geojson",
      "outline_sha256": "c352ea4be0ec6b0b8a7b4f02f76f99e2751867ac3c5929a157857d78e89629d3"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32642
    }
   },
   {
@@ -13804,7 +13825,8 @@
      "outline": "outlines/lake_c019.geojson",
      "outline_sha256": "6f63f50a135502221038cab5626d1524bd00b748dbee64a99633eeca55f7ee0b"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32642
    }
   },
   {
@@ -13834,7 +13856,8 @@
      "outline": "outlines/lake_c020.geojson",
      "outline_sha256": "f8afb4c1e4dea689361521a1edfb95e1c0eda16bb6399fa28d291fb24e644d18"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13864,7 +13887,8 @@
      "outline": "outlines/katora.geojson",
      "outline_sha256": "334cbad3a9e13cfeedbc37aba5998cf61aba282ad7079197043de45935e34040"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   },
   {
@@ -13894,7 +13918,8 @@
      "outline": "outlines/godar_dhand.geojson",
      "outline_sha256": "53c369c2823a954561a68a75350683a14aa888cf6e7f5794b09da80062dfebe3"
     },
-    "window_margin_m": 1500.0
+    "window_margin_m": 1500.0,
+    "grid_epsg": 32643
    }
   }
  ]

@@ -798,10 +798,12 @@ def validation_of(check: dict | None) -> dict | None:
 
 def check_key(lake: Lake) -> dict:
     """What a Sentinel-2 check of a lake was made for, stored with it as `key`: the water method (config.METHOD_ID), the
-    zone (`absence_zone`: the register point, and the circle's radius or the outline file's SHA-256) and the margin the
+    zone (`absence_zone`: the register point, and the circle's radius or the outline file's SHA-256), the margin the
     cached windows are cropped with (config.WINDOW_MARGIN_M: the radar water a check compares is read from the cropped
-    float16 windows). A check made for another method, zone, point or margin is stale."""
-    return {"method": config.METHOD_ID, "zone": absence_zone(lake), "window_margin_m": config.WINDOW_MARGIN_M}
+    float16 windows) and the UTM zone of the grid the radar water is measured on (`lake_epsg`, `_align`). A check made
+    for another method, zone, point, margin or grid is stale."""
+    return {"method": config.METHOD_ID, "zone": absence_zone(lake), "window_margin_m": config.WINDOW_MARGIN_M,
+            "grid_epsg": lake_epsg(lake)}
 
 
 def is_current(row: dict | None, lake: Lake) -> bool:

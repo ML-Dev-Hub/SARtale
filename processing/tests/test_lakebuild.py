@@ -826,6 +826,21 @@ def test_a_check_made_before_the_crop_is_stale():
     assert METHOD["window_margin_m"] == config.WINDOW_MARGIN_M
 
 
+def test_a_check_made_on_another_grid_zone_is_stale(monkeypatch):
+    from sartale import lakebuild
+    from sartale.lakebuild import check_key, is_current
+    lake = make_lake("alpha")
+    assert check_key(lake)["grid_epsg"] == 32643
+    row = {"lake": lake.id, "key": check_key(lake), "iou": 0.6}
+    assert is_current(row, lake)
+    # the same lake measured on another zone's grid (a change of the grid rule): its check is stale
+    monkeypatch.setattr(lakebuild, "lake_epsg", lambda lk: 32642)
+    assert check_key(lake)["grid_epsg"] == 32642
+    assert not is_current(row, lake)
+    # a key from before the grid was in it is stale too
+    assert not is_current({**row, "key": {k: v for k, v in row["key"].items() if k != "grid_epsg"}}, lake)
+
+
 def _full_window_cache(cache, lake, seed=0):
     """Ten full 6 km windows (600 x 600 at 10 m) on two tracks, with values float16 can hold exactly, a dark lake (500 m
     disc) at the point, a bright ridge and a dark slope outside the 1.5 km crop margin (which move the window median
