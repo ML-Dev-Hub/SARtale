@@ -120,12 +120,12 @@ def crop_bounds(lake: Lake, epsg: int, margin_m: float = config.WINDOW_MARGIN_M)
     outline's bounds buffered by `lakewater.OUTLINE_BUFFER_M` when the lake has a readable outline (as the build
     uses it), else the circle of `zone_radius_km` around the point."""
     from sartale.lakebuild import _load_outline  # lakebuild is heavy; it never imports this module
-    from sartale.lakewater import OUTLINE_BUFFER_M, _ring
+    from sartale.lakewater import OUTLINE_BUFFER_M, outline_rings
 
     tr = Transformer.from_crs(4326, epsg, always_xy=True)
     outline = _load_outline(lake)
     if outline is not None:
-        pts = [tr.transform(lon, lat) for lon, lat in _ring(outline)]
+        pts = [tr.transform(lon, lat) for ring in outline_rings(outline) for lon, lat in ring]
         xs, ys = [p[0] for p in pts], [p[1] for p in pts]
         x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
         pad = OUTLINE_BUFFER_M + margin_m

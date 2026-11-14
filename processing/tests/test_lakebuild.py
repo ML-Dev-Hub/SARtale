@@ -903,3 +903,38 @@ def test_a_lake_mixing_cropped_and_uncropped_windows_measures_each_on_its_full_w
     b = build_lakes([lake], cropped, tmp_path / "o2", "t")["lakes"][0]
     assert [{k: p.get(k) for k in keys} for p in b["series"]] == [{k: p.get(k) for k in keys} for p in a["series"]]
     assert b["status"]["status"] == a["status"]["status"]
+
+
+def _two_part_outline(lake):
+    """A MultiPolygon Feature: a 600 m square on the lake and a 150 m square 1.2 km east of it."""
+    big, small = _outline_around(lake, 300)["geometry"], _outline_around(lake, 75, shift_m=1200)["geometry"]
+    return {"type": "Feature", "properties": {"source": "Test two-part outline"},
+            "geometry": {"type": "MultiPolygon", "coordinates": [big["coordinates"], small["coordinates"]]}}
+
+
+def test_a_multipolygon_outline_is_read_and_measured_as_the_union_of_its_parts(tmp_path):
+    from dataclasses import replace
+    from sartale.lakebuild import _load_outline
+    lk = _build_with_outline(tmp_path, _two_part_outline)
+    assert lk["outline_source"] == "Test two-part outline"
+    assert lk["area_label"].startswith("water area in the lake outline") and lk["zone_radius_km"] is None
+    assert not any("could not be read" in m or "radar window" in m for m in lk["limits"])
+    geom = _load_outline(replace(make_lake("alpha"), outline=str(tmp_path / "alpha.geojson")))
+    assert geom["type"] == "MultiPolygon" and len(geom["coordinates"]) == 2
+
+
+@pytest.mark.parametrize("content", [None, "{not json", json.dumps({"type": "Feature", "properties": {},
+                                                                     "geometry": {"type": "Point", "coordinates": [74.86, 36.33]}})])
+def test_an_outline_that_cannot_be_read_fails_the_lake_instead_of_drawing_the_circle(tmp_path, content):
+    from dataclasses import replace
+    from sartale.lakebuild import _load_outline
+    p = tmp_path / "bad.geojson"
+    if content is not None:
+        p.write_text(content, encoding="utf-8")
+    lk = replace(make_lake("alpha"), outline=str(p))
+    with pytest.raises(ValueError, match="alpha: the outline"):
+        _load_outline(lk)
+    cache, out = tmp_path / "cache", tmp_path / "out"
+    write_pass(cache, lk, "2026-06-18", "156A")
+    with pytest.raises(ValueError, match="alpha: the outline"):
+        build_lakes([lk], cache, out, "2026-11-04T00:00:00Z")

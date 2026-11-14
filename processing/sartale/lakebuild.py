@@ -114,20 +114,29 @@ def _outline_path(lake: Lake) -> Path | None:
 
 
 def _outline_feature(lake: Lake) -> dict | None:
-    """The outline as a GeoJSON Feature if `lake.outline` is a readable local GeoJSON file, else None."""
+    """The outline as a GeoJSON Feature with a Polygon or MultiPolygon geometry, or None for a lake without an
+    outline (it is measured in its point circle). An outline that is named but cannot be read (missing file, not
+    JSON, no polygon) raises ValueError naming the lake: the lake is never measured in the circle instead."""
     p = _outline_path(lake)
-    if p is None or not p.is_file():
+    if p is None:
         return None
-    doc = json.loads(p.read_text(encoding="utf-8"))
-    if doc.get("type") == "FeatureCollection":
-        doc = doc["features"][0]
-    if doc.get("type") != "Feature":
-        doc = {"type": "Feature", "properties": {}, "geometry": doc}
-    return doc if doc["geometry"].get("type") == "Polygon" else None
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        if doc.get("type") == "FeatureCollection":
+            doc = doc["features"][0]
+        if doc.get("type") != "Feature":
+            doc = {"type": "Feature", "properties": {}, "geometry": doc}
+        kind = doc["geometry"].get("type")
+    except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError) as e:
+        raise ValueError(f"{lake.id}: the outline {lake.outline} cannot be read ({type(e).__name__}: {e})") from e
+    if kind not in ("Polygon", "MultiPolygon"):
+        raise ValueError(f"{lake.id}: the outline {lake.outline} holds a {kind}, not a Polygon or MultiPolygon")
+    return doc
 
 
 def _load_outline(lake: Lake):
-    """The outline polygon if `lake.outline` is a readable local GeoJSON file, else None."""
+    """The outline geometry (Polygon or MultiPolygon) of `lake`, or None without one; raises like
+    `_outline_feature` when a named outline cannot be read."""
     f = _outline_feature(lake)
     return f["geometry"] if f else None
 
@@ -765,8 +774,6 @@ def build_lake(lake: Lake, cache_dir: Path, out_dir: Path, collections: dict[str
     limits: list[str] = state_limits(lake) + list(lake.limits)
     feature = _outline_feature(lake)
     outline = feature["geometry"] if feature else None
-    if lake.outline and outline is None:
-        limits.append("outline could not be read. The point circle is used")
     entry = {
         "id": lake.id, "name": lake.name, "lon": lake.lon, "lat": lake.lat, "role": lake.role,
         "coord_source": lake.coord_source,
