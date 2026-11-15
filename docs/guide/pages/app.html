@@ -57,7 +57,7 @@
 <p>SARtale is screening, not warning, so <code>content.ts</code> keeps a list of phrases the app must never use, among them "early warning", "flood detected", "predict", "safe" and "risk score". A test fails if any page text uses one. If you need a new phrase, check it against that list and against <a href="method.html#known-limits">the method's limits</a>.</p>
 
 <h2>Testing</h2>
-<p>Tests sit next to the code as <code>*.test.ts</code> and run in jsdom. MapLibre and uPlot are replaced by small fakes through the factory options (<code>createLocator</code>, <code>createChart</code>), so tests check what the app shows, not how the libraries draw. <code>publicData.test.ts</code> checks that every picture <code>lakes.json</code> names is in <code>app/public/data/</code>.</p>
+<p>Tests sit next to the code as <code>*.test.ts</code> and run in jsdom. MapLibre and uPlot are replaced by small fakes through the factory options (<code>createLakeChart</code> and <code>createMapDrawer</code> on the app, <code>createChart</code> on a lake's page, <code>mapDrawer</code> on Lake Watch), so tests check what the app shows, not how the libraries draw. <code>publicData.test.ts</code> checks that every picture <code>lakes.json</code> names is in <code>app/public/data/</code>.</p>
 
 <h2>Configuration</h2>
 <p>The app has no build-time settings and no server to reach. The "Add a lake" form opens the repository's issue form on GitHub, and the app reads <code>data/lakes.json</code>, <code>data/requests.json</code> and, when the map opens, <code>data/mapped_lakes.json</code> as static files. See <a href="lake-requests.html">Lake requests</a>.</p>
