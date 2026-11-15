@@ -8,7 +8,9 @@ import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
 import frozenJson from "./frozen/lakes.json";
 import { hasLakeNow, splitChecks, type Lake, type LakesFile } from "./lakes";
 import { familyCounts, frozenBreakdown, statusDisplay } from "./statusDisplay";
-import { mapPin, renderStoryPage, statusClass, storyNumbers } from "./storyPage";
+import { mapPin, renderStoryPage, statusClass, storyNumbers, watchTeaser } from "./storyPage";
+import styleCss from "./styles.css?raw";
+import { rulesFor } from "./testCss";
 
 /** The data this build ships. A rebuild replaces it, so tests on it check only what holds for any build. */
 // loaded the way the app loads it (lakes.ts loadLakes): check rows with only a note move to check_notes
@@ -199,7 +201,7 @@ describe("renderStoryPage", () => {
       onOpenEvidence: () => calls.push("evidence"),
       onFollowStory: () => calls.push("story"),
     });
-    root.querySelectorAll<HTMLAnchorElement>("a.sp-btn").forEach((b) => b.click());
+    root.querySelectorAll<HTMLAnchorElement>("a.sp-btn, a.sp-secondary").forEach((b) => b.click());
     expect(root.querySelectorAll(".sp-actions button")).toHaveLength(0);
     expect(calls).toContain("lakes");
     expect(calls).toContain("evidence");
@@ -483,15 +485,129 @@ describe("05 The levels: cards and family rows", () => {
 });
 
 describe("the cover buttons", () => {
-  it("makes Open Lake Watch the primary button and Follow the story the secondary one", () => {
+  it("makes Open Lake Watch the one filled button and the other two plain text links", () => {
     const { root } = render(real);
     const btns = [...root.querySelectorAll<HTMLElement>(".sp-cover .sp-actions .sp-btn")];
-    const open = btns.find((b) => b.textContent === "Open Lake Watch")!;
-    const follow = btns.find((b) => b.textContent === "Follow the story")!;
-    expect(open.classList.contains("sp-btn-primary")).toBe(true);
-    expect(follow.classList.contains("sp-btn-primary")).toBe(false);
-    expect(follow.classList.contains("sp-btn-ghost")).toBe(true);
-    expect(btns[0]).toBe(open);
+    expect(btns).toHaveLength(1);
+    expect(btns[0].textContent).toBe("Open Lake Watch");
+    expect(btns[0].classList.contains("sp-btn-primary")).toBe(true);
+    const links = [...root.querySelectorAll<HTMLElement>(".sp-cover .sp-actions .sp-secondary")];
+    expect(links.map((l) => l.textContent)).toEqual(["Follow the story", "Play the videos"]);
+    expect(root.querySelector('.sp-actions a[href="#story"]')).toBe(links[0]);
+  });
+
+  it("sizes the hero action 56 px tall, 18 px, and full width on a phone, with 44 px secondary links", () => {
+    const hero = rulesFor(storyCss, ".sp-actions .sp-btn-primary").join(" ");
+    expect(hero).toMatch(/min-height:\s*56px/);
+    expect(hero).toMatch(/font-size:\s*18px/);
+    expect(hero).toMatch(/padding:\s*0 28px/);
+    expect(hero).toMatch(/width:\s*100%/);
+    expect(rulesFor(storyCss, ".sp-secondary").join(" ")).toMatch(/min-height:\s*44px/);
+  });
+
+  it("makes the header sticky on the story page too", () => {
+    const rule = rulesFor(styleCss, '.shell[data-view="home"] .top').join(" ");
+    expect(rule).toMatch(/position:\s*sticky/);
+    expect(rule).not.toMatch(/position:\s*absolute/);
+  });
+});
+
+describe("the Lake Watch teaser", () => {
+  it("counts the lakes that need attention, Alert first, only non-zero parts, and links to the filtered overview", () => {
+    const t = watchTeaser(fixtureLakes)!;
+    expect(t.text).toBe("3 lakes need attention: 1 Alert: growing, 1 Watch, 1 Decrease noted");
+    expect(t.href).toBe("#lakes?show=attention");
+    const { root } = render(fixtureLakes);
+    const a = root.querySelector<HTMLAnchorElement>(".sp-cover a.sp-watch-teaser")!;
+    expect(a.textContent).toBe(t.text);
+    expect(a.getAttribute("href")).toBe("#lakes?show=attention");
+    expect(root.querySelector(".sp-watch-date")?.textContent).toBe("Latest radar pass 30 Oct 2026");
+  });
+
+  it("drops the parts that are zero", () => {
+    const only = { ...fixtureLakes, lakes: fixtureLakes.lakes.filter((l) => l.status.status === "Watch" || l.status.status === "No change") };
+    expect(watchTeaser(only)!.text).toBe("1 lake needs attention: 1 Watch");
+  });
+
+  it("says no lake needs attention when none does, and still links to Lake Watch", () => {
+    const calm = { ...fixtureLakes, lakes: fixtureLakes.lakes.filter((l) => l.status.status === "No change") };
+    const t = watchTeaser(calm)!;
+    expect(t.text).toBe("No lake needs attention in this build");
+    expect(t.href).toBe("#lakes");
+  });
+
+  it("is absent without data", () => {
+    expect(watchTeaser(null)).toBeNull();
+    expect(render(null).root.querySelector(".sp-watch-teaser")).toBeNull();
+  });
+
+  it("uses a filter key the overview accepts", async () => {
+    const { parseOverviewHash } = await import("./overview/model");
+    expect(parseOverviewHash("show=attention").show).toBe("attention");
+  });
+});
+
+describe("the cover stats", () => {
+  it("counts every watched lake, those holding water now, the cloud-gap looks with their dates, and radar readings", () => {
+    const { root } = render(fixtureLakes);
+    const stats = [...root.querySelectorAll(".sp-stats > div")].map((d) => [d.children[0].textContent, d.children[1].textContent]);
+    const n = storyNumbers(fixtureLakes);
+    expect(stats).toEqual([
+      [n.sites, "lakes watched"],
+      [n.lakes, "holding water now"],
+      [n.cloudLooks, "valid radar looks, 17 June to 4 August"],
+      [n.passes, "radar readings of the lakes"],
+    ]);
+  });
+});
+
+describe("request a lake", () => {
+  it("is called Request a lake, with the review line above the button", () => {
+    const { root } = render(real);
+    const btn = root.querySelector<HTMLButtonElement>(".sp-add-slot button[type=submit]")!;
+    expect(btn.textContent).toBe("Request a lake");
+    const line = root.querySelector(".sp-add-slot .sp-add-review")!;
+    expect(line.textContent).toBe("Opens GitHub. Submit the request there; the team reviews it before the lake is watched.");
+    expect(line.nextElementSibling?.contains(btn)).toBe(true);
+    expect(root.textContent).not.toContain("Add to the watch list");
+  });
+});
+
+describe("images", () => {
+  it("gives every story image a reserved size, the hero eager and the rest lazy, and a fallback on error", () => {
+    const { root } = render(real);
+    const imgs = [...root.querySelectorAll<HTMLImageElement>("img")];
+    for (const i of imgs) {
+      expect(Number(i.getAttribute("width")), i.src).toBeGreaterThan(0);
+      expect(Number(i.getAttribute("height")), i.src).toBeGreaterThan(0);
+    }
+    expect(root.querySelector<HTMLImageElement>(".sp-cover > img")!.loading).toBe("eager");
+    const below = imgs.filter((i) => !i.closest(".sp-cover"));
+    expect(below.length).toBeGreaterThan(2);
+    for (const i of below) expect(i.loading).toBe("lazy");
+    below[0].dispatchEvent(new Event("error"));
+    expect(root.textContent).toContain("Image unavailable");
+  });
+});
+
+describe("colour and type", () => {
+  it("has no all-caps labels, brown washes or amber panels on the story page", () => {
+    expect(storyCss).not.toMatch(/text-transform:\s*uppercase/);
+    expect(rulesFor(storyCss, ".sp-alert-banner").join(" ")).not.toMatch(/#1a1203|rgba\(255,\s*196/);
+    expect(rulesFor(storyCss, ".sp-add-card").join(" ")).not.toMatch(/rgba\(255,\s*196|--sp-warm/);
+  });
+
+  it("keeps secondary text and form inputs readable", () => {
+    for (const sel of [".sp-src", ".sp-credit", ".sp-map-key", ".sp-map-credit", ".sp-request-line", ".sp-lake-meta", ".sp-lake-status", ".sp-card-label", ".sp-lake-area-frozen"]) {
+      const px = rulesFor(storyCss, sel).join(" ").match(/font-size:\s*(\d+)px/);
+      if (px) expect(Number(px[1]), sel).toBeGreaterThanOrEqual(14);
+    }
+    expect(rulesFor(storyCss, ".sp-field input").join(" ")).toMatch(/font-size:\s*16px/);
+    expect(rulesFor(styleCss, ".top .maturity").join(" ")).not.toMatch(/font-size:\s*0\.72rem/);
+  });
+
+  it("trims the flood section's top padding to 48 px on a phone", () => {
+    expect(storyCss).toMatch(/@media \(max-width: 900px\)[\s\S]*\.sp-risk\s*\{[^}]*padding-top:\s*48px/);
   });
 });
 

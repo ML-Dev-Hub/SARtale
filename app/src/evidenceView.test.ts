@@ -128,6 +128,15 @@ describe("How we know", () => {
     expect(root.querySelector(".evidence-title")!.textContent).toBe("How we know");
   });
 
+  test("the main heading is an h1 and amber is not used for generic caveats", async () => {
+    const { root } = open();
+    expect(root.querySelector("h1.evidence-title")).not.toBeNull();
+    expect(root.querySelector("h2.evidence-title")).toBeNull();
+    const css = (await import("./styles.css?raw")).default;
+    const { rulesFor } = await import("./testCss");
+    for (const sel of [".evidence-status", ".verdict-cannot", ".evidence-list li::marker"]) expect(rulesFor(css, sel).join(" "), sel).not.toContain("--warm");
+  });
+
   test("C10: without lake data no raw {token} is shown, and the page says why figures are missing", () => {
     const { root } = open(null);
     expect(root.textContent).not.toMatch(/\{\w+\}/);

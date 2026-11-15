@@ -52,32 +52,31 @@ const TITLE = "When clouds close in, the lakes stay in view.";
 
 /** A link-button on the story page, found by its label. */
 function pageButton($: (r: string) => HTMLElement, label: string, nth = 0): HTMLAnchorElement {
-  return [...$("home-root").querySelectorAll<HTMLAnchorElement>("a.sp-btn")].filter((b) => b.textContent === label)[nth];
+  return [...$("home-root").querySelectorAll<HTMLAnchorElement>("a.sp-btn, a.sp-secondary")].filter((b) => b.textContent === label)[nth];
 }
 
 describe("views", () => {
-  test("starts on Lake Watch, the story page is one click away, and the logo returns to Lake Watch", () => {
+  test("starts on the story page, Lake Watch is one click away, and the logo returns to the story", () => {
     const { $ } = setup();
+    expect($("home-root").hidden).toBe(false);
+    expect($("lakes-view").hidden).toBe(true);
+    expect($("shell").dataset.view).toBe("home");
+    expect($("view-name").textContent).toBe("The story");
+    expect(document.title).toBe("SARtale · The story");
+    expect($("home").getAttribute("aria-label")).toBe("SARtale: the story");
+    expect($("home-root").querySelector("h1")!.textContent).toBe(TITLE);
+    $("view-lakes").click();
     expect($("lakes-view").hidden).toBe(false);
     expect($("lakes-view").dataset.mode).toBe("overview");
-    expect($("home-root").hidden).toBe(true);
-    expect($("shell").dataset.view).toBe("lakes");
-    expect($("view-name").textContent).toBe("Lake Watch");
-    expect(document.title).toBe("SARtale · Lake Watch");
-    expect($("home").getAttribute("aria-label")).toBe("SARtale: Lake Watch");
-    $("view-home").click();
-    expect($("home-root").hidden).toBe(false);
-    expect($("home-root").querySelector("h1")!.textContent).toBe(TITLE);
-    expect(window.location.hash).toBe("#start");
+    expect(window.location.hash).toBe("#lakes");
     $("view-evidence").click();
     expect($("evidence-view").hidden).toBe(false);
-    expect($("home-root").hidden).toBe(true);
     expect($("view-evidence").getAttribute("aria-current")).toBe("page");
     expect(document.title).toBe("SARtale · How we know");
     $("home").click();
-    expect($("lakes-view").hidden).toBe(false);
-    expect($("home-root").hidden).toBe(true);
-    expect(document.title).toBe("SARtale · Lake Watch");
+    expect($("home-root").hidden).toBe(false);
+    expect($("lakes-view").hidden).toBe(true);
+    expect(document.title).toBe("SARtale · The story");
     window.location.hash = "";
   });
 
@@ -91,21 +90,20 @@ describe("views", () => {
     expect(root.querySelector("header.top img.logo")).not.toBeNull();
   });
 
-  test("the nav is Lake Watch, How we know, then The story, and nothing else", () => {
+  test("the nav is The story, Lake Watch (the primary pill), then How we know, and nothing else", () => {
     const { root } = setup();
     const buttons = [...root.querySelectorAll<HTMLElement>(".views a")];
     expect(root.querySelectorAll(".views button")).toHaveLength(0);
-    expect(buttons.map((b) => b.getAttribute("href"))).toEqual(["#lakes", "#evidence", "#start"]);
-    expect(buttons.map((b) => b.textContent)).toEqual(["Lake Watch", "How we know", "The story"]);
-    expect(buttons.map((b) => b.dataset.role)).toEqual(["view-lakes", "view-evidence", "view-home"]);
-    expect(buttons[0].classList.contains("view-primary")).toBe(true);
-    expect(buttons.slice(1).some((b) => b.classList.contains("view-primary"))).toBe(false);
+    expect(buttons.map((b) => b.getAttribute("href"))).toEqual(["#start", "#lakes", "#evidence"]);
+    expect(buttons.map((b) => b.textContent)).toEqual(["The story", "Lake Watch", "How we know"]);
+    expect(buttons.map((b) => b.dataset.role)).toEqual(["view-home", "view-lakes", "view-evidence"]);
+    expect(buttons.filter((b) => b.classList.contains("view-primary")).map((b) => b.dataset.role)).toEqual(["view-lakes"]);
   });
 
   test("navigation actions are real links, so right-click and open in a new tab work", () => {
     const { root, $ } = setup();
     expect($("home").tagName).toBe("A");
-    expect($("home").getAttribute("href")).toBe("#lakes");
+    expect($("home").getAttribute("href")).toBe("#start");
     expect(root.querySelectorAll("header.top button")).toHaveLength(0);
     for (const label of ["Open Lake Watch", "Follow the story"]) expect(pageButton($, label)?.getAttribute("href")).toMatch(/^#/);
     expect(pageButton($, "Follow the story").getAttribute("href")).toBe("#story");
@@ -153,7 +151,7 @@ describe("views", () => {
   });
 
   test("a #lakes, #evidence or #story hash opens that view on load", () => {
-    for (const [hash, view] of [["#lakes", "lakes-view"], ["#evidence", "evidence-view"], ["#story", "lakestory-view"], ["#start", "home-root"], ["", "lakes-view"], ["#", "lakes-view"], ["#nonsense", "lakes-view"]]) {
+    for (const [hash, view] of [["#lakes", "lakes-view"], ["#evidence", "evidence-view"], ["#story", "lakestory-view"], ["#start", "home-root"], ["", "home-root"], ["#", "home-root"], ["#nonsense", "home-root"]]) {
       window.location.hash = hash;
       const { $ } = setup();
       expect($(view).hidden).toBe(false);
@@ -294,8 +292,8 @@ describe("the lake story", () => {
 
 describe("routing", () => {
   test("test_routeFromHash_names_views_and_lakes_and_ignores_anchors", () => {
-    expect(routeFromHash("")).toEqual({ view: "lakes" });
-    expect(routeFromHash("#")).toEqual({ view: "lakes" });
+    expect(routeFromHash("")).toEqual({ view: "home" });
+    expect(routeFromHash("#")).toEqual({ view: "home" });
     expect(routeFromHash("#start")).toEqual({ view: "home" });
     expect(routeFromHash("#story")).toEqual({ view: "story" });
     expect(routeFromHash("#evidence")).toEqual({ view: "evidence" });

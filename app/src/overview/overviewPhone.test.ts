@@ -85,7 +85,7 @@ describe("overview on a phone", () => {
     click(root.querySelector('[data-role="ovp-chips"] [data-filter="frozen"]')!);
     expect(onState).toHaveBeenLastCalledWith(expect.objectContaining({ show: "frozen" }));
     const filters = [...role("ovp-chips").querySelectorAll<HTMLElement>("[data-filter]")].map((b) => b.dataset.filter);
-    expect(filters).toEqual(["all", "alert", "watch", "open", "frozen", "no-lake", "above", "suparco"]);
+    expect(filters).toEqual(["all", "attention", "alert", "watch", "open", "frozen", "unmeasured", "no-lake", "above", "suparco"]);
   });
   it("the chips show their counts and mark the chosen one", () => {
     render(file, { ...DEFAULT_STATE, show: "frozen" });
@@ -93,13 +93,42 @@ describe("overview on a phone", () => {
     expect(frozen.getAttribute("aria-pressed")).toBe("true");
     expect(frozen.textContent).toContain("1");
   });
+  it("has Needs attention and Not measured chips with counts", () => {
+    render(file);
+    const att = role("ovp-chips").querySelector<HTMLElement>('[data-filter="attention"]')!;
+    expect(att.textContent).toContain("Needs attention");
+    expect(att.querySelector(".ovp-chip-count")!.textContent).toBe("4");
+    const nm = role("ovp-chips").querySelector<HTMLElement>('[data-filter="unmeasured"]')!;
+    expect(nm.textContent).toContain("Not measured");
+    click(nm);
+    expect(onState).toHaveBeenLastCalledWith(expect.objectContaining({ show: "unmeasured" }));
+  });
+  it("has a labelled District select that writes the state", () => {
+    render(file);
+    const sel = root.querySelector<HTMLSelectElement>('[data-role="ovp-district"]')!;
+    expect(root.querySelector(`label[for="${sel.id}"]`)!.textContent).toBe("District");
+    expect([...sel.options].map((o) => o.textContent)[0]).toBe("All districts");
+    expect([...sel.options].some((o) => /^Hunza/.test(o.textContent!))).toBe(true);
+    sel.value = "Hunza";
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(onState).toHaveBeenLastCalledWith(expect.objectContaining({ district: "Hunza" }));
+  });
+  it("the shown count equals the cards drawn, and says so when the list is folded", () => {
+    render(makeFile(Array.from({ length: 14 }, (_, i) => lake(`lake_${String(i).padStart(2, "0")}`))));
+    expect(role("ov-shown").textContent).toBe("8 of 14 shown");
+    click([...role("ovp-list").querySelectorAll("button")].find((b) => b.textContent === "Show all 14 lakes")!);
+    expect(role("ov-shown").textContent).toBe("14 shown");
+    render(file);
+    const drawn = root.querySelectorAll('[data-role="ovp-list"] [data-id], [data-role="ovp-attention"] article[data-id]').length;
+    expect(role("ov-shown").textContent).toBe(`${drawn} shown`);
+  });
   it("search and sort write the state", () => {
     render(file);
     const q = root.querySelector<HTMLInputElement>('input[type="search"]')!;
     q.value = "passu";
     q.dispatchEvent(new Event("input", { bubbles: true }));
     expect(onState).toHaveBeenLastCalledWith(expect.objectContaining({ q: "passu" }));
-    const sort = root.querySelector<HTMLSelectElement>("select")!;
+    const sort = root.querySelector<HTMLSelectElement>("#ovp-sort")!;
     expect([...sort.options].map((o) => o.value)).toEqual(["status", "change", "name", "latest"]);
     sort.value = "name";
     sort.dispatchEvent(new Event("change", { bubbles: true }));

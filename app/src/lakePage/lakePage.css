@@ -135,9 +135,9 @@
 .lp-source dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .lp-limits h3 { color: var(--muted); font-size: 14px; font-weight: 700; margin-bottom: 6px; }
 .lp-limits ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
-.lp-block > .lp-slot > .lp-btn[data-action="brief"] { align-self: flex-start; background: transparent; cursor: pointer; font: inherit; font-weight: 600; }
+
 @media (max-width: 640px) { .lp-source { grid-template-columns: 1fr; } }
-.lp-authority-note { color: var(--muted); font-size: 13px; margin: 0; flex-basis: 100%; }
+.lp-authority-note { color: var(--muted); font-size: 14px; margin: 0; flex-basis: 100%; }
 
 /* ---- Phone: the same blocks in one column. Every control is at least 44 px tall; no sideways scroll. ---- */
 .lp-phone { gap: 16px; font-size: 16px; overflow-x: hidden; }
@@ -145,7 +145,7 @@
 .lp-phone .lp-header { gap: 6px; }
 .lp-phone .lp-top { flex-wrap: nowrap; gap: 8px; border-bottom: 1px solid var(--line); }
 .lp-phone .lp-back { padding: 0 8px 0 0; }
-.lp-phone .lp-built { font-size: 13px; text-align: right; }
+.lp-phone .lp-built { font-size: 14px; text-align: right; }
 .lp-phone .lp-name { font-size: 30px; line-height: 1.1; }
 .lp-phone .lp-place { color: var(--text); font-weight: 400; }
 .lp-phone .ov-chip { align-self: flex-start; }
@@ -174,7 +174,7 @@
 .lp-reading .lp-note { overflow-wrap: anywhere; }
 .lp-phone .lp-showall { align-self: stretch; justify-content: center; border: 1px solid var(--line-strong); border-radius: 10px; min-height: 48px; }
 .lp-phone .lp-source { grid-template-columns: 1fr; gap: 2px; }
-.lp-phone .lp-block > .lp-slot > .lp-btn[data-action="brief"] { align-self: stretch; justify-content: center; min-height: 48px; }
+
 .lp-phone .lp-legend { flex-direction: column; flex-wrap: nowrap; gap: 6px; }
 .lp-phone .lp-caption, .lp-phone .lp-gauge-note { overflow-wrap: anywhere; }
 
@@ -182,3 +182,13 @@
 .lp-limits-raw { margin-top: 10px; font-size: 14px; }
 .lp-limits-raw summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--muted); }
 .lp-limits-raw ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--muted); }
+
+/* ---- What to do first, then the reasoning; sources folded shut ---- */
+.lp-message .lp-todo { padding-top: 0; border-top: 0; }
+.lp-message .lp-parts { padding-top: 16px; border-top: 1px solid var(--line); }
+.lp-btn-brief { background: transparent; cursor: pointer; font: inherit; font-weight: 600; }
+.lp-actions-solo { padding: 0; }
+.lp-freeze-extent { color: var(--muted); }
+.lp-sources-details { border-top: 1px solid var(--line); padding-top: 4px; }
+.lp-sources-details > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--accent); font-weight: 600; }
+.lp-sources-details > .lp-sources-list { padding-top: 6px; }

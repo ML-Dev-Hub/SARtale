@@ -111,8 +111,16 @@ function header(lake: Lake, file: LakesFile, phone: boolean): HTMLElement {
   return sec;
 }
 
+function briefButton(lake: Lake, onBrief: (l: Lake) => void): HTMLButtonElement {
+  const b = el("button", "lp-btn lp-btn-brief", "Print lake brief");
+  b.type = "button";
+  b.dataset.action = "brief";
+  b.addEventListener("click", () => onBrief(lake));
+  return b;
+}
+
 /** The first message under the header: the pipeline's four parts, then what to do and the actions. */
-function message(lake: Lake): HTMLElement | null {
+function message(lake: Lake, onBrief?: (l: Lake) => void): HTMLElement | null {
   const m = levelMessage(lake);
   if (!m) return null;
   const sec = el("section", "lp-message");
@@ -122,18 +130,17 @@ function message(lake: Lake): HTMLElement | null {
   sec.setAttribute("aria-label", "First message");
   sec.append(el("h2", "lp-message-title", m.title));
 
-  const parts = el("div", "lp-parts");
   const part = (label: string, ...paras: (string | undefined)[]): HTMLElement => {
     const d = el("div", "lp-part");
     d.append(el("h3", undefined, label));
     for (const t of paras) if (t) d.append(el("p", undefined, t));
     return d;
   };
-  parts.append(part("What changed", m.what, m.since), part("How sure", m.how_sure), part("What it is not", m.not));
-  sec.append(parts);
 
+  // What to do and its buttons come first: the next step before the reasoning.
+  const authority = authorityFor(lake.province);
   const todo = el("div", "lp-todo");
-  const text = part("What to do", m.do);
+  const text = part("What to do", authority ? m.do.replace("Contact GBDMA or PDMA.", `Contact ${authority.label.replace(/^Contact /, "")}.`) : m.do);
   text.classList.add("lp-todo-text");
   const actions = el("div", "lp-actions");
   const s2 = link("Open recent Sentinel-2 imagery", sentinel2Url(lake), "lp-btn lp-btn-primary");
@@ -141,17 +148,21 @@ function message(lake: Lake): HTMLElement | null {
   s2.target = "_blank";
   s2.rel = "noopener noreferrer";
   actions.append(s2);
-  const authority = authorityFor(lake.province);
   if (authority?.url) {
     const a = link(authority.label, authority.url, "lp-btn");
     a.dataset.action = "authority";
     a.target = "_blank";
     a.rel = "noopener noreferrer";
     actions.append(a);
-    if (authority.note) actions.append(el("p", "lp-authority-note", authority.note));
   }
+  if (onBrief) actions.append(briefButton(lake, onBrief));
+  if (authority?.url && authority.note) actions.append(el("p", "lp-authority-note", authority.note));
   todo.append(text, actions);
   sec.append(todo);
+
+  const parts = el("div", "lp-parts");
+  parts.append(part("What changed", m.what, m.since), part("How sure", m.how_sure), part("What it is not", m.not));
+  sec.append(parts);
   // The message text normally ends with this sentence. It shows once: added here only when the text lacks it.
   if (!m.do.includes(OFFICIAL_WARNINGS)) sec.append(el("p", "lp-official", OFFICIAL_WARNINGS));
   return sec;
@@ -224,6 +235,7 @@ function fillFreeze(lake: Lake): (body: HTMLElement) => boolean {
       for (const t of facts) ul.append(el("li", undefined, t));
       body.append(ul);
     }
+    body.append(el("p", "lp-freeze-extent", "Extent comparison unavailable while frozen."));
     const open = lastOpenLine(lake);
     if (open) {
       const d = el("div", "lp-freeze-open");
@@ -243,16 +255,9 @@ function gaugeBlock(lake: Lake, factor: number, phone: boolean): HTMLElement | n
   });
 }
 
-/** Sources and limits: where each fact comes from, what the method and this lake cannot do, and the printed brief. */
-function fillSources(lake: Lake, file: LakesFile, onBrief?: (l: Lake) => void): (body: HTMLElement) => boolean {
+/** Sources and limits: what the method and this lake cannot do, and where each fact comes from. */
+function fillSources(lake: Lake, file: LakesFile): (body: HTMLElement) => boolean {
   return (body) => {
-    const dl = el("dl", "lp-sources-list");
-    for (const r of sourceRows(lake, file)) {
-      const row = el("div", "lp-source");
-      row.append(el("dt", undefined, r.k), el("dd", undefined, r.v));
-      dl.append(row);
-    }
-    body.append(dl);
     const limits = limitsList(lake, file);
     if (limits.length) {
       const d = el("div", "lp-limits");
@@ -272,13 +277,17 @@ function fillSources(lake: Lake, file: LakesFile, onBrief?: (l: Lake) => void): 
       }
       body.append(d);
     }
-    if (onBrief) {
-      const b = el("button", "lp-btn", "Print lake brief");
-      b.type = "button";
-      b.dataset.action = "brief";
-      b.addEventListener("click", () => onBrief(lake));
-      body.append(b);
+    // The long list of sources and processing versions folds shut; the limits above stay in view.
+    const details = el("details", "lp-sources-details");
+    details.append(el("summary", undefined, "Sources and processing details"));
+    const dl = el("dl", "lp-sources-list");
+    for (const r of sourceRows(lake, file)) {
+      const row = el("div", "lp-source");
+      row.append(el("dt", undefined, r.k), el("dd", undefined, r.v));
+      dl.append(row);
     }
+    details.append(dl);
+    body.append(details);
     return true;
   };
 }
@@ -310,18 +319,24 @@ export function createLakePage(root: HTMLElement, opts: LakePageOptions): { dest
     renderCompare(sec, { file: opts.file, lake, pass: opts.compare, decodeMask: opts.decodeMask, onRoute: opts.onRoute });
     page.append(sec);
   } else {
-    const msg = isFrozen(lake) ? null : message(lake);
+    const msg = isFrozen(lake) ? null : message(lake, opts.onBrief);
     if (msg) page.append(msg);
+    // With no message (frozen, or no level) the brief button still sits up here, not at the bottom.
+    else if (opts.onBrief) {
+      const row = el("div", "lp-actions lp-actions-solo");
+      row.append(briefButton(lake, opts.onBrief));
+      page.append(row);
+    }
     // Blocks whose content a later task fills (the gauge or frozen card, extent, history, sources) join here, in order.
     const factor = opts.file.constants.change_factor;
     const top = isFrozen(lake) ? block("lp-freeze", "Ice", fillFreeze(lake)) : gaugeBlock(lake, factor, phone);
     const hist = { minObservable: opts.file.constants.min_observable, factor, createChart: opts.createChart, phone };
     const blocks = [
       top,
-      block("lp-extent", "Largest recorded extent", (b) => (renderExtent(b, lake, opts.file.constants.min_observable), true)),
+      isFrozen(lake) ? null : block("lp-extent", "Largest recorded extent", (b) => (renderExtent(b, lake, opts.file.constants.min_observable), true)),
       block("lp-picture", "Radar picture", fillPicture(lake)),
       block("lp-history", historyHeading(lake), (b) => renderHistory(b, lake, hist)),
-      block("lp-sources", "Sources and limits", fillSources(lake, opts.file, opts.onBrief)),
+      block("lp-sources", "Sources and limits", fillSources(lake, opts.file)),
     ];
     for (const sec of blocks) if (sec) page.append(sec);
   }

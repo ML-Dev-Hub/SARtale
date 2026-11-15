@@ -9,9 +9,16 @@ import { rulesFor } from "../testCss";
 import { createLakePage } from "./lakePage";
 import lakeCss from "./lakePage.css?raw";
 
-vi.mock("../contacts", () => ({ authorityFor: () => null }));
+const auth = vi.hoisted(() => ({ on: false }));
+vi.mock("../contacts", () => ({
+  authorityFor: (p: string | null) =>
+    auth.on && p === "GB" ? { id: "NDMA", label: "Contact NDMA", name: "NDMA", url: "https://ndma.example/contact", checked: "2026-11-14" }
+    : auth.on && p === "KP" ? { id: "PDMA-KP", label: "Contact PDMA", name: "PDMA KP", url: "https://pdma.example/contacts", checked: "2026-11-14" }
+    : null,
+}));
 
 afterEach(() => {
+  auth.on = false;
   document.body.innerHTML = "";
 });
 
@@ -35,14 +42,47 @@ describe("the lake page", () => {
     expect(roles(page(watchLake))).toEqual(["lp-header", "lp-message", "lp-gauge", "lp-extent", "lp-picture", "lp-history", "lp-sources"]);
     expect(page(watchLake).querySelectorAll("h2").length).toBe(6);
   });
-  it("a frozen lake has no message", () => expect(roles(page(frozen))).toEqual(["lp-header", "lp-freeze", "lp-extent", "lp-picture", "lp-history", "lp-sources"]));
-  it("the sources block lists the sources and limits and prints the brief", () => {
+  it("a frozen lake has no message", () => expect(roles(page(frozen))).toEqual(["lp-header", "lp-freeze", "lp-picture", "lp-history", "lp-sources"]));
+  it("the sources block keeps its limits visible and folds the source list into a closed details", () => {
+    const b = page(watchLake).querySelector<HTMLElement>('[data-role="lp-sources"]')!;
+    const det = b.querySelector<HTMLDetailsElement>("details.lp-sources-details")!;
+    expect(det.open).toBe(false);
+    expect(det.querySelector("summary")!.textContent).toBe("Sources and processing details");
+    expect(det.textContent).toContain("Coordinates");
+    expect(b.querySelector(".lp-limits")!.closest("details.lp-sources-details")).toBeNull();
+    expect(b.querySelector(".lp-limits h3")!.textContent).toBe("Limits");
+    expect(b.querySelector('button[data-action="brief"]')).toBeNull();
+  });
+  it("Print lake brief sits with the actions, before the detail parts", () => {
     const onBrief = vi.fn();
-    const b = page(watchLake, { onBrief }).querySelector<HTMLElement>('[data-role="lp-sources"]')!;
-    expect(b.textContent).toContain("Coordinates");
-    expect(b.querySelector("h3")!.textContent).toBe("Limits");
-    b.querySelector<HTMLButtonElement>('button[data-action="brief"]')!.click();
+    const m = page(watchLake, { onBrief }).querySelector<HTMLElement>('[data-role="lp-message"]')!;
+    m.querySelector<HTMLButtonElement>('.lp-todo button[data-action="brief"]')!.click();
     expect(onBrief).toHaveBeenCalledWith(watchLake);
+  });
+  it("a frozen lake still gets a Print lake brief button, outside the sources block", () => {
+    const onBrief = vi.fn();
+    const el = page(frozen, { onBrief });
+    el.querySelector<HTMLButtonElement>('button[data-action="brief"]')!.click();
+    expect(onBrief).toHaveBeenCalledWith(frozen);
+    expect(el.querySelector('[data-role="lp-sources"] [data-action="brief"]')).toBeNull();
+  });
+  it("What to do comes before What changed, How sure and What it is not", () => {
+    const m = page(watchLake).querySelector<HTMLElement>('[data-role="lp-message"]')!;
+    expect(m.querySelector(".lp-todo")!.compareDocumentPosition(m.querySelector(".lp-parts")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+  it("the What to do text names the authority of the lake's province", () => {
+    auth.on = true;
+    const gb = page(watchLake).querySelector<HTMLElement>(".lp-todo-text")!.textContent!;
+    expect(gb).toContain("Contact NDMA.");
+    expect(gb).not.toContain("GBDMA or PDMA");
+    expect(gb).toContain("Official warnings come from PMD, NDMA, GBDMA and PDMA.");
+    const kp = makeLake({ ...watchLake, id: "kp", province: "KP" });
+    expect(page(kp).querySelector<HTMLElement>(".lp-todo-text")!.textContent).toContain("Contact PDMA.");
+  });
+  it("a frozen lake folds the missing extent into the Ice card", () => {
+    const p = page(frozen);
+    expect(p.querySelector('[data-role="lp-extent"]')).toBeNull();
+    expect(p.querySelector('[data-role="lp-freeze"]')!.textContent).toContain("Extent comparison unavailable while frozen.");
   });
   it("limits are shown in plain English, with the original wording kept in the sources block", () => {
     const zone = "Track 164D comes in another UTM zone (EPSG:32642); its windows are resampled (nearest neighbour) onto the lake's grid (EPSG:32643).";
@@ -58,7 +98,7 @@ describe("the lake page", () => {
   it("a lake without a level has no message", () => expect(roles(page(makeLake()))).not.toContain("lp-message"));
   it("the message has the four parts and the actions", () => {
     const m = page(watchLake).querySelector('[data-role="lp-message"]')!;
-    expect([...m.querySelectorAll("h3")].map((h) => h.textContent)).toEqual(["What changed", "How sure", "What it is not", "What to do"]);
+    expect([...m.querySelectorAll("h3")].map((h) => h.textContent)).toEqual(["What to do", "What changed", "How sure", "What it is not"]);
     expect(m.querySelector<HTMLAnchorElement>('a[data-action="sentinel2"]')!.href).toBe(sentinel2Url(watchLake));
     expect(m.textContent).toContain("Official warnings come from PMD, NDMA, GBDMA and PDMA.");
   });

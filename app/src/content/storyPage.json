@@ -7,9 +7,10 @@
     "videosLabel": "Play the videos",
     "openLabel": "Open Lake Watch",
     "stats": [
-      { "value": "{lakes}", "label": "lakes holding water now" },
-      { "value": "{cloudLooks}", "label": "valid radar looks in the cloud gap" },
-      { "value": "{passes}", "label": "NISAR passes read" }
+      { "value": "{sites}", "label": "lakes watched" },
+      { "value": "{lakes}", "label": "holding water now" },
+      { "value": "{cloudLooks}", "label": "valid radar looks, {cloudRange}" },
+      { "value": "{passes}", "label": "radar readings of the lakes" }
     ],
     "image": "story/hunza_valley.jpg",
     "imageAlt": "Satellite view of the Hunza valley in summer, snow peaks above a green river valley",
@@ -112,7 +113,8 @@
       "lonPlaceholder": "73.90",
       "sourceLabel": "Where the coordinates come from",
       "sourcePlaceholder": "Inventory, paper, field survey or map",
-      "submitLabel": "Add to the watch list",
+      "submitLabel": "Request a lake",
+      "reviewLine": "Opens GitHub. Submit the request there; the team reviews it before the lake is watched.",
       "hint": "Gilgit-Baltistan and upper KP: 34.4–37.6 °N, 70.8–76.6 °E",
       "finishBefore": "The request is not sent yet. Press ",
       "finishStrong": "Submit new issue",
