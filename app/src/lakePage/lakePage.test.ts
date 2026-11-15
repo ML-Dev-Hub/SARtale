@@ -44,6 +44,17 @@ describe("the lake page", () => {
     b.querySelector<HTMLButtonElement>('button[data-action="brief"]')!.click();
     expect(onBrief).toHaveBeenCalledWith(watchLake);
   });
+  it("limits are shown in plain English, with the original wording kept in the sources block", () => {
+    const zone = "Track 164D comes in another UTM zone (EPSG:32642); its windows are resampled (nearest neighbour) onto the lake's grid (EPSG:32643).";
+    const lake = { ...watchLake, limits: [zone] };
+    const b = page(lake).querySelector<HTMLElement>('[data-role="lp-sources"]')!;
+    const items = [...b.querySelectorAll(".lp-limits ul:not(.lp-limits-original) li")].map((li) => li.textContent);
+    expect(items).toContain("Track 164D is recorded on a neighbouring map grid; its pixels are shifted onto this lake's grid before measuring, which can move the outline edge by up to one pixel.");
+    expect(items).not.toContain(zone);
+    const raw = b.querySelector<HTMLDetailsElement>("details.lp-limits-raw")!;
+    expect(raw.open).toBe(false);
+    expect(raw.textContent).toContain(zone);
+  });
   it("a lake without a level has no message", () => expect(roles(page(makeLake()))).not.toContain("lp-message"));
   it("the message has the four parts and the actions", () => {
     const m = page(watchLake).querySelector('[data-role="lp-message"]')!;

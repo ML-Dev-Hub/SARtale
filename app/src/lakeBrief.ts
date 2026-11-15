@@ -1,4 +1,5 @@
 import { statusDisplay } from "./statusDisplay";
+import { changedLimits, plainLimit } from "./plainLimits";
 import { freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, hasLevel, isFrozen, isTrendPass, levelMessage, loadLakes, methodLimits, processingVersions, statusSentence, suparcoLine, type Lake, type LakesFile } from "./lakes";
 import { checkLine } from "./lakeWatchView";
 import { extentView } from "./lakePage/extent";
@@ -95,7 +96,8 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): strin
         .map((p) => `<tr><td>${esc(formatDate(p.date))}</td><td>${esc(p.track)}</td><td>${(p.area_km2 as number).toFixed(3)}</td><td>${Math.round((p.observable_share as number) * 100)}%</td>${extra(p)}<td>${esc(p.crid ?? "")}</td></tr>`)
         .join("")}</tbody></table>`
     : `<p>${esc(lake.status.reason)}</p>`;
-  const lakeLimits = lake.limits.length ? `<h3>Limits for this lake</h3>${list(lake.limits)}` : "";
+  const lakeLimits = lake.limits.length ? `<h3>Limits for this lake</h3>${list(lake.limits.map(plainLimit))}` : "";
+  const technical = changedLimits([...methodLimits(file), ...lake.limits]);
   const checks = file.checks.filter((c) => c.lake === lake.id).map((c) => `<p>${esc(checkLine(c))}</p>`).join("")
     + (file.check_notes ?? []).filter((c) => c.lake === lake.id).map((c) => `<p>${esc(`Sentinel-2 check: ${c.note}.`)}</p>`).join("");
   const downstream = lake.downstream
@@ -126,7 +128,7 @@ ${passes}${checks}
 <h2>Excluded passes</h2>
 ${lake.excluded.length ? list(lake.excluded.map((x) => `${x.pass}: ${x.reason}`)) : "<p>None.</p>"}
 <h2>Limits</h2>
-${list(methodLimits(file))}${lakeLimits}
+${list(methodLimits(file).map(plainLimit))}${lakeLimits}${technical.length ? `<h3>Technical wording</h3>${list(technical)}` : ""}
 <h2>Downstream</h2>
 <p>${downstream}</p>
 <p class="lake-brief-meta">Processing versions: ${esc(processingVersions(file.crid))}.</p>

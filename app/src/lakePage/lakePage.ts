@@ -13,6 +13,7 @@ import { renderExtent } from "./extent";
 import { renderCompare, type MaskDecoder } from "./compare";
 import { historyHeading, renderHistory } from "./history";
 import { gaugeHeading, gaugeInput, renderGauge } from "./gauge";
+import { changedLimits, plainLimit } from "../plainLimits";
 import { limitsList, sourceRows } from "./sources";
 
 export interface LakePageOptions {
@@ -257,8 +258,18 @@ function fillSources(lake: Lake, file: LakesFile, onBrief?: (l: Lake) => void): 
       const d = el("div", "lp-limits");
       d.append(el("h3", undefined, "Limits"));
       const ul = el("ul");
-      for (const t of limits) ul.append(el("li", undefined, t));
+      for (const t of limits) ul.append(el("li", undefined, plainLimit(t)));
       d.append(ul);
+      // Nothing is hidden: the pipeline's own wording of every rewritten line stays here.
+      const original = changedLimits(limits);
+      if (original.length) {
+        const det = el("details", "lp-limits-raw");
+        det.append(el("summary", undefined, "Technical wording"));
+        const raw = el("ul", "lp-limits-original");
+        for (const t of original) raw.append(el("li", undefined, t));
+        det.append(raw);
+        d.append(det);
+      }
       body.append(d);
     }
     if (onBrief) {

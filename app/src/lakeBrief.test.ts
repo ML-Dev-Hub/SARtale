@@ -98,6 +98,15 @@ describe("lake brief", () => {
     expect(text(briefHtml(lakeOf(), fixtureLakes, late))).toContain("Brief made 2 Nov 2026.");
   });
 
+  test("technical limits are printed in plain English with the original wording kept", () => {
+    const zone = "Track 164D comes in another UTM zone (EPSG:32642); its windows are resampled (nearest neighbour) onto the lake's grid (EPSG:32643).";
+    const html = briefHtml(lakeOf({ limits: [zone] }), fixtureLakes, NOW);
+    const limits = html.slice(html.indexOf("<h2>Limits</h2>"), html.indexOf("<h2>Downstream</h2>"));
+    expect(limits).toContain("Track 164D is recorded on a neighbouring map grid");
+    expect(limits).toContain("Technical wording");
+    expect(limits).toContain("EPSG:32642");
+  });
+
   test("standing method limits appear even when the lake has no limits of its own", () => {
     const file = {
       ...fixtureLakes,
