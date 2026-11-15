@@ -76,14 +76,16 @@ Sentinel-2 cross-check result (`lakes.json`, `checks`): one NISAR pass against o
 
 ## How-it-works video (`media/SARtale-how-it-works.mp4`)
 
+Remade on 15 Nov 2026 for the current method and data.
+
 | Item | Use | Licence or terms |
 |---|---|---|
-| NISAR GCOV, Attabad window, every pass 25 Jun to 23 Oct 2026 | The radar image, dark-pixel, shadow and water maps, and the pass chart. Made by the pipeline from the data in this repository | NASA data, as above |
-| NASA MODIS Terra true colour (`app/public/story/north_map.jpg`) | Background map | As below |
+| Screens of the SARtale site (the story page's cloud-and-radar pair, terrain-shadow and measurement sections; Attabad's and Passu's lake pages; Lake Watch and its map; the Add a lake form) | The app and method scenes, captured from the site build of 15 Nov 2026 | Team's own work; the data shown carry the licences in this file |
+| Animated scenes from the first version of this video (Shisper 2022 location map, the 3,000 glacial lakes map, the SUPARCO quote beside a Sentinel-2 image of Attabad, the radar schematic) | The opening scenes | Team's own work, from Sentinel-2, NASA MODIS (GIBS) and OpenStreetMap |
 | UNDP GLOF-II Project Brief 2023, https://www.undp.org/sites/g/files/zskgke326/files/2023-04/GLOF%20II%20Project%20%28Dec%202022%29_Project%20Brief_2023.pdf ("Over 3,000 glacial lakes have developed in Gilgit-Baltistan and Khyber Pakhtunkhwa regions") | One spoken and shown figure | Cited only |
-| SUPARCO; Dawn, 7 May 2022 | As above: the quote and the 2022 Shisper outburst (the video's narration names Radio Pakistan; the videos are re-made in a later step) | Cited only |
-| Sentinel-2 scene count over Attabad, 17 Jun to 4 Aug 2026 (13 scenes, 5 mostly cloud) | One spoken figure | Copernicus Sentinel data terms, as above |
-| Narration and music | Generated with ElevenLabs (paid account) | ElevenLabs terms for paid plans: terms not confirmed for this use |
+| SUPARCO; Dawn, 7 May 2022 | As above: the quote, the 131 potentially dangerous lakes and the 2022 Shisper outburst | Cited only |
+| Narration (voice "Nathaniel C", eleven_multilingual_v2) and music | Spoken track and background music | AI-generated with ElevenLabs (paid account). Declared on screen, in the file metadata and here |
+| Team photos | The end card | Real photographs supplied by the team members |
 
 ## Story page images (`app/public/story/`)
 

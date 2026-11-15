@@ -137,8 +137,8 @@
       },
       {
         "title": "How it works",
-        "length": "3 min 41 s",
-        "text": "The video explains how radar sees through cloud and why slopes cast radar shadow. It shows how dark pixels become water and how SARtale tests a change against a lake's own noise.",
+        "length": "3 min 29 s",
+        "text": "How radar sees through cloud, how terrain shadow is left out, how dark pixels become water at Attabad, how a change is tested against a lake's own track and noise, frozen lakes, honest flags and lake requests.",
         "src": "media/SARtale-how-it-works.mp4",
         "captions": "media/SARtale-how-it-works.vtt",
         "poster": "media/posters/SARtale-how-it-works.jpg"
