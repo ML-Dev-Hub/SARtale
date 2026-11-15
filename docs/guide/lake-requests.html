@@ -29,7 +29,7 @@
 
 <h2 id="how-a-request-goes">How a request goes<a class="anchor" href="#how-a-request-goes" aria-label="Link to this section">#</a></h2>
 <ol>
-  <li>On the story page, the visitor fills in the "Add a lake" form. The website checks the input first (see <a href="#rules">Rules</a>), then opens GitHub's <b>Add a lake</b> issue form with the fields filled in: Lake name, Latitude (°N), Longitude (°E) and Where the coordinates come from.</li>
+  <li>On the story page, the visitor fills in the "Add a lake" form and presses <b>Request a lake</b>. The website checks the input first (see <a href="#rules">Rules</a>), then opens GitHub's <b>Add a lake</b> issue form with the fields filled in: Lake name, Latitude (°N), Longitude (°E) and Where the coordinates come from.</li>
   <li>The visitor presses <b>Submit new issue</b>. A GitHub sign-in is needed. The issue gets the label <code>lake-request</code>.</li>
   <li>The <code>lake-request.yml</code> workflow reads the issue, applies the rules, counts NISAR passes over the point, comments with the result and sets a label.</li>
   <li>A team member adds the label <code>accepted</code>. The <code>lake-accept.yml</code> workflow adds the lake to <code>processing/lakes_in.json</code>, searches, fetches and builds, runs the tests, commits the data, redeploys the site, comments "Accepted. The lake is now watched: …" with a link, and closes the issue.</li>

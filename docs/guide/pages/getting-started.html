@@ -28,6 +28,6 @@ conda run -n sartale pytest tests -q</code></pre>
 <p>Both suites run offline. The Python tests use small synthetic NISAR files built in <code>tests/gcov_fixture.py</code>, not real downloads.</p>
 
 <h2>Try the "Add a lake" form</h2>
-<p>The form needs no server. It checks your input in the browser, then opens GitHub's "Add a lake" issue form with the fields filled in, so you can only submit it from a copy with access to the repository. Nothing is saved locally. See <a href="lake-requests.html">Lake requests</a>.</p>
+<p>The form is in the story page's <b>Add a lake</b> section, and its button is <b>Request a lake</b>. It needs no server. It checks your input in the browser, then opens GitHub's "Add a lake" issue form with the fields filled in, so you can only submit it from a copy with access to the repository. Nothing is saved locally. See <a href="lake-requests.html">Lake requests</a>.</p>
 
 <div class="note"><p><strong>Port already in use?</strong> If <code>5173</code> is taken, another copy is probably running. Stop it, or pass <code>-- --port 5174</code> to <code>npm run dev</code>.</p></div>
