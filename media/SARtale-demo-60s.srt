@@ -1,55 +1,59 @@
 1
-00:00:00,000 --> 00:00:03,418
-We're SARcastic Scientists from Islamabad:
+00:00:00,000 --> 00:00:03,070
+Clouds hide glacial lakes, just when they fill.
 
 2
-00:00:03,458 --> 00:00:08,460
-Saeed Ahmad, Shaharyar Sajid and Usama Hussain. This is SARtale.
+00:00:03,310 --> 00:00:09,030
+In 2022, the Shisper lake outburst destroyed a Karakoram Highway bridge.
 
 3
-00:00:08,850 --> 00:00:13,298
-In 2022, a glacial lake above Hunza burst and swept away the
+00:00:09,270 --> 00:00:13,550
+We're SARcastic Scientists from Islamabad. We built SARtale.
 
 4
-00:00:13,338 --> 00:00:15,406
-Karakoram Highway bridge.
+00:00:13,790 --> 00:00:16,658
+At Attabad, cloud hides the lake.
 
 5
-00:00:15,446 --> 00:00:19,350
-Pakistan has more than three thousand glacial lakes.
+00:00:16,698 --> 00:00:19,790
+NASA and ISRO's NISAR radar sees it.
 
 6
-00:00:19,740 --> 00:00:23,214
-They fill in summer, exactly when cloud hides them.
+00:00:20,030 --> 00:00:24,146
+SARtale turns every NISAR pass into lake water area,
 
 7
-00:00:23,254 --> 00:00:27,590
-This July, Pakistan's space agency said cloud limited its checks.
+00:00:24,186 --> 00:00:27,370
+compared with each lake's normal range.
 
 8
-00:00:27,980 --> 00:00:32,839
-NISAR, the new radar from NASA and ISRO, sees through cloud.
+00:00:27,910 --> 00:00:33,630
+An officer opens Lake Watch, thirty-nine lakes so far, and picks Passu.
 
 9
-00:00:32,879 --> 00:00:36,179
-At Attabad, the optical image is cloud;
+00:00:33,870 --> 00:00:36,940
+Its page shows the radar water and its history.
 
 10
-00:00:36,219 --> 00:00:38,480
-the radar shows the lake.
+00:00:37,180 --> 00:00:40,623
+All three flagged lakes began with a NISAR processing
 
 11
-00:00:38,870 --> 00:00:44,397
-We built SARtale. It reads every pass over each watched lake, thirty-nine so
+00:00:40,663 --> 00:00:43,220
+update, so none is a confirmed change.
 
 12
-00:00:44,437 --> 00:00:49,420
-far, and gives one plain status, with what to do and who to contact.
+00:00:43,460 --> 00:00:48,769
+Officers can check imagery, contact NDMA or PDMA, or print a brief.
 
 13
-00:00:49,810 --> 00:00:53,121
-It refreshes every week, and anyone can add another glacial
+00:00:48,809 --> 00:00:51,040
+Screening, not a warning.
 
 14
-00:00:53,161 --> 00:00:54,410
+00:00:51,280 --> 00:00:54,730
+It refreshes weekly, and anyone can add another glacial
+
+15
+00:00:54,770 --> 00:00:56,160
 lake in the region.
