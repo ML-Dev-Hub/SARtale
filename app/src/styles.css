@@ -355,3 +355,11 @@ body > #app > .maturity { margin: 24px 40px 0; display: inline-block; }
 .lw-table caption { text-align: left; color: var(--muted); padding: 4px 0 8px; }
 .lw-table th, .lw-table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .lw-table th { color: var(--muted); font-weight: 600; }
+
+/* Cyan-filled buttons that are links keep their dark text on hover and focus (the global a:hover would turn it pale cyan). */
+a.lp-btn-primary:hover, a.lp-btn-primary:focus-visible,
+a.ovp-btn-primary:hover, a.ovp-btn-primary:focus-visible,
+a.btn.small-teal:hover, a.btn.small-teal:focus-visible,
+.skip:hover, .skip:focus { color: var(--accent-ink); }
+.sp-page a.sp-btn-primary:hover, .sp-page a.sp-btn-primary:focus-visible { color: #04222e; background: #a6e6f7; }
+a.lp-btn-primary:hover, a.ovp-btn-primary:hover { filter: none; background: #a6e6f7; border-color: #a6e6f7; }

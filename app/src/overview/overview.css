@@ -383,3 +383,5 @@
   .ov-key-name { min-width: 0; }
   .ov-key-text { flex-basis: 100%; padding-left: 28px; }
 }
+
+.ov-group-todo { display: block; margin-top: 4px; max-width: 90ch; color: var(--muted); font-size: 14px; font-weight: 400; line-height: 1.45; }
