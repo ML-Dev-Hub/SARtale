@@ -33,11 +33,11 @@ const HASH_VIEWS: Record<string, View> = { "#start": "home", "#lakes": "lakes", 
 const VIEW_HASH: Record<View, string> = { home: "#start", lakes: "#lakes", story: "#story", evidence: "#evidence", share: "#share" };
 
 /**
- * The view (and lake) a URL hash names: "" or "#" is Lake Watch (the front page), "#start" the story page, "#lakes/attabad" a lake. Any other hash is an
+ * The view (and lake) a URL hash names: "" or "#" is the story page (the front page, also "#start"), "#lakes" Lake Watch, "#lakes/attabad" a lake. Any other hash is an
  * in-page anchor (the skip link, a story section) and returns null, so it never changes the view.
  */
 export function routeFromHash(hash: string): { view: View; lake?: string; pass?: string; compare?: [string, string]; query?: string } | null {
-  if (hash === "" || hash === "#") return { view: "lakes" };
+  if (hash === "" || hash === "#") return { view: "home" };
   if (HASH_VIEWS[hash]) return { view: HASH_VIEWS[hash] };
   const q = /^#lakes\?(.+)$/.exec(hash);
   if (q) return { view: "lakes", query: q[1] };
@@ -58,15 +58,15 @@ const TEMPLATE = `
 <div class="shell" data-role="shell">
   <a class="skip" href="#main">Skip to the content</a>
   <header class="top">
-    <a class="logo-btn" data-role="home" href="#lakes" aria-label="SARtale: Lake Watch">
+    <a class="logo-btn" data-role="home" href="#start" aria-label="SARtale: the story">
       <span class="logo-panel"><img class="logo" src="brand/logo-256.png" width="56" height="56" alt="SARtale Pakistan logo" /></span>
     </a>
     <p class="brand">SARtale</p>
     <p class="sr-only" data-role="view-name" aria-live="polite">Lake Watch</p>
     <nav class="views" aria-label="Views">
+      <a class="view-btn" data-role="view-home" href="#start">The story</a>
       <a class="view-btn view-primary" data-role="view-lakes" href="#lakes">Lake Watch</a>
       <a class="view-btn" data-role="view-evidence" href="#evidence">How we know</a>
-      <a class="view-btn" data-role="view-home" href="#start">The story</a>
     </nav>
     <p class="maturity" data-role="maturity" data-kind="provisional"></p>
   </header>
@@ -264,7 +264,7 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
   };
   // These are real links (right-click, open in a new tab and middle-click use the href); a plain click is routed here.
   const navCleanups = [
-    wireNavLink(q<HTMLAnchorElement>("home"), openLakeWatch),
+    wireNavLink(q<HTMLAnchorElement>("home"), () => showView("home")),
     ...Object.entries(viewButtons).map(([name, a]) => wireNavLink(a, () => (name === "lakes" ? openLakeWatch() : showView(name as View)))),
   ];
 
@@ -276,7 +276,7 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     showView(r.view, false, false);
   };
   window.addEventListener("hashchange", followHash);
-  const first = routeFromHash(window.location.hash) ?? { view: "lakes" as View };
+  const first = routeFromHash(window.location.hash) ?? { view: "home" as View };
   showView(first.view, false, false);
   // A link to a story section, such as #videos, arrives before the page is drawn, so scroll to it now.
   const id = routeFromHash(window.location.hash) ? null : fragmentId(window.location.hash);
