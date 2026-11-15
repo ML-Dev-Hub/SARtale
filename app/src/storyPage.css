@@ -27,6 +27,8 @@
 .sp-panel { margin: 0; padding: 36px 40px; border-radius: 18px; background: var(--sp-panel); border: 1px solid var(--sp-line); }
 .sp-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 28px; }
 .sp-head-note { margin: 0; max-width: 420px; }
+.sp-head-stack { flex-direction: column; align-items: flex-start; }
+.sp-head-stack .sp-head-note { max-width: 62ch; }
 .sp-src { margin: 8px 0 0; font-size: 14px; color: #8ea3b0; }
 .sp-credit { font-size: 14px; color: #8ea3b0; }
 

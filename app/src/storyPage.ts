@@ -22,6 +22,8 @@ export interface StoryNumbers {
   /** The cloud-gap window the looks were counted in, "17 Jun to 4 Aug". */
   cloudRange: string;
   passes: string;
+  /** The date of the earliest radar reading in the file, "18 Jun". */
+  firstPass: string;
   attabadArea: string;
   attabadNoise: string;
   attabadLooks: string;
@@ -119,19 +121,21 @@ export function measureView(a: Lake | null): MeasureView {
 /** Every number on the page, read from lakes.json. "—" for anything missing. */
 export function storyNumbers(file: LakesFile | null): StoryNumbers {
   if (!file) {
-    return { lakes: DASH, sites: DASH, cloudLooks: DASH, cloudRange: DASH, passes: DASH, attabadArea: DASH, attabadNoise: DASH, attabadLooks: DASH, attabadTrack: DASH, iou: DASH, latest: DASH };
+    return { lakes: DASH, sites: DASH, cloudLooks: DASH, cloudRange: DASH, passes: DASH, firstPass: DASH, attabadArea: DASH, attabadNoise: DASH, attabadLooks: DASH, attabadTrack: DASH, iou: DASH, latest: DASH };
   }
   const a = attabad(file);
   const dates = file.lakes.map((l) => l.status.latest_date).filter((d): d is string => !!d);
   const latest = dates.length ? dates.reduce((x, y) => (x > y ? x : y)) : null;
   const view = measureView(a);
   const noise = view.noise;
+  const first = file.lakes.flatMap((l) => l.series.map((p) => p.date)).reduce<string | null>((x, y) => (x === null || y < x ? y : x), null);
   return {
     lakes: String(lakesNow(file).length),
     sites: String(file.lakes.length),
     cloudLooks: String(cloudLooks(file)),
     cloudRange: `${dayMonth(file.cloud_window[0])} to ${dayMonth(file.cloud_window[1])}`,
     passes: String(file.lakes.reduce((n, l) => n + l.series.length, 0)),
+    firstPass: first ? dayMonth(first) : DASH,
     attabadArea: a ? areaText(view.area) : DASH,
     attabadNoise: noise === null || noise === undefined ? DASH : `±${noise.toFixed(2)}`,
     attabadLooks: a ? String(a.status.looks) : DASH,
@@ -312,7 +316,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const floor = el("div", "sp-cover-floor");
   floor.setAttribute("aria-hidden", "true");
   const stats = el("div", "sp-stats");
-  for (const s of c.stats) stats.append(el("div", undefined, text("div", "sp-stat-value", f(s.value)), text("div", "sp-stat-label", f(s.label))));
+  for (const s of c.stats) stats.append(el("div", undefined, text("div", "sp-stat-value", f(s.value)), text("div", "sp-stat-label", f(s.label).replace(/ since —$/, ""))));
   const teaser = watchTeaser(file);
   const teaserEls: HTMLElement[] = [];
   if (teaser) {
@@ -352,7 +356,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const r = copy.risk;
   const facts = el("div", "sp-facts");
   for (const x of r.facts) facts.append(el("div", "sp-fact", text("div", "sp-fact-value", x.value), text("div", "sp-fact-label", x.label), text("div", "sp-src", x.source)));
-  const risk = section("01 The flood", "sp-section sp-risk");
+  const risk = section("02 The flood", "sp-section sp-risk");
   risk.append(
     el("div", undefined, eyebrow(r.label), text("h2", undefined, r.title)),
     el("div", "sp-risk-body", el("div", undefined, text("p", "sp-prose", r.body), text("p", "sp-src", r.source)), facts),
@@ -361,7 +365,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   // 02 The gap
   const g = copy.gap;
   const quote = el("blockquote", "sp-quote", link(g.url, `“${g.quote}”`));
-  const gap = section("02 The gap", "sp-section");
+  const gap = section("03 The gap", "sp-section");
   gap.append(el("figure", "sp-panel sp-gap", eyebrow(g.label), quote, el("figcaption", undefined, link(g.url, g.cite), ` · ${g.host}`)));
 
   // 03 The view
@@ -372,7 +376,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   for (const k of v.shadow.cards) cards.append(el("div", `sp-card sp-card-${k.tone}`, text("div", "sp-card-label", k.label), text("p", undefined, f(k.text))));
   const src = el("p", "sp-fine", v.shadow.sourcesLead);
   for (const s of v.shadow.sources) src.append(link(s.url, s.text), s.after);
-  const view = section("03 The view", "sp-section");
+  const view = section("01 The view", "sp-section");
   view.append(
     el("div", "sp-head", el("div", undefined, eyebrow(v.label), text("h2", undefined, v.title)), text("p", "sp-muted sp-head-note", v.lede)),
     el("div", "sp-pair", shot(v.optical), shot(v.radar)),
@@ -539,7 +543,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   };
   const watch = section("05 The levels", "sp-section");
   watch.append(
-    el("div", "sp-head", el("div", undefined, eyebrow(w.label), text("h2", undefined, noData ? w.noDataTitle : f(w.title))), text("p", "sp-muted sp-head-note", noData ? w.noDataLede : f(w.lede))),
+    el("div", "sp-head sp-head-stack", el("div", undefined, eyebrow(w.label), text("h2", undefined, noData ? w.noDataTitle : f(w.title))), text("p", "sp-muted sp-head-note", noData ? w.noDataLede : f(w.lede))),
     el("div", "sp-watch", mapEl, listEl),
   );
 
@@ -558,7 +562,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   for (const item of vd.items) {
     const video = el("video", "sp-video");
     video.controls = true;
-    video.preload = "metadata";
+    video.preload = "none";
     video.poster = item.poster;
     video.setAttribute("playsinline", "");
     video.setAttribute("aria-label", `${item.title} (${item.length})`);
@@ -603,7 +607,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
 
   const banner = alertBanner(file, opts.onOpenLakes);
   if (banner) page.append(banner);
-  page.append(cover, risk, gap, view, measure, watch, add, videos, closing, footer);
+  page.append(cover, view, risk, gap, measure, watch, add, videos, closing, footer);
   root.replaceChildren(page);
 
   return {

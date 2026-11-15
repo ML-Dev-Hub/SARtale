@@ -4,9 +4,10 @@ import { describe, expect, it } from "vitest";
 import lakesJson from "../public/data/lakes.json";
 import { findBannedClaims } from "./content";
 import storyCopy from "./content/storyPage.json";
+import storyJson from "./content/story.json";
 import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
 import frozenJson from "./frozen/lakes.json";
-import { hasLakeNow, splitChecks, type Lake, type LakesFile } from "./lakes";
+import { dayMonth, hasLakeNow, splitChecks, type Lake, type LakesFile } from "./lakes";
 import { familyCounts, frozenBreakdown, statusDisplay } from "./statusDisplay";
 import { mapPin, renderStoryPage, statusClass, storyNumbers, watchTeaser } from "./storyPage";
 import styleCss from "./styles.css?raw";
@@ -108,11 +109,11 @@ describe("renderStoryPage", () => {
     expect(quote.textContent).toContain("Persistent cloud cover after 16 June 2026");
   });
 
-  it("has the parts in order, with the shadow panel inside 03", () => {
+  it("has the parts in order, with the cloud-against-radar view first and its shadow panel inside it", () => {
     const { root } = render(real);
     const labels = [...root.querySelectorAll("section[aria-label]")].map((s) => s.getAttribute("aria-label"));
-    expect(labels).toEqual(["Cover", "01 The flood", "02 The gap", "03 The view", "04 The measurement", "05 The levels", "06 Add a lake", "07 The videos", "Open Lake Watch"]);
-    const view = root.querySelector('section[aria-label="03 The view"]')!;
+    expect(labels).toEqual(["Cover", "01 The view", "02 The flood", "03 The gap", "04 The measurement", "05 The levels", "06 Add a lake", "07 The videos", "Open Lake Watch"]);
+    const view = root.querySelector('section[aria-label="01 The view"]')!;
     expect(view.querySelector(".sp-shadow")?.textContent).toContain("Mountains cast shadows too");
     expect([...view.querySelectorAll(".sp-shadow a")].map((a) => a.getAttribute("href"))).toEqual([
       "https://arxiv.org/abs/2512.24117",
@@ -168,7 +169,7 @@ describe("renderStoryPage", () => {
     for (const v of videos) {
       const src = v.querySelector("source")!.getAttribute("src")!;
       expect(v.controls).toBe(true);
-      expect(v.getAttribute("preload")).toBe("metadata");
+      expect(v.getAttribute("preload")).toBe("none");
       expect(v.getAttribute("poster")).toBe(src.replace("media/", "media/posters/").replace(".mp4", ".jpg"));
       expect(v.getAttribute("aria-label")).toBeTruthy();
       const track = v.querySelector("track")!;
@@ -548,16 +549,65 @@ describe("the Lake Watch teaser", () => {
 });
 
 describe("the cover stats", () => {
-  it("counts every watched lake, those holding water now, the cloud-gap looks with their dates, and radar readings", () => {
-    const { root } = render(fixtureLakes);
+  it("counts every watched lake, those holding water now, and one radar figure with its first date", () => {
+    const { root } = render(frozen);
     const stats = [...root.querySelectorAll(".sp-stats > div")].map((d) => [d.children[0].textContent, d.children[1].textContent]);
-    const n = storyNumbers(fixtureLakes);
+    const n = storyNumbers(frozen);
+    expect(n.firstPass).toBe(dayMonth(frozen.lakes.flatMap((l) => l.series.map((p) => p.date)).sort()[0]));
     expect(stats).toEqual([
       [n.sites, "lakes watched"],
       [n.lakes, "holding water now"],
-      [n.cloudLooks, "valid radar looks, 17 June to 4 August"],
-      [n.passes, "radar readings of the lakes"],
+      [n.passes, `radar readings since ${n.firstPass}`],
     ]);
+  });
+
+  it("drops 'since' when no reading has a date", () => {
+    const { root } = render(fixtureLakes);
+    expect(storyNumbers(fixtureLakes).firstPass).toBe("—");
+    expect(root.querySelector(".sp-stats")!.textContent).not.toContain("since");
+  });
+
+  it("counts the shipped file's readings (every series point of every site) since its first date", () => {
+    const n = storyNumbers(real);
+    expect(n.passes).toBe(String(real.lakes.reduce((k, l) => k + l.series.length, 0)));
+    expect(n.firstPass).toBe(dayMonth(real.lakes.flatMap((l) => l.series.map((p) => p.date)).sort()[0]));
+  });
+});
+
+describe("F1 story wording and layout", () => {
+  it("puts the 'Same lake, three days apart' section directly after the cover, before the flood", () => {
+    const { root } = render(real);
+    const secs = [...root.querySelectorAll("section[aria-label]")];
+    expect(secs[1].getAttribute("aria-label")).toBe("01 The view");
+    expect(secs[1].textContent).toContain("Same lake, three days apart");
+    const eyebrows = secs.map((s) => s.querySelector(".sp-eyebrow")?.textContent).filter((t) => t && /^\d\d · /.test(t));
+    expect(eyebrows).toEqual(["01 · The view", "02 · The flood", "03 · The gap", "04 · The measurement", "05 · The levels", "06 · Add a lake", "07 · The videos"]);
+    expect(root.querySelector("#add-lake")).not.toBeNull();
+    expect(root.querySelector("#videos")).not.toBeNull();
+  });
+
+  it("names the unmeasured status the way the lists do", () => {
+    const { root } = render(real);
+    const t = root.textContent ?? "";
+    expect(t).not.toContain("Not observable");
+    expect(t).toContain("the status is Not measured (radar cannot see enough of the lake)");
+  });
+
+  it("says a Watch can also come from small changes that add up over several passes", () => {
+    const phrase = "or small changes in one direction that add up over several passes";
+    const { root } = render(real);
+    expect(root.querySelector(".sp-steps")!.textContent).toContain(phrase);
+    const story = (storyJson as unknown as { lakeStory: { beats: { body?: string[] }[] } }).lakeStory.beats.flatMap((b) => b.body ?? []).join(" ");
+    expect(story).toContain(phrase);
+  });
+
+  it("sets the levels intro under its heading in one left column", () => {
+    const { root } = render(real);
+    const head = root.querySelector('section[aria-label="05 The levels"] .sp-head')!;
+    expect(head.classList.contains("sp-head-stack")).toBe(true);
+    const rule = rulesFor(storyCss, ".sp-head-stack").join(" ");
+    expect(rule).toMatch(/flex-direction:\s*column/);
+    expect(rule).toMatch(/align-items:\s*flex-start/);
   });
 });
 

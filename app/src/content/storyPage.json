@@ -9,15 +9,14 @@
     "stats": [
       { "value": "{sites}", "label": "lakes watched" },
       { "value": "{lakes}", "label": "holding water now" },
-      { "value": "{cloudLooks}", "label": "valid radar looks, {cloudRange}" },
-      { "value": "{passes}", "label": "radar readings of the lakes" }
+      { "value": "{passes}", "label": "radar readings since {firstPass}" }
     ],
     "image": "story/hunza_valley.jpg",
     "imageAlt": "Satellite view of the Hunza valley in summer, snow peaks above a green river valley",
     "credit": "Hunza valley · Copernicus Sentinel-2, 20 Jul 2026"
   },
   "risk": {
-    "label": "01 · The flood",
+    "label": "02 · The flood",
     "title": "Shisper, 7 May 2022",
     "body": "On 7 May 2022 the ice-dammed lake beside Shisper glacier burst. The flood destroyed the Karakoram Highway bridge at Hassanabad. The bridge was 6.6 km from the lake basin in a straight line. The flood cut the road between central and upper Hunza.",
     "source": "Sources: Dawn, 7 May 2022 (dawn.com/news/1688466) and 8 May 2022 (dawn.com/news/1688567). The 6.6 km is the straight line from the register point at the lake basin to the bridge (OpenStreetMap way 651792498). It is not the flood's path down the gorge.",
@@ -27,14 +26,14 @@
     ]
   },
   "gap": {
-    "label": "02 · The gap",
+    "label": "03 · The gap",
     "quote": "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days.",
     "url": "https://space4climate.gov.pk/glof-status-update/",
     "cite": "SUPARCO, GLOF Status Update, 2 July 2026",
     "host": "space4climate.gov.pk"
   },
   "view": {
-    "label": "03 · The view",
+    "label": "01 · The view",
     "title": "Same lake, three days apart",
     "lede": "At Attabad Lake, Hunza, the optical satellite sees cloud. The radar sees the lake.",
     "optical": {
@@ -57,7 +56,7 @@
       "cards": [
         { "label": "Optical satellites", "tone": "warm", "text": "The sun's shadow falls across slopes and valley floors. A shaded lake can be missed, and a shaded slope can look like water." },
         { "label": "Radar", "tone": "warm", "text": "Radar looks sideways. Slopes facing away from the satellite fall in radar shadow, and steep slopes facing it fold over (layover). Both can hide a shoreline." },
-        { "label": "What SARtale does", "tone": "accent", "text": "Shadow and layover fall on the valley walls, almost never on a flat lake. SARtale masks nothing inside a lake's zone. A terrain model maps the walls in radar shadow or layover. SARtale excludes these walls from the window median used to measure water. If less than {minObservable} of a lake's zone can be seen, the status is Not observable." }
+        { "label": "What SARtale does", "tone": "accent", "text": "Shadow and layover fall on the valley walls, almost never on a flat lake. SARtale masks nothing inside a lake's zone. A terrain model maps the walls in radar shadow or layover. SARtale excludes these walls from the window median used to measure water. If less than {minObservable} of a lake's zone can be seen, the status is Not measured (radar cannot see enough of the lake)." }
       ],
       "sourcesLead": "Radar shadow and layover are among the main limits of SAR lake mapping in the Himalaya (",
       "sources": [
@@ -76,7 +75,7 @@
     "steps": [
       "Calm water reflects radar away, so it is dark in HH, the channel that tells water from land best here.",
       "SARtale smooths the speckle. A pixel is water when its HH is at least 3 dB darker than the median of its 6 km window. Terrain in radar shadow or layover is excluded from that median.",
-      "SARtale counts water inside the lake's zone. It compares each pass with the median of earlier passes on its own track. One pass beyond twice the noise is a Watch. Two passes in a row with growth beyond twice the noise give an Alert."
+      "SARtale counts water inside the lake's zone. It compares each pass with the median of earlier passes on its own track. One pass beyond twice the noise is a Watch, or small changes in one direction that add up over several passes. Two passes in a row with growth beyond twice the noise give an Alert."
     ],
     "numbers": [
       { "value": "{attabadArea}", "label": "water on {attabadDay}" },
