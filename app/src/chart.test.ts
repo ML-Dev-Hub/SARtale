@@ -47,9 +47,14 @@ describe("history chart marks", () => {
     series: [
       { label: "055A", values: [0.12, null, 0.13], excluded: false },
       { label: "No usable reading", values: [null, 0, null], excluded: false, rail: true },
-      { label: "First reading on P05036", values: [null, null, 0.13], excluded: false, version: true },
+      { label: "NISAR processing update", values: [null, null, 0.13], excluded: false, version: true },
     ],
   };
+
+  test("the y axis says it is the radar water area", async () => {
+    const { lakeChartOptions } = await import("./chart");
+    expect(lakeChartOptions(300, HIST).axes![1].label).toBe("Radar water area (km²)");
+  });
 
   test("unusable passes sit on their own rail scale, as rings with no line", async () => {
     const { lakeChartOptions } = await import("./chart");

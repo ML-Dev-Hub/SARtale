@@ -42,7 +42,7 @@ describe("lakeChartData", () => {
     const hi = data.series.find((s) => s.band === "hi")!;
     const lo = data.series.find((s) => s.band === "lo")!;
     const set = data.series.find((s) => s.level)!;
-    expect(hi.label).toBe("Baseline ± 2 × noise (156A), upper");
+    expect(hi.label).toBe("Normal range (baseline ± 2 × radar noise) (156A), upper");
     expect(hi.values).toEqual([null, null, null, 1.04, 1.042, null]);
     expect(lo.values.map((v) => (v === null ? null : Number(v.toFixed(3))))).toEqual([null, null, null, 0.96, 0.958, null]);
     expect(set.values).toEqual([null, null, null, null, 1.2, null]);
