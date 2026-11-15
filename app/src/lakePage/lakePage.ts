@@ -1,12 +1,13 @@
 import "./lakePage.css";
 import { authorityFor } from "../contacts";
 import { dataUrl, formatDate } from "../format";
-import { freezeFacts, freezeHeadline, frozenAreaLine, isFrozen, levelMessage, picturedPassFrozen, suparcoLine, type Lake, type LakesFile } from "../lakes";
+import { freezeFacts, frozenAreaLine, isFrozen, levelMessage, picturedPassFrozen, suparcoLine, type Lake, type LakesFile } from "../lakes";
 import type { LakeChartFactory } from "../lakeWatchView";
 import { sentinel2Url } from "../links";
 import { nextRefresh } from "../overview/model";
 import { PHONE_QUERY } from "../overview/overviewView";
-import { statusChip } from "../overview/marks";
+import { familyChip } from "../overview/marks";
+import { statusDisplay } from "../statusDisplay";
 import { provinceName } from "../provinces";
 import { renderExtent } from "./extent";
 import { renderCompare, type MaskDecoder } from "./compare";
@@ -76,6 +77,7 @@ function header(lake: Lake, file: LakesFile, phone: boolean): HTMLElement {
   }
   sec.append(top);
 
+  const display = statusDisplay(lake, file.constants);
   const place = [lake.district, provinceName(lake.province)].filter((s): s is string => !!s).join(", ");
   const placeEl = place ? el("p", "lp-place", place) : null;
   const h1 = el("h1", "lp-name", lake.name);
@@ -84,12 +86,14 @@ function header(lake: Lake, file: LakesFile, phone: boolean): HTMLElement {
     // On a phone the name comes first, the place under it, then the chip on its own line.
     sec.append(h1);
     if (placeEl) sec.append(placeEl);
-    sec.append(statusChip(lake.status.status));
+    sec.append(familyChip(display));
+    if (display.tag) sec.append(el("p", "lp-tag", display.tag));
   } else {
     if (placeEl) sec.append(placeEl);
     const title = el("div", "lp-title");
-    title.append(h1, statusChip(lake.status.status));
+    title.append(h1, familyChip(display));
     sec.append(title);
+    if (display.tag) sec.append(el("p", "lp-tag", display.tag));
   }
 
   sec.append(el("p", "lp-suparco", suparcoLine(lake)));
@@ -209,8 +213,8 @@ function lastOpenLine(lake: Lake): string | null {
 /** The frozen card: it replaces the gauge while the lake is frozen. No frozen pass is shown as an open-water number. */
 function fillFreeze(lake: Lake): (body: HTMLElement) => boolean {
   return (body) => {
-    const f = lake.freeze;
-    body.append(el("p", "lp-freeze-head", f ? freezeHeadline(f) : lake.status.status));
+    const d = statusDisplay(lake);
+    body.append(el("p", "lp-freeze-head", d.tag ? `${d.chip}: ${d.tag}` : d.chip));
     const area = frozenAreaLine(lake);
     if (area) body.append(el("p", "lp-freeze-area", area));
     const facts = freezeFacts(lake);
@@ -299,7 +303,7 @@ export function createLakePage(root: HTMLElement, opts: LakePageOptions): { dest
     if (msg) page.append(msg);
     // Blocks whose content a later task fills (the gauge or frozen card, extent, history, sources) join here, in order.
     const factor = opts.file.constants.change_factor;
-    const top = isFrozen(lake) ? block("lp-freeze", "Frozen: no change reading while frozen", fillFreeze(lake)) : gaugeBlock(lake, factor, phone);
+    const top = isFrozen(lake) ? block("lp-freeze", "Ice", fillFreeze(lake)) : gaugeBlock(lake, factor, phone);
     const hist = { minObservable: opts.file.constants.min_observable, factor, createChart: opts.createChart, phone };
     const blocks = [
       top,

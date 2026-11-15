@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import storyCss from "./storyPage.css?raw";
 import { describe, expect, it } from "vitest";
 import lakesJson from "../public/data/lakes.json";
 import { findBannedClaims } from "./content";
@@ -6,6 +7,7 @@ import storyCopy from "./content/storyPage.json";
 import { fixtureLakes, requestedLake, withRequestedLake } from "./fixtures";
 import frozenJson from "./frozen/lakes.json";
 import { hasLakeNow, splitChecks, type Lake, type LakesFile } from "./lakes";
+import { familyCounts, frozenBreakdown, statusDisplay } from "./statusDisplay";
 import { mapPin, renderStoryPage, statusClass, storyNumbers } from "./storyPage";
 
 /** The data this build ships. A rebuild replaces it, so tests on it check only what holds for any build. */
@@ -126,15 +128,13 @@ describe("renderStoryPage", () => {
     const { root, page } = render(frozen);
     expect(page.addLakeEl.querySelector("form")).not.toBeNull();
     expect(root.querySelector('section[aria-label="06 Add a lake"]')!.contains(page.addLakeEl)).toBe(true);
-    expect(page.listEl.children.length).toBe(11);
+    expect(page.listEl.querySelectorAll(".sp-lake:not(.sp-request)").length).toBe(11);
     expect(page.mapEl.querySelectorAll(".sp-pin").length).toBe(11);
-    // sorted by area, largest first
-    expect(page.listEl.children[0].textContent).toContain("Attabad");
   });
 
   it("lists and pins every lake of the shipped file", () => {
     const { page } = render(real);
-    expect(page.listEl.children.length).toBe(real.lakes.length);
+    expect(page.listEl.querySelectorAll(".sp-lake:not(.sp-request)").length).toBe(real.lakes.length);
     expect(page.mapEl.querySelectorAll(".sp-pin").length).toBe(real.lakes.length);
   });
 
@@ -144,7 +144,7 @@ describe("renderStoryPage", () => {
       const { root, page } = render(file);
       const text = root.textContent ?? "";
       expect(text).not.toMatch(/\{\w+\}|NaN|undefined/);
-      expect(page.listEl.children.length).toBe(base.lakes.length + 1);
+      expect(page.listEl.querySelectorAll(".sp-lake").length).toBe(base.lakes.length + 1);
       expect(page.mapEl.querySelectorAll(".sp-pin").length).toBe(base.lakes.length + 1);
       expect(page.listEl.textContent).toContain(requestedLake.name);
       expect(storyNumbers(file).sites).toBe(String(base.lakes.length + 1));
@@ -315,9 +315,9 @@ describe("a site with no lake now", () => {
     expect(hollow[0].getAttribute("title")).toContain("No lake now");
     expect(page.mapEl.querySelector(".sp-key-nolake")).not.toBeNull();
     expect(page.mapEl.querySelector(".sp-map-key")?.textContent).toContain("No lake now");
-    const row = [...page.listEl.children].find((r) => r.textContent?.includes("Khurdopin"))!;
-    expect(row.querySelector(".sp-lake-status")?.className).toContain("sp-st-other");
-    expect(row.querySelector(".sp-lake-area")?.textContent).toBe("—");
+    const row = [...page.listEl.querySelectorAll(".sp-lake")].find((r) => r.textContent?.includes("Khurdopin"))!;
+    expect(row.querySelector(".sp-lake-status")?.textContent).toContain("No lake now");
+    expect(row.querySelector(".sp-lake-area")).toBeNull();
     expect(root.textContent).not.toMatch(/\{\w+\}|NaN|undefined/);
   });
 
@@ -383,5 +383,123 @@ describe("a frozen Attabad on the story page (review N1)", () => {
     expect(pics.map((i) => i.getAttribute("src"))).toEqual([`data/${a.images!.latest_hh}`]);
     expect(pics[0].getAttribute("alt")).toContain("while the lake was frozen; no water layer");
     expect(measure.querySelector("figcaption")?.textContent).toMatch(/track \w+\. Water layer hidden: not an open-water measurement while frozen\.$/);
+  });
+});
+
+describe("05 The levels: cards and family rows", () => {
+  const css = storyCss;
+
+  it("lays a card out as a name column that cannot shrink below 12 ch and a status column capped at 45%", () => {
+    const rule = css.match(/^\.sp-lake\s*\{[^}]*\}/m)![0];
+    const cols = rule.match(/grid-template-columns:\s*([^;]+);/)![1];
+    expect(rule).toContain("display: grid");
+    expect(cols).toMatch(/^minmax\((\d+)ch,\s*1fr\)\s+fit-content\(45%\)$/);
+    expect(Number(cols.match(/minmax\((\d+)ch/)![1])).toBeGreaterThanOrEqual(12);
+    expect(css).toMatch(/\.sp-lake-title[^{]*\{[^}]*overflow-wrap:\s*normal/);
+    expect(css).toMatch(/\.sp-lake-title[^{]*\{[^}]*word-break:\s*normal/);
+  });
+
+  it("keeps the name and the status in separate columns", () => {
+    const { page } = render(real);
+    const cards = [...page.listEl.querySelectorAll<HTMLElement>(".sp-lake:not(.sp-request)")];
+    expect(cards).toHaveLength(real.lakes.length);
+    for (const c of cards) {
+      expect(c.children).toHaveLength(2);
+      const [name, right] = [...c.children];
+      expect(name.classList.contains("sp-lake-name")).toBe(true);
+      expect(right.querySelector(".sp-lake-status")).not.toBeNull();
+      expect(name.querySelector(".sp-lake-status")).toBeNull();
+    }
+  });
+
+  it("shows one row per family with its count, agreeing with familyCounts", () => {
+    const { page } = render(real);
+    const counts = familyCounts(real.lakes);
+    const rows = [...page.listEl.querySelectorAll<HTMLElement>(".sp-family")];
+    const shown = Object.fromEntries(rows.map((r) => [r.dataset.family, Number(r.dataset.count)]));
+    for (const [fam, n] of Object.entries(counts)) {
+      if (n > 0) expect(shown[fam]).toBe(n);
+      else expect(shown[fam]).toBeUndefined();
+    }
+    expect(rows.reduce((n, r) => n + Number(r.dataset.count), 0)).toBe(real.lakes.length);
+    for (const r of rows) expect(r.querySelectorAll(".sp-lake").length).toBe(Number(r.dataset.count));
+  });
+
+  it("draws each family row and lake chip with the map's SVG marker, not a text glyph", () => {
+    const { page } = render(real);
+    for (const r of page.listEl.querySelectorAll<HTMLElement>(".sp-family")) {
+      const mark = r.querySelector(".sp-family-toggle .sp-lake-mark");
+      expect(mark!.getAttribute("aria-hidden")).toBe("true");
+      expect(mark!.querySelector("svg")!.getAttribute("width")).toBe("16");
+      expect(r.querySelector(".sp-family-toggle")!.textContent).not.toMatch(/[▲◆▼●⬢■✕○]/);
+    }
+    for (const m of page.listEl.querySelectorAll(".sp-lake-status .sp-lake-mark")) expect(m.querySelector("svg")).not.toBeNull();
+  });
+
+  it("summarises the frozen lakes by evidence", () => {
+    const { page } = render(real);
+    const b = frozenBreakdown(real.lakes);
+    const row = page.listEl.querySelector<HTMLElement>('.sp-family[data-family="frozen"]');
+    if (b.seen + b.temperature === 0) return expect(row).toBeNull();
+    expect(row!.querySelector(".sp-family-toggle")!.textContent).toContain(`Frozen ${b.seen + b.temperature}: ${b.seen} seen in Sentinel-2, ${b.temperature} by air temperature`);
+  });
+
+  it("opens the attention families in place, folds the rest, and toggles with aria-expanded", () => {
+    const { page } = render(real);
+    for (const r of page.listEl.querySelectorAll<HTMLElement>(".sp-family")) {
+      const t = r.querySelector<HTMLButtonElement>(".sp-family-toggle")!;
+      const body = r.querySelector<HTMLElement>(".sp-family-list")!;
+      const open = ["alert", "watch", "decrease", "forming"].includes(r.dataset.family!);
+      expect(t.getAttribute("aria-expanded")).toBe(String(open));
+      expect(body.hidden).toBe(!open);
+      t.click();
+      expect(t.getAttribute("aria-expanded")).toBe(String(!open));
+      expect(body.hidden).toBe(open);
+    }
+  });
+
+  it("gives every lake a chip from statusDisplay and ends with a link to Lake Watch for all of them", () => {
+    let opened = 0;
+    const root = document.createElement("div");
+    const page = renderStoryPage(root, real, { ...opts, onOpenLakes: () => opened++ });
+    for (const l of real.lakes) {
+      const card = [...page.listEl.querySelectorAll(".sp-lake")].find((c) => c.querySelector(".sp-lake-title")!.textContent === l.name)!;
+      expect(card.querySelector(".sp-lake-status")!.textContent).toContain(statusDisplay(l).chip);
+    }
+    const btn = page.listEl.querySelector<HTMLButtonElement>(".sp-levels-all")!;
+    expect(btn.textContent).toBe(`Open Lake Watch for all ${real.lakes.length} lakes`);
+    btn.click();
+    expect(opened).toBe(1);
+  });
+
+  it("renders a lake with a status the display layer does not know", () => {
+    const odd = { ...real, lakes: real.lakes.map((l, i) => (i === 0 ? { ...l, status: { ...l.status, status: "Odd new status" as never } } : l)) };
+    const { page } = render(odd);
+    expect(page.listEl.textContent).toContain("Odd new status");
+  });
+});
+
+describe("the cover buttons", () => {
+  it("makes Open Lake Watch the primary button and Follow the story the secondary one", () => {
+    const { root } = render(real);
+    const btns = [...root.querySelectorAll<HTMLElement>(".sp-cover .sp-actions .sp-btn")];
+    const open = btns.find((b) => b.textContent === "Open Lake Watch")!;
+    const follow = btns.find((b) => b.textContent === "Follow the story")!;
+    expect(open.classList.contains("sp-btn-primary")).toBe(true);
+    expect(follow.classList.contains("sp-btn-primary")).toBe(false);
+    expect(follow.classList.contains("sp-btn-ghost")).toBe(true);
+    expect(btns[0]).toBe(open);
+  });
+});
+
+describe("05 The levels: map pins and legend", () => {
+  it("draws each pin as its family's marker and lists one legend entry per family present", () => {
+    const { page } = render(real);
+    const counts = familyCounts(real.lakes);
+    const pins = [...page.mapEl.querySelectorAll<HTMLElement>(".sp-pin-svg")];
+    for (const p of pins) expect(p.querySelector("svg")).not.toBeNull();
+    const keys = [...page.mapEl.querySelectorAll<HTMLElement>(".sp-key-item")].map((k) => k.dataset.family);
+    expect(keys.sort()).toEqual(Object.entries(counts).filter(([, n]) => n > 0).map(([f]) => f).sort());
+    for (const k of page.mapEl.querySelectorAll(".sp-key-item")) expect(k.textContent!.trim().length).toBeGreaterThan(3);
   });
 });

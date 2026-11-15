@@ -5,7 +5,8 @@ import { droppedLine, isFrozen, levelMessage, type Lake } from "../lakes";
 import { shareState } from "../share";
 import { createDrawerPanel, type DrawerPanel } from "./drawerPanel";
 import { loadMappedLakes } from "./mappedLakes";
-import { el, statusChip, statusMark, svg } from "./marks";
+import { statusDisplay } from "../statusDisplay";
+import { el, familyChip, statusMark, svg } from "./marks";
 import { arrange, latestReadingOnTrack, nextRefresh, type MappedLakesFile, type OverviewFilter, type OverviewState, type SortKey } from "./model";
 import { isoDay, OV_CREDITS, OV_FOOTER, shortDate, signed, suparcoShort } from "./text";
 import type { OverviewHandle, OverviewOptions } from "./overviewView";
@@ -223,17 +224,12 @@ export function renderOverviewPhone(root: HTMLElement, opts: OverviewOptions): O
     return a;
   };
 
-  const sinceText = (l: Lake): string => {
-    const since = isoDay(l.status.level_since ?? (isFrozen(l) ? l.freeze?.since : null) ?? null);
-    return since ? `since ${shortDate(since)}` : "";
-  };
-
   const areaText = (l: Lake): { value: string; sub: string } => {
     if (l.lake_state === "no_lake") return { value: "—", sub: "no lake" };
     const r = latestReadingOnTrack(l, minObs);
     if (!r) return { value: "—", sub: "no reading yet" };
     if (l.status.status === "Not measurable") return { value: r.area.toFixed(3), sub: "info only" };
-    if (isFrozen(l)) return { value: r.area.toFixed(3), sub: `last open water ${shortDate(r.date)}` };
+    if (isFrozen(l)) return { value: r.area.toFixed(3), sub: statusDisplay(l).chip };
     const c = l.status.change_km2;
     return { value: r.area.toFixed(3), sub: typeof c === "number" && Number.isFinite(c) ? `${signed(c)} km²` : "" };
   };
@@ -255,13 +251,14 @@ export function renderOverviewPhone(root: HTMLElement, opts: OverviewOptions): O
     const who = el("span", "ovp-lake-who");
     who.append(name, sub);
     const status = el("span", "ovp-lake-status");
-    status.append(statusChip(l.status.status));
-    const since = sinceText(l);
-    if (since) status.append(el("span", "ovp-since", since));
+    const d = statusDisplay(l, file.constants);
+    status.append(familyChip(d));
+    if (d.tag) status.append(el("span", "ovp-since ov-tag", d.tag));
     const area = areaText(l);
     const share = shareState(l);
     const sharePct = share && typeof l.share_of_largest === "number" && Number.isFinite(l.share_of_largest)
       ? { value: `${share.pct}%`, sub: share.word }
+      : ["frozen", "breakup"].includes(d.family) ? { value: d.chip, sub: "" }
       : { value: "—", sub: l.lake_state === "no_lake" ? "no lake" : "not available" };
     const latest = isoDay(l.status.latest_date);
     const stats = el("span", "ovp-stats");
@@ -280,9 +277,9 @@ export function renderOverviewPhone(root: HTMLElement, opts: OverviewOptions): O
     item.dataset.status = statusSlug(l.status.status);
     const m = levelMessage(l);
     const status = el("div", "ovp-lake-status");
-    status.append(statusChip(l.status.status));
-    const since = sinceText(l);
-    if (since) status.append(el("span", "ovp-since", since));
+    const d = statusDisplay(l, file.constants);
+    status.append(familyChip(d));
+    if (d.tag) status.append(el("span", "ovp-since ov-tag", d.tag));
     const name = openLink("ovp-item-name", l, l.name);
     const c = l.status.change_km2;
     const change = el("p", "ovp-change", typeof c === "number" && Number.isFinite(c) ? `${signed(c)} km² against the baseline` : m ? m.title : l.status.reason);

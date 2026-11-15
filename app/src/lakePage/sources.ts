@@ -61,6 +61,7 @@ function districtRow(l: Lake): string {
 /** Where each fact on the lake page comes from, in a fixed order; a missing value shows "—". */
 export function sourceRows(l: Lake, file: LakesFile): { k: string; v: string }[] {
   return [
+    { k: "Status", v: l.status.reason ? `${l.status.status}: ${l.status.reason}` : l.status.status },
     { k: "Coordinates", v: l.coord_source || DASH },
     { k: "Outline", v: outlineText(l) },
     { k: "Sentinel-2 check", v: checkText(l, file) },

@@ -172,6 +172,27 @@
 .ov-mark-no-lake-now path { stroke: var(--dim); stroke-dasharray: none; }
 .ov-status-not-enough-nisar-looks-yet, .ov-status-not-observable, .ov-status-not-measurable,
 .ov-status-not-yet-validated-against-sentinel-2, .ov-status-not-seen-this-pass { border-style: dotted; border-color: var(--dim); }
+/* Families (statusDisplay): the chip and marker of each family; a dashed outline is a state that is not a settled reading. */
+.ov-fam-alert { background: var(--alert); border: 2px solid var(--alert); color: var(--alert-ink); font-weight: 800; }
+.ov-mark-fam-alert path { fill: var(--alert); stroke: var(--alert-ink); stroke-dasharray: none; }
+.ov-fam-watch { background: var(--panel); border: 2px solid var(--warm); color: var(--warm); font-weight: 700; }
+.ov-mark-fam-watch path { fill: var(--warm); stroke: var(--warm-ink); stroke-dasharray: none; }
+.ov-fam-decrease { border-color: var(--decrease); color: var(--decrease); }
+.ov-mark-fam-decrease path { fill: var(--decrease); stroke: var(--ground); stroke-dasharray: none; }
+.ov-fam-forming { border-style: dashed; border-color: var(--accent); color: var(--accent); }
+.ov-mark-fam-forming path { stroke: var(--accent); stroke-dasharray: 3 2; }
+.ov-fam-nochange { border-color: var(--line-strong); color: var(--accent); }
+.ov-mark-fam-nochange path { fill: var(--accent); stroke: var(--ground); stroke-dasharray: none; }
+.ov-fam-frozen { background: var(--ice); border-color: var(--ice); color: var(--ground); font-weight: 700; }
+.ov-mark-fam-frozen path { fill: var(--ice); stroke: var(--ground); stroke-dasharray: none; }
+.ov-fam-breakup { border-style: dotted; border-color: var(--ice); color: var(--ice); }
+.ov-mark-fam-breakup path { fill: none; stroke: var(--ice); stroke-dasharray: 2 2; }
+.ov-fam-nolake { border-color: var(--line-strong); color: var(--muted); }
+.ov-mark-fam-nolake path { stroke: var(--dim); stroke-dasharray: none; }
+.ov-fam-unmeasured { border-style: dotted; border-color: var(--dim); }
+.ov-mark-fam-unmeasured path { stroke: var(--dim); stroke-dasharray: 1.5 2; }
+.ov-sub.ov-tag { white-space: normal; text-overflow: clip; overflow-wrap: anywhere; max-height: 2.7em; }
+.ov-fam-word { color: var(--muted); font-weight: 500; }
 /* Tiles with a status mark use the same marks. */
 .ov-tile-label .ov-mark path { stroke-width: 2; }
 
@@ -200,9 +221,11 @@
 .ov-mapped-row { color: #d3dfe7; font-size: 14px; }
 .ov-mapped-switch { display: inline-flex; align-items: center; gap: 10px; min-height: 36px; }
 .ov-mapped-switch input { width: 18px; height: 18px; accent-color: var(--accent); }
-.ov-pin { display: block; width: 30px; height: 30px; padding: 3px; border: 0; border-radius: 50%; background: rgba(5, 13, 22, 0.72); cursor: pointer; }
-.ov-pin svg { display: block; width: 24px; height: 24px; overflow: visible; }
-.ov-pin[data-selected] { box-shadow: 0 0 0 2px #fff; background: var(--ground); }
+.ov-pin { display: block; width: 32px; height: 32px; padding: 2px; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.ov-pin svg { display: block; width: 28px; height: 28px; overflow: visible; }
+.ov-pin[data-selected] { z-index: 2; }
+/* The shape stays 28 px; the touch target grows to 44 px. */
+.ov-pin::after { content: ""; position: absolute; inset: -6px; }
 .ov-pin:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ov-mapped-dot circle { fill: var(--dim); }
 .ov-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--panel-2); }
@@ -215,7 +238,8 @@
 .ov-card-link { align-self: flex-start; min-height: 40px; display: inline-flex; align-items: center; font-weight: 600; }
 .ov-legend { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 6px 12px; font-size: 13px; color: #d3dfe7; }
 .ov-legend li { display: flex; align-items: center; gap: 8px; }
-.ov-legend svg { flex: none; }
+.ov-legend svg { flex: none; display: block; }
+.ov-legend-mark { flex: none; display: inline-flex; }
 .ov-notices { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12.5px; }
 .ov-notices p { margin: 0; }
 .ov-locate { flex: none; min-height: 24px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: transparent; color: var(--accent); font-size: 12.5px; cursor: pointer; }

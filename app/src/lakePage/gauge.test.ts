@@ -78,7 +78,7 @@ describe("the change gauge", () => {
   });
   it("the frozen card carries the headline, the facts, the latest reading and the last open-water pass", () => {
     const t = cardText();
-    expect(t).toContain("Probably frozen since 18 Oct 2026");
+    expect(t).toContain("Frozen: By air temperature since 18 Oct; no clear image");
     expect(t).toContain("Air temperature");
     expect(t).toContain("Latest reading 0.226 km² on 30 Oct 2026");
   });

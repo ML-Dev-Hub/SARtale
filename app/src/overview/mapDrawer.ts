@@ -1,6 +1,7 @@
 import { BASE_BOUNDS, locatorStyle, statusSlug } from "../lakeLocator";
 import type { Lake } from "../lakes";
-import { statusMark } from "./marks";
+import { statusDisplay } from "../statusDisplay";
+import { markerSvg, MARKER_LABELS, type MarkerFamily } from "../statusMarkers";
 import type { MapDrawerFactory, MappedLakesFile } from "./model";
 
 const GREY = "#8ea3b0";
@@ -33,9 +34,11 @@ export function pinElement(l: Lake, onPick: (id: string) => void): HTMLButtonEle
   b.className = "ov-pin";
   b.dataset.id = l.id;
   b.dataset.status = statusSlug(l.status.status);
-  b.setAttribute("aria-label", `${l.name}, ${l.status.status}`);
-  b.title = `${l.name}: ${l.status.status}`;
-  b.append(statusMark(l.status.status, 24));
+  const d = statusDisplay(l);
+  b.dataset.family = d.family;
+  b.setAttribute("aria-label", `${l.name}, ${MARKER_LABELS[d.family]}`);
+  b.title = `${l.name}: ${MARKER_LABELS[d.family]}`;
+  b.innerHTML = markerSvg(d.family, { size: 28 });
   b.addEventListener("click", () => onPick(l.id));
   return b;
 }
@@ -58,7 +61,9 @@ export const createMapDrawer: MapDrawerFactory = (el, { lakes, loadMapped, onPic
 
   const applySel = (): void => {
     for (const [k, b] of pins) {
-      b.toggleAttribute("data-selected", k === sel);
+      const on = k === sel;
+      if (b.hasAttribute("data-selected") !== on) b.innerHTML = markerSvg(b.dataset.family as MarkerFamily, { size: 28, selected: on });
+      b.toggleAttribute("data-selected", on);
       b.setAttribute("aria-pressed", String(k === sel));
     }
     if (map?.getLayer("mapped-sel")) map.setFilter("mapped-sel", ["==", ["get", "id"], sel ?? ""]);

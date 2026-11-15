@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi, type Mock } from "vitest";
 import { findBannedClaims } from "../content";
 import { fixtureMessage, frozenFixture, makeFile, makeLake } from "../fixtures";
-import { sortLakes, type Lake, type LakesFile, type LevelName } from "../lakes";
+import { type Lake, type LakesFile, type LevelName } from "../lakes";
 import { DEFAULT_STATE, type OverviewState } from "./model";
 import { createOverview, nameList } from "./overviewView";
 
@@ -89,6 +89,31 @@ describe("overview", () => {
   it("a status chip has a shape and words, not colour alone", () => {
     render(file);
     expect(chip("Watch").querySelector("svg[aria-hidden]")).not.toBeNull();
+  });
+  it("Frozen lakes share one chip and differ in the tag line", () => {
+    render(makeFile([frozenFixture("fz_s2", "Frozen (seen by Sentinel-2)"), frozenFixture("fz_air", "Frozen (likely)")]));
+    const status = (id: string) => root.querySelector<HTMLElement>(`[data-role="ov-row"][data-id="${id}"] .ov-c-status`)!;
+    expect(status("fz_s2").querySelector(".ov-chip")!.textContent).toBe("Frozen");
+    expect(status("fz_air").querySelector(".ov-chip")!.textContent).toBe("Frozen");
+    expect(status("fz_s2").querySelector(".ov-tag")!.textContent).toMatch(/^Seen in Sentinel-2/);
+    expect(status("fz_air").querySelector(".ov-tag")!.textContent).toMatch(/^By air temperature/);
+  });
+  it("the five not-measured statuses all show the chip Not measured", () => {
+    const names = ["Not measurable", "Not yet validated against Sentinel-2", "Not observable", "Not enough NISAR looks yet", "Not seen this pass"] as const;
+    render(makeFile(names.map((s, i) => lake(`nm${i}`, {}, { status: s, level: null }))));
+    const chips = [...root.querySelectorAll(".ov-c-status .ov-chip")].map((c) => c.textContent);
+    expect(chips).toEqual(Array(5).fill("Not measured"));
+    expect(new Set([...root.querySelectorAll(".ov-c-status .ov-tag")].map((t) => t.textContent)).size).toBe(5);
+  });
+  it("the filter chips for Frozen, Ice breaking up and Not measured count families", () => {
+    const f = makeFile([
+      frozenFixture("a", "Frozen (likely)"), frozenFixture("b", "Frozen (seen by Sentinel-2)"), frozenFixture("c", "Break-up likely"),
+      lake("d", {}, { status: "Not observable", level: null }),
+    ]);
+    render(f);
+    const n = (k: string) => root.querySelector(`[data-role="ov-filters"] [data-filter="${k}"] .ov-filter-count`)!.textContent;
+    expect([n("frozen"), n("breakup"), n("unmeasured")]).toEqual(["2", "1", "1"]);
+    expect(root.querySelector('[data-role="ov-tiles"] [data-filter="frozen"] .ov-tile-value')!.textContent).toBe("2");
   });
   it("long names carry a title", () => {
     const name = "Unnamed lake C006 on the Diamer–Ghizer divide above the valley";
@@ -179,17 +204,33 @@ describe("overview details", () => {
     render(makeFile([frozenFixture("ice")]));
     const c = cells("ov-row");
     expect(c[2]).toContain("0.159");
-    expect(c[2]).toContain("last open water 18 Sep");
+    expect(c[2]).toContain("Frozen");
     expect(role("ov-row")!.querySelector("path.ov-spark")!.getAttribute("d")!.match(/[ML]/g)).toHaveLength(5);
   });
-  it("by default the rows follow the status order of sortLakes, and descending reverses them (moved from the old list)", () => {
-    const rest = file.lakes.filter((l) => !["alert_lake", "forming_site", "watch_lake", "decrease_lake"].includes(l.id));
+  it("a frozen row shows the family word, not a dash, 'not available' or 'last open water'", () => {
+    render(makeFile([frozenFixture("ice")]));
+    const t = role("ov-row")!.textContent!;
+    expect(t).not.toContain("last open water");
+    expect(t).not.toContain("not available");
+    expect(cells("ov-row")[3]).toBe("Frozen");
+  });
+  it("the Frozen tile says how many were seen in Sentinel-2 and how many by air temperature", () => {
+    render(makeFile([frozenFixture("a", "Frozen (seen by Sentinel-2)"), frozenFixture("b", "Frozen (likely)"), frozenFixture("c", "Frozen (likely)")]));
+    expect(tile("frozen").querySelector(".ov-tile-sub")!.textContent).toBe("1 seen in Sentinel-2, 2 by air temperature");
+  });
+  it("a Not measured tile replaces Changed since last build when nothing changed", () => {
+    render(makeFile([lake("a", {}, { status: "Not observable", level: null })], { counts: { ...makeFile([]).counts!, changed: 0 } }));
+    expect(root.querySelector('[data-role="ov-tiles"] [data-filter="changed"]')).toBeNull();
+    expect(tile("unmeasured").textContent).toContain("Not measured");
+  });
+  it("by default the rows follow the family order (open water first, then ice, then no lake), and descending reverses them", () => {
+    const order = ["karambar_lake", "passu", "shazore", "shisper"];
     const ids = (dir: "asc" | "desc") => {
       render(file, { ...DEFAULT_STATE, dir });
       return [...roles("ov-row")].map((r) => r.dataset.id);
     };
-    expect(ids("asc")).toEqual(sortLakes(rest).map((l) => l.id));
-    expect(ids("desc")).toEqual(sortLakes(rest).map((l) => l.id).reverse());
+    expect(ids("asc")).toEqual(order);
+    expect(ids("desc")).toEqual([...order].reverse());
   });
   it("tile name lists read as a sentence", () => {
     expect(nameList([])).toBe("");

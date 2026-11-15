@@ -1,4 +1,6 @@
 import { statusSlug } from "../lakeLocator";
+import type { Lake } from "../lakes";
+import { statusDisplay, type StatusDisplay } from "../statusDisplay";
 
 /** The status marker shapes (20 × 20): a shape for each kind of status, so the chip never relies on colour alone. */
 const SHAPES = {
@@ -59,3 +61,22 @@ export function statusChip(status: string): HTMLElement {
   return c;
 }
 
+
+/** A family marker: the shape of the family, with a dashed outline where the state is not a settled reading. */
+export function familyMark(d: StatusDisplay, size = 12): SVGSVGElement {
+  const s = svg("svg", { viewBox: "0 0 20 20", width: String(size), height: String(size), "aria-hidden": "true", class: `ov-mark ov-mark-fam-${d.family}${d.dashed ? " ov-mark-dashed" : ""}` });
+  s.append(svg("path", { d: SHAPES[d.mark as keyof typeof SHAPES] ?? SHAPES.circle }));
+  return s;
+}
+
+/** The family chip: a marker shape and the family name; the evidence goes on the line beneath (see statusDisplay). */
+export function familyChip(d: StatusDisplay): HTMLElement {
+  const c = el("span", `ov-chip ov-fam-${d.family}${d.dashed ? " ov-fam-dashed" : ""}`);
+  c.append(familyMark(d), el("span", undefined, d.chip));
+  return c;
+}
+
+/** The display of a bare status name (no lake): for the legend, which lists one status per family. */
+export function displayForStatus(status: string): StatusDisplay {
+  return statusDisplay({ status: { status } } as unknown as Lake);
+}

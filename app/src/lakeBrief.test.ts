@@ -277,6 +277,13 @@ describe("the brief of a frozen lake", () => {
     expect(findBannedClaims(t)).toEqual([]);
   });
 
+  test("shows the family chip and its evidence, and keeps the pipeline status name", () => {
+    const ice = frozenFixture("ice", "Frozen (seen by Sentinel-2)");
+    const t = text(briefHtml(ice, { ...fixtureLakes, lakes: [ice] }, NOW));
+    expect(t).toContain("Frozen: Seen in Sentinel-2 since 18 Oct");
+    expect(t).toContain("Frozen (seen by Sentinel-2): ");
+  });
+
   test("a lake without a freeze check has no Lake ice section", () => {
     expect(text(briefHtml(lakeOf(), fixtureLakes, NOW))).not.toContain("Lake ice");
   });

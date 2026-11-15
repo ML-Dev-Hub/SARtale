@@ -1,3 +1,4 @@
+import { statusDisplay } from "./statusDisplay";
 import { freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, hasLevel, isFrozen, isTrendPass, levelMessage, loadLakes, methodLimits, processingVersions, statusSentence, suparcoLine, type Lake, type LakesFile } from "./lakes";
 import { checkLine } from "./lakeWatchView";
 import { extentView } from "./lakePage/extent";
@@ -103,6 +104,7 @@ export function briefHtml(lake: Lake, file: LakesFile, generatedAt: Date): strin
   const outline = lake.outline_source ? `<p>Outline: ${esc(lake.outline_source)}</p>` : "";
   // The freeze state, as on the lake's card: the state and since when, the latest area greyed while frozen, the facts.
   const f = lake.freeze;
+  const display = statusDisplay(lake, file.constants);
   const area = frozenAreaLine(lake);
   const ice = f
     ? `<h2>Lake ice</h2>
@@ -116,6 +118,7 @@ ${briefMessage(lake)}<h1>${esc(lake.name)}</h1>
 <p class="lake-brief-meta">Measures: ${esc(lake.area_label)}. Brief made ${esc(formatDate(localIsoDate(generatedAt)))}.</p>
 <p class="lake-brief-meta">${esc(dataLine(lake, file))}</p>
 <h2>Status</h2>
+<p class="lake-brief-chip"><strong>${esc(display.chip)}</strong>${display.tag ? `: ${esc(display.tag)}` : ""}</p>
 <p class="lake-brief-status">${esc(statusSentence(lake, file.constants.change_factor))}</p>
 ${isFrozen(lake) ? "" : readingBlock(lake, file)}
 ${ice}<h2>${passesHead}</h2>

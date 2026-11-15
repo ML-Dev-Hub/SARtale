@@ -28,7 +28,7 @@ function setup(opts: AppOptions = { lakes: realLakes }) {
 
 /** Opens the beat-by-beat Story view the way a visitor does: from the story page. */
 function openStory($: (r: string) => HTMLElement): void {
-  $("home").click();
+  $("view-home").click();
   pageButton($, "Follow the story").click();
 }
 
@@ -56,24 +56,29 @@ function pageButton($: (r: string) => HTMLElement, label: string, nth = 0): HTML
 }
 
 describe("views", () => {
-  test("starts on the story page with the cover title, and the logo goes back to it", () => {
+  test("starts on Lake Watch, the story page is one click away, and the logo returns to Lake Watch", () => {
     const { $ } = setup();
+    expect($("lakes-view").hidden).toBe(false);
+    expect($("lakes-view").dataset.mode).toBe("overview");
+    expect($("home-root").hidden).toBe(true);
+    expect($("shell").dataset.view).toBe("lakes");
+    expect($("view-name").textContent).toBe("Lake Watch");
+    expect(document.title).toBe("SARtale · Lake Watch");
+    expect($("home").getAttribute("aria-label")).toBe("SARtale: Lake Watch");
+    $("view-home").click();
     expect($("home-root").hidden).toBe(false);
     expect($("home-root").querySelector("h1")!.textContent).toBe(TITLE);
-    expect($("shell").dataset.view).toBe("home");
-    expect($("view-name").textContent).toBe("The story");
-    for (const v of ["lakes-view", "lakestory-view", "evidence-view"]) expect($(v).hidden).toBe(true);
+    expect(window.location.hash).toBe("#start");
     $("view-evidence").click();
     expect($("evidence-view").hidden).toBe(false);
     expect($("home-root").hidden).toBe(true);
     expect($("view-evidence").getAttribute("aria-pressed")).toBe("true");
-    $("view-lakes").click();
-    expect(document.title).toBe("SARtale · Lake Watch");
-    $("view-evidence").click();
     expect(document.title).toBe("SARtale · How we know");
     $("home").click();
-    expect($("home-root").hidden).toBe(false);
-    expect(document.title).toBe("SARtale");
+    expect($("lakes-view").hidden).toBe(false);
+    expect($("home-root").hidden).toBe(true);
+    expect(document.title).toBe("SARtale · Lake Watch");
+    window.location.hash = "";
   });
 
   test("there is one header: logo, SARtale, the nav and the provisional pill", () => {
@@ -86,11 +91,13 @@ describe("views", () => {
     expect(root.querySelector("header.top img.logo")).not.toBeNull();
   });
 
-  test("the nav is The story, Lake Watch, then How we know, and nothing else", () => {
+  test("the nav is Lake Watch, How we know, then The story, and nothing else", () => {
     const { root } = setup();
     const buttons = [...root.querySelectorAll<HTMLElement>(".views button")];
-    expect(buttons.map((b) => b.textContent)).toEqual(["The story", "Lake Watch", "How we know"]);
-    expect(buttons.map((b) => b.dataset.role)).toEqual(["view-home", "view-lakes", "view-evidence"]);
+    expect(buttons.map((b) => b.textContent)).toEqual(["Lake Watch", "How we know", "The story"]);
+    expect(buttons.map((b) => b.dataset.role)).toEqual(["view-lakes", "view-evidence", "view-home"]);
+    expect(buttons[0].classList.contains("view-primary")).toBe(true);
+    expect(buttons.slice(1).some((b) => b.classList.contains("view-primary"))).toBe(false);
   });
 
   test("the nav's The story button goes to the start view", () => {
@@ -120,7 +127,7 @@ describe("views", () => {
   });
 
   test("a #lakes, #evidence or #story hash opens that view on load", () => {
-    for (const [hash, view] of [["#lakes", "lakes-view"], ["#evidence", "evidence-view"], ["#story", "lakestory-view"], ["#nonsense", "home-root"]]) {
+    for (const [hash, view] of [["#lakes", "lakes-view"], ["#evidence", "evidence-view"], ["#story", "lakestory-view"], ["#start", "home-root"], ["", "lakes-view"], ["#", "lakes-view"], ["#nonsense", "lakes-view"]]) {
       window.location.hash = hash;
       const { $ } = setup();
       expect($(view).hidden).toBe(false);
@@ -146,6 +153,7 @@ describe("the story page as the start view", () => {
 
   test("Follow the story opens the beat-by-beat Story view, which stays reachable", () => {
     const { $ } = setup();
+    $("view-home").click();
     pageButton($, "Follow the story").click();
     expect($("lakestory-view").hidden).toBe(false);
     expect($("home-root").hidden).toBe(true);
@@ -154,15 +162,17 @@ describe("the story page as the start view", () => {
 
   test("Open Lake Watch and How we know on the story page switch views", () => {
     const { $ } = setup();
+    $("view-home").click();
     pageButton($, "Open Lake Watch").click();
     expect($("lakes-view").hidden).toBe(false);
-    $("home").click();
+    $("view-home").click();
     pageButton($, "How we know").click();
     expect($("evidence-view").hidden).toBe(false);
   });
 
-  test("the story page's lake list and Add-a-lake slot are in the start view", () => {
+  test("the story page's lake list and Add-a-lake slot are in the story view", () => {
     const { $ } = setup();
+    $("view-home").click();
     expect($("home-root").querySelector(".sp-lakes")).not.toBeNull();
     expect($("home-root").querySelector(".sp-add-slot")).not.toBeNull();
   });
@@ -258,8 +268,10 @@ describe("the lake story", () => {
 
 describe("routing", () => {
   test("test_routeFromHash_names_views_and_lakes_and_ignores_anchors", () => {
-    expect(routeFromHash("")).toEqual({ view: "home" });
-    expect(routeFromHash("#")).toEqual({ view: "home" });
+    expect(routeFromHash("")).toEqual({ view: "lakes" });
+    expect(routeFromHash("#")).toEqual({ view: "lakes" });
+    expect(routeFromHash("#start")).toEqual({ view: "home" });
+    expect(routeFromHash("#story")).toEqual({ view: "story" });
     expect(routeFromHash("#evidence")).toEqual({ view: "evidence" });
     expect(routeFromHash("#lakes/attabad")).toEqual({ view: "lakes", lake: "attabad" });
     expect(routeFromHash("#main")).toBeNull();
@@ -334,7 +346,7 @@ describe("after an accept adds a lake", () => {
     expect($("lakes-root").querySelector(".lp-name")?.textContent).toBe(requestedLake.name);
     $("view-lakes").click();
     expect($("lakes-view").querySelectorAll('[data-role="ov-row"], [data-role="ov-pinned"]')).toHaveLength(realLakes.lakes.length + 1);
-    $("home").click();
+    $("view-home").click();
     expect($("home-root").querySelectorAll(".sp-pin:not(.sp-pin-request)")).toHaveLength(realLakes.lakes.length + 1);
     expect(root.textContent).not.toMatch(/NaN|undefined/);
     window.history.replaceState(null, "", "/");

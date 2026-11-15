@@ -6,9 +6,10 @@ export { OV_CREDITS, OV_FOOTER, suparcoShort };
 import { droppedLine, isFrozen, levelMessage, type HeadlineCounts, type Lake, type LakesFile } from "../lakes";
 import { statusSlug } from "../lakeLocator";
 import { shareState } from "../share";
+import { familyCounts, frozenBreakdown, statusDisplay } from "../statusDisplay";
 import { createDrawerPanel, type DrawerPanel } from "./drawerPanel";
 import { loadMappedLakes } from "./mappedLakes";
-import { el, statusChip, statusMark, svg } from "./marks";
+import { familyChip, statusChip, statusMark, el, svg } from "./marks";
 export { statusChip, statusMark };
 import {
   arrange, latestReadingOnTrack, nextRefresh, SORT_FOR_COLUMN, sparklinePath, trendPoints,
@@ -68,6 +69,8 @@ const FILTER_CHIPS: { filter: OverviewFilter; label: string }[] = [
   { filter: "all", label: "All" },
   { filter: "attention", label: "Needs attention" },
   { filter: "frozen", label: "Frozen" },
+  { filter: "breakup", label: "Ice breaking up" },
+  { filter: "unmeasured", label: "Not measured" },
   { filter: "no-lake", label: "No lake now" },
   { filter: "suparco", label: "SUPARCO-listed" },
 ];
@@ -133,12 +136,10 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
   if (validCounts(file.counts)) {
     const c = file.counts;
     const of = (s: string) => lakes.filter((l) => l.status.status === s);
+    const fam = familyCounts(lakes);
     const frozenSub = (): string => {
-      const parts = [
-        [of("Frozen (seen by Sentinel-2)").length, "seen by Sentinel-2"],
-        [of("Frozen (likely)").length, "likely"],
-        [of("Break-up likely").length, "break-up likely"],
-      ].filter(([n]) => n) as [number, string][];
+      const b = frozenBreakdown(lakes);
+      const parts: [number, string][] = ([[b.seen, "seen in Sentinel-2"], [b.temperature, "by air temperature"]] as [number, string][]).filter(([n]) => n);
       return parts.map(([n, t]) => `${n} ${t}`).join(", ");
     };
     const prevBuilt = isoDay(file.previous_build?.built);
@@ -147,10 +148,12 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
       { filter: "alert", label: "Alert: growing", value: c.alert, sub: c.alert ? nameList(of("Alert: growing").map((l) => l.name)) : "None in this build", mark: "Alert: growing" },
       { filter: "watch", label: "Watch", value: c.watch, sub: c.watch ? nameList(of("Watch").map((l) => l.name)) : "None in this build", mark: "Watch" },
       { filter: "open", label: "Open water", value: c.open_water, sub: "A lake now, not frozen", mark: "No change" },
-      { filter: "frozen", label: "Frozen", value: c.frozen, sub: frozenSub(), mark: "Frozen (likely)" },
+      { filter: "frozen", label: "Frozen", value: fam.frozen, sub: frozenSub(), mark: "Frozen (likely)" },
       { filter: "above", label: "Above largest extent", value: c.above_largest, sub: "Above the largest mapped outline by more than radar noise" },
       { filter: "no-lake", label: "No lake now", value: c.no_lake, sub: nameList(lakes.filter((l) => l.lake_state === "no_lake").map((l) => l.name)), mark: "No lake now" },
-      { filter: "changed", label: "Changed since last build", value: c.changed, sub: prevBuilt ? `Since the ${formatDate(prevBuilt)} build` : "" },
+      c.changed === 0
+        ? { filter: "unmeasured", label: "Not measured", value: fam.unmeasured, sub: "No usable radar reading", mark: "Not observable" }
+        : { filter: "changed", label: "Changed since last build", value: c.changed, sub: prevBuilt ? `Since the ${formatDate(prevBuilt)} build` : "" },
     ];
     const sec = el("section", "ov-tiles");
     sec.dataset.role = "ov-tiles";
@@ -276,18 +279,26 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
   }
 
   function statusCell(l: Lake): HTMLElement {
-    const c = cell("ov-c-status", statusChip(l.status.status));
-    const since = l.status.level_since ?? (isFrozen(l) ? l.freeze?.since : null) ?? null;
-    if (isoDay(since)) c.append(el("span", "ov-sub", `since ${shortDate(isoDay(since)!)}`));
+    const d = statusDisplay(l, file.constants);
+    const c = cell("ov-c-status", familyChip(d));
+    if (d.tag) {
+      const tag = el("span", "ov-sub ov-tag", d.tag);
+      tag.title = d.tag;
+      c.append(tag);
+    }
     return c;
   }
+
+  /** Frozen or breaking up: the family word stands where a dash or "not available" would. */
+  const isIcy = (l: Lake): boolean => ["frozen", "breakup"].includes(statusDisplay(l).family);
 
   function areaCell(l: Lake): HTMLElement {
     if (l.lake_state === "no_lake") return cell("ov-c-num", el("span", "ov-num", "—"), el("span", "ov-sub", "no lake"));
     const r = latestReadingOnTrack(l, minObs);
-    if (!r) return cell("ov-c-num", el("span", "ov-num", "—"), el("span", "ov-sub", "no reading yet"));
-    const sub = isFrozen(l)
-      ? `last open water ${shortDate(r.date)}`
+    const icy = isIcy(l);
+    if (!r) return cell("ov-c-num", el("span", "ov-num", icy ? statusDisplay(l).chip : "—"), icy ? "" : el("span", "ov-sub", "no reading yet"));
+    const sub = icy
+      ? statusDisplay(l).chip
       : typeof l.status.change_km2 === "number" && Number.isFinite(l.status.change_km2) ? `${signed(l.status.change_km2)} km²` : "";
     const c = cell("ov-c-num", el("span", "ov-num", r.area.toFixed(3)));
     if (l.status.status === "Not measurable") {
@@ -300,7 +311,7 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     }
     if (sub) {
       const s = el("span", "ov-sub", sub);
-      if (!isFrozen(l)) s.title = "Change against the baseline of earlier passes on this track";
+      if (!icy) s.title = "Change against the baseline of earlier passes on this track";
       c.append(s);
     }
     return c;
@@ -308,6 +319,7 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
 
   function shareCell(l: Lake): HTMLElement {
     const v = l.share_of_largest;
+    if ((typeof v !== "number" || !Number.isFinite(v)) && isIcy(l)) return cell("ov-c-num", el("span", "ov-num ov-fam-word", statusDisplay(l).chip));
     if (typeof v !== "number" || !Number.isFinite(v)) {
       const dash = el("span", "ov-num", "—");
       const why = l.share_note ?? (l.lake_state === "no_lake" ? "No lake now" : "No largest extent for this lake in this build");

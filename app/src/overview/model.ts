@@ -1,6 +1,7 @@
 import { FROZEN_STATUSES, hasLakeNow, isTrendPass, sortLakes, type Lake, type LakeStatusName } from "../lakes";
+import { statusDisplay } from "../statusDisplay";
 
-export type OverviewFilter = "all" | "attention" | "alert" | "watch" | "open" | "frozen" | "above" | "changed" | "no-lake" | "suparco";
+export type OverviewFilter = "all" | "attention" | "alert" | "watch" | "open" | "frozen" | "breakup" | "unmeasured" | "above" | "changed" | "no-lake" | "suparco";
 export type SortKey = "status" | "name" | "area" | "change" | "share" | "latest" | "elevation";
 
 export interface OverviewState {
@@ -15,7 +16,7 @@ export interface OverviewState {
 
 export const DEFAULT_STATE: OverviewState = { show: "all", district: null, q: "", sort: "status", dir: "asc", map: false, sel: null };
 
-const FILTERS: OverviewFilter[] = ["all", "attention", "alert", "watch", "open", "frozen", "above", "changed", "no-lake", "suparco"];
+const FILTERS: OverviewFilter[] = ["all", "attention", "alert", "watch", "open", "frozen", "breakup", "unmeasured", "above", "changed", "no-lake", "suparco"];
 const SORT_KEYS: SortKey[] = ["status", "name", "area", "change", "share", "latest", "elevation"];
 
 /** The sort each column header sets; the trend column sorts by the change. */
@@ -91,7 +92,9 @@ function passesFilter(l: Lake, show: OverviewFilter): boolean {
     case "alert": return l.status.status === "Alert: growing";
     case "watch": return l.status.status === "Watch";
     case "open": return (l.lake_state === undefined || l.lake_state === "lake" || l.lake_state === "unconfirmed") && !isFrozenLake(l);
-    case "frozen": return isFrozenLake(l);
+    case "frozen": return statusDisplay(l).family === "frozen";
+    case "breakup": return statusDisplay(l).family === "breakup";
+    case "unmeasured": return statusDisplay(l).family === "unmeasured";
     case "above": return l.above_largest === true;
     case "changed": return l.previous_status != null && l.previous_status !== l.status.status;
     case "no-lake": return l.lake_state === "no_lake";
@@ -151,6 +154,21 @@ function sortValue(l: Lake, key: Exclude<SortKey, "status">, minObservable: numb
   }
 }
 
+/** Open-water lakes first, then the lakes with no open-water reading (not measured, ice, no lake); then newest pass, then name. */
+function byFamily(lakes: Lake[]): Lake[] {
+  const rank = new Map(lakes.map((l) => [l.id, statusDisplay(l).rank]));
+  return [...lakes].sort((a, b) => {
+    const ca = a.role === "control" ? 1 : 0;
+    const cb = b.role === "control" ? 1 : 0;
+    if (ca !== cb) return ca - cb;
+    if (rank.get(a.id) !== rank.get(b.id)) return (rank.get(a.id) as number) - (rank.get(b.id) as number);
+    const da = a.status.latest_date ?? "";
+    const db = b.status.latest_date ?? "";
+    if (da !== db) return da < db ? 1 : -1;
+    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+  });
+}
+
 const byId = (a: Lake, b: Lake): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 /** Matching needs-attention lakes pinned first (status order), then the rest by the chosen sort, nulls last either way. */
@@ -160,7 +178,7 @@ export function arrange(lakes: Lake[], s: OverviewState, minObservable: number):
   const rest = hits.filter((l) => !needsAttention(l));
   const sign = s.dir === "asc" ? 1 : -1;
   if (s.sort === "status") {
-    const ordered = sortLakes(rest);
+    const ordered = byFamily(rest);
     return { pinned, rows: s.dir === "asc" ? ordered : [...ordered].reverse() };
   }
   const key = s.sort;

@@ -177,3 +177,5 @@
 .lp-phone .lp-block > .lp-slot > .lp-btn[data-action="brief"] { align-self: stretch; justify-content: center; min-height: 48px; }
 .lp-phone .lp-legend { flex-direction: column; flex-wrap: nowrap; gap: 6px; }
 .lp-phone .lp-caption, .lp-phone .lp-gauge-note { overflow-wrap: anywhere; }
+
+.lp-tag { color: var(--muted); margin: 6px 0 0; overflow-wrap: anywhere; }

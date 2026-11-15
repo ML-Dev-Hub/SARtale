@@ -10,9 +10,13 @@ const row = (l: ReturnType<typeof makeLake>, k: string): string => sourceRows(l,
 describe("sourceRows", () => {
   it("lists the sources in order and degrades missing ones", () => {
     const rows = sourceRows(makeLake(), file);
-    expect(rows.map((r) => r.k)).toEqual(["Coordinates", "Outline", "Sentinel-2 check", "SUPARCO match", "Method", "Latency for this lake", "Elevation", "District"]);
+    expect(rows.map((r) => r.k)).toEqual(["Status", "Coordinates", "Outline", "Sentinel-2 check", "SUPARCO match", "Method", "Latency for this lake", "Elevation", "District"]);
     expect(rows.find((r) => r.k === "Elevation")!.v).toBe("—");
     expect(rows.find((r) => r.k === "District")!.v).toBe("—");
+  });
+  it("gives the pipeline status name and the reason", () => {
+    const l = makeLake({ status: { ...makeLake().status, status: "Not observable", reason: "Too little of the lake is seen." } });
+    expect(row(l, "Status")).toBe("Not observable: Too little of the lake is seen.");
   });
   it("never calls a probable match official", () => expect(row(probable, "SUPARCO match")).toContain("our match by map position and area"));
   it("names an official match as official", () => expect(row(official, "SUPARCO match")).toContain("from SUPARCO's official list"));
