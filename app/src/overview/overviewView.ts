@@ -141,9 +141,8 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     const prevBuilt = isoDay(file.previous_build?.built);
     const tiles: { filter: OverviewFilter; label: string; value: number; sub: string; mark?: string }[] = [
       { filter: "all", label: "Lakes watched", value: c.watched, sub: typeof file.mapped_count === "number" && Number.isFinite(file.mapped_count) ? `${file.mapped_count} more mapped, not watched yet` : "" },
-      { filter: "attention", label: "Needs attention", value: c.needs_attention, sub: "Alert, Watch, Decrease noted or a lake that may be forming" },
-      { filter: "alert", label: "Alert: growing", value: c.alert, sub: c.alert ? nameList(of("Alert: growing").map((l) => l.name)) : "None in this build", mark: "Alert: growing" },
-      { filter: "watch", label: "Watch", value: c.watch, sub: c.watch ? nameList(of("Watch").map((l) => l.name)) : "None in this build", mark: "Watch" },
+      { filter: "attention", label: "Needs attention", value: c.needs_attention, sub: c.needs_attention ? nameList(["Alert: growing", "Watch", "Decrease noted", "Lake may be forming"].flatMap((st) => of(st).map((l) => l.name))) : "None in this build" },
+      ...(c.alert ? [{ filter: "alert" as OverviewFilter, label: "Alert: growing", value: c.alert, sub: nameList(of("Alert: growing").map((l) => l.name)), mark: "Alert: growing" }] : []),
       { filter: "open", label: "Open water", value: c.open_water, sub: "A lake now, not frozen", mark: "No change" },
       { filter: "frozen", label: "Frozen", value: fam.frozen, sub: frozenSub(), mark: "Frozen (likely)" },
       { filter: "above", label: "Above largest extent", value: c.above_largest, sub: "Above the largest mapped outline by more than radar noise" },

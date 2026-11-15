@@ -71,6 +71,13 @@ describe("overview", () => {
     render(file, { ...DEFAULT_STATE, district: "Nowhere" });
     expect(role("ov-empty")!.textContent).toBe("No watched lake matches these filters.");
   });
+  it("keeps the tiles to one row: no Watch tile, an Alert tile only when a lake is at Alert", () => {
+    render(file);
+    expect(document.querySelector('[data-filter="watch"]')).toBeNull();
+    expect(document.querySelector('[data-filter="alert"]') !== null).toBe((file.counts?.alert ?? 0) > 0);
+    render(makeFile(file.lakes, { counts: { ...file.counts!, alert: 0 } }));
+    expect(document.querySelector('[data-filter="alert"]')).toBeNull();
+  });
   it("shows the mapped count only when the file has one", () => {
     render(file);
     expect(tile("all").textContent).toContain("503 more mapped, not watched yet");
