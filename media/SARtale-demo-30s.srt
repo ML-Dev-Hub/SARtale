@@ -1,31 +1,31 @@
 1
-00:00:00,000 --> 00:00:02,840
-Clouds hide glacial lakes, just when they fill.
+00:00:00,000 --> 00:00:03,910
+Glacial lakes above Hunza can burst and take bridges with them.
 
 2
-00:00:03,080 --> 00:00:07,310
-We're SARcastic Scientists from Islamabad. We built SARtale.
+00:00:04,150 --> 00:00:06,520
+On many summer days, cloud hides them.
 
 3
-00:00:07,550 --> 00:00:12,110
-NASA and ISRO's NISAR radar sees the lake through cloud.
+00:00:06,760 --> 00:00:10,200
+We're SARcastic Scientists. We built SARtale.
 
 4
-00:00:12,750 --> 00:00:15,120
-Open Lake Watch, and choose a lake.
+00:00:10,440 --> 00:00:13,930
+NASA and ISRO's NISAR radar sees straight through.
 
 5
-00:00:15,860 --> 00:00:20,370
-Passu's flag began with a processing update, so it is not yet confirmed.
+00:00:14,570 --> 00:00:18,990
+SARtale turns each pass into lake water, tracks every lake,
 
 6
-00:00:20,610 --> 00:00:22,213
-Officers get next steps.
+00:00:19,630 --> 00:00:22,420
+and flags changes beyond its normal range.
 
 7
-00:00:22,253 --> 00:00:23,910
-Screening, not a warning.
+00:00:23,260 --> 00:00:24,710
+Anyone can add a lake.
 
 8
-00:00:24,350 --> 00:00:27,840
-It updates weekly, and anyone can add another lake.
+00:00:24,950 --> 00:00:27,880
+When clouds close in, the lakes stay in view.
