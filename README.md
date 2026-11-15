@@ -23,7 +23,7 @@
 
 ![Lake Watch: 39 watched lakes, the lakes that need attention first, count tiles that filter the table, and a key to the statuses](media/screens/lake-watch.jpg)
 
-The two demo videos ([`media/SARtale-demo-30s.mp4`](media/SARtale-demo-30s.mp4) and [`media/SARtale-demo-60s.mp4`](media/SARtale-demo-60s.mp4), with `.srt` subtitles) show the live site; their narration is an AI-generated voice (ElevenLabs), as each video says on screen and in its metadata. The earlier demo and the how-it-works video play on the [site](https://ml-dev-hub.github.io/SARtale/#videos) and in the [guide](https://ml-dev-hub.github.io/SARtale/guide/#videos), with captions. The files are [`media/SARtale-lake-watch-demo.mp4`](media/SARtale-lake-watch-demo.mp4) and [`media/SARtale-how-it-works.mp4`](media/SARtale-how-it-works.mp4).
+The two demo videos ([`media/SARtale-demo-30s.mp4`](media/SARtale-demo-30s.mp4) and [`media/SARtale-demo-60s.mp4`](media/SARtale-demo-60s.mp4), with `.srt` subtitles) show the live site; their narration voice and music are AI-generated (ElevenLabs), as each video says on screen and in its metadata. The earlier demo and the how-it-works video play on the [site](https://ml-dev-hub.github.io/SARtale/#videos) and in the [guide](https://ml-dev-hub.github.io/SARtale/guide/#videos), with captions. The files are [`media/SARtale-lake-watch-demo.mp4`](media/SARtale-lake-watch-demo.mp4) and [`media/SARtale-how-it-works.mp4`](media/SARtale-how-it-works.mp4).
 
 ## Why
 

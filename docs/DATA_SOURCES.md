@@ -61,6 +61,8 @@ Sentinel-2 cross-check result (`lakes.json`, `checks`): one NISAR pass against o
 |---|---|---|
 | Screens of the SARtale site (story page, Lake Watch, Passu's lake page, the map) | Every picture in both videos, captured from the site build of 15 Nov 2026 | Team's own work; the data shown carry the licences in this file (NISAR, Copernicus Sentinel-2, NASA MODIS via GIBS, OpenStreetMap, HKH-PK-2020, Hi-MAG) |
 | Narration (voice "Nathaniel C", eleven_multilingual_v2) | The spoken track; the subtitles carry the same words | AI-generated with ElevenLabs (paid account). Declared on screen in each video, in its file metadata and here |
+| Music (the how-it-works video's track, under the voice) | Background music | AI-generated with ElevenLabs (paid account). Declared on the end card, in the file metadata and here |
+| Scenes from the how-it-works video (Shisper 2022 location map) | The 60 s cut's Shisper scene | Team's own work, from Sentinel-2 and OpenStreetMap as listed under that video |
 
 ## Demo video (`media/SARtale-lake-watch-demo.mp4`)
 
