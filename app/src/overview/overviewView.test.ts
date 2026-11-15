@@ -57,7 +57,9 @@ describe("overview", () => {
     expect(m.getAttribute("aria-expanded")).toBe("false");
     click(m.querySelector("button")!);
     expect(m.getAttribute("aria-expanded")).toBe("true");
-    for (const h of ["What changed", "How sure", "What it is not", "What to do"]) expect(m.textContent).toContain(h);
+    for (const h of ["What changed", "How sure", "What it is not"]) expect(m.textContent).toContain(h);
+    expect(m.textContent).not.toContain("What to do"); // said once above the pinned lakes
+    expect(role("ov-attention-todo")!.textContent).toContain("contact NDMA for Gilgit-Baltistan or PDMA for Khyber Pakhtunkhwa");
   });
   it("each count is a filter and writes the URL state", () => {
     render(file);
@@ -324,7 +326,7 @@ describe("overview details", () => {
   });
   it("one group label heads the pinned rows; rows carry no eyebrow and mark their status for the accent bar", () => {
     render(file);
-    expect(role("ov-pinned-label")!.textContent).toBe("Needs attention (4)");
+    expect(role("ov-pinned-label")!.firstChild!.textContent).toBe("Needs attention (4)");
     expect(root.querySelectorAll(".ov-kicker")).toHaveLength(0);
     expect(root.querySelector('[data-role="ov-pinned"][data-id="watch_lake"]')!.getAttribute("data-status")).toBe("watch");
     expect(root.querySelector('[data-role="ov-pinned"][data-id="alert_lake"]')!.getAttribute("data-status")).toBe("alert-growing");

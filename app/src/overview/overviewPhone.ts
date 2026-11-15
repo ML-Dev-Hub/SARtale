@@ -320,7 +320,6 @@ export function renderOverviewPhone(root: HTMLElement, opts: OverviewOptions): O
       part("What changed", m.what);
       part("How sure", m.since ? `${m.how_sure} ${m.since}` : m.how_sure);
       part("What it is not", m.not);
-      part("What to do", m.do);
     } else {
       part("What the data show", l.status.reason);
     }

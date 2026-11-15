@@ -163,7 +163,7 @@ describe("overview on a phone", () => {
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     click(toggle);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
-    expect(first.textContent).toContain("What to do");
+    expect(first.textContent).not.toContain("What to do"); // said once on the page, not in each message
   });
   it("the bottom bar has List and Map", () => {
     render(file);

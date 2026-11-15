@@ -71,6 +71,8 @@ const SUPARCO_FILTER: { filter: OverviewFilter; label: string } = { filter: "sup
 
 const BAR_LEGEND = "Bar: today's radar area against the largest mapped outline; the tick marks 100%.";
 
+/** Said once above the lakes that need attention; each lake page has the imagery and contact buttons. */
+export const ATTENTION_TODO = "For each lake here: check recent optical imagery (Sentinel-2 or Landsat) or the site, then contact NDMA for Gilgit-Baltistan or PDMA for Khyber Pakhtunkhwa. Each lake's page has the buttons.";
 const OV_NOTES = "Area: NISAR radar water area on the lake's status track, from its newest valid open-water pass, with the change against the baseline of earlier passes on that track; \"info only\" marks a lake whose radar water did not pass the Sentinel-2 check. % of largest mapped outline: that area against the largest mapped outline (Hi-MAG 2008–2017, HKH-PK-2020, OpenStreetMap); \"Above\" means it is larger by more than twice the radar noise, \"Within noise\" that it is larger by less than that, and \"noise unknown\" that the noise could not be set. No share is given where the radar water failed the Sentinel-2 check, the outline lies mostly outside the radar window, or there is no outline. Trend: the valid readings of the status track, the dot being the newest; for a frozen lake it stops at the last open-water reading. SUPARCO numbers are our match by map position and area to SUPARCO's published PDGL IDs; SUPARCO does not publish coordinates.";
 
 function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): OverviewHandle {
@@ -420,7 +422,6 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
       part("What changed", m.what);
       part("How sure", m.since ? `${m.how_sure} ${m.since}` : m.how_sure);
       part("What it is not", m.not);
-      part("What to do", m.do);
     } else {
       part("What the data show", l.status.reason);
     }
@@ -503,6 +504,10 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
       const labelRow = el("div", "ov-group-label");
       labelRow.setAttribute("role", "row");
       const labelCell = el("div", "ov-group-label-cell", `Needs attention (${pinned.length})`);
+      // What to do is the same for every flagged lake, so it is said once here, not in each message.
+      const todo = el("span", "ov-group-todo", ATTENTION_TODO);
+      todo.dataset.role = "ov-attention-todo";
+      labelCell.append(todo);
       labelCell.setAttribute("role", "rowheader");
       labelCell.setAttribute("aria-colspan", "7");
       labelCell.dataset.role = "ov-pinned-label";

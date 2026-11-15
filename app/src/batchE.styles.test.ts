@@ -51,3 +51,10 @@ describe("the desktop map", () => {
     expect(has(rulesFor(styles, ".maplibregl-map .maplibregl-ctrl-group button"), /width:\s*44px;\s*height:\s*44px/)).toBe(true);
   });
 });
+
+describe("cyan buttons that are links", () => {
+  it("keep their dark text on hover instead of the global pale link colour", () => {
+    expect(has(rulesFor(styles, "a.lp-btn-primary:hover"), /color:\s*var\(--accent-ink\)/)).toBe(true);
+    expect(has(rulesFor(styles, ".sp-page a.sp-btn-primary:hover"), /color:\s*#04222e/)).toBe(true);
+  });
+});
