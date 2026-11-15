@@ -105,15 +105,44 @@ describe("overview", () => {
     expect(chips).toEqual(Array(5).fill("Not measured"));
     expect(new Set([...root.querySelectorAll(".ov-c-status .ov-tag")].map((t) => t.textContent)).size).toBe(5);
   });
-  it("the filter chips for Frozen, Ice breaking up and Not measured count families", () => {
+  it("the Frozen, Ice breaking up and Not measured tiles count families", () => {
     const f = makeFile([
       frozenFixture("a", "Frozen (likely)"), frozenFixture("b", "Frozen (seen by Sentinel-2)"), frozenFixture("c", "Break-up likely"),
       lake("d", {}, { status: "Not observable", level: null }),
     ]);
     render(f);
-    const n = (k: string) => root.querySelector(`[data-role="ov-filters"] [data-filter="${k}"] .ov-filter-count`)!.textContent;
+    const n = (k: string) => tile(k).querySelector(".ov-tile-value")!.textContent;
     expect([n("frozen"), n("breakup"), n("unmeasured")]).toEqual(["2", "1", "1"]);
-    expect(root.querySelector('[data-role="ov-tiles"] [data-filter="frozen"] .ov-tile-value')!.textContent).toBe("2");
+  });
+  it("the tiles replace the chip row: no All, Needs attention, Frozen or No lake now chips remain", () => {
+    render(file);
+    expect(root.querySelector(".ov-chips")).toBeNull();
+    const kept = [...root.querySelectorAll('[data-role="ov-filters"] [data-filter]')].map((b) => (b as HTMLElement).dataset.filter);
+    expect(kept).toEqual(["suparco"]);
+  });
+  it("every tile is a button with aria-pressed that filters to the same rows its count says", () => {
+    const c = file.counts!;
+    const want: Record<string, number> = { all: c.watched, attention: c.needs_attention, open: c.open_water, frozen: 1, "no-lake": c.no_lake, unmeasured: 0 };
+    for (const [f, n] of Object.entries(want)) {
+      render(file);
+      const t = tile(f);
+      expect(t.tagName).toBe("BUTTON");
+      expect(t.hasAttribute("aria-pressed")).toBe(true);
+      expect(t.querySelector(".ov-tile-value")!.textContent).toBe(String(n));
+      render(file, { ...DEFAULT_STATE, show: f as OverviewState["show"] });
+      expect(roles("ov-row").length + roles("ov-pinned").length).toBe(n);
+      expect(tile(f).getAttribute("aria-pressed")).toBe("true");
+    }
+  });
+  it("Needs attention and Not measured tiles are always there and click through to the filter", () => {
+    render(file);
+    expect(tile("attention").textContent).toContain("Needs attention");
+    expect(tile("unmeasured").textContent).toContain("Not measured");
+    click(tile("attention"));
+    expect(onState).toHaveBeenLastCalledWith(expect.objectContaining({ show: "attention" }));
+    render(file, { ...DEFAULT_STATE, show: "attention" });
+    click(tile("attention"));
+    expect(onState).toHaveBeenLastCalledWith(expect.objectContaining({ show: "all" }));
   });
   it("long names carry a title", () => {
     const name = "Unnamed lake C006 on the Diamer–Ghizer divide above the valley";
@@ -151,7 +180,7 @@ describe("overview details", () => {
     render(file);
     expect(role("ov-asof")!.textContent).toContain("latest NISAR pass 9 Nov 2026");
   });
-  it("rows keep the filter order and show the counts in the filter chips", () => {
+  it("rows keep the filter order and show the count in the SUPARCO chip", () => {
     render(file, { ...DEFAULT_STATE, show: "suparco" });
     expect([...roles("ov-row")].map((r) => r.dataset.id)).toEqual(["karambar_lake"]);
     expect(role("ov-shown")!.textContent).toBe("Showing 1 of 8 watched lakes");
@@ -218,10 +247,12 @@ describe("overview details", () => {
     render(makeFile([frozenFixture("a", "Frozen (seen by Sentinel-2)"), frozenFixture("b", "Frozen (likely)"), frozenFixture("c", "Frozen (likely)")]));
     expect(tile("frozen").querySelector(".ov-tile-sub")!.textContent).toBe("1 seen in Sentinel-2, 2 by air temperature");
   });
-  it("a Not measured tile replaces Changed since last build when nothing changed", () => {
+  it("the Changed since last build tile shows only when something changed", () => {
     render(makeFile([lake("a", {}, { status: "Not observable", level: null })], { counts: { ...makeFile([]).counts!, changed: 0 } }));
     expect(root.querySelector('[data-role="ov-tiles"] [data-filter="changed"]')).toBeNull();
     expect(tile("unmeasured").textContent).toContain("Not measured");
+    render(makeFile([lake("a", { previous_status: "Watch" }, { status: "Not observable", level: null })]));
+    expect(tile("changed").querySelector(".ov-tile-value")!.textContent).toBe("1");
   });
   it("by default the rows follow the family order (open water first, then ice, then no lake), and descending reverses them", () => {
     const order = ["karambar_lake", "passu", "shazore", "shisper"];
@@ -242,7 +273,7 @@ describe("overview details", () => {
   it("column heads read as given, units included", () => {
     render(file);
     expect([...root.querySelectorAll('[role="columnheader"]')].map((h) => h.textContent!.replace(/ /g, " ").trim())).toEqual([
-      "Lake · district · SUPARCO", "Status", "Area (km²)", "% of largest extent", "Trend (status track)", "Latest pass", "Elev. (m)",
+      "Lake · district · SUPARCO", "Status", "Area (km²)", "% of largest extent", "Trend (recent passes)", "Latest pass", "Elev. (m)",
     ]);
   });
   it("a possible SUPARCO match shows as no match", () => {
@@ -300,5 +331,37 @@ describe("overview details", () => {
     expect(role("ov-actions")!.childElementCount).toBe(0);
     expect(role("ov-footer")!.textContent).toContain("Screening on NISAR radar, not a warning.");
     expect(role("ov-table")!.getAttribute("role")).toBe("table");
+  });
+  it("the status key lists one line per family present, plus Alert, in a details open on desktop", () => {
+    render(makeFile([lake("a", {}, { status: "Watch", level: "Watch" }), frozenFixture("b", "Frozen (likely)")]));
+    const key = role("ov-key") as HTMLDetailsElement;
+    expect(key.tagName).toBe("DETAILS");
+    expect(key.open).toBe(true);
+    const fams = [...key.querySelectorAll<HTMLElement>("li")].map((li) => li.dataset.family);
+    expect(fams).toEqual(["alert", "watch", "frozen"]);
+    expect(key.querySelector("li svg")).not.toBeNull();
+    expect(key.textContent).toContain("Ice cover; radar cannot measure water");
+    expect(findBannedClaims(key.textContent!)).toEqual([]);
+    expect(key.compareDocumentPosition(role("ov-table")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+  it("every status chip carries the key's sentence as its title", () => {
+    render(file);
+    expect(chip("Watch").getAttribute("title")).toBe("Recent passes show the water area outside its normal range; worth a look");
+    expect(chip("Decrease noted").getAttribute("title")).toBe("Water area fell on two passes in a row");
+    expect(chip("Frozen").getAttribute("title")).toBe("Ice cover; radar cannot measure water");
+    for (const c of root.querySelectorAll(".ov-chip")) expect(c.getAttribute("title")).toBeTruthy();
+  });
+  it("the share bar says what it shows on hover and the table notes carry a visible legend line", () => {
+    render(file, { ...DEFAULT_STATE, show: "suparco" });
+    const bar = role("ov-row")!.querySelector(".ov-share")!;
+    expect(bar.getAttribute("title")).toMatch(/^0\.131 km² is 97% of the largest mapped outline/);
+    expect(root.querySelector(".ov-notes")!.textContent).toContain("Bar: today's radar area against the largest mapped outline; the tick marks 100%.");
+    expect(root.querySelector('[data-sort="share"]')!.getAttribute("title")).toContain("tick marks 100%");
+  });
+  it("the sparkline says what it plots, with the newest date", () => {
+    render(file, { ...DEFAULT_STATE, show: "suparco" });
+    const s = role("ov-row")!.querySelector("svg.ov-trend")!;
+    expect(s.getAttribute("aria-label")).toMatch(/^Radar water area on track 055A, last \d+ valid passes; dot = newest \(9 Nov\)/);
+    expect(s.querySelector("title")?.textContent).toBe(s.getAttribute("aria-label"));
   });
 });

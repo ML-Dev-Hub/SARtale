@@ -7,6 +7,7 @@ import { droppedLine, isFrozen, levelMessage, type HeadlineCounts, type Lake, ty
 import { statusSlug } from "../lakeLocator";
 import { shareState } from "../share";
 import { familyCounts, frozenBreakdown, statusDisplay } from "../statusDisplay";
+import { statusKey } from "./statusKey";
 import { createDrawerPanel, type DrawerPanel } from "./drawerPanel";
 import { loadMappedLakes } from "./mappedLakes";
 import { familyChip, statusChip, statusMark, el, svg } from "./marks";
@@ -56,7 +57,7 @@ const COLUMNS: { col: keyof typeof SORT_FOR_COLUMN; label: string; num: boolean 
   { col: "status", label: "Status", num: false },
   { col: "area", label: "Area (km²)", num: true },
   { col: "share", label: "% of largest extent", num: true },
-  { col: "trend", label: "Trend (status track)", num: false },
+  { col: "trend", label: "Trend (recent passes)", num: false },
   { col: "latest", label: "Latest pass", num: false },
   { col: "elevation", label: "Elev. (m)", num: true },
 ];
@@ -65,17 +66,12 @@ const SORT_NAMES: Record<SortKey, string> = {
   status: "status", name: "name", area: "area", change: "change against the baseline", share: "% of largest extent", latest: "latest pass", elevation: "elevation",
 };
 
-const FILTER_CHIPS: { filter: OverviewFilter; label: string }[] = [
-  { filter: "all", label: "All" },
-  { filter: "attention", label: "Needs attention" },
-  { filter: "frozen", label: "Frozen" },
-  { filter: "breakup", label: "Ice breaking up" },
-  { filter: "unmeasured", label: "Not measured" },
-  { filter: "no-lake", label: "No lake now" },
-  { filter: "suparco", label: "SUPARCO-listed" },
-];
+/** The one filter that has no count tile: it sits beside the district select. */
+const SUPARCO_FILTER: { filter: OverviewFilter; label: string } = { filter: "suparco", label: "SUPARCO-listed" };
 
-const OV_NOTES = "Area: NISAR radar water area on the lake's status track, from its newest valid open-water pass, with the change against the baseline of earlier passes on that track; \"info only\" marks a lake whose radar water did not pass the Sentinel-2 check. % of largest extent: that area against the largest mapped outline (Hi-MAG 2008–2017, HKH-PK-2020, OpenStreetMap); \"Above\" means it is larger by more than twice the radar noise, \"Within noise\" that it is larger by less than that, and \"noise unknown\" that the noise could not be set. No share is given where the radar water failed the Sentinel-2 check, the outline lies mostly outside the radar window, or there is no outline. Trend: the valid readings of the status track; for a frozen lake it stops at the last open-water reading. SUPARCO numbers are our match by map position and area to SUPARCO's published PDGL IDs; SUPARCO does not publish coordinates.";
+const BAR_LEGEND = "Bar: today's radar area against the largest mapped outline; the tick marks 100%.";
+
+const OV_NOTES = "Area: NISAR radar water area on the lake's status track, from its newest valid open-water pass, with the change against the baseline of earlier passes on that track; \"info only\" marks a lake whose radar water did not pass the Sentinel-2 check. % of largest extent: that area against the largest mapped outline (Hi-MAG 2008–2017, HKH-PK-2020, OpenStreetMap); \"Above\" means it is larger by more than twice the radar noise, \"Within noise\" that it is larger by less than that, and \"noise unknown\" that the noise could not be set. No share is given where the radar water failed the Sentinel-2 check, the outline lies mostly outside the radar window, or there is no outline. Trend: the valid readings of the status track, the dot being the newest; for a frozen lake it stops at the last open-water reading. SUPARCO numbers are our match by map position and area to SUPARCO's published PDGL IDs; SUPARCO does not publish coordinates.";
 
 function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): OverviewHandle {
   const file = opts.file;
@@ -145,15 +141,16 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     const prevBuilt = isoDay(file.previous_build?.built);
     const tiles: { filter: OverviewFilter; label: string; value: number; sub: string; mark?: string }[] = [
       { filter: "all", label: "Lakes watched", value: c.watched, sub: typeof file.mapped_count === "number" && Number.isFinite(file.mapped_count) ? `${file.mapped_count} more mapped, not watched yet` : "" },
+      { filter: "attention", label: "Needs attention", value: c.needs_attention, sub: "Alert, Watch, Decrease noted or a lake that may be forming" },
       { filter: "alert", label: "Alert: growing", value: c.alert, sub: c.alert ? nameList(of("Alert: growing").map((l) => l.name)) : "None in this build", mark: "Alert: growing" },
       { filter: "watch", label: "Watch", value: c.watch, sub: c.watch ? nameList(of("Watch").map((l) => l.name)) : "None in this build", mark: "Watch" },
       { filter: "open", label: "Open water", value: c.open_water, sub: "A lake now, not frozen", mark: "No change" },
       { filter: "frozen", label: "Frozen", value: fam.frozen, sub: frozenSub(), mark: "Frozen (likely)" },
       { filter: "above", label: "Above largest extent", value: c.above_largest, sub: "Above the largest mapped outline by more than radar noise" },
+      ...(fam.breakup ? [{ filter: "breakup" as OverviewFilter, label: "Ice breaking up", value: fam.breakup, sub: "Air above 0 °C; radar cannot measure water yet", mark: "Break-up likely" }] : []),
       { filter: "no-lake", label: "No lake now", value: c.no_lake, sub: nameList(lakes.filter((l) => l.lake_state === "no_lake").map((l) => l.name)), mark: "No lake now" },
-      c.changed === 0
-        ? { filter: "unmeasured", label: "Not measured", value: fam.unmeasured, sub: "No usable radar reading", mark: "Not observable" }
-        : { filter: "changed", label: "Changed since last build", value: c.changed, sub: prevBuilt ? `Since the ${formatDate(prevBuilt)} build` : "" },
+      { filter: "unmeasured", label: "Not measured", value: fam.unmeasured, sub: "No usable radar reading", mark: "Not observable" },
+      ...(c.changed > 0 ? [{ filter: "changed" as OverviewFilter, label: "Changed since last build", value: c.changed, sub: prevBuilt ? `Since the ${formatDate(prevBuilt)} build` : "" }] : []),
     ];
     const sec = el("section", "ov-tiles");
     sec.dataset.role = "ov-tiles";
@@ -178,20 +175,18 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
   const filters = el("section", "ov-filters");
   filters.dataset.role = "ov-filters";
   filters.setAttribute("aria-label", "Filters");
-  const group = el("div", "ov-chips");
-  group.setAttribute("role", "group");
-  group.setAttribute("aria-label", "Show");
+  const group = el("div", "ov-chips-extra");
   const chipButtons: HTMLButtonElement[] = [];
   const filterCount = (f: OverviewFilter): number => {
     const a = arrange(lakes, { ...state, show: f, district: null, q: "" }, minObs);
     return a.pinned.length + a.rows.length;
   };
-  for (const f of FILTER_CHIPS) {
+  for (const f of [SUPARCO_FILTER]) {
     const b = el("button", "ov-filter");
     b.type = "button";
     b.dataset.filter = f.filter;
     b.append(f.label, " ", el("span", "ov-filter-count", String(filterCount(f.filter))));
-    b.addEventListener("click", () => set({ show: f.filter }));
+    b.addEventListener("click", () => set({ show: state.show === f.filter ? "all" : f.filter }));
     chipButtons.push(b);
     group.append(b);
   }
@@ -213,6 +208,7 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
   shown.setAttribute("role", "status");
   filters.append(group, districtLabel, searchLabel, shown);
   wrap.append(filters);
+  wrap.append(statusKey(lakes, true));
 
   // ---- Table (and the map drawer's place beside it) ---------------------------------------------------------------
   const main = el("div", "ov-main");
@@ -228,7 +224,9 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
   main.append(tableWrap, drawer);
   wrap.append(main);
 
-  wrap.append(el("p", "ov-notes", OV_NOTES));
+  const legend = el("p", "ov-notes ov-bar-legend", BAR_LEGEND);
+  legend.dataset.role = "ov-bar-legend";
+  wrap.append(legend, el("p", "ov-notes", OV_NOTES));
   const footer = el("footer", "ov-footer");
   footer.dataset.role = "ov-footer";
   footer.append(el("p", "ov-footer-main", OV_FOOTER), el("p", "ov-credits", OV_CREDITS));
@@ -329,6 +327,9 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     const st = shareState(l)!;
     const { pct, above } = st;
     const line = el("span", "ov-share");
+    const ext = l.largest_extent?.km2;
+    const reading = latestReadingOnTrack(l, minObs);
+    line.title = `${reading ? `${reading.area.toFixed(3)} km² is ` : ""}${pct}% of the largest mapped outline${typeof ext === "number" && Number.isFinite(ext) ? ` (${ext.toFixed(3)} km²)` : ""}`;
     const bar = el("span", "ov-bar");
     bar.setAttribute("aria-hidden", "true");
     const fill = el("span", `ov-bar-fill${above ? " ov-bar-above" : ""}`);
@@ -346,9 +347,12 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     const d = sparklinePath(pts, 96, 22);
     if (!d) return cell("ov-c-trend", el("span", "ov-sub", "too few readings"));
     const s = svg("svg", { viewBox: "0 0 100 24", width: "100", height: "24", role: "img", class: `ov-trend${isFrozen(l) ? " ov-trend-frozen" : ""}` });
-    const first = new Date(pts[0].t).toISOString().slice(0, 10);
     const last = new Date(pts[pts.length - 1].t).toISOString().slice(0, 10);
-    s.setAttribute("aria-label", `Area on track ${l.status.track}: ${pts.length} readings from ${shortDate(first)} to ${shortDate(last)}${isFrozen(l) ? ", up to the last open-water reading" : ""}`);
+    const label = `Radar water area on track ${l.status.track}, last ${pts.length} valid passes; dot = newest (${shortDate(last)})${isFrozen(l) ? ", the last open-water reading" : ""}`;
+    s.setAttribute("aria-label", label);
+    const tt = svg("title", {});
+    tt.textContent = label;
+    s.append(tt);
     const g = svg("g", { transform: "translate(2 1)" });
     g.append(svg("path", { d, class: "ov-spark" }));
     const end = /(-?[\d.]+) (-?[\d.]+)$/.exec(d);
@@ -461,7 +465,8 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
       last.append("\u00a0", arrow);
       text.append(last);
       b.append(text);
-      if (c.col === "trend") b.title = "Sorts by the change against the baseline of the status track";
+      if (c.col === "trend") b.title = "Radar water area on the status track over its recent valid passes; the dot is the newest. Sorts by the change against the baseline";
+      if (c.col === "share") b.title = `${BAR_LEGEND} Sorts by the share.`;
       b.addEventListener("click", () => set({ sort: key, dir: active && state.dir === "asc" ? "desc" : "asc" }));
       h.append(b);
       r.append(h);

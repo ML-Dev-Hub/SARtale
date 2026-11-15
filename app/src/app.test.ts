@@ -344,7 +344,7 @@ describe("routing", () => {
     root.querySelector<HTMLButtonElement>('[data-role="ov-filters"] [data-filter="suparco"]')!.click();
     expect(window.location.hash).toBe("#lakes?show=suparco");
     expect(root.querySelector('[data-role="ov-empty"]')).not.toBeNull();
-    root.querySelector<HTMLButtonElement>('[data-role="ov-filters"] [data-filter="all"]')!.click();
+    root.querySelector<HTMLButtonElement>('[data-role="ov-tiles"] [data-filter="all"]')!.click();
     expect(window.location.hash).toBe("#lakes");
     root.querySelector<HTMLButtonElement>('[data-role="ov-row"][data-id="b"] button.ov-name')!.click();
     expect(window.location.hash).toBe("#lakes/b");
