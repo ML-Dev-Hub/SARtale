@@ -25,3 +25,6 @@ docs/demo-script.md
 # local secrets (ElevenLabs CLI)
 .env.local
 .env
+
+# Internal submission notes (team only, never published)
+docs/submission/
