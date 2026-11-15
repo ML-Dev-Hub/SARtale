@@ -74,19 +74,19 @@ a:hover { color: #b8ecfa; }
 /* Over the story cover the bar is see-through, with a fade so the nav stays readable on the photograph. */
 .shell[data-view="home"] .top { position: absolute; top: 0; left: 0; right: 0; background: linear-gradient(180deg, rgba(5, 13, 22, 0.88) 0%, rgba(5, 13, 22, 0) 100%); border-bottom: 0; }
 
-.logo-btn { flex: none; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 12px; }
+.logo-btn { flex: none; display: inline-flex; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 12px; }
 /* The logo's lettering is dark green, so it sits on a light tile to stay readable on the dark ground. */
 .logo-panel { display: inline-flex; padding: 3px; border-radius: 10px; background: #f3f7f4; }
 .logo { display: block; width: 44px; height: 44px; }
 .brand { flex: none; margin-right: 24px; font-family: var(--display); font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: #fff; }
 .views { display: flex; flex-wrap: wrap; gap: 4px; margin-left: 12px; }
-.view-btn { min-height: 44px; padding: 0 14px; border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; color: #d3dfe7; font-weight: 600; cursor: pointer; }
+.view-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; text-decoration: none; border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; color: #d3dfe7; font-weight: 600; cursor: pointer; }
 .view-btn:hover { color: #fff; border-bottom-color: var(--line-strong); }
-.view-btn[aria-pressed="true"] { color: #fff; border-bottom-color: var(--accent); }
+.view-btn[aria-current="page"] { color: #fff; border-bottom-color: var(--accent); }
 /* Lake Watch is the main destination: a filled pill when elsewhere, a dark pill with an accent ring and a check when current. */
 .view-btn.view-primary { margin-right: 6px; border: 2px solid var(--accent); border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .view-btn.view-primary:hover { background: #a6e6f7; border-color: #a6e6f7; color: var(--accent-ink); }
-.view-btn.view-primary[aria-pressed="true"] { background: var(--ground); border-color: var(--accent); color: #fff; box-shadow: inset 0 0 0 1px var(--accent); }
+.view-btn.view-primary[aria-current="page"] { background: var(--ground); border-color: var(--accent); color: #fff; box-shadow: inset 0 0 0 1px var(--accent); }
 
 /* The provisional label: in the header on every view. */
 .maturity { margin: 0; font-weight: 600; pointer-events: none; }

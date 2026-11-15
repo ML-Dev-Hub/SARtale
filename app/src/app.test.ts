@@ -50,9 +50,9 @@ function lakesWith(rows: [string, number, string, Partial<LakesFile["lakes"][num
 
 const TITLE = "When clouds close in, the lakes stay in view.";
 
-/** A button on the story page, found by its label. */
-function pageButton($: (r: string) => HTMLElement, label: string, nth = 0): HTMLButtonElement {
-  return [...$("home-root").querySelectorAll<HTMLButtonElement>("button.sp-btn")].filter((b) => b.textContent === label)[nth];
+/** A link-button on the story page, found by its label. */
+function pageButton($: (r: string) => HTMLElement, label: string, nth = 0): HTMLAnchorElement {
+  return [...$("home-root").querySelectorAll<HTMLAnchorElement>("a.sp-btn")].filter((b) => b.textContent === label)[nth];
 }
 
 describe("views", () => {
@@ -72,7 +72,7 @@ describe("views", () => {
     $("view-evidence").click();
     expect($("evidence-view").hidden).toBe(false);
     expect($("home-root").hidden).toBe(true);
-    expect($("view-evidence").getAttribute("aria-pressed")).toBe("true");
+    expect($("view-evidence").getAttribute("aria-current")).toBe("page");
     expect(document.title).toBe("SARtale · How we know");
     $("home").click();
     expect($("lakes-view").hidden).toBe(false);
@@ -93,20 +93,46 @@ describe("views", () => {
 
   test("the nav is Lake Watch, How we know, then The story, and nothing else", () => {
     const { root } = setup();
-    const buttons = [...root.querySelectorAll<HTMLElement>(".views button")];
+    const buttons = [...root.querySelectorAll<HTMLElement>(".views a")];
+    expect(root.querySelectorAll(".views button")).toHaveLength(0);
+    expect(buttons.map((b) => b.getAttribute("href"))).toEqual(["#lakes", "#evidence", "#start"]);
     expect(buttons.map((b) => b.textContent)).toEqual(["Lake Watch", "How we know", "The story"]);
     expect(buttons.map((b) => b.dataset.role)).toEqual(["view-lakes", "view-evidence", "view-home"]);
     expect(buttons[0].classList.contains("view-primary")).toBe(true);
     expect(buttons.slice(1).some((b) => b.classList.contains("view-primary"))).toBe(false);
   });
 
-  test("the nav's The story button goes to the start view", () => {
+  test("navigation actions are real links, so right-click and open in a new tab work", () => {
+    const { root, $ } = setup();
+    expect($("home").tagName).toBe("A");
+    expect($("home").getAttribute("href")).toBe("#lakes");
+    expect(root.querySelectorAll("header.top button")).toHaveLength(0);
+    for (const label of ["Open Lake Watch", "Follow the story"]) expect(pageButton($, label)?.getAttribute("href")).toMatch(/^#/);
+    expect(pageButton($, "Follow the story").getAttribute("href")).toBe("#story");
+  });
+
+  test("a plain click is handled in the app, a modified click is left to the browser", () => {
+    const { $ } = setup();
+    const plain = new MouseEvent("click", { bubbles: true, cancelable: true });
+    $("view-evidence").dispatchEvent(plain);
+    expect(plain.defaultPrevented).toBe(true);
+    expect($("evidence-view").hidden).toBe(false);
+    const ctrl = new MouseEvent("click", { bubbles: true, cancelable: true, ctrlKey: true });
+    $("view-home").dispatchEvent(ctrl);
+    expect(ctrl.defaultPrevented).toBe(false);
+    expect($("evidence-view").hidden).toBe(false);
+    const middle = new MouseEvent("click", { bubbles: true, cancelable: true, button: 1 });
+    $("view-home").dispatchEvent(middle);
+    expect(middle.defaultPrevented).toBe(false);
+  });
+
+  test("the nav's The story link goes to the start view", () => {
     const { $ } = setup();
     $("view-lakes").click();
-    expect($("view-home").getAttribute("aria-pressed")).toBe("false");
+    expect($("view-home").getAttribute("aria-current")).toBeNull();
     $("view-home").click();
     expect($("home-root").hidden).toBe(false);
-    expect($("view-home").getAttribute("aria-pressed")).toBe("true");
+    expect($("view-home").getAttribute("aria-current")).toBe("page");
   });
 
   test("the provisional label is in the header on every view and in the footer, with the warning authorities", () => {
@@ -287,7 +313,7 @@ describe("routing", () => {
     expect(window.location.hash).toBe("#lakes");
     window.history.replaceState(null, "", "#evidence");
     window.dispatchEvent(new HashChangeEvent("hashchange"));
-    expect($("view-evidence").getAttribute("aria-pressed")).toBe("true");
+    expect($("view-evidence").getAttribute("aria-current")).toBe("page");
     window.history.replaceState(null, "", "/");
   });
 

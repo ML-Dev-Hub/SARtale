@@ -199,7 +199,8 @@ describe("renderStoryPage", () => {
       onOpenEvidence: () => calls.push("evidence"),
       onFollowStory: () => calls.push("story"),
     });
-    root.querySelectorAll<HTMLButtonElement>("button").forEach((b) => b.click());
+    root.querySelectorAll<HTMLAnchorElement>("a.sp-btn").forEach((b) => b.click());
+    expect(root.querySelectorAll(".sp-actions button")).toHaveLength(0);
     expect(calls).toContain("lakes");
     expect(calls).toContain("evidence");
     expect(calls).toContain("story");
@@ -279,7 +280,9 @@ describe("story page Alert banner", () => {
     expect(banner.textContent).toContain("Not an outburst forecast.");
     expect(banner.textContent).toContain("Official warnings come from PMD, NDMA, GBDMA and PDMA.");
     expect(findBannedClaims(banner.textContent!)).toEqual([]);
-    banner.querySelector<HTMLButtonElement>("button")!.click();
+    const go = banner.querySelector<HTMLAnchorElement>("a.sp-btn")!;
+    expect(go.getAttribute("href")).toBe("#lakes");
+    go.click();
     expect(opened).toBe(1);
     const calm = render({ ...fixtureLakes, lakes: fixtureLakes.lakes.filter((l) => l.status.status !== "Alert: growing") }).root;
     expect(calm.querySelector('[data-role="sp-alert-banner"]')).toBeNull();
