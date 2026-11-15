@@ -1,39 +1,39 @@
 1
-00:00:00,000 --> 00:00:02,420
-Cloud hides Pakistan's glacial lakes.
+00:00:00,000 --> 00:00:02,222
+A glacial lake above Hunza bursts
 
 2
-00:00:02,860 --> 00:00:06,260
-SARtale uses NISAR radar to keep watching.
+00:00:02,262 --> 00:00:04,600
+and takes a highway bridge with it.
 
 3
-00:00:06,700 --> 00:00:08,890
-Open Lake Watch. Pick Passu.
+00:00:04,940 --> 00:00:07,270
+In summer, cloud hides lakes like it.
 
 4
-00:00:09,730 --> 00:00:11,920
-Each pass estimates water area,
+00:00:07,710 --> 00:00:09,850
+NISAR's radar sees straight through.
 
 5
-00:00:12,260 --> 00:00:15,420
-compared with this lake's normal range on the same track.
+00:00:10,390 --> 00:00:12,739
+SARtale watches thirty-nine lakes,
 
 6
-00:00:15,860 --> 00:00:18,253
-Passu's flag began with a processing
+00:00:12,779 --> 00:00:14,530
+and anyone can add more.
 
 7
-00:00:18,293 --> 00:00:20,280
-update, so it is unconfirmed.
+00:00:15,170 --> 00:00:17,780
+It turns dark radar pixels into water,
 
 8
-00:00:20,820 --> 00:00:22,426
-Anyone can request a lake;
+00:00:18,220 --> 00:00:20,730
+tracks each lake pass after pass,
 
 9
-00:00:22,466 --> 00:00:23,660
-we refresh weekly.
+00:00:21,270 --> 00:00:24,300
+and flags only changes bigger than its own noise.
 
 10
-00:00:24,000 --> 00:00:27,300
-Know which lakes need a closer look, even through cloud.
+00:00:24,940 --> 00:00:27,640
+When clouds close in, the lakes stay in view.
