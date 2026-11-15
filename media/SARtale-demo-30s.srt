@@ -7,11 +7,11 @@ Glacial lakes above Hunza can burst and take bridges with them.
 On many summer days, cloud hides them.
 
 3
-00:00:06,760 --> 00:00:10,200
+00:00:06,960 --> 00:00:10,400
 We're SARcastic Scientists. We built SARtale.
 
 4
-00:00:10,440 --> 00:00:13,930
+00:00:10,640 --> 00:00:14,130
 NASA and ISRO's NISAR radar sees straight through.
 
 5
@@ -19,13 +19,13 @@ NASA and ISRO's NISAR radar sees straight through.
 SARtale turns each pass into lake water, tracks every lake,
 
 6
-00:00:19,630 --> 00:00:22,420
+00:00:19,730 --> 00:00:22,520
 and flags changes beyond its normal range.
 
 7
-00:00:23,260 --> 00:00:24,710
+00:00:23,360 --> 00:00:24,810
 Anyone can add a lake.
 
 8
-00:00:24,950 --> 00:00:27,880
+00:00:25,750 --> 00:00:28,680
 When clouds close in, the lakes stay in view.
