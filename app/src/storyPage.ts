@@ -7,7 +7,8 @@ import { wireNavLink } from "./navLink";
 import { mountAddLake, requestLine, shownRequests, type LakeRequest } from "./lakeRequests";
 import { MARKER_LABELS, markerSvg } from "./statusMarkers";
 import { familyCounts, frozenBreakdown, statusDisplay, type Family } from "./statusDisplay";
-import { alertLakes, cloudLooks, FROZEN_AREA, hasLakeNow, iouRange, isFrozen, lakesNow, levelMessage, opticalOverlapPhrase, picturedPassFrozen, type Lake, type LakesFile } from "./lakes";
+import { needsAttention } from "./overview/model";
+import { alertLakes, cloudLooks, dayMonth, FROZEN_AREA, hasLakeNow, iouRange, isFrozen, lakesNow, levelMessage, opticalOverlapPhrase, picturedPassFrozen, type Lake, type LakesFile } from "./lakes";
 
 const copy = copyJson;
 const DASH = "—";
@@ -18,6 +19,8 @@ export interface StoryNumbers {
   /** Every site on the list, including those with no lake now. */
   sites: string;
   cloudLooks: string;
+  /** The cloud-gap window the looks were counted in, "17 Jun to 4 Aug". */
+  cloudRange: string;
   passes: string;
   attabadArea: string;
   attabadNoise: string;
@@ -116,7 +119,7 @@ export function measureView(a: Lake | null): MeasureView {
 /** Every number on the page, read from lakes.json. "—" for anything missing. */
 export function storyNumbers(file: LakesFile | null): StoryNumbers {
   if (!file) {
-    return { lakes: DASH, sites: DASH, cloudLooks: DASH, passes: DASH, attabadArea: DASH, attabadNoise: DASH, attabadLooks: DASH, attabadTrack: DASH, iou: DASH, latest: DASH };
+    return { lakes: DASH, sites: DASH, cloudLooks: DASH, cloudRange: DASH, passes: DASH, attabadArea: DASH, attabadNoise: DASH, attabadLooks: DASH, attabadTrack: DASH, iou: DASH, latest: DASH };
   }
   const a = attabad(file);
   const dates = file.lakes.map((l) => l.status.latest_date).filter((d): d is string => !!d);
@@ -127,6 +130,7 @@ export function storyNumbers(file: LakesFile | null): StoryNumbers {
     lakes: String(lakesNow(file).length),
     sites: String(file.lakes.length),
     cloudLooks: String(cloudLooks(file)),
+    cloudRange: `${dayMonth(file.cloud_window[0])} to ${dayMonth(file.cloud_window[1])}`,
     passes: String(file.lakes.reduce((n, l) => n + l.series.length, 0)),
     attabadArea: a ? areaText(view.area) : DASH,
     attabadNoise: noise === null || noise === undefined ? DASH : `±${noise.toFixed(2)}`,
@@ -202,11 +206,32 @@ function link(href: string, label: string): HTMLAnchorElement {
   return a;
 }
 
-function img(src: string, alt: string): HTMLImageElement {
+/** Intrinsic sizes of the story pictures, so the page reserves their space before they load. */
+const IMG_SIZE: Record<string, [number, number]> = {
+  "hunza_valley.jpg": [1976, 1336],
+  "attabad_cloud.jpg": [900, 896],
+  "attabad_radar_0630.jpg": [900, 896],
+  "north_map.jpg": [1740, 960],
+};
+/** A lake crop's size until it loads (the crops differ; the real size replaces this on load). */
+const CROP_SIZE: [number, number] = [480, 480];
+
+function img(src: string, alt: string, opts: { eager?: boolean; crop?: boolean } = {}): HTMLImageElement {
   const i = document.createElement("img");
-  i.src = src;
+  const [w, h] = opts.crop ? CROP_SIZE : IMG_SIZE[src.split("/").pop() ?? ""] ?? CROP_SIZE;
+  i.width = w;
+  i.height = h;
   i.alt = alt;
-  i.loading = "lazy";
+  i.loading = opts.eager ? "eager" : "lazy";
+  if (opts.crop) i.addEventListener("load", () => { if (i.naturalWidth) { i.width = i.naturalWidth; i.height = i.naturalHeight; } });
+  i.addEventListener("error", () => {
+    const note = text("span", "sp-img-missing", "Image unavailable");
+    note.setAttribute("role", "img");
+    note.setAttribute("aria-label", `Image unavailable: ${alt}`);
+    note.style.aspectRatio = `${w} / ${h}`;
+    i.replaceWith(note);
+  });
+  i.src = src;
   return i;
 }
 
@@ -231,6 +256,22 @@ export function statusClass(status: string): string {
   return "sp-st-other";
 }
 
+/**
+ * The line under the hero actions: how many lakes need attention, Alert first, only the parts that are not zero. Links to
+ * the overview filtered to those lakes; with none it links to the unfiltered overview. Null without data.
+ */
+export function watchTeaser(file: LakesFile | null): { text: string; href: string } | null {
+  if (!file) return null;
+  const hit = file.lakes.filter(needsAttention);
+  if (!hit.length) return { text: "No lake needs attention in this build", href: "#lakes" };
+  const named = ["Alert: growing", "Watch", "Decrease noted"];
+  const parts: [number, string][] = named.map((n) => [hit.filter((l) => l.status.status === n).length, n]);
+  parts.push([hit.filter((l) => !named.includes(l.status.status)).length, "lake may be forming"]);
+  const n = hit.length;
+  const detail = parts.filter(([k]) => k).map(([k, label]) => `${k} ${label}`).join(", ");
+  return { text: `${n} ${n === 1 ? "lake needs" : "lakes need"} attention: ${detail}`, href: "#lakes?show=attention" };
+}
+
 /** The banner at the top of the story page when any lake is at Alert: growing; null otherwise. */
 export function alertBanner(file: LakesFile | null, onOpen: () => void): HTMLElement | null {
   const alerts = alertLakes(file);
@@ -246,7 +287,7 @@ export function alertBanner(file: LakesFile | null, onOpen: () => void): HTMLEle
   const go = text("a", "sp-btn sp-btn-primary", "Open Lake Watch");
   go.href = "#lakes";
   wireNavLink(go, onOpen);
-  box.append(el("p", undefined, "Not an outburst forecast. Check recent optical imagery or the site. Contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA. ", go));
+  box.append(el("p", undefined, "Not an outburst forecast. Check recent optical imagery or the site. Contact NDMA (Gilgit-Baltistan) or PDMA (Khyber Pakhtunkhwa). Official warnings come from PMD, NDMA, GBDMA and PDMA. ", go));
   return box;
 }
 
@@ -257,7 +298,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const cleanups: (() => void)[] = [];
 
   const button = (label: string, cls: string, href: string, handler: () => void): HTMLAnchorElement => {
-    const b = text("a", `sp-btn ${cls}`, label);
+    const b = text("a", cls === "sp-secondary" ? cls : `sp-btn ${cls}`, label);
     b.href = href;
     cleanups.push(wireNavLink(b, handler));
     return b;
@@ -272,8 +313,16 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   floor.setAttribute("aria-hidden", "true");
   const stats = el("div", "sp-stats");
   for (const s of c.stats) stats.append(el("div", undefined, text("div", "sp-stat-value", f(s.value)), text("div", "sp-stat-label", f(s.label))));
+  const teaser = watchTeaser(file);
+  const teaserEls: HTMLElement[] = [];
+  if (teaser) {
+    const a = text("a", "sp-watch-teaser", teaser.text);
+    a.href = teaser.href;
+    teaserEls.push(a);
+    if (t.latest !== DASH) teaserEls.push(text("p", "sp-watch-date", `Latest radar pass ${t.latest}`));
+  }
   cover.append(
-    img(c.image, c.imageAlt),
+    img(c.image, c.imageAlt, { eager: true }),
     shade,
     floor,
     el(
@@ -289,9 +338,10 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
           "div",
           "sp-actions",
           button(c.openLabel, "sp-btn-primary", "#lakes", opts.onOpenLakes),
-          button(c.followLabel, "sp-btn-ghost", "#story", opts.onFollowStory),
-          Object.assign(link("#videos", c.videosLabel), { className: "sp-btn sp-btn-ghost" }),
+          button(c.followLabel, "sp-secondary", "#story", opts.onFollowStory),
+          Object.assign(link("#videos", c.videosLabel), { className: "sp-secondary" }),
         ),
+        ...teaserEls,
         stats,
       ),
     ),
@@ -348,9 +398,9 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
     const fp = mv.frozenPicture;
     const when = (d: string | null) => (d ? formatDate(d) : DASH);
     const alt = fp ? `${a!.name.split(" (")[0]} in NISAR radar on ${when(fp.date)}, while the lake was frozen; no water layer` : f(m.imageAlt);
-    const stack = el("div", "sp-overlay-stack", img(dataUrl(mv.hh), alt));
+    const stack = el("div", "sp-overlay-stack", img(dataUrl(mv.hh), alt, { crop: true }));
     if (mv.water) {
-      const w = img(dataUrl(mv.water), m.waterAlt);
+      const w = img(dataUrl(mv.water), m.waterAlt, { crop: true });
       w.className = "sp-water";
       stack.append(w);
     }

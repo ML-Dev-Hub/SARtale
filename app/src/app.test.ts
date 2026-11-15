@@ -52,7 +52,7 @@ const TITLE = "When clouds close in, the lakes stay in view.";
 
 /** A link-button on the story page, found by its label. */
 function pageButton($: (r: string) => HTMLElement, label: string, nth = 0): HTMLAnchorElement {
-  return [...$("home-root").querySelectorAll<HTMLAnchorElement>("a.sp-btn")].filter((b) => b.textContent === label)[nth];
+  return [...$("home-root").querySelectorAll<HTMLAnchorElement>("a.sp-btn, a.sp-secondary")].filter((b) => b.textContent === label)[nth];
 }
 
 describe("views", () => {
