@@ -34,12 +34,12 @@ Click a picture to play the video from the live site.
 
 | 30 s demo | 60 s demo |
 |---|---|
-| [![Play the 30 second SARtale demo](media/posters/SARtale-demo-30s.jpg)](https://ml-dev-hub.github.io/SARtale/media/SARtale-demo-30s.mp4) | [![Play the 60 second SARtale demo](media/posters/SARtale-demo-60s.jpg)](https://ml-dev-hub.github.io/SARtale/media/SARtale-demo-60s.mp4) |
+| [![Play the 30 second SARtale demo](media/posters/SARtale-demo-30s-play.jpg)](https://ml-dev-hub.github.io/SARtale/media/SARtale-demo-30s.mp4) | [![Play the 60 second SARtale demo](media/posters/SARtale-demo-60s-play.jpg)](https://ml-dev-hub.github.io/SARtale/media/SARtale-demo-60s.mp4) |
 | [Play](https://ml-dev-hub.github.io/SARtale/media/SARtale-demo-30s.mp4) · [subtitles](media/SARtale-demo-30s.srt) | [Play](https://ml-dev-hub.github.io/SARtale/media/SARtale-demo-60s.mp4) · [subtitles](media/SARtale-demo-60s.srt) |
 
 ![Lake Watch: 39 watched lakes, the lakes that need attention first, count tiles that filter the table, and a key to the statuses](media/screens/lake-watch.jpg)
 
-Both videos show the live site. Their narration voice and music are AI-generated (ElevenLabs), as each video says on screen and in its metadata. Two longer videos, the earlier [Lake Watch demo](media/SARtale-lake-watch-demo.mp4) and the [how-it-works walkthrough](media/SARtale-how-it-works.mp4), play with captions on the [site](https://ml-dev-hub.github.io/SARtale/#videos).
+Both videos show the live site. Their narration voice and music are AI-generated (ElevenLabs), as each video says on screen and in its metadata. The 3½-minute [how-it-works walkthrough](https://ml-dev-hub.github.io/SARtale/media/SARtale-how-it-works.mp4) explains the method; all three play with captions on the [site](https://ml-dev-hub.github.io/SARtale/#videos).
 
 ## Why
 

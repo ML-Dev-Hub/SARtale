@@ -128,12 +128,20 @@
     "lede": "Captions are on by default. Turn them off in the player.",
     "items": [
       {
-        "title": "The demo",
-        "length": "38 s",
-        "text": "The Shisper lake outburst, the cloud gap, and the app: a lake's status, its chart and a lake request.",
-        "src": "media/SARtale-lake-watch-demo.mp4",
-        "captions": "media/SARtale-lake-watch-demo.vtt",
-        "poster": "media/posters/SARtale-lake-watch-demo.jpg"
+        "title": "Demo, 30 seconds",
+        "length": "29 s",
+        "text": "The Hunza flood, cloud, NISAR radar through it, and SARtale: dark pixels to water, pass after pass, flags only beyond a lake's own noise.",
+        "src": "media/SARtale-demo-30s.mp4",
+        "captions": "media/SARtale-demo-30s.vtt",
+        "poster": "media/posters/SARtale-demo-30s.jpg"
+      },
+      {
+        "title": "Demo, 60 seconds",
+        "length": "59 s",
+        "text": "The Shisper lake outburst and SUPARCO's cloud gap, then the app in use: Lake Watch, Passu's water and history, its honest flag, and requesting a lake.",
+        "src": "media/SARtale-demo-60s.mp4",
+        "captions": "media/SARtale-demo-60s.vtt",
+        "poster": "media/posters/SARtale-demo-60s.jpg"
       },
       {
         "title": "How it works",

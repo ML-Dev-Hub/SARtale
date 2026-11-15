@@ -158,12 +158,13 @@ describe("renderStoryPage", () => {
     expect(withRequestedLake(frozen).lakes).toHaveLength(12);
   });
 
-  it("plays both videos with captions on, a poster and a download link", () => {
+  it("plays the two demos and how it works, with captions on, a poster and a download link", () => {
     const { root } = render(real);
     const section = root.querySelector("section#videos")!;
     const videos = [...section.querySelectorAll("video")];
     expect(videos.map((v) => v.querySelector("source")?.getAttribute("src"))).toEqual([
-      "media/SARtale-lake-watch-demo.mp4",
+      "media/SARtale-demo-30s.mp4",
+      "media/SARtale-demo-60s.mp4",
       "media/SARtale-how-it-works.mp4",
     ]);
     for (const v of videos) {
