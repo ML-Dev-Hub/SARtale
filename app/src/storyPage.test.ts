@@ -506,3 +506,16 @@ describe("05 The levels: map pins and legend", () => {
     for (const k of page.mapEl.querySelectorAll(".sp-key-item")) expect(k.textContent!.trim().length).toBeGreaterThan(3);
   });
 });
+
+describe("07 The videos: caption note and wording", () => {
+  it("puts the captions note under the videos, not in the heading, and says 'The Shisper lake outburst'", () => {
+    const { root } = render(real);
+    const sec = root.querySelector<HTMLElement>("#videos")!;
+    const note = sec.querySelector<HTMLElement>('[data-role="video-note"]')!;
+    expect(note.textContent).toBe("Captions are on by default. Turn them off in the player.");
+    expect(sec.querySelector(".sp-head")!.contains(note)).toBe(false);
+    expect(sec.querySelector(".sp-videos")!.nextElementSibling).toBe(note);
+    expect(sec.textContent).toContain("The Shisper lake outburst");
+    expect(sec.textContent).not.toContain("Shisper outburst");
+  });
+});

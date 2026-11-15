@@ -222,3 +222,4 @@
   .sp-map img { border-radius: 14px; border: 1px solid var(--sp-line); box-sizing: border-box; }
   .sp-map-key { top: calc(100% + 8px); left: 0; right: 0; background: transparent; padding: 0; font-size: 14px; }
 }
+.sp-video-note { margin: 16px 0 0; font-size: 14px; line-height: 1.5; }

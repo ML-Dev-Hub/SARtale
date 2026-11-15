@@ -528,7 +528,9 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   }
   const videos = section("07 The videos", "sp-section");
   videos.id = "videos";
-  videos.append(el("div", "sp-head", el("div", undefined, eyebrow(vd.label), text("h2", undefined, vd.title)), text("p", "sp-muted sp-head-note", vd.lede)), videoGrid);
+  const videoNote = text("p", "sp-muted sp-video-note", vd.lede);
+  videoNote.dataset.role = "video-note";
+  videos.append(el("div", "sp-head", el("div", undefined, eyebrow(vd.label), text("h2", undefined, vd.title))), videoGrid, videoNote);
 
   // Closing band
   const cl = copy.closing;
