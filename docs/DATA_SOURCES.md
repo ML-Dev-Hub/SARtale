@@ -22,24 +22,6 @@ Lake Watch shows NISAR radar data labelled **Provisional**. `app/public/data/lak
 
 ## Lake locations and outlines
 
-A location check on 10 Nov 2026 compared every register point with Sentinel-2 imagery of summer 2026, OpenStreetMap
-and HMAGLOFDB. Ghulkin (the zone measured the Hunza River), Batura (no lake), Yarkhun (wet snow and glacier ice) and
-Bindo Gol (no lake at the point) were dropped from the register. Shisper and Khurdopin are kept as sites with no lake
-now. A links and coordinates audit on 11 Nov 2026 then moved three points:
-
-- **Passu** to 74.8810 E, 36.4580 N. The old point (the HMAGLOFDB point rounded to 3 decimals) sat on a dark patch
-  inside the outline, not on water; the new one is open water 50-67 m from shore in Sentinel-2 on 10 Jul and 18 Sep
-  2026. The OpenStreetMap outline is still the zone, so the area does not depend on the point.
-- **Shazore** to 72.1741 E, 35.7794 N, on the 2026 remnant lake. The lake partly drained in the GLOF of 30 Aug 2024
-  (HMAGLOFDB GF 734); the HMAGLOFDB point now lies on the exposed lake bed. The outline is the 2026 remnant lake from
-  Sentinel-2 (below), not the pre-2024 OpenStreetMap lake, of which only 26% was water in 2026.
-- **Rogheli** to 71.9677 E, 35.8539 N, the centre of the supraglacial pond seen in Sentinel-2 on 28 Jun 2019
-  (0.031 km²) and 27 Jun 2020 (0.036 km²), before the Golain GLOFs of 7 Jul 2019 and 13 Jul 2020 (HMAGLOFDB GF 498,
-  504). It is now a site with **no lake now**: no water on any clear scene of 23 Jun-11 Sep 2026. Its zone is a 150 m
-  circle round the pond. The earlier 1 km circle took in the clean-ice tongue of Rogheli glacier 600-700 m south,
-  whose MNDWI passes for water and whose radar is dark, and a 0.001-0.002 km² pond 150 m north-east. A 150 m circle
-  holds the whole pond (radius about 100 m) and leaves both out.
-
 | Item | Use | Licence or terms | Access date |
 |---|---|---|---|
 | OpenStreetMap way 60065056, "Attabad lake" (`processing/outlines/attabad_osm.geojson`) | Attabad's lake outline, buffered 200 m. 7.2 km² in total; only the part inside the 6 km radar window is counted. Attabad's register point is a point inside this outline | © OpenStreetMap contributors, ODbL 1.0 | 2026-11-04 (outline), 2026-11-10 (point) |
@@ -49,32 +31,6 @@ now. A links and coordinates audit on 11 Nov 2026 then moved three points:
 | HMAGLOFDB v1.3.0 (Zenodo 18257243; https://github.com/fidelsteiner/HMAGLOFDB), the dataset of Shrestha et al. 2023, ESSD 15:3941 | Coordinates of Khurdopin (lake point) and Karambar (lake GL074079E36622N, with a 300 m search circle on the terminus pond); the primary source of Passu (GF 429, 74.879432 E, 36.457073 N, moved onto open water), Rogheli (GF 498, 504) and Shazore (GF 734), and the 30 Aug 2024 Shazore drainage; the Shisper lake point cited beside the Sentinel-2 position | CC0 1.0 Universal (read from the repository's `LICENSE` file) | 2026-11-02, 2026-11-10, 2026-11-11 |
 | Sentinel-2 L2A, via Earth Search (Element 84) | The Shisper basin position (water centroids on 25 May 2020 and 5 Apr 2022); the Rogheli pond (28 Jun 2019, 27 Jun 2020); the Passu and Shazore points (Jul to Sep 2026); the no-lake notes for Shisper, Khurdopin and Rogheli; and the dated absence checks (`absence_checked`, below) | Copernicus Sentinel data terms, as above | 2026-11-10, 2026-11-11 |
 | Tian et al. 2026, "Are area changes the primary indicator for predicting glacial lake outburst Risks?", RCAR 18, 120-129, doi 10.1016/j.rcar.2025.03.005 | Formerly cited for the Passu coordinate. Its event table could not be read on 11 Nov 2026, so Passu now rests on HMAGLOFDB; kept here only as a secondary reference | CC BY 4.0 (Crossref licence record) | 2026-11-11 |
-
-### No lake now: dated checks and when a lake may be forming
-
-A site the register holds as having no lake now (Shisper, Khurdopin, Rogheli) carries `absence_checked` in
-`lakes.json`: the Sentinel-2 scene id and date, the share of the lake zone's clear pixels that held water (MNDWI > 0,
-as in the cross-check), and the share of the zone under snow or ice. `lakes-absence` runs on every refresh, all year:
-the lake that matters most can form outside summer (Shisper's 2022 lake filled in March and April and burst on 7 May).
-It takes the newest scene whose lake zone is at least 80% clear, counting snow and ice (scene classification 11) as
-not clear, and with snow or ice on no more than 1% of the zone: a frozen or snow-covered pond reads as dry ground in
-MNDWI, so a snowy scene is never evidence that a site is empty. Pixels within 100 m of cloud or cloud shadow (scene
-classification 3, 8, 9, 10) are not clear either: their edges are often unflagged haze or shadow that MNDWI reads as
-water (Shisper, 16 Oct 2026: 14.5% "water" on bare soil beside cloud shadow). When no scene qualifies, the last check
-stands, and the site says so: "Last checked <date> ...; no clear, snow-free Sentinel-2 view of the zone since
-(searched to <date>)". The site turns into **Lake may be forming** only when its two most recent qualifying scenes, at
-least 5 days apart, both show water above its threshold; one such scene is recorded as pending, and the site says
-that SARtale is checking the next clear scene. It returns to No lake now only after two qualifying scenes below the
-threshold, again at least 5 days apart. A site where a lake may be forming has no growing or shrinking verdict; its
-radar dark area is shown but not yet treated as lake area, and the SARtale team reviews the site to add it to the
-register as a measured lake (nothing promotes it automatically). The thresholds come from a survey of every clear
-scene of 15 Jun-30 Sep 2026 and of dates when the lakes were there (11 Nov 2026):
-
-| Site and zone | Empty zone, 2026 | When the lake was there | Threshold |
-|---|---|---|---|
-| Shisper, 1 km circle | 0.6-1.6% (9 scenes; stream threads) | 6.8% (26 Mar 2022), 8.7% (5 Apr 2022), 11.6% (20 May 2020), 12.6% (25 May 2020) | 4% (the default, `FORMING_WATER_SHARE`) |
-| Khurdopin, 1 km circle | 7.8-13.3% (14 scenes; the Shimshal River) | No Sentinel-2 L2A scene of the 2017 lake in the archive | 16%: a new lake must add about 0.08 km² over the river's highest. A lake as small as 2017's (0.043 km²) would not show; the site carries this as a limit |
-| Rogheli, 150 m circle | 0-5.4% (13 scenes; wet snow and single pixels) | 40% (28 Jun 2019), 43% (27 Jun 2020), 17% (2 Jul 2020, draining) | 10% |
 
 ## Context and quotes
 
@@ -157,9 +113,3 @@ Only the packages named in `environment.yml`; their own dependencies have not be
 ## Other data
 
 - **The team logo** (`app/logo/SARtale.png`, resized copies in `app/public/brand/`) was supplied by the team. Its origin and licence are to be recorded (see `docs/SI_USE.md`).
-
-## Still to do
-
-- Confirm the data-use and citation wording for NISAR and Sentinel-2.
-- Confirm the ElevenLabs terms for using generated audio in a public demo.
-- Record the logo's origin and licence.
