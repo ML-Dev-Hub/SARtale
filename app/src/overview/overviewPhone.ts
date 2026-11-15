@@ -7,6 +7,7 @@ import { createDrawerPanel, type DrawerPanel } from "./drawerPanel";
 import { loadMappedLakes } from "./mappedLakes";
 import { statusDisplay } from "../statusDisplay";
 import { el, familyChip, statusMark, svg } from "./marks";
+import { statusKey } from "./statusKey";
 import { arrange, latestReadingOnTrack, nextRefresh, type MappedLakesFile, type OverviewFilter, type OverviewState, type SortKey } from "./model";
 import { isoDay, OV_CREDITS, OV_FOOTER, shortDate, signed, suparcoShort } from "./text";
 import type { OverviewHandle, OverviewOptions } from "./overviewView";
@@ -114,6 +115,7 @@ export function renderOverviewPhone(root: HTMLElement, opts: OverviewOptions): O
   }
   chipsSec.append(count, chips);
   main.append(chipsSec);
+  main.append(statusKey(lakes, false));
 
   // ---- The needs-attention card (rebuilt on every draw) -----------------------------------------------------------
   const attentionSlot = el("div", "ovp-slot");

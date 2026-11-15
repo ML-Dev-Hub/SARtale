@@ -38,6 +38,19 @@ const MARK: Record<Family, string> = {
   breakup: "hexagon", unmeasured: "square", nolake: "crossed", forming: "ring",
 };
 
+/** One plain sentence for each status family: the key's text and the chip's hover title. */
+export const FAMILY_SENTENCE: Record<Family, string> = {
+  alert: "Water area is growing across repeated passes",
+  watch: "Recent passes show the water area outside its normal range; worth a look",
+  decrease: "Water area fell on two passes in a row",
+  forming: "Water seen where no lake was mapped; a lake may be forming",
+  nochange: "Within its normal range",
+  unmeasured: "No usable reading; reason shown on the row",
+  breakup: "Warm air suggests the ice is breaking up; radar cannot measure water yet",
+  frozen: "Ice cover; radar cannot measure water",
+  nolake: "No water in recent imagery; no lake there now",
+};
+
 const make = (family: Family, tag: string, dashed = false): StatusDisplay =>
   ({ family, chip: CHIP[family], mark: MARK[family], dashed, tag, rank: RANK[family] });
 
