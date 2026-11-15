@@ -1,35 +1,39 @@
 1
-00:00:00,000 --> 00:00:05,020
-In 2022, a glacial lake outburst in Hunza destroyed a bridge.
+00:00:00,000 --> 00:00:02,631
+In 2022, a glacial lake outburst
 
 2
+00:00:02,671 --> 00:00:05,020
+in Hunza destroyed a bridge.
+
+3
 00:00:05,260 --> 00:00:08,190
 Northern Pakistan has thousands of glacial lakes.
 
-3
+4
 00:00:08,430 --> 00:00:09,880
 Cloud often hides them.
 
-4
+5
 00:00:10,620 --> 00:00:14,300
 NASA and ISRO's NISAR radar sees through cloud.
 
-5
+6
 00:00:14,540 --> 00:00:16,310
 We're SARcastic Scientists.
 
-6
+7
 00:00:16,950 --> 00:00:20,300
 SARtale maps each lake's water and tracks its area.
 
-7
-00:00:20,940 --> 00:00:22,900
-A flag invites a closer look.
-
 8
-00:00:23,740 --> 00:00:25,140
-Anyone can add a lake.
+00:00:20,940 --> 00:00:23,080
+Passu's flag needs verification.
 
 9
-00:00:25,880 --> 00:00:28,810
+00:00:23,920 --> 00:00:25,320
+Anyone can add a lake.
+
+10
+00:00:25,660 --> 00:00:28,590
 When clouds close in, the lakes stay in view.

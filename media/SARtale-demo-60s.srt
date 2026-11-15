@@ -1,55 +1,63 @@
 1
-00:00:00,000 --> 00:00:04,162
-In 2022, a glacial lake outburst in Hunza destroyed a
+00:00:00,000 --> 00:00:03,307
+In 2022, a glacial lake outburst in Hunza
 
 2
-00:00:04,202 --> 00:00:06,370
-Karakoram Highway bridge.
+00:00:03,347 --> 00:00:06,370
+destroyed a Karakoram Highway bridge.
 
 3
-00:00:06,610 --> 00:00:10,290
-Northern Pakistan has more than three thousand glacial lakes.
+00:00:06,610 --> 00:00:08,482
+Northern Pakistan has more than
 
 4
+00:00:08,522 --> 00:00:10,290
+three thousand glacial lakes.
+
+5
 00:00:10,530 --> 00:00:13,370
 Cloud often hides them from optical satellites.
 
-5
+6
 00:00:14,010 --> 00:00:17,690
 NASA and ISRO's NISAR radar sees through cloud.
 
-6
+7
 00:00:17,930 --> 00:00:22,390
 We're SARcastic Scientists from Islamabad. We built SARtale,
 
-7
-00:00:22,930 --> 00:00:26,811
-an interactive app that maps lake water from every NISAR
-
 8
-00:00:26,851 --> 00:00:29,530
-pass and compares its area over time.
+00:00:22,930 --> 00:00:26,200
+an interactive app that estimates lake water area
 
 9
-00:00:31,270 --> 00:00:34,530
-Lake Watch brings the lakes together. Open Passu,
+00:00:26,240 --> 00:00:29,390
+from NISAR passes and tracks changes over time.
 
 10
-00:00:35,370 --> 00:00:39,420
-and see its radar image, its water in blue, and its history.
+00:00:30,430 --> 00:00:33,690
+Lake Watch brings the lakes together. Open Passu,
 
 11
-00:00:40,860 --> 00:00:43,070
-A flag invites a closer look:
+00:00:34,530 --> 00:00:36,218
+and see its radar image,
 
 12
-00:00:43,110 --> 00:00:48,020
-Passu's began with a processing update, so it may not be a real change.
+00:00:36,258 --> 00:00:38,580
+its water in blue, and its history.
 
 13
-00:00:49,060 --> 00:00:51,020
-Anyone can add a lake to follow.
+00:00:40,420 --> 00:00:43,708
+Passu's flag appeared with a processing update.
 
 14
-00:00:52,060 --> 00:00:54,950
+00:00:43,748 --> 00:00:47,350
+It needs verification before we call it lake change.
+
+15
+00:00:48,390 --> 00:00:50,350
+Anyone can add a lake to follow.
+
+16
+00:00:51,390 --> 00:00:54,280
 When clouds close in, the lakes stay in view.
