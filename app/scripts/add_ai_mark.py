@@ -29,10 +29,10 @@ def main() -> None:
         logo = source.convert("RGBA")
 
     scale = logo.width / 1254
-    font = ImageFont.truetype(str(font_path), round(90 * scale))
+    font = ImageFont.truetype(str(font_path), round(56 * scale))
     label = "AI-generated"
     left, top, right, bottom = font.getbbox(label)
-    pad_x, pad_y = round(16 * scale), round(10 * scale)
+    pad_x, pad_y = round(11 * scale), round(7 * scale)
     width = right - left + 2 * pad_x
     height = bottom - top + 2 * pad_y
     # Empty upper-right corner, above the radar ring and beside the satellite.
@@ -40,9 +40,9 @@ def main() -> None:
     overlay = Image.new("RGBA", logo.size)
     draw = ImageDraw.Draw(overlay)
     draw.rounded_rectangle((x, y, x + width - 1, y + height - 1),
-                           radius=round(16 * scale), fill=(5, 13, 22, 204))
+                           radius=round(11 * scale), fill=(5, 13, 22, 110))
     draw.text((x + pad_x - left, y + pad_y - top), label,
-              font=font, fill=(233, 241, 246, 255))
+              font=font, fill=(233, 241, 246, 175))
     stamped = Image.alpha_composite(logo, overlay)
     stamped.save(MASTER, optimize=True)
     # Same RGBA / LANCZOS / optimized PNG pipeline as make_brand_assets.py.
