@@ -1,0 +1,71 @@
+1
+00:00:00,000 --> 00:00:03,132
+We're SARcastic Scientists from Islamabad.
+
+2
+00:00:03,172 --> 00:00:06,370
+This is SARtale, for Dancing with the SARs.
+
+3
+00:00:06,760 --> 00:00:10,766
+In 2022, the Shisper glacial lake burst and swept away the
+
+4
+00:00:10,806 --> 00:00:12,726
+Karakoram Highway bridge.
+
+5
+00:00:12,766 --> 00:00:16,519
+These lakes fill in summer, when cloud hides them from
+
+6
+00:00:16,559 --> 00:00:18,100
+optical satellites.
+
+7
+00:00:18,490 --> 00:00:20,100
+Here is Attabad:
+
+8
+00:00:20,140 --> 00:00:24,750
+seventy percent cloud in the optical image, but clear in
+
+9
+00:00:24,790 --> 00:00:27,600
+NISAR radar, from NASA and ISRO.
+
+10
+00:00:27,990 --> 00:00:32,536
+For every pass, SARtale measures each lake's water against
+
+11
+00:00:32,576 --> 00:00:36,405
+its own normal range and gives one plain status.
+
+12
+00:00:36,445 --> 00:00:38,770
+Frozen lakes are set aside.
+
+13
+00:00:39,160 --> 00:00:43,587
+Lake Watch covers thirty-nine lakes in Gilgit-Baltistan and
+
+14
+00:00:43,627 --> 00:00:45,306
+Khyber Pakhtunkhwa.
+
+15
+00:00:45,346 --> 00:00:49,842
+Each lake's page says what changed, how sure we are, and who
+
+16
+00:00:49,882 --> 00:00:51,010
+to contact.
+
+17
+00:00:51,400 --> 00:00:55,607
+It refreshes every week, and anyone can request a new lake.
+
+18
+00:00:55,647 --> 00:00:58,090
+Open source, built on NASA data.

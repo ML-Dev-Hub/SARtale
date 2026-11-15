@@ -15,14 +15,15 @@
 </p>
 
 <p align="center">
-  <a href="https://ml-dev-hub.github.io/SARtale/#videos"><b>Watch the videos</b></a>: demo (38 s) and how it works (3 min 41 s) ·
+  <b>Demo videos</b>: <a href="https://github.com/ML-Dev-Hub/SARtale/blob/main/media/SARtale-demo-30s.mp4">30 s</a> and <a href="https://github.com/ML-Dev-Hub/SARtale/blob/main/media/SARtale-demo-60s.mp4">60 s</a> ·
+  <a href="https://ml-dev-hub.github.io/SARtale/#videos"><b>More videos</b></a> ·
   <a href="https://ml-dev-hub.github.io/SARtale/"><b>Live site</b></a> ·
   <a href="https://ml-dev-hub.github.io/SARtale/guide/"><b>Guide</b></a>
 </p>
 
 ![Lake Watch: 39 watched lakes, the lakes that need attention first, count tiles that filter the table, and a key to the statuses](media/screens/lake-watch.jpg)
 
-Both videos play on the [site](https://ml-dev-hub.github.io/SARtale/#videos) and in the [guide](https://ml-dev-hub.github.io/SARtale/guide/#videos), with captions. The files are [`media/SARtale-lake-watch-demo.mp4`](media/SARtale-lake-watch-demo.mp4) and [`media/SARtale-how-it-works.mp4`](media/SARtale-how-it-works.mp4).
+The two demo videos ([`media/SARtale-demo-30s.mp4`](media/SARtale-demo-30s.mp4) and [`media/SARtale-demo-60s.mp4`](media/SARtale-demo-60s.mp4), with `.srt` subtitles) show the live site; their narration is an AI-generated voice (ElevenLabs), as each video says on screen and in its metadata. The earlier demo and the how-it-works video play on the [site](https://ml-dev-hub.github.io/SARtale/#videos) and in the [guide](https://ml-dev-hub.github.io/SARtale/guide/#videos), with captions. The files are [`media/SARtale-lake-watch-demo.mp4`](media/SARtale-lake-watch-demo.mp4) and [`media/SARtale-how-it-works.mp4`](media/SARtale-how-it-works.mp4).
 
 ## Why
 

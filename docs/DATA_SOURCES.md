@@ -55,6 +55,13 @@ SUPARCO quote, verbatim: "Persistent cloud cover after 16 June 2026 has limited 
 
 Sentinel-2 cross-check result (`lakes.json`, `checks`): one NISAR pass against one Sentinel-2 scene per lake, inside the lake's zone. The app's How we know page lists every row and words the agreement from the IoU values. Until 10 Nov 2026 the check applied the Sentinel-2 BOA offset twice, which pushed turbid lakes below the water threshold and made the agreement look far worse than it was. Neither source is a clean reference, and this is not a validation of lake extent.
 
+## Demo videos, 30 s and 60 s (`media/SARtale-demo-30s.mp4`, `media/SARtale-demo-60s.mp4`)
+
+| Item | Use | Licence or terms |
+|---|---|---|
+| Screens of the SARtale site (story page, Lake Watch, Passu's lake page, the map) | Every picture in both videos, captured from the site build of 15 Nov 2026 | Team's own work; the data shown carry the licences in this file (NISAR, Copernicus Sentinel-2, NASA MODIS via GIBS, OpenStreetMap, HKH-PK-2020, Hi-MAG) |
+| Narration (voice "Nathaniel C", eleven_multilingual_v2) | The spoken track; the subtitles carry the same words | AI-generated with ElevenLabs (paid account). Declared on screen in each video, in its file metadata and here |
+
 ## Demo video (`media/SARtale-lake-watch-demo.mp4`)
 
 | Item | Use | Licence or terms |
