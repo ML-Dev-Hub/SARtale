@@ -1,31 +1,27 @@
 1
-00:00:00,000 --> 00:00:03,132
-We're SARcastic Scientists from Islamabad.
+00:00:00,000 --> 00:00:02,700
+We're SARcastic Scientists, from Islamabad.
 
 2
-00:00:03,172 --> 00:00:06,370
-This is SARtale, for Dancing with the SARs.
+00:00:03,900 --> 00:00:07,703
+Pakistan's glacial lakes can burst, and they fill in summer,
 
 3
-00:00:06,760 --> 00:00:10,442
-Pakistan's glacial lakes fill and burst in summer, when
+00:00:07,743 --> 00:00:10,730
+when cloud hides them from optical satellites.
 
 4
-00:00:10,482 --> 00:00:13,310
-cloud hides them from optical satellites.
-
-5
-00:00:13,700 --> 00:00:18,074
+00:00:11,500 --> 00:00:14,990
 NISAR radar, from NASA and ISRO, sees through cloud.
 
+5
+00:00:18,900 --> 00:00:20,393
+We built SARtale:
+
 6
-00:00:18,114 --> 00:00:21,650
-SARtale gives each lake one plain status.
+00:00:20,433 --> 00:00:24,793
+one plain status for each of thirty-nine lakes, with what to
 
 7
-00:00:22,040 --> 00:00:25,718
-Thirty-nine lakes, refreshed every week, so disaster
-
-8
-00:00:25,758 --> 00:00:28,730
-officers know which lakes to check first.
+00:00:24,833 --> 00:00:26,660
+do and who to contact.

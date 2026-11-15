@@ -1,71 +1,67 @@
 1
-00:00:00,000 --> 00:00:03,132
-We're SARcastic Scientists from Islamabad.
+00:00:00,000 --> 00:00:03,277
+We're SARcastic Scientists from Islamabad:
 
 2
-00:00:03,172 --> 00:00:06,370
-This is SARtale, for Dancing with the SARs.
+00:00:03,317 --> 00:00:06,940
+Saeed Ahmad, Shaharyar Sajid and Usama Hussain.
 
 3
-00:00:06,760 --> 00:00:10,766
-In 2022, the Shisper glacial lake burst and swept away the
+00:00:06,980 --> 00:00:08,460
+This is SARtale.
 
 4
-00:00:10,806 --> 00:00:12,726
-Karakoram Highway bridge.
+00:00:08,850 --> 00:00:13,298
+In 2022, a glacial lake above Hunza burst and swept away the
 
 5
-00:00:12,766 --> 00:00:16,519
-These lakes fill in summer, when cloud hides them from
+00:00:13,338 --> 00:00:15,406
+Karakoram Highway bridge.
 
 6
-00:00:16,559 --> 00:00:18,100
-optical satellites.
+00:00:15,446 --> 00:00:19,350
+Pakistan has more than three thousand glacial lakes.
 
 7
-00:00:18,490 --> 00:00:20,100
-Here is Attabad:
+00:00:19,740 --> 00:00:23,081
+They fill in summer, exactly when cloud hides them.
 
 8
-00:00:20,140 --> 00:00:24,750
-seventy percent cloud in the optical image, but clear in
+00:00:23,121 --> 00:00:26,819
+This July, Pakistan's space agency said cloud limited its
 
 9
-00:00:24,790 --> 00:00:27,600
-NISAR radar, from NASA and ISRO.
+00:00:26,859 --> 00:00:27,590
+checks.
 
 10
-00:00:27,990 --> 00:00:32,536
-For every pass, SARtale measures each lake's water against
+00:00:27,980 --> 00:00:32,839
+NISAR, the new radar from NASA and ISRO, sees through cloud.
 
 11
-00:00:32,576 --> 00:00:36,405
-its own normal range and gives one plain status.
+00:00:32,879 --> 00:00:36,179
+At Attabad, the optical image is cloud;
 
 12
-00:00:36,445 --> 00:00:38,770
-Frozen lakes are set aside.
+00:00:36,219 --> 00:00:38,480
+the radar shows the lake.
 
 13
-00:00:39,160 --> 00:00:43,587
-Lake Watch covers thirty-nine lakes in Gilgit-Baltistan and
+00:00:38,870 --> 00:00:40,319
+We built SARtale.
 
 14
-00:00:43,627 --> 00:00:45,306
-Khyber Pakhtunkhwa.
+00:00:40,359 --> 00:00:44,397
+It reads every pass over thirty-nine lakes, measures each
 
 15
-00:00:45,346 --> 00:00:49,842
-Each lake's page says what changed, how sure we are, and who
+00:00:44,437 --> 00:00:48,410
+lake's water against its own normal range, and gives one
 
 16
-00:00:49,882 --> 00:00:51,010
-to contact.
+00:00:48,450 --> 00:00:51,970
+plain status, with what to do and who to contact.
 
 17
-00:00:51,400 --> 00:00:55,607
+00:00:52,360 --> 00:00:56,080
 It refreshes every week, and anyone can request a new lake.
-
-18
-00:00:55,647 --> 00:00:58,090
-Open source, built on NASA data.
