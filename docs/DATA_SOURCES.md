@@ -32,6 +32,16 @@ Lake Watch shows NISAR radar data labelled **Provisional**. `app/public/data/lak
 | Sentinel-2 L2A, via Earth Search (Element 84) | The Shisper basin position (water centroids on 25 May 2020 and 5 Apr 2022); the Rogheli pond (28 Jun 2019, 27 Jun 2020); the Passu and Shazore points (Jul to Sep 2026); the no-lake notes for Shisper, Khurdopin and Rogheli; and the dated absence checks (`absence_checked`, below) | Copernicus Sentinel data terms, as above | 2026-11-10, 2026-11-11 |
 | Tian et al. 2026, "Are area changes the primary indicator for predicting glacial lake outburst Risks?", RCAR 18, 120-129, doi 10.1016/j.rcar.2025.03.005 | Formerly cited for the Passu coordinate. Its event table could not be read on 11 Nov 2026, so Passu now rests on HMAGLOFDB; kept here only as a secondary reference | CC BY 4.0 (Crossref licence record) | 2026-11-11 |
 
+## Lake inventories and boundaries
+
+| Item | Use | Licence or terms |
+|---|---|---|
+| HKH-PK-2020 glacial lake inventory (Siddique et al. 2023), https://doi.org/10.5281/zenodo.15476013 | Lake outlines and areas for watched lakes, the "largest mapped outline" share, and 480 of the 503 mapped lakes on the Lake Watch map (`app/public/data/mapped_lakes.json`, source `hkhpk2020`) | CC BY 4.0 |
+| Hi-MAG glacial lake database 2008–2017 (Chen et al. 2021, Earth Syst. Sci. Data 13:741), https://doi.org/10.5281/zenodo.4275164 | Lake outlines and areas, the "largest mapped outline" share, and 6 of the mapped lakes (source `himag`) | CC BY 4.0 |
+| OpenStreetMap lakes (Overpass API) | 17 of the mapped lakes (source `osm`), and outlines named above | © OpenStreetMap contributors, ODbL 1.0; `mapped_lakes.json` is published under the ODbL |
+| geoBoundaries gbOpen PAK ADM2 and ADM1 (Runfola et al. 2020, release 9469f09, built 12 Dec 2023), https://www.geoboundaries.org | The district and province of each lake, which decides the authority named on its page (NDMA for Gilgit-Baltistan, PDMA for Khyber Pakhtunkhwa) | Public domain (ADM1, ADM2); Pakistan's outline (ADM0) from OpenStreetMap, ODbL 1.0 |
+| SUPARCO GLOF status map and area table of 1 Jul 2026 | SARtale's probable matches to SUPARCO's PDGL IDs, by position and area. SUPARCO publishes no coordinates | Terms not confirmed. Only the IDs are used, as matches made by SARtale |
+
 ## Context and quotes
 
 | Item | Use | Licence or terms | Access date |
@@ -72,7 +82,7 @@ Sentinel-2 cross-check result (`lakes.json`, `checks`): one NISAR pass against o
 | `hunza_valley.jpg`: Sentinel-2 L2A true colour, Hunza valley, 20 Jul 2026 | Cover picture | Copernicus Sentinel data terms, as above |
 | `attabad_cloud.jpg`: Sentinel-2 L2A true colour, Attabad, 3 Jul 2026, 70% cloud over the 6 km window | Optical side of the cloud-versus-radar pair | Copernicus Sentinel data terms, as above |
 | `attabad_radar_0630.jpg`: NISAR GCOV L-band HH, 30 Jun 2026, track 055A | Radar side of the same pair | NASA data, as above |
-| `north_map.jpg`: NASA MODIS Terra true colour, 5 Oct 2026, 70.8-76.6 E, 34.4-37.6 N | Base map for the lake pins | NASA EOSDIS data, openly available. Exact citation wording: terms not confirmed |
+| `north_map.jpg`: NASA MODIS Terra Corrected Reflectance (true colour), 5 Oct 2026, 70.8-76.6 E, 34.4-37.6 N, from NASA GIBS (Global Imagery Browse Services, https://earthdata.nasa.gov/gibs) | Base map for the lake markers on the story page and Lake Watch | NASA EOSDIS imagery, open with no restriction; credit: "We acknowledge the use of imagery from NASA Worldview / GIBS, part of NASA EOSDIS" |
 | Dawn, 7 May 2022 (above) | The Shisper outburst and the destroyed Karakoram Highway bridge (story 01) | Terms not confirmed. Cited only |
 | OpenStreetMap way 651792498 | The 6.6 km straight line (6,612 m geodesic) from the Shisper register point (the lake basin) to the Hassanabad bridge (story 01). A straight-line distance, not the flood's path down the gorge | © OpenStreetMap contributors, ODbL 1.0 |
 | NASA CMR granule search (`cmr.earthdata.nasa.gov/search/granules.umm_json`) | Lists the NISAR passes over a requested lake's point, to say whether radar covers it. Catalogue entries only; no NISAR data is downloaded for a request | Public, no login. Exact citation wording: terms not confirmed |
