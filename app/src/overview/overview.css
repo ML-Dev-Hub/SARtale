@@ -44,7 +44,7 @@
 .ov-filter-count { opacity: 0.85; }
 .ov-field { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
 .ov-select, .ov-search {
-  min-height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--panel); color: var(--text);
+  min-height: 44px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--panel); color: var(--text);
 }
 .ov-select { max-width: 220px; }
 .ov-search { width: 240px; max-width: 100%; padding: 0 12px; }
@@ -73,7 +73,7 @@
 .ov-th { padding: 8px 12px; }
 .ov-th-num { align-items: flex-end; }
 .ov-sort {
-  display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0; border: 0; background: none;
+  display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0; border: 0; background: none;
   color: #d3dfe7; font-size: 13px; font-weight: 700; line-height: 1.25; text-align: left; cursor: pointer;
 }
 .ov-th-num .ov-sort { text-align: right; }
@@ -220,7 +220,7 @@
 .ov-drawer[hidden] { display: none; }
 .ov-map { position: relative; aspect-ratio: 5.8 / 3.5; min-height: 260px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--ground); overflow: hidden; color: var(--muted); font-size: 14px; }
 .ov-mapped-row { color: #d3dfe7; font-size: 14px; }
-.ov-mapped-switch { display: inline-flex; align-items: center; gap: 10px; min-height: 36px; }
+.ov-mapped-switch { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; }
 .ov-mapped-switch input { width: 18px; height: 18px; accent-color: var(--accent); }
 .ov-pin { display: block; width: 32px; height: 32px; padding: 2px; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
 .ov-pin svg { display: block; width: 28px; height: 28px; overflow: visible; }
@@ -243,7 +243,7 @@
 .ov-legend-mark { flex: none; display: inline-flex; }
 .ov-notices { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12.5px; }
 .ov-notices p { margin: 0; }
-.ov-locate { flex: none; min-height: 24px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: transparent; color: var(--accent); font-size: 12.5px; cursor: pointer; }
+.ov-locate { flex: none; min-height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: transparent; color: var(--accent); font-size: 14px; cursor: pointer; }
 .ov-locate[hidden] { display: none; }
 .ov-locate[aria-pressed="true"] { border-color: var(--accent); }
 .ov[data-map="true"] .ov-row:not(.ov-row-head) { cursor: pointer; }
@@ -258,7 +258,7 @@
   .ov[data-map="true"] .ov-main { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
   .ov[data-map="true"] .ov-drawer { order: -1; flex: none; max-width: none; width: 100%; }
   /* Sized by shape, not height: the map picture is about 1.6 wide for each 1 high, so no blank bands show above or below it. */
-  .ov[data-map="true"] .ov-map { aspect-ratio: 1.6 / 1; min-height: 0; width: 100%; max-width: 600px; margin-inline: auto; }
+  .ov[data-map="true"] .ov-map { aspect-ratio: auto; height: 420px; min-height: 0; width: 100%; max-width: none; }
   .ov[data-map="true"] .ov-table-wrap { flex: none; }
 }
 /* With the map open the page widens, so the drawer can sit beside the full-width table on a large screen. */
@@ -268,7 +268,7 @@
 .ovp-shell { min-width: 0; max-width: 100vw; overflow-x: hidden; }
 .ovp { display: flex; flex-direction: column; min-width: 0; font-size: 16px; line-height: 1.45; color: var(--text); padding-bottom: 76px; }
 .ovp :is(button, a, select, input) { min-height: 44px; }
-.ovp :is(button, a, select, input):focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.ovp :is(button, a, select, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ovp-head { display: flex; flex-direction: column; gap: 2px; padding: 4px 0 10px; border-bottom: 1px solid var(--line); }
 .ovp-head-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .ovp-brand { display: inline-flex; align-items: center; gap: 8px; color: var(--accent); }
