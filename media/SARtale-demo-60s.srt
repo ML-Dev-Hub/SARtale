@@ -1,63 +1,75 @@
 1
-00:00:00,000 --> 00:00:03,307
-In 2022, a glacial lake outburst in Hunza
+00:00:00,000 --> 00:00:03,060
+In 2022, a glacial lake flood in Hunza
 
 2
-00:00:03,347 --> 00:00:06,370
+00:00:03,100 --> 00:00:06,090
 destroyed a Karakoram Highway bridge.
 
 3
-00:00:06,610 --> 00:00:08,482
-Northern Pakistan has more than
+00:00:06,630 --> 00:00:10,374
+Pakistan watches these lakes with optical satellites.
 
 4
-00:00:08,522 --> 00:00:10,290
-three thousand glacial lakes.
+00:00:10,414 --> 00:00:14,350
+In July, SUPARCO said cloud made changes hard to assess.
 
 5
-00:00:10,530 --> 00:00:13,370
-Cloud often hides them from optical satellites.
+00:00:14,890 --> 00:00:17,780
+At Attabad, cloud covers the optical view.
 
 6
-00:00:14,010 --> 00:00:17,690
-NASA and ISRO's NISAR radar sees through cloud.
+00:00:18,420 --> 00:00:21,960
+NASA and ISRO's NISAR radar sees the lake through it.
 
 7
-00:00:17,930 --> 00:00:22,390
-We're SARcastic Scientists from Islamabad. We built SARtale,
+00:00:22,600 --> 00:00:25,695
+We're SARcastic Scientists from Islamabad,
 
 8
-00:00:22,930 --> 00:00:26,200
-an interactive app that estimates lake water area
+00:00:25,735 --> 00:00:27,458
+and we built SARtale.
 
 9
-00:00:26,240 --> 00:00:29,390
-from NISAR passes and tracks changes over time.
+00:00:27,498 --> 00:00:29,940
+Open Lake Watch, and pick Passu.
 
 10
-00:00:30,430 --> 00:00:33,690
-Lake Watch brings the lakes together. Open Passu,
+00:00:30,780 --> 00:00:33,084
+Each NISAR pass estimates the water
 
 11
-00:00:34,530 --> 00:00:36,218
-and see its radar image,
+00:00:33,124 --> 00:00:35,200
+area inside the lake's outline.
 
 12
-00:00:36,258 --> 00:00:38,580
-its water in blue, and its history.
+00:00:36,040 --> 00:00:38,084
+SARtale compares it with the lake's
 
 13
-00:00:40,420 --> 00:00:43,708
-Passu's flag appeared with a processing update.
+00:00:38,124 --> 00:00:40,270
+own earlier passes on the same track,
 
 14
-00:00:43,748 --> 00:00:47,350
-It needs verification before we call it lake change.
+00:00:41,010 --> 00:00:42,690
+and shows the whole history.
 
 15
-00:00:48,390 --> 00:00:50,350
-Anyone can add a lake to follow.
+00:00:43,530 --> 00:00:46,366
+Passu's flag began with a processing update,
 
 16
-00:00:51,390 --> 00:00:54,280
+00:00:46,406 --> 00:00:49,760
+so it needs checking before anyone calls it a change.
+
+17
+00:00:50,500 --> 00:00:52,509
+Anyone can request another lake,
+
+18
+00:00:52,549 --> 00:00:54,450
+and the data refreshes weekly.
+
+19
+00:00:55,090 --> 00:00:57,700
 When clouds close in, the lakes stay in view.
