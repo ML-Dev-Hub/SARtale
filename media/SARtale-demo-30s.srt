@@ -1,39 +1,39 @@
 1
-00:00:00,000 --> 00:00:03,540
-Glacial lake floods destroy bridges in Pakistan's north.
+00:00:00,000 --> 00:00:04,090
+In 2022, a glacial lake flood destroyed a highway bridge.
 
 2
-00:00:03,780 --> 00:00:05,460
-But clouds hide the lakes.
+00:00:04,330 --> 00:00:07,310
+This July, cloud hid these lakes for weeks.
 
 3
-00:00:06,000 --> 00:00:09,400
-NASA and ISRO's NISAR radar sees through them.
+00:00:07,750 --> 00:00:11,150
+NASA and ISRO's NISAR radar sees through it.
 
 4
-00:00:09,940 --> 00:00:12,360
-So we built SARtale. Pick a lake.
+00:00:11,690 --> 00:00:13,347
+So we built SARtale:
 
 5
-00:00:13,000 --> 00:00:15,190
-Each pass gives its water area,
+00:00:13,387 --> 00:00:15,370
+one status for each lake.
 
 6
-00:00:15,630 --> 00:00:18,330
-compared with that lake's own normal range.
+00:00:15,910 --> 00:00:17,730
+Each pass maps the water,
 
 7
-00:00:18,870 --> 00:00:21,688
-Passu's flag began with a processing update.
+00:00:18,170 --> 00:00:20,410
+against the lake's own normal range.
 
 8
-00:00:21,728 --> 00:00:23,060
-It needs checking.
+00:00:20,850 --> 00:00:23,220
+It also says when a flag needs checking.
 
 9
-00:00:23,600 --> 00:00:25,230
-Anyone can request a lake.
+00:00:23,760 --> 00:00:25,110
+Anyone can add a lake.
 
 10
-00:00:25,770 --> 00:00:28,750
+00:00:25,550 --> 00:00:28,620
 When clouds close in, the lakes stay in view.
