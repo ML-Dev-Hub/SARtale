@@ -20,6 +20,14 @@
   <a href="https://ml-dev-hub.github.io/SARtale/guide/"><b>Guide</b></a>
 </p>
 
+## At a glance
+
+- **Problem.** Pakistan's glacial lakes fill in summer, when cloud hides them from the optical satellites used to track them.
+- **What SARtale does.** It reads every NASA–ISRO NISAR radar pass over each watched lake, turns dark radar pixels into a water area, compares it with that lake's own normal range on the same orbit track, and gives each lake one plain status with the evidence behind it.
+- **Try it.** [Lake Watch](https://ml-dev-hub.github.io/SARtale/#lakes) lists the 39 watched lakes; open any lake for its radar picture, change and history. Anyone can [request another lake](https://ml-dev-hub.github.io/SARtale/#start).
+- **Honest by design.** Screening, not a warning: every status says how sure it is, and what it cannot see.
+- **Open.** Apache-2.0 code, open NASA data, automatic weekly refresh on GitHub Actions.
+
 ## Demo videos
 
 Click a picture to play the video from the live site.
@@ -31,7 +39,7 @@ Click a picture to play the video from the live site.
 
 ![Lake Watch: 39 watched lakes, the lakes that need attention first, count tiles that filter the table, and a key to the statuses](media/screens/lake-watch.jpg)
 
-The two demo videos ([`media/SARtale-demo-30s.mp4`](media/SARtale-demo-30s.mp4) and [`media/SARtale-demo-60s.mp4`](media/SARtale-demo-60s.mp4), with `.srt` subtitles) show the live site; their narration voice and music are AI-generated (ElevenLabs), as each video says on screen and in its metadata. The earlier demo and the how-it-works video play on the [site](https://ml-dev-hub.github.io/SARtale/#videos) and in the [guide](https://ml-dev-hub.github.io/SARtale/guide/#videos), with captions. The files are [`media/SARtale-lake-watch-demo.mp4`](media/SARtale-lake-watch-demo.mp4) and [`media/SARtale-how-it-works.mp4`](media/SARtale-how-it-works.mp4).
+Both videos show the live site. Their narration voice and music are AI-generated (ElevenLabs), as each video says on screen and in its metadata. Two longer videos, the earlier [Lake Watch demo](media/SARtale-lake-watch-demo.mp4) and the [how-it-works walkthrough](media/SARtale-how-it-works.mp4), play with captions on the [site](https://ml-dev-hub.github.io/SARtale/#videos).
 
 ## Why
 
@@ -39,11 +47,11 @@ Over 3,000 glacial lakes have developed in Gilgit-Baltistan and Khyber Pakhtunkh
 
 > "Persistent cloud cover after 16 June 2026 has limited the availability of cloud-free satellite imagery, making it difficult to accurately assess lake area changes during the last three to four days."
 
-Radar sees through cloud, day or night. From 17 June to 4 August 2026, while cloud limited the optical checks, NISAR kept looking at the watched lakes; the site gives the count of valid looks from the current data.
+Radar sees through cloud, day or night. NISAR has passed over the watched lakes more than 830 times since 18 June 2026, including the weeks when cloud stopped the optical checks; the site gives the current count.
 
 ## What it does
 
-The site opens on the story page, with **Open Lake Watch** as its main button. Lake Watch is a table of every watched lake for the officers at NDMA, GBDMA and PDMA KP. It now watches **39 lakes** in Gilgit-Baltistan and upper Khyber Pakhtunkhwa, with 503 more mapped lakes shown on the map as candidates.
+The site opens on the story page, with **Open Lake Watch** as its main button. Lake Watch is a table of every watched lake, made for disaster-management teams, researchers and anyone following these lakes. It now watches **39 lakes** in Gilgit-Baltistan and upper Khyber Pakhtunkhwa, with 503 more mapped lakes shown on the map as candidates.
 
 - **One plain status per lake, with the reason on a second line.**
 
@@ -154,6 +162,18 @@ On a public repository GitHub pauses scheduled workflows after 60 days without a
 | `processing/` | The Python pipeline and its tests |
 | `media/` | Videos, screenshots and the workflow figure |
 | `docs/` | The [guide](docs/guide/), [data sources and licences](docs/DATA_SOURCES.md), [AI tool use](docs/SI_USE.md) |
+
+## Team
+
+**SARcastic Scientists**, NASA Space Apps Challenge 2026, Islamabad local event, challenge *Dancing with the SARs*.
+
+| Member | Role | GitHub |
+|---|---|---|
+| Saeed Ahmad | Team lead | [@saeedahmadicp](https://github.com/saeedahmadicp) |
+| Shaharyar Sajid | Team member | [@shaharyar-sajid](https://github.com/shaharyar-sajid) |
+| Usama Hussain | Team member | [@UsamaHussain8](https://github.com/UsamaHussain8) |
+
+How AI tools were used is recorded in [docs/SI_USE.md](docs/SI_USE.md).
 
 ## Licence
 
