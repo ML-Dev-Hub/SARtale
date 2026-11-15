@@ -257,8 +257,8 @@
 @media (max-width: 1639px) {
   .ov[data-map="true"] .ov-main { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
   .ov[data-map="true"] .ov-drawer { order: -1; flex: none; max-width: none; width: 100%; }
-  /* Sized by shape, not height: the map picture is about 1.6 wide for each 1 high, so no blank bands show above or below it. */
-  .ov[data-map="true"] .ov-map { aspect-ratio: auto; height: 420px; min-height: 0; width: 100%; max-width: none; }
+  /* Sized by the base map picture (1740 x 960), so no blank bands show beside or above it. */
+  .ov[data-map="true"] .ov-map { aspect-ratio: 1740 / 960; height: auto; min-height: 0; width: 100%; max-width: 1040px; margin: 0 auto; }
   .ov[data-map="true"] .ov-table-wrap { flex: none; }
 }
 /* With the map open the page widens, so the drawer can sit beside the full-width table on a large screen. */

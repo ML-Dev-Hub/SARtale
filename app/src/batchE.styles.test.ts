@@ -36,11 +36,11 @@ describe("accessibility quick wins", () => {
 });
 
 describe("the desktop map", () => {
-  it("uses the available width at 420 px high, with 44 px controls", () => {
+  it("takes the base map picture's shape (1740 x 960) up to 1040 px wide, with 44 px controls", () => {
     const d = rulesFor(overviewCss, '.ov[data-map="true"] .ov-map').join(";");
-    expect(d).toMatch(/max-width:\s*none/);
-    expect(d).toMatch(/height:\s*420px/);
-    expect(d).toMatch(/aspect-ratio:\s*auto/);
+    expect(d).toMatch(/max-width:\s*1040px/);
+    expect(d).toMatch(/aspect-ratio:\s*1740 \/ 960/);
+    expect(d).toMatch(/width:\s*100%/);
     expect(has(rulesFor(overviewCss, ".ov-locate"), /min-height:\s*44px/)).toBe(true);
     expect(has(rulesFor(styles, ".maplibregl-map .maplibregl-ctrl-group button"), /width:\s*44px;\s*height:\s*44px/)).toBe(true);
   });
