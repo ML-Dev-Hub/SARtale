@@ -1,3 +1,4 @@
+import { wireNavLink } from "./navLink";
 import { createEvidenceView } from "./evidenceView";
 import type { Lake, LakesFile } from "./lakes";
 import { createLakeStoryView } from "./lakeStory";
@@ -57,15 +58,15 @@ const TEMPLATE = `
 <div class="shell" data-role="shell">
   <a class="skip" href="#main">Skip to the content</a>
   <header class="top">
-    <button type="button" class="logo-btn" data-role="home" aria-label="SARtale: Lake Watch">
+    <a class="logo-btn" data-role="home" href="#lakes" aria-label="SARtale: Lake Watch">
       <span class="logo-panel"><img class="logo" src="brand/logo-256.png" width="56" height="56" alt="SARtale Pakistan logo" /></span>
-    </button>
+    </a>
     <p class="brand">SARtale</p>
     <p class="sr-only" data-role="view-name" aria-live="polite">Lake Watch</p>
     <nav class="views" aria-label="Views">
-      <button type="button" class="view-btn view-primary" data-role="view-lakes" aria-pressed="false">Lake Watch</button>
-      <button type="button" class="view-btn" data-role="view-evidence" aria-pressed="false">How we know</button>
-      <button type="button" class="view-btn" data-role="view-home" aria-pressed="false">The story</button>
+      <a class="view-btn view-primary" data-role="view-lakes" href="#lakes">Lake Watch</a>
+      <a class="view-btn" data-role="view-evidence" href="#evidence">How we know</a>
+      <a class="view-btn" data-role="view-home" href="#start">The story</a>
     </nav>
     <p class="maturity" data-role="maturity" data-kind="provisional"></p>
   </header>
@@ -220,7 +221,7 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     story: q("lakestory-view"),
     evidence: q("evidence-view"),
   };
-  const viewButtons: Record<Exclude<View, "story" | "share">, HTMLButtonElement> = {
+  const viewButtons: Record<Exclude<View, "story" | "share">, HTMLAnchorElement> = {
     lakes: q("view-lakes"),
     evidence: q("view-evidence"),
     home: q("view-home"),
@@ -247,7 +248,10 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     for (const [name, el] of Object.entries(sections)) el.hidden = name !== shown;
     if (next === "lakes") showLakes(routeFromHash(window.location.hash) ?? {});
     // The walkthrough is part of the story, so the nav keeps "The story" lit there.
-    for (const [name, btn] of Object.entries(viewButtons)) btn.setAttribute("aria-pressed", String(name === next || (name === "home" && next === "story")));
+    for (const [name, btn] of Object.entries(viewButtons)) {
+      if (name === next || (name === "home" && next === "story")) btn.setAttribute("aria-current", "page");
+      else btn.removeAttribute("aria-current");
+    }
     if (scroll) window.scrollTo?.(0, 0);
     q("view-name").textContent = VIEW_NAMES[next];
     document.title = `SARtale · ${VIEW_NAMES[next]}`;
@@ -258,10 +262,11 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     if (routeFromHash(window.location.hash)?.view === "lakes") setHash("#lakes");
     showView("lakes");
   };
-  q("home").addEventListener("click", openLakeWatch);
-  for (const [name, btn] of Object.entries(viewButtons)) {
-    btn.addEventListener("click", () => (name === "lakes" ? openLakeWatch() : showView(name as View)));
-  }
+  // These are real links (right-click, open in a new tab and middle-click use the href); a plain click is routed here.
+  const navCleanups = [
+    wireNavLink(q<HTMLAnchorElement>("home"), openLakeWatch),
+    ...Object.entries(viewButtons).map(([name, a]) => wireNavLink(a, () => (name === "lakes" ? openLakeWatch() : showView(name as View)))),
+  ];
 
   // Back, Forward and a typed or linked hash all change the hash (our pushState entries always differ in it), so
   // hashchange alone covers them; popstate as well would run every move twice.
@@ -283,6 +288,7 @@ export function mountApp(root: HTMLElement, opts: AppOptions = {}): AppHandle {
     destroy: () => {
       narrow?.removeEventListener?.("change", syncFolds);
       window.removeEventListener("hashchange", followHash);
+      for (const c of navCleanups) c();
       storyPage.destroy();
       lakeStory.destroy();
       lakePage?.destroy();

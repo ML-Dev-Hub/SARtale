@@ -1,6 +1,6 @@
 import { statusSlug } from "../lakeLocator";
 import type { Lake } from "../lakes";
-import { statusDisplay, type StatusDisplay } from "../statusDisplay";
+import { FAMILY_SENTENCE, statusDisplay, type StatusDisplay } from "../statusDisplay";
 
 /** The status marker shapes (20 × 20): a shape for each kind of status, so the chip never relies on colour alone. */
 const SHAPES = {
@@ -57,6 +57,7 @@ export function statusMark(status: string, size = 12): SVGSVGElement {
 /** The status chip: a marker shape and the status in words. */
 export function statusChip(status: string): HTMLElement {
   const c = el("span", `ov-chip ov-status-${statusSlug(status)}`);
+  c.title = FAMILY_SENTENCE[statusDisplay({ status: { status } } as unknown as Lake).family];
   c.append(statusMark(status), el("span", undefined, status));
   return c;
 }
@@ -72,6 +73,7 @@ export function familyMark(d: StatusDisplay, size = 12): SVGSVGElement {
 /** The family chip: a marker shape and the family name; the evidence goes on the line beneath (see statusDisplay). */
 export function familyChip(d: StatusDisplay): HTMLElement {
   const c = el("span", `ov-chip ov-fam-${d.family}${d.dashed ? " ov-fam-dashed" : ""}`);
+  c.title = FAMILY_SENTENCE[d.family];
   c.append(familyMark(d), el("span", undefined, d.chip));
   return c;
 }

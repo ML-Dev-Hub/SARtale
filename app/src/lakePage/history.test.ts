@@ -30,7 +30,7 @@ describe("lakeChartData for the history chart", () => {
   });
   it("marks the first reading on a new processing version", () => {
     const v = lakeChartData(twoTrack, 0, 2, { statusTrackOnly: true }).series.find((s) => s.version)!;
-    expect(v.label).toBe("First reading on P05036");
+    expect(v.label).toBe("NISAR processing update");
     expect(v.values.filter((x) => x !== null)).toHaveLength(1);
   });
   it("greys frozen passes and drops the band while frozen", () => {
@@ -102,7 +102,13 @@ describe("renderHistory", () => {
     expect(w.el.textContent).toContain("Line dashed across a pass with no usable reading");
     const el3 = document.createElement("div");
     renderHistory(el3, twoTrack, { minObservable: 0, factor: 3, createChart: vi.fn(() => ({ destroy() {} })) });
-    expect(el3.textContent).toContain("Baseline ± 3 × noise");
+    expect(el3.textContent).toContain("Normal range (baseline ± 3 × radar noise)");
+  });
+  it("explains what a track is, once, under the chart", () => {
+    const { el } = mount(twoTrack);
+    const notes = [...el.querySelectorAll("p")].filter((p) => p.textContent!.startsWith("A track is one repeating NISAR orbit path (e.g. 084A)."));
+    expect(notes).toHaveLength(1);
+    expect(notes[0].textContent).toBe("A track is one repeating NISAR orbit path (e.g. 084A). Each track sees the lake from its own angle, so the chart compares a lake only with readings from the same track.");
   });
   it("says why no band is drawn while frozen", () => {
     expect(mount(frozen).el.textContent).toContain("No reference band is drawn");

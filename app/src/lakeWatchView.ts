@@ -97,7 +97,7 @@ export function lakeChartData(lake: Lake, minObservable = 0, factor = 2, opts: {
       lo[index.get(p.date)!] = Math.max(0, p.baseline_km2 - factor * p.noise_km2);
     }
     if (hi.some((v) => v !== null)) {
-      const label = `Baseline ± ${factor} × noise (${lake.status.track})`;
+      const label = `Normal range (baseline ± ${factor} × radar noise) (${lake.status.track})`;
       series.push({ label: `${label}, upper`, values: hi, excluded: false, band: "hi" }, { label: `${label}, lower`, values: lo, excluded: false, band: "lo" });
     }
     const set = blank();
@@ -126,7 +126,6 @@ function statusTrackChartData(lake: Lake, minObservable: number, factor: number)
   const rail = blank();
   const version = blank();
   let crid: string | null = null;
-  let newCrid = "";
   for (const p of passes) {
     const i = index.get(p.date)!;
     if (isTrendPass(p, minObservable)) line[i] = p.area_km2;
@@ -135,7 +134,6 @@ function statusTrackChartData(lake: Lake, minObservable: number, factor: number)
     if (p.crid) {
       if (crid !== null && p.crid !== crid) {
         version[i] = p.area_km2 ?? p.diagnostic_km2 ?? 0;
-        newCrid = p.crid;
       }
       crid = p.crid;
     }
@@ -152,7 +150,7 @@ function statusTrackChartData(lake: Lake, minObservable: number, factor: number)
   }
   if (ice.some((v) => v !== null)) series.push({ label: "Frozen passes (not open water)", values: ice, excluded: false, frozen: true });
   if (rail.some((v) => v !== null)) series.push({ label: "No usable reading", values: rail, excluded: false, rail: true });
-  if (version.some((v) => v !== null)) series.push({ label: `First reading on ${newCrid}`, values: version, excluded: false, version: true });
+  if (version.some((v) => v !== null)) series.push({ label: "NISAR processing update", values: version, excluded: false, version: true });
   if (hasLevel(lake) && !isFrozen(lake)) {
     const hi = blank();
     const lo = blank();
@@ -169,7 +167,7 @@ function statusTrackChartData(lake: Lake, minObservable: number, factor: number)
       }
     }
     if (hi.some((v) => v !== null)) {
-      const label = `Baseline ± ${factor} × noise (${track})`;
+      const label = `Normal range (baseline ± ${factor} × radar noise) (${track})`;
       series.push({ label: `${label}, upper`, values: hi, excluded: false, band: "hi" }, { label: `${label}, lower`, values: lo, excluded: false, band: "lo" });
     }
     for (const [name, values] of sets) series.push({ label: `Pass that set a ${name}`, values, excluded: false, level: true, levelName: name });

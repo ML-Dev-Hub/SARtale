@@ -158,4 +158,13 @@ describe("overview on a phone", () => {
     render(file);
     expect(findBannedClaims(root.textContent!)).toEqual([]);
   });
+  it("the phone has the status key above the list, folded shut, and keeps its own chip row", () => {
+    render(file);
+    const key = role("ov-key") as HTMLDetailsElement;
+    expect(key.tagName).toBe("DETAILS");
+    expect(key.open).toBe(false);
+    expect(key.compareDocumentPosition(role("ovp-list")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(role("ovp-chips").querySelectorAll("[data-filter]").length).toBeGreaterThan(3);
+    expect(root.querySelector(".ov-chip")!.getAttribute("title")).toBeTruthy();
+  });
 });

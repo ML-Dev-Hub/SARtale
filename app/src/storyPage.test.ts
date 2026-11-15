@@ -199,7 +199,8 @@ describe("renderStoryPage", () => {
       onOpenEvidence: () => calls.push("evidence"),
       onFollowStory: () => calls.push("story"),
     });
-    root.querySelectorAll<HTMLButtonElement>("button").forEach((b) => b.click());
+    root.querySelectorAll<HTMLAnchorElement>("a.sp-btn").forEach((b) => b.click());
+    expect(root.querySelectorAll(".sp-actions button")).toHaveLength(0);
     expect(calls).toContain("lakes");
     expect(calls).toContain("evidence");
     expect(calls).toContain("story");
@@ -279,7 +280,9 @@ describe("story page Alert banner", () => {
     expect(banner.textContent).toContain("Not an outburst forecast.");
     expect(banner.textContent).toContain("Official warnings come from PMD, NDMA, GBDMA and PDMA.");
     expect(findBannedClaims(banner.textContent!)).toEqual([]);
-    banner.querySelector<HTMLButtonElement>("button")!.click();
+    const go = banner.querySelector<HTMLAnchorElement>("a.sp-btn")!;
+    expect(go.getAttribute("href")).toBe("#lakes");
+    go.click();
     expect(opened).toBe(1);
     const calm = render({ ...fixtureLakes, lakes: fixtureLakes.lakes.filter((l) => l.status.status !== "Alert: growing") }).root;
     expect(calm.querySelector('[data-role="sp-alert-banner"]')).toBeNull();
@@ -501,5 +504,18 @@ describe("05 The levels: map pins and legend", () => {
     const keys = [...page.mapEl.querySelectorAll<HTMLElement>(".sp-key-item")].map((k) => k.dataset.family);
     expect(keys.sort()).toEqual(Object.entries(counts).filter(([, n]) => n > 0).map(([f]) => f).sort());
     for (const k of page.mapEl.querySelectorAll(".sp-key-item")) expect(k.textContent!.trim().length).toBeGreaterThan(3);
+  });
+});
+
+describe("07 The videos: caption note and wording", () => {
+  it("puts the captions note under the videos, not in the heading, and says 'The Shisper lake outburst'", () => {
+    const { root } = render(real);
+    const sec = root.querySelector<HTMLElement>("#videos")!;
+    const note = sec.querySelector<HTMLElement>('[data-role="video-note"]')!;
+    expect(note.textContent).toBe("Captions are on by default. Turn them off in the player.");
+    expect(sec.querySelector(".sp-head")!.contains(note)).toBe(false);
+    expect(sec.querySelector(".sp-videos")!.nextElementSibling).toBe(note);
+    expect(sec.textContent).toContain("The Shisper lake outburst");
+    expect(sec.textContent).not.toContain("Shisper outburst");
   });
 });

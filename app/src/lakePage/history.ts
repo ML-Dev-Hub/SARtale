@@ -89,7 +89,7 @@ function legend(data: ReturnType<typeof lakeChartData>, track: string, factor: n
   if (data.series.some((s) => s.bridge)) add(swatch((s) => s.append(shape("line", { x1: "0", y1: "7", x2: "26", y2: "7", class: "lg-bridge" })), 26), "Line dashed across a pass with no usable reading");
   const levels = [...new Set(data.series.flatMap((s) => (s.level && s.levelName ? [s.levelName] : [])))];
   for (const lv of levels) add(swatch((s) => s.append(shape("circle", { cx: "7", cy: "7", r: "5", class: `lg-level lg-level-${lv.split(":")[0].toLowerCase().replace(/ /g, "-")}` }))), `Pass that set the level: ${lv.replace("Alert: growing", "Alert")}`);
-  if (data.series.some((s) => s.band)) add(swatch((s) => s.append(shape("rect", { x: "0", y: "2", width: "22", height: "10", class: "lg-band" })), 22), `Baseline ± ${factor} × noise`);
+  if (data.series.some((s) => s.band)) add(swatch((s) => s.append(shape("rect", { x: "0", y: "2", width: "22", height: "10", class: "lg-band" })), 22), `Normal range (baseline ± ${factor} × radar noise)`);
   if (data.series.some((s) => s.rail)) add(swatch((s) => s.append(shape("circle", { cx: "7", cy: "7", r: "5", class: "lg-rail" }))), "No usable reading (own rail)");
   if (data.series.some((s) => s.version)) add(swatch((s) => s.append(shape("line", { x1: "7", y1: "0", x2: "7", y2: "14", class: "lg-version" }))), "Processing version change");
   return ul;
@@ -166,6 +166,7 @@ export function renderHistory(body: HTMLElement, l: Lake, o: HistoryOptions): bo
     const big = valid.reduce((m, p) => (p.area_km2! > m.area_km2! ? p : m));
     body.append(el("p", "lp-caption", `Largest valid reading on ${track}, ${big.date.slice(0, 4)} season: ${big.area_km2!.toFixed(3)} km² on ${formatDate(big.date)}.`));
   }
+  body.append(el("p", "lp-caption", "A track is one repeating NISAR orbit path (e.g. 084A). Each track sees the lake from its own angle, so the chart compares a lake only with readings from the same track."));
   body.append(el("p", "lp-caption", `Only ${track} readings are drawn: each track sees the lake from its own angle, so readings from ${others.length ? others.join(", ") : "other tracks"} are compared only with their own track.`));
 
   const sec = el("div", "lp-readings");

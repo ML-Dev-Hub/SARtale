@@ -3,6 +3,7 @@ import "@fontsource-variable/inter-tight/wght.css";
 import "./storyPage.css";
 import copyJson from "./content/storyPage.json";
 import { dataUrl, formatDate } from "./format";
+import { wireNavLink } from "./navLink";
 import { mountAddLake, requestLine, shownRequests, type LakeRequest } from "./lakeRequests";
 import { MARKER_LABELS, markerSvg } from "./statusMarkers";
 import { familyCounts, frozenBreakdown, statusDisplay, type Family } from "./statusDisplay";
@@ -242,9 +243,9 @@ export function alertBanner(file: LakesFile | null, onOpen: () => void): HTMLEle
     const m = levelMessage(a);
     box.append(el("p", undefined, text("strong", undefined, "Alert: growing"), ` at ${a.name}. ${m ? `${m.title} ${m.what}` : a.status.reason}`));
   }
-  const go = text("button", "sp-btn sp-btn-primary", "Open Lake Watch");
-  (go as HTMLButtonElement).type = "button";
-  go.addEventListener("click", onOpen);
+  const go = text("a", "sp-btn sp-btn-primary", "Open Lake Watch");
+  go.href = "#lakes";
+  wireNavLink(go, onOpen);
   box.append(el("p", undefined, "Not an outburst forecast. Check recent optical imagery or the site. Contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA. ", go));
   return box;
 }
@@ -255,11 +256,10 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const page = el("div", "sp-page");
   const cleanups: (() => void)[] = [];
 
-  const button = (label: string, cls: string, handler: () => void): HTMLButtonElement => {
-    const b = text("button", `sp-btn ${cls}`, label);
-    b.type = "button";
-    b.addEventListener("click", handler);
-    cleanups.push(() => b.removeEventListener("click", handler));
+  const button = (label: string, cls: string, href: string, handler: () => void): HTMLAnchorElement => {
+    const b = text("a", `sp-btn ${cls}`, label);
+    b.href = href;
+    cleanups.push(wireNavLink(b, handler));
     return b;
   };
 
@@ -288,8 +288,8 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
         el(
           "div",
           "sp-actions",
-          button(c.openLabel, "sp-btn-primary", opts.onOpenLakes),
-          button(c.followLabel, "sp-btn-ghost", opts.onFollowStory),
+          button(c.openLabel, "sp-btn-primary", "#lakes", opts.onOpenLakes),
+          button(c.followLabel, "sp-btn-ghost", "#story", opts.onFollowStory),
           Object.assign(link("#videos", c.videosLabel), { className: "sp-btn sp-btn-ghost" }),
         ),
         stats,
@@ -444,10 +444,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   const requestsEl = el("div", "sp-requests");
   listEl.append(requestsEl);
   if (file && lakes.length) {
-    const all = text("button", "sp-btn sp-btn-ghost sp-levels-all", `Open Lake Watch for all ${lakes.length} lakes`);
-    all.type = "button";
-    all.addEventListener("click", opts.onOpenLakes);
-    cleanups.push(() => all.removeEventListener("click", opts.onOpenLakes));
+    const all = button(`Open Lake Watch for all ${lakes.length} lakes`, "sp-btn-ghost sp-levels-all", "#lakes", opts.onOpenLakes);
     listEl.append(all);
   }
   const mapCredit = text("figcaption", "sp-map-credit", w.mapCredit);
@@ -531,7 +528,9 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   }
   const videos = section("07 The videos", "sp-section");
   videos.id = "videos";
-  videos.append(el("div", "sp-head", el("div", undefined, eyebrow(vd.label), text("h2", undefined, vd.title)), text("p", "sp-muted sp-head-note", vd.lede)), videoGrid);
+  const videoNote = text("p", "sp-muted sp-video-note", vd.lede);
+  videoNote.dataset.role = "video-note";
+  videos.append(el("div", "sp-head", el("div", undefined, eyebrow(vd.label), text("h2", undefined, vd.title))), videoGrid, videoNote);
 
   // Closing band
   const cl = copy.closing;
@@ -542,7 +541,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
       "div",
       "sp-closing-in",
       el("div", "sp-closing-text", text("h2", undefined, cl.title), text("p", undefined, overlap ? fill(cl.body, { overlap }) : cl.noIouBody)),
-      el("div", "sp-actions", button(cl.openLabel, "sp-btn-primary", opts.onOpenLakes), button(cl.evidenceLabel, "sp-btn-ghost", opts.onOpenEvidence)),
+      el("div", "sp-actions", button(cl.openLabel, "sp-btn-primary", "#lakes", opts.onOpenLakes), button(cl.evidenceLabel, "sp-btn-ghost", "#evidence", opts.onOpenEvidence)),
     ),
   );
 

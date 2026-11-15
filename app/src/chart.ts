@@ -111,7 +111,7 @@ export function lakeChartOptions(width: number, data: LakeChartData): uPlot.Opti
     series,
     bands,
     hooks,
-    axes: [axis("Date"), axis("Water area (km²)")],
+    axes: [axis("Date"), axis("Radar water area (km²)")],
     cursor: { drag: { x: false, y: false, setScale: false }, points: { size: 11 } },
     // The history block has its own legend (shape and words); the plain tooltip-style legend stays for the older chart.
     legend: { show: !hasRail && !marks.length },
