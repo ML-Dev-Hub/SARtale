@@ -23,7 +23,7 @@ export type LakeRequest = {
 
 export type RequestFields = { name: string; lat: string; lon: string; source: string };
 
-export const REPO = "saeedahmadicp/SARtale";
+export const REPO = "ML-Dev-Hub/SARtale";
 const BOUNDS = { latMin: 34.4, latMax: 37.6, lonMin: 70.8, lonMax: 76.6 };
 const NEAR_KM = 1;
 const STATES: RequestState[] = ["searched", "too_few_passes", "check_failed", "invalid", "accepted", "rejected"];

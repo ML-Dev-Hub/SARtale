@@ -44,7 +44,7 @@ SCIENCE = ("processing/sartale", "processing/outlines", "processing/inventory", 
 MANIFEST = "manifest.json"
 SEGMENT = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9._-]*$")
 LAKE_ID = re.compile(r"^[a-z0-9_]+$")
-SITE = "https://saeedahmad.me/SARtale/#lakes/"
+SITE = "https://ml-dev-hub.github.io/SARtale/#lakes/"
 # the same words as sartale.lake_issues.ACCEPTED_COMMENT (this script runs without that package; a test checks)
 ACCEPTED_COMMENT = "Accepted. The lake is now watched: " + SITE + "{lake_id}"
 CHECKED = ("searched", "too_few_passes")

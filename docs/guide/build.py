@@ -18,10 +18,10 @@ README = ROOT / "README.md"
 EX_START, EX_END = "<!-- worked-example:start -->", "<!-- worked-example:end -->"
 _MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
            "November", "December")
-REPO = "https://github.com/saeedahmadicp/SARtale"
+REPO = "https://github.com/ML-Dev-Hub/SARtale"
 # The live site. Page bodies write {{SITE}} where they need it; the README and the code keep their own copy
 # (README.md, processing/sartale/lake_issues.py, .github/scripts/data_artifact.py), pinned equal by processing/tests/test_docs.py.
-SITE = "https://saeedahmad.me/SARtale/"
+SITE = "https://ml-dev-hub.github.io/SARtale/"
 
 # (file, title in the menu, group)
 PAGES = [

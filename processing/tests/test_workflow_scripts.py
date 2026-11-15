@@ -318,7 +318,7 @@ def test_accept_marks_only_the_issue_and_writes_the_comment(tmp_path):
     data_artifact.unpack(repo, out)
     (act,) = data_artifact.accept(repo, out, 7)
     assert act == {"issue": 7, "comment": "Accepted. The lake is now watched: "
-                                          "https://saeedahmad.me/SARtale/#lakes/lake",
+                                          "https://ml-dev-hub.github.io/SARtale/#lakes/lake",
                    "add": [], "remove": ["searched", "too few passes", "rebuild failed"], "close": True,
                    "dispatch": False}
     feed = json.loads((repo / "app/public/data/requests.json").read_text(encoding="utf-8"))

@@ -26,7 +26,7 @@ STATE_LABELS = {"searched": "searched", "too_few_passes": "too few passes", "inv
 FORM_CHANGED = "The request form was changed; open a new request from the SARtale site."
 CATALOGUE_DOWN = "NASA's catalogue did not answer; the team will retry."
 CHANGED_AFTER_APPROVAL = "This request changed after it was approved. A team member must accept it again."
-SITE_LAKE = "https://saeedahmad.me/SARtale/#lakes/"
+SITE_LAKE = "https://ml-dev-hub.github.io/SARtale/#lakes/"
 # .github/scripts/data_artifact.py runs on the runner's own python3, without this package, so it keeps a copy;
 # test_workflow_scripts checks the two give the same comment.
 ACCEPTED_COMMENT = "Accepted. The lake is now watched: " + SITE_LAKE + "{lake_id}"

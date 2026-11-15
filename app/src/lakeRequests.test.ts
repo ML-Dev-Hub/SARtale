@@ -18,7 +18,7 @@ describe("issueUrl", () => {
   it("prefills every field", () => {
     const f = { name: "Lake & co #1", lat: "36.42", lon: "74.88", source: "Inventory, p. 4" };
     const u = new URL(issueUrl(f));
-    expect(u.origin + u.pathname).toBe("https://github.com/saeedahmadicp/SARtale/issues/new");
+    expect(u.origin + u.pathname).toBe("https://github.com/ML-Dev-Hub/SARtale/issues/new");
     expect(u.searchParams.get("template")).toBe("add-lake.yml");
     expect(u.searchParams.get("title")).toBe("Add a lake: Lake & co #1");
     for (const k of ["name", "lat", "lon", "source"] as const) expect(u.searchParams.get(k)).toBe(f[k]);
@@ -140,7 +140,7 @@ describe("add a lake form", () => {
     expect(again.getAttribute("target")).toBe("_blank");
     expect(again.getAttribute("rel")).toBe("noopener");
     expect(all.textContent).toBe("See all requests");
-    expect(all.getAttribute("href")).toBe("https://github.com/saeedahmadicp/SARtale/issues?q=label%3Alake-request");
+    expect(all.getAttribute("href")).toBe("https://github.com/ML-Dev-Hub/SARtale/issues?q=label%3Alake-request");
   });
 
   it("an error is shown and nothing opens", () => {

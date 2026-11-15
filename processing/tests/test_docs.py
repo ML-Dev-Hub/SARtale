@@ -6,7 +6,7 @@ from pathlib import Path
 from sartale.lake_issues import SITE_LAKE
 
 ROOT = Path(__file__).resolve().parents[2]
-SITE = "https://saeedahmad.me/SARtale/"
+SITE = "https://ml-dev-hub.github.io/SARtale/"
 
 
 def shipped_lakes_path() -> Path:
@@ -49,7 +49,7 @@ def test_site_address_is_the_same_everywhere():
 def test_readme_links_the_live_site_and_guide():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert f'href="{SITE}"' in readme and f'href="{SITE}guide/"' in readme
-    assert "saeedahmadicp.github.io" not in readme
+    assert "saeedahmad.me" not in readme and "saeedahmadicp" not in readme
 
 
 def test_guide_relative_links_resolve():

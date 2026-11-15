@@ -16,7 +16,7 @@
   <nav class="bar-links" aria-label="Project links">
     <a href="getting-started.html">Get started</a>
     <a href="lake-requests.html">Lake requests</a>
-    <a href="https://github.com/saeedahmadicp/SARtale">GitHub</a>
+    <a href="https://github.com/ML-Dev-Hub/SARtale">GitHub</a>
   </nav>
 </header>
 <div class="frame">
@@ -25,7 +25,7 @@
     <details class="menu"><summary>Guide contents</summary><nav aria-label="Guide contents"><h2>Start here</h2><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="user-guide.html">Using the website</a></li></ul><h2>How it works</h2><ul><li><a href="method.html">The method</a></li><li><a href="pipeline.html">Pipeline</a></li><li><a href="data.html">Data files</a></li></ul><h2>Build and run</h2><ul><li><a href="app.html">Web app</a></li><li><a href="lake-requests.html">Lake requests</a></li><li><a href="deploy.html" aria-current="page">Deploying</a></li></ul><h2>Project</h2><ul><li><a href="contributing.html">Contributing</a></li><li><a href="faq.html">Questions and limits</a></li></ul></nav></details>
     <article class="doc">
 <h1>Deploying</h1>
-<p class="lede">The site is published to GitHub Pages by a workflow. Lake requests, accepts and weekly data refreshes run as GitHub Actions too, so there is no server to run. The live site is <a href="https://saeedahmad.me/SARtale/">saeedahmad.me/SARtale</a> and this guide is at <a href="https://saeedahmad.me/SARtale/guide/">/guide/</a>. The address <code>saeedahmadicp.github.io/SARtale</code> redirects there, because the owner's GitHub user site has a custom domain. A copy of this repository under another account is served at that account's own address.</p>
+<p class="lede">The site is published to GitHub Pages by a workflow. Lake requests, accepts and weekly data refreshes run as GitHub Actions too, so there is no server to run. The live site is <a href="https://ml-dev-hub.github.io/SARtale/">ml-dev-hub.github.io/SARtale</a> and this guide is at <a href="https://ml-dev-hub.github.io/SARtale/guide/">/guide/</a>. The repository belongs to the ML-Dev-Hub organization on GitHub, so Pages serves it at ml-dev-hub.github.io/SARtale. A copy of this repository under another account is served at that account's own address.</p>
 
 <h2 id="one-time-owner-setup">One-time owner setup<a class="anchor" href="#one-time-owner-setup" aria-label="Link to this section">#</a></h2>
 <p>Do these three things once on GitHub, in this order, before anyone opens a lake request.</p>
@@ -42,7 +42,7 @@
   <li><b>Create the labels.</b> Actions → Lake requests → Run workflow once, to create the labels. Do this before any request is opened: the issue form drops a label that does not exist yet, so the first request would carry no <code>lake-request</code> label and no workflow would see it.</li>
 </ol>
 <p>The repository's default workflow permissions (Settings → Actions → General) can stay at <b>Read repository contents</b>. Every workflow declares the permissions it needs.</p>
-<div class="note"><p><strong>Private for now.</strong> The repository is private (GitHub Pro). Until the owner makes it public, only collaborators can open lake-request issues. Making it public is the owner's choice and is not part of the setup above.</p></div>
+<div class="note"><p><strong>Public repository.</strong> The repository is public at <a href="https://github.com/ML-Dev-Hub/SARtale">ML-Dev-Hub/SARtale</a>, so anyone signed in to GitHub can open a lake request.</p></div>
 
 <h2 id="the-workflows">The workflows<a class="anchor" href="#the-workflows" aria-label="Link to this section">#</a></h2>
 <div class="table-wrap"><table>

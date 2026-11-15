@@ -15,14 +15,14 @@
 </p>
 
 <p align="center">
-  <a href="https://saeedahmad.me/SARtale/#videos"><b>Watch the videos</b></a>: demo (38 s) and how it works (3 min 41 s) ·
-  <a href="https://saeedahmad.me/SARtale/"><b>Live site</b></a> ·
-  <a href="https://saeedahmad.me/SARtale/guide/"><b>Guide</b></a>
+  <a href="https://ml-dev-hub.github.io/SARtale/#videos"><b>Watch the videos</b></a>: demo (38 s) and how it works (3 min 41 s) ·
+  <a href="https://ml-dev-hub.github.io/SARtale/"><b>Live site</b></a> ·
+  <a href="https://ml-dev-hub.github.io/SARtale/guide/"><b>Guide</b></a>
 </p>
 
 ![Lake Watch: 39 watched lakes, the lakes that need attention first, count tiles that filter the table, and a key to the statuses](media/screens/lake-watch.jpg)
 
-Both videos play on the [site](https://saeedahmad.me/SARtale/#videos) and in the [guide](https://saeedahmad.me/SARtale/guide/#videos), with captions. The files are [`media/SARtale-lake-watch-demo.mp4`](media/SARtale-lake-watch-demo.mp4) and [`media/SARtale-how-it-works.mp4`](media/SARtale-how-it-works.mp4).
+Both videos play on the [site](https://ml-dev-hub.github.io/SARtale/#videos) and in the [guide](https://ml-dev-hub.github.io/SARtale/guide/#videos), with captions. The files are [`media/SARtale-lake-watch-demo.mp4`](media/SARtale-lake-watch-demo.mp4) and [`media/SARtale-how-it-works.mp4`](media/SARtale-how-it-works.mp4).
 
 ## Why
 
@@ -61,7 +61,7 @@ The site opens on **Lake Watch**, a table of every watched lake for the officers
 |---|---|
 | ![Passu terminal lake at Watch: the message with what changed, how sure, what it is not and what to do](media/screens/lake-page.jpg) | ![The status markers on the MODIS base map, with the 503 mapped lakes as grey dots](media/screens/lake-map.jpg) |
 
-The story page ([The story](https://saeedahmad.me/SARtale/#start)) tells why this matters, from the 2022 Shisper lake outburst to the 2026 cloud gap. **How we know** explains the method in four steps, with the technical detail in a closed section.
+The story page ([The story](https://ml-dev-hub.github.io/SARtale/#start)) tells why this matters, from the 2022 Shisper lake outburst to the 2026 cloud gap. **How we know** explains the method in four steps, with the technical detail in a closed section.
 
 ![The SARtale story page](media/screens/story.jpg)
 
@@ -102,7 +102,7 @@ conda run -n sartale pytest tests -q
 
 ## Guide
 
-The developer and user guide is a small website in [`docs/guide/`](docs/guide/). It is published with the site at <https://saeedahmad.me/SARtale/guide/>; you can also open `docs/guide/index.html` in a browser.
+The developer and user guide is a small website in [`docs/guide/`](docs/guide/). It is published with the site at <https://ml-dev-hub.github.io/SARtale/guide/>; you can also open `docs/guide/index.html` in a browser.
 
 | Page | For |
 |---|---|
@@ -116,7 +116,7 @@ The developer and user guide is a small website in [`docs/guide/`](docs/guide/).
 
 ## Deploying
 
-The site is at <https://saeedahmad.me/SARtale/>, published by `.github/workflows/deploy.yml` on every push to `main`. A weekly workflow refreshes the data, and the lake-request workflows handle issues. The owner sets up three things once, in this order, before any lake request is opened (steps in the [Deploying](docs/guide/deploy.html) page):
+The site is at <https://ml-dev-hub.github.io/SARtale/>, published by `.github/workflows/deploy.yml` on every push to `main`. A weekly workflow refreshes the data, and the lake-request workflows handle issues. The owner sets up three things once, in this order, before any lake request is opened (steps in the [Deploying](docs/guide/deploy.html) page):
 
 1. Settings → Pages → Source: **GitHub Actions**.
 2. Settings → Environments → new environment `earthdata`, deployment branches limited to `main`, with the secrets `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD`; then delete the repository-level copies.

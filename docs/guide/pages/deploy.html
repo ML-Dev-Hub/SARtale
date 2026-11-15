@@ -1,5 +1,5 @@
 <h1>Deploying</h1>
-<p class="lede">The site is published to GitHub Pages by a workflow. Lake requests, accepts and weekly data refreshes run as GitHub Actions too, so there is no server to run. The live site is <a href="{{SITE}}">saeedahmad.me/SARtale</a> and this guide is at <a href="{{SITE}}guide/">/guide/</a>. The address <code>saeedahmadicp.github.io/SARtale</code> redirects there, because the owner's GitHub user site has a custom domain. A copy of this repository under another account is served at that account's own address.</p>
+<p class="lede">The site is published to GitHub Pages by a workflow. Lake requests, accepts and weekly data refreshes run as GitHub Actions too, so there is no server to run. The live site is <a href="{{SITE}}">ml-dev-hub.github.io/SARtale</a> and this guide is at <a href="{{SITE}}guide/">/guide/</a>. The repository belongs to the ML-Dev-Hub organization on GitHub, so Pages serves it at ml-dev-hub.github.io/SARtale. A copy of this repository under another account is served at that account's own address.</p>
 
 <h2>One-time owner setup</h2>
 <p>Do these three things once on GitHub, in this order, before anyone opens a lake request.</p>
@@ -16,7 +16,7 @@
   <li><b>Create the labels.</b> Actions → Lake requests → Run workflow once, to create the labels. Do this before any request is opened: the issue form drops a label that does not exist yet, so the first request would carry no <code>lake-request</code> label and no workflow would see it.</li>
 </ol>
 <p>The repository's default workflow permissions (Settings → Actions → General) can stay at <b>Read repository contents</b>. Every workflow declares the permissions it needs.</p>
-<div class="note"><p><strong>Private for now.</strong> The repository is private (GitHub Pro). Until the owner makes it public, only collaborators can open lake-request issues. Making it public is the owner's choice and is not part of the setup above.</p></div>
+<div class="note"><p><strong>Public repository.</strong> The repository is public at <a href="https://github.com/ML-Dev-Hub/SARtale">ML-Dev-Hub/SARtale</a>, so anyone signed in to GitHub can open a lake request.</p></div>
 
 <h2>The workflows</h2>
 <div class="table-wrap"><table>
