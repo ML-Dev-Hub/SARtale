@@ -1,55 +1,55 @@
 1
-00:00:00,000 --> 00:00:03,793
-In 2022, a glacial lake above Hunza burst and took a
+00:00:00,000 --> 00:00:04,162
+In 2022, a glacial lake outburst in Hunza destroyed a
 
 2
-00:00:03,833 --> 00:00:06,370
-Karakoram Highway bridge with it.
+00:00:04,202 --> 00:00:06,370
+Karakoram Highway bridge.
 
 3
-00:00:06,610 --> 00:00:09,680
-The north has more than three thousand glacial lakes.
+00:00:06,610 --> 00:00:10,290
+Northern Pakistan has more than three thousand glacial lakes.
 
 4
-00:00:09,920 --> 00:00:13,600
-On many summer days, cloud hides them, just when they fill.
+00:00:10,530 --> 00:00:13,370
+Cloud often hides them from optical satellites.
 
 5
-00:00:14,140 --> 00:00:18,740
-We're SARcastic Scientists from Islamabad. We built SARtale.
+00:00:14,010 --> 00:00:17,690
+NASA and ISRO's NISAR radar sees through cloud.
 
 6
-00:00:18,980 --> 00:00:23,260
-NASA and ISRO's NISAR radar sees straight through the cloud.
+00:00:17,930 --> 00:00:22,390
+We're SARcastic Scientists from Islamabad. We built SARtale,
 
 7
-00:00:23,900 --> 00:00:27,657
-SARtale turns every NISAR pass into lake water area,
+00:00:22,930 --> 00:00:26,811
+an interactive app that maps lake water from every NISAR
 
 8
-00:00:27,697 --> 00:00:30,080
-compared with its normal range.
+00:00:26,851 --> 00:00:29,530
+pass and compares its area over time.
 
 9
-00:00:31,820 --> 00:00:34,519
-Lake Watch shows each lake's status.
+00:00:31,270 --> 00:00:34,530
+Lake Watch brings the lakes together. Open Passu,
 
 10
-00:00:34,559 --> 00:00:36,280
-Pick one, like Passu,
+00:00:35,370 --> 00:00:39,420
+and see its radar image, its water in blue, and its history.
 
 11
-00:00:37,120 --> 00:00:39,680
-and see its radar water and its history.
+00:00:40,860 --> 00:00:43,070
+A flag invites a closer look:
 
 12
-00:00:41,420 --> 00:00:45,330
-When a flag comes from a processing update, SARtale says so.
+00:00:43,110 --> 00:00:48,020
+Passu's began with a processing update, so it may not be a real change.
 
 13
-00:00:46,070 --> 00:00:50,070
-Anyone can add a glacial lake, and every lake refreshes weekly.
+00:00:49,060 --> 00:00:51,020
+Anyone can add a lake to follow.
 
 14
-00:00:51,110 --> 00:00:55,340
-SARtale: when clouds close in, the lakes stay in view.
+00:00:52,060 --> 00:00:54,950
+When clouds close in, the lakes stay in view.

@@ -1,31 +1,35 @@
 1
-00:00:00,000 --> 00:00:03,910
-Glacial lakes above Hunza can burst and take bridges with them.
+00:00:00,000 --> 00:00:05,020
+In 2022, a glacial lake outburst in Hunza destroyed a bridge.
 
 2
-00:00:04,150 --> 00:00:06,520
-On many summer days, cloud hides them.
+00:00:05,260 --> 00:00:08,190
+Northern Pakistan has thousands of glacial lakes.
 
 3
-00:00:06,960 --> 00:00:10,400
-We're SARcastic Scientists. We built SARtale.
+00:00:08,430 --> 00:00:09,880
+Cloud often hides them.
 
 4
-00:00:10,640 --> 00:00:14,130
-NASA and ISRO's NISAR radar sees straight through.
+00:00:10,620 --> 00:00:14,300
+NASA and ISRO's NISAR radar sees through cloud.
 
 5
-00:00:14,570 --> 00:00:18,990
-SARtale turns each pass into lake water, tracks every lake,
+00:00:14,540 --> 00:00:16,310
+We're SARcastic Scientists.
 
 6
-00:00:19,730 --> 00:00:22,520
-and flags changes beyond its normal range.
+00:00:16,950 --> 00:00:20,300
+SARtale maps each lake's water and tracks its area.
 
 7
-00:00:23,360 --> 00:00:24,810
-Anyone can add a lake.
+00:00:20,940 --> 00:00:22,900
+A flag invites a closer look.
 
 8
-00:00:25,750 --> 00:00:28,680
+00:00:23,740 --> 00:00:25,140
+Anyone can add a lake.
+
+9
+00:00:25,880 --> 00:00:28,810
 When clouds close in, the lakes stay in view.
