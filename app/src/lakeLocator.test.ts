@@ -1,7 +1,18 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { fixtureLakes } from "./fixtures";
-import { BASE_BOUNDS, isUserMove, locatorStyle, markerElement, statusSlug } from "./lakeLocator";
+import { BASE_ASPECT, BASE_BOUNDS, isUserMove, locatorStyle, markerElement, statusSlug } from "./lakeLocator";
+
+describe("BASE_ASPECT", () => {
+  it("is the width over the height of the picture's bounds as MapLibre draws them (Web Mercator), not the file's pixel ratio", () => {
+    const { west, east, south, north } = BASE_BOUNDS;
+    const y = (lat: number): number => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+    const want = ((east - west) * Math.PI / 180) / (y(north) - y(south));
+    expect(BASE_ASPECT).toBeCloseTo(want, 9);
+    expect(BASE_ASPECT).toBeGreaterThan(1.45);
+    expect(BASE_ASPECT).toBeLessThan(1.49);
+  });
+});
 
 describe("isUserMove", () => {
   it("counts drag, scroll, pinch and +/- button moves (they carry the DOM event)", () => {

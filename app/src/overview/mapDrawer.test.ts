@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { fixtureMessage, makeFile, makeLake } from "../fixtures";
 import type { Lake, LakesFile, LevelName } from "../lakes";
+import { BASE_ASPECT } from "../lakeLocator";
 import { mappedFixture } from "./mappedFixture";
 import { createReadyGate, pinElement } from "./mapDrawer";
 import { loadMappedLakes, watchThisLakeUrl } from "./mappedLakes";
@@ -131,7 +132,7 @@ describe("map drawer", () => {
     render(file, { ...DEFAULT_STATE, map: true, sel: "passu" });
     await tick();
     const card = role("ov-card");
-    for (const label of ["District", "SUPARCO list", "Area", "Largest recorded extent", "Latest pass", "Elevation"]) expect(card.textContent).toContain(label);
+    for (const label of ["District", "SUPARCO list", "Area", "Largest mapped outline", "Latest pass", "Elevation"]) expect(card.textContent).toContain(label);
     expect(card.textContent).toContain("Hunza");
     expect(card.textContent).not.toMatch(/Gilgit|Khyber|Hunza,/);
     click([...card.querySelectorAll("a")].find((b) => b.textContent === "Open lake history")!);
@@ -159,6 +160,27 @@ describe("map drawer", () => {
     expect(role("ov-legend").textContent).toContain("Mapped, not watched yet");
     expect(text()).toContain(mappedFixture.notice.odbl);
     expect(text()).toContain(mappedFixture.notice.cc_by);
+  });
+  it("credits the map data in one line with links, and keeps the full notices in a shut details", async () => {
+    render();
+    click(toggle());
+    await tick();
+    const line = role("ov-attribution");
+    expect(line.textContent).toBe("Map data: OpenStreetMap (ODbL), HKH-PK-2020 and Hi-MAG (CC BY 4.0), NASA MODIS");
+    expect([...line.querySelectorAll("a")].map((a) => a.textContent)).toEqual(["OpenStreetMap", "HKH-PK-2020", "Hi-MAG", "NASA MODIS"]);
+    expect([...line.querySelectorAll("a")].every((a) => /^https:\/\//.test(a.getAttribute("href")!))).toBe(true);
+    const det = role("ov-notices") as HTMLDetailsElement;
+    expect(det.tagName).toBe("DETAILS");
+    expect(det.open).toBe(false);
+    expect(det.querySelector("summary")!.textContent).toBe("Licence notices");
+    expect(det.textContent).toContain(mappedFixture.notice.odbl);
+    expect(det.textContent).toContain(mappedFixture.notice.cc_by);
+  });
+  it("gives the map frame the shape of the picture's real drawn bounds", async () => {
+    render();
+    click(toggle());
+    await tick();
+    expect(role("ov-map").style.getPropertyValue("--ov-map-aspect")).toBe(BASE_ASPECT.toFixed(4));
   });
   it("the legend lists one marker and label per family present, once", async () => {
     render();

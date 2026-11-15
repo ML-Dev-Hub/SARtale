@@ -30,13 +30,14 @@ describe("How we know", () => {
   test("shows frozen lakes and the limits in short, then the full method, Sentinel-2 check, data, limits and how to check it inside Technical details", () => {
     const { root } = withLakes();
     const ids = [...root.querySelectorAll<HTMLElement>("[data-section]")].map((s) => s.dataset.section);
-    expect(ids).toEqual(["short-frozen", "short-limits", "lake-method", "lake-checks", "frozen", "data", "limits", "check"]);
+    expect(ids).toEqual(["short-frozen", "short-limits", "lake-method", "lake-checks", "frozen", "data", "map-licences", "limits", "check"]);
     const tech = root.querySelector<HTMLDetailsElement>('details[data-role="evidence-technical"]')!;
     expect(tech.open).toBe(false);
     expect(tech.querySelector("summary")!.textContent).toBe("Technical details");
-    expect([...tech.querySelectorAll<HTMLElement>("[data-section]")].map((s) => s.dataset.section)).toEqual(["lake-method", "lake-checks", "frozen", "data", "limits", "check"]);
+    expect([...tech.querySelectorAll<HTMLElement>("[data-section]")].map((s) => s.dataset.section)).toEqual(["lake-method", "lake-checks", "frozen", "data", "map-licences", "limits", "check"]);
     expect(tech.querySelector('[data-role="lake-checks-table"]')).not.toBeNull();
     expect(tech.textContent).toContain("docs/DATA_SOURCES.md");
+    expect(tech.querySelector('[data-section="map-licences"]')!.textContent).toContain("Open Database Licence (ODbL) 1.0");
     expect(root.querySelector(".evidence-main")!.lastElementChild).toBe(tech);
   });
 

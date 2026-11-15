@@ -280,8 +280,13 @@ describe("overview details", () => {
   it("column heads read as given, units included", () => {
     render(file);
     expect([...root.querySelectorAll('[role="columnheader"]')].map((h) => h.textContent!.replace(/ /g, " ").trim())).toEqual([
-      "Lake · district · SUPARCO", "Status", "Area (km²)", "% of largest extent", "Trend (recent passes)", "Latest pass", "Elev. (m)",
+      "Lake · district · SUPARCO", "Status", "Area (km²)", "% of largest mapped outline", "Trend (recent passes)", "Latest pass", "Elev. (m)",
     ]);
+  });
+  it("does not repeat the district under a name that already ends with it", () => {
+    render(makeFile([makeLake({ id: "c029", name: "Proglacial lake C029, Swat", district: "Swat" }), makeLake({ id: "x", name: "Other lake", district: "Hunza" })]));
+    const subs = [...root.querySelectorAll('[data-role="ov-row"] .ov-c-lake .ov-sub')].map((s) => s.textContent);
+    expect([...subs].sort()).toEqual(["Hunza · no SUPARCO match", "no SUPARCO match"]);
   });
   it("a possible SUPARCO match shows as no match", () => {
     render(makeFile([makeLake({ district: "Hunza", suparco: { id: 12, match: "possible", source: "PDGL" } })]));
@@ -339,11 +344,12 @@ describe("overview details", () => {
     expect(role("ov-footer")!.textContent).toContain("Screening on NISAR radar, not a warning.");
     expect(role("ov-table")!.getAttribute("role")).toBe("table");
   });
-  it("the status key lists one line per family present, plus Alert, in a details open on desktop", () => {
+  it("the status key lists one line per family present, plus Alert, in a details shut by default on desktop too", () => {
     render(makeFile([lake("a", {}, { status: "Watch", level: "Watch" }), frozenFixture("b", "Frozen (likely)")]));
     const key = role("ov-key") as HTMLDetailsElement;
     expect(key.tagName).toBe("DETAILS");
-    expect(key.open).toBe(true);
+    expect(key.open).toBe(false);
+    expect(key.querySelector("summary")!.textContent).toBe("What the statuses mean");
     const fams = [...key.querySelectorAll<HTMLElement>("li")].map((li) => li.dataset.family);
     expect(fams).toEqual(["alert", "watch", "frozen"]);
     expect(key.querySelector("li svg")).not.toBeNull();

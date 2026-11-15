@@ -20,6 +20,16 @@ export function suparcoShort(l: Lake): string {
   return s.match === "probable" ? `SUPARCO ${s.id} (probable)` : `SUPARCO ${s.id}`;
 }
 
+/**
+ * The second line of a lake's row or card: district and SUPARCO match. The district is left out when the name already
+ * ends with it ("Proglacial lake C029, Swat" in Swat).
+ */
+export function placeLine(l: Lake): string {
+  const d = l.district;
+  const repeated = !!d && l.name.toLowerCase().endsWith(`, ${d.toLowerCase()}`);
+  return [repeated ? null : d, suparcoShort(l)].filter(Boolean).join(" · ");
+}
+
 export const isoDay = (v: string | null | undefined): string | null => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) && Number.isFinite(Date.parse(v.slice(0, 10))) ? v.slice(0, 10) : null);
 
 export const OV_FOOTER = "Screening on NISAR radar, not a warning. Official warnings come from PMD, NDMA, GBDMA and PDMA.";

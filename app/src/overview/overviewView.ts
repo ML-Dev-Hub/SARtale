@@ -1,7 +1,7 @@
 import "./overview.css";
 import { formatDate } from "../format";
 import { renderOverviewPhone } from "./overviewPhone";
-import { isoDay, OV_CREDITS, OV_FOOTER, shortDate, signed, suparcoShort } from "./text";
+import { isoDay, OV_CREDITS, OV_FOOTER, placeLine, shortDate, signed, suparcoShort } from "./text";
 export { OV_CREDITS, OV_FOOTER, suparcoShort };
 import { droppedLine, isFrozen, levelMessage, type HeadlineCounts, type Lake, type LakesFile } from "../lakes";
 import { statusSlug } from "../lakeLocator";
@@ -56,14 +56,14 @@ const COLUMNS: { col: keyof typeof SORT_FOR_COLUMN; label: string; num: boolean 
   { col: "lake", label: "Lake · district · SUPARCO", num: false },
   { col: "status", label: "Status", num: false },
   { col: "area", label: "Area (km²)", num: true },
-  { col: "share", label: "% of largest extent", num: true },
+  { col: "share", label: "% of largest mapped outline", num: true },
   { col: "trend", label: "Trend (recent passes)", num: false },
   { col: "latest", label: "Latest pass", num: false },
   { col: "elevation", label: "Elev. (m)", num: true },
 ];
 
 const SORT_NAMES: Record<SortKey, string> = {
-  status: "status", name: "name", area: "area", change: "change against the baseline", share: "% of largest extent", latest: "latest pass", elevation: "elevation",
+  status: "status", name: "name", area: "area", change: "change against the baseline", share: "% of largest mapped outline", latest: "latest pass", elevation: "elevation",
 };
 
 /** The one filter that has no count tile: it sits beside the district select. */
@@ -71,7 +71,7 @@ const SUPARCO_FILTER: { filter: OverviewFilter; label: string } = { filter: "sup
 
 const BAR_LEGEND = "Bar: today's radar area against the largest mapped outline; the tick marks 100%.";
 
-const OV_NOTES = "Area: NISAR radar water area on the lake's status track, from its newest valid open-water pass, with the change against the baseline of earlier passes on that track; \"info only\" marks a lake whose radar water did not pass the Sentinel-2 check. % of largest extent: that area against the largest mapped outline (Hi-MAG 2008–2017, HKH-PK-2020, OpenStreetMap); \"Above\" means it is larger by more than twice the radar noise, \"Within noise\" that it is larger by less than that, and \"noise unknown\" that the noise could not be set. No share is given where the radar water failed the Sentinel-2 check, the outline lies mostly outside the radar window, or there is no outline. Trend: the valid readings of the status track, the dot being the newest; for a frozen lake it stops at the last open-water reading. SUPARCO numbers are our match by map position and area to SUPARCO's published PDGL IDs; SUPARCO does not publish coordinates.";
+const OV_NOTES = "Area: NISAR radar water area on the lake's status track, from its newest valid open-water pass, with the change against the baseline of earlier passes on that track; \"info only\" marks a lake whose radar water did not pass the Sentinel-2 check. % of largest mapped outline: that area against the largest mapped outline (Hi-MAG 2008–2017, HKH-PK-2020, OpenStreetMap); \"Above\" means it is larger by more than twice the radar noise, \"Within noise\" that it is larger by less than that, and \"noise unknown\" that the noise could not be set. No share is given where the radar water failed the Sentinel-2 check, the outline lies mostly outside the radar window, or there is no outline. Trend: the valid readings of the status track, the dot being the newest; for a frozen lake it stops at the last open-water reading. SUPARCO numbers are our match by map position and area to SUPARCO's published PDGL IDs; SUPARCO does not publish coordinates.";
 
 function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): OverviewHandle {
   const file = opts.file;
@@ -207,7 +207,7 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
   shown.setAttribute("role", "status");
   filters.append(group, districtLabel, searchLabel, shown);
   wrap.append(filters);
-  wrap.append(statusKey(lakes, true));
+  wrap.append(statusKey(lakes, false));
 
   // ---- Table (and the map drawer's place beside it) ---------------------------------------------------------------
   const main = el("div", "ov-main");
@@ -251,7 +251,7 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
     name.type = "button";
     name.title = l.name;
     name.addEventListener("click", () => opts.onOpenLake(l.id));
-    const sub = [l.district, suparcoShort(l)].filter(Boolean).join(" · ");
+    const sub = placeLine(l);
     const subEl = el("span", "ov-sub", sub);
     subEl.title = sub;
     const line = el("div", "ov-nameline");

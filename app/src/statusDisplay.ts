@@ -84,6 +84,16 @@ export function statusDisplay(lake: Lake, constants?: { min_looks?: number }): S
   }
 }
 
+/**
+ * A status tag read after a colon in one sentence ("Frozen: seen in Sentinel-2 since 18 Oct"): its first word loses its
+ * capital, unless it is a name or an acronym (Sentinel-2, NISAR).
+ */
+export function tagInSentence(tag: string): string {
+  const first = tag.split(" ")[0];
+  if (!/^[A-Z][a-z]+$/.test(first) || /^(Sentinel|Landsat)$/.test(first)) return tag;
+  return first.toLowerCase() + tag.slice(first.length);
+}
+
 export function familyCounts(lakes: Lake[]): Record<Family, number> {
   const c = Object.fromEntries(FAMILIES.map((f) => [f, 0])) as Record<Family, number>;
   for (const l of lakes) c[statusDisplay(l).family]++;

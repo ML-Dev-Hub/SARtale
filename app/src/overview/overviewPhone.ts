@@ -9,7 +9,7 @@ import { statusDisplay } from "../statusDisplay";
 import { el, familyChip, statusMark, svg } from "./marks";
 import { statusKey } from "./statusKey";
 import { arrange, latestReadingOnTrack, nextRefresh, type MappedLakesFile, type OverviewFilter, type OverviewState, type SortKey } from "./model";
-import { isoDay, OV_CREDITS, OV_FOOTER, shortDate, signed, suparcoShort } from "./text";
+import { isoDay, OV_CREDITS, OV_FOOTER, placeLine, shortDate, signed } from "./text";
 import type { OverviewHandle, OverviewOptions } from "./overviewView";
 
 const CHIPS: { filter: OverviewFilter; label: string; mark?: string }[] = [
@@ -260,7 +260,7 @@ export function renderOverviewPhone(root: HTMLElement, opts: OverviewOptions): O
     li.dataset.status = statusSlug(l.status.status);
     if (state.sel === l.id) li.dataset.selected = "true";
     const name = el("span", "ovp-lake-name", l.name);
-    const sub = el("span", "ovp-lake-sub", [l.district, suparcoShort(l)].filter(Boolean).join(" · "));
+    const sub = el("span", "ovp-lake-sub", placeLine(l));
     const who = el("span", "ovp-lake-who");
     who.append(name, sub);
     const status = el("span", "ovp-lake-status");
@@ -390,7 +390,7 @@ export function renderOverviewPhone(root: HTMLElement, opts: OverviewOptions): O
         sort.append(extra);
       }
       extra.value = state.sort;
-      extra.textContent = state.sort === "share" ? "% of largest extent" : state.sort.charAt(0).toUpperCase() + state.sort.slice(1);
+      extra.textContent = state.sort === "share" ? "% of largest mapped outline" : state.sort.charAt(0).toUpperCase() + state.sort.slice(1);
     }
     sort.value = state.sort;
 

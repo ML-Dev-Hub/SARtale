@@ -52,6 +52,13 @@ afterEach(() => {
 });
 
 describe("overview on a phone", () => {
+  it("does not repeat the district under a name that already ends with it", () => {
+    render(makeFile([makeLake({ id: "c029", name: "Proglacial lake C029, Swat", district: "Swat" }), makeLake({ id: "x", name: "Other lake", district: "Hunza" })]));
+    const subs = [...root.querySelectorAll(".ovp-lake-sub")].map((s) => s.textContent);
+    expect(subs).toContain("no SUPARCO match");
+    expect(subs).toContain("Hunza · no SUPARCO match");
+    expect(subs.some((s) => s!.startsWith("Swat"))).toBe(false);
+  });
   it("shows the needs-attention card before the list", () => {
     render(file);
     expect(card().compareDocumentPosition(role("ovp-list")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

@@ -146,6 +146,15 @@
         }
       },
       {
+        "id": "map-licences",
+        "title": "Map data licences",
+        "paragraphs": [
+          "The map under Lake Watch is NASA MODIS true colour. Lake outlines and points: OpenStreetMap, HKH-PK-2020 and Hi-MAG.",
+          "OpenStreetMap data is published under the Open Database Licence (ODbL) 1.0 (https://opendatacommons.org/licenses/odbl/1-0/): it contains data from OpenStreetMap, © OpenStreetMap contributors (https://www.openstreetmap.org/copyright).",
+          "Lake points and areas from HKH-PK-2020 (Siddique et al. 2023, Zenodo 15476013) and Hi-MAG (Chen et al. 2021, ESSD 13:741, Zenodo 4275164) are used under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)."
+        ]
+      },
+      {
         "id": "limits",
         "title": "Limits",
         "list": [
