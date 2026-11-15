@@ -230,7 +230,7 @@ export function mountAddLake(root: HTMLElement, deps: AddLakeDeps): { destroy():
   const actions = document.createElement("div");
   actions.className = "sp-add-actions";
   actions.append(button, text("span", "sp-add-hint", form.hint));
-  f.append(field(form.nameLabel, "name", form.namePlaceholder), coords, field(form.sourceLabel, "source", form.sourcePlaceholder), card, actions);
+  f.append(field(form.nameLabel, "name", form.namePlaceholder), coords, field(form.sourceLabel, "source", form.sourcePlaceholder), card, text("p", "sp-add-review", form.reviewLine), actions);
   root.replaceChildren(f);
 
   const onSubmit = (e: Event): void => {
