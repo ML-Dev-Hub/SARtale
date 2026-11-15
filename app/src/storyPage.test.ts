@@ -557,7 +557,7 @@ describe("the cover stats", () => {
     expect(stats).toEqual([
       [n.sites, "lakes watched"],
       [n.lakes, "holding water now"],
-      [n.passes, `radar readings since ${n.firstPass}`],
+      [n.passes, `NISAR passes over the lakes since ${n.firstPass}`],
     ]);
   });
 
@@ -608,6 +608,13 @@ describe("F1 story wording and layout", () => {
     const rule = rulesFor(storyCss, ".sp-head-stack").join(" ");
     expect(rule).toMatch(/flex-direction:\s*column/);
     expect(rule).toMatch(/align-items:\s*flex-start/);
+  });
+
+  it("sets the view section's lede under its heading the same way", () => {
+    const { root } = render(real);
+    const head = root.querySelector('section[aria-label="01 The view"] .sp-head')!;
+    expect(head.classList.contains("sp-head-stack")).toBe(true);
+    expect(head.querySelector(".sp-head-note")).not.toBeNull();
   });
 });
 

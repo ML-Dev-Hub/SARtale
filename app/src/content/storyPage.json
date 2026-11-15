@@ -9,7 +9,7 @@
     "stats": [
       { "value": "{sites}", "label": "lakes watched" },
       { "value": "{lakes}", "label": "holding water now" },
-      { "value": "{passes}", "label": "radar readings since {firstPass}" }
+      { "value": "{passes}", "label": "NISAR passes over the lakes since {firstPass}" }
     ],
     "image": "story/hunza_valley.jpg",
     "imageAlt": "Satellite view of the Hunza valley in summer, snow peaks above a green river valley",

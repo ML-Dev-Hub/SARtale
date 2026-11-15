@@ -378,7 +378,7 @@ export function renderStoryPage(root: HTMLElement, file: LakesFile | null, opts:
   for (const s of v.shadow.sources) src.append(link(s.url, s.text), s.after);
   const view = section("01 The view", "sp-section");
   view.append(
-    el("div", "sp-head", el("div", undefined, eyebrow(v.label), text("h2", undefined, v.title)), text("p", "sp-muted sp-head-note", v.lede)),
+    el("div", "sp-head sp-head-stack", el("div", undefined, eyebrow(v.label), text("h2", undefined, v.title)), text("p", "sp-muted sp-head-note", v.lede)),
     el("div", "sp-pair", shot(v.optical), shot(v.radar)),
     el("div", "sp-panel sp-shadow", text("h3", undefined, v.shadow.title), text("p", "sp-shadow-lede", v.shadow.lede), cards, src),
   );
