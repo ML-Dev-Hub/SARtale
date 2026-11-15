@@ -14,10 +14,12 @@ import type { OverviewHandle, OverviewOptions } from "./overviewView";
 
 const CHIPS: { filter: OverviewFilter; label: string; mark?: string }[] = [
   { filter: "all", label: "All" },
+  { filter: "attention", label: "Needs attention" },
   { filter: "alert", label: "Alert", mark: "Alert: growing" },
   { filter: "watch", label: "Watch", mark: "Watch" },
   { filter: "open", label: "Open water", mark: "No change" },
   { filter: "frozen", label: "Frozen", mark: "Frozen (likely)" },
+  { filter: "unmeasured", label: "Not measured", mark: "Not observable" },
   { filter: "no-lake", label: "No lake now", mark: "No lake now" },
   { filter: "above", label: "Above largest" },
   { filter: "suparco", label: "SUPARCO-listed" },
@@ -160,9 +162,18 @@ export function renderOverviewPhone(root: HTMLElement, opts: OverviewOptions): O
   });
   sortField.append(sortLabel, sort);
 
+  const districtField = el("div", "ovp-field");
+  const districtLabel = el("label", undefined, "District");
+  districtLabel.htmlFor = "ovp-district";
+  const district = el("select", "ovp-input");
+  district.id = "ovp-district";
+  district.dataset.role = "ovp-district";
+  district.addEventListener("change", () => set({ district: district.value || null }));
+  districtField.append(districtLabel, district);
+
   const list = el("div", "ovp-list");
   list.dataset.role = "ovp-list";
-  listSec.append(listHead, searchField, sortField, list);
+  listSec.append(listHead, searchField, districtField, sortField, list);
   main.append(listSec);
 
   const footer = el("footer", "ovp-footer");
@@ -383,8 +394,24 @@ export function renderOverviewPhone(root: HTMLElement, opts: OverviewOptions): O
     }
     sort.value = state.sort;
 
+    const counts = new Map<string, number>();
+    for (const l of lakes) if (l.district) counts.set(l.district, (counts.get(l.district) ?? 0) + 1);
+    if (state.district && !counts.has(state.district)) counts.set(state.district, 0);
+    const districtOpts = [el("option", undefined, "All districts")];
+    districtOpts[0].value = "";
+    for (const [name, n] of [...counts].sort((a, b) => a[0].localeCompare(b[0]))) {
+      const o = el("option", undefined, `${name} (${n})`);
+      o.value = name;
+      districtOpts.push(o);
+    }
+    district.replaceChildren(...districtOpts);
+    district.value = state.district ?? "";
+
     const { pinned, rows } = arrange(lakes, state, minObs);
-    shown.textContent = `${pinned.length + rows.length} shown`;
+    // The count is the cards drawn: the attention cards plus the rows the list shows so far.
+    const drawn = pinned.length + Math.min(rows.length, showAll ? rows.length : FIRST_LAKES);
+    const total = pinned.length + rows.length;
+    shown.textContent = drawn < total ? `${drawn} of ${total} shown` : `${total} shown`;
     attentionSlot.replaceChildren(...(pinned.length ? [attentionCard(pinned)] : []));
 
     const body: HTMLElement[] = rows.slice(0, showAll ? rows.length : FIRST_LAKES).map(lakeCard);
