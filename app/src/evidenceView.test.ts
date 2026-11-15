@@ -15,15 +15,69 @@ function open(lakes: LakesFile | null = realLakes) {
   return { root, view, text: root.textContent ?? "" };
 }
 const withLakes = () => open();
+/** Page text outside the closed Technical details block. */
+function visibleText(root: HTMLElement): string {
+  const clone = root.cloneNode(true) as HTMLElement;
+  clone.querySelector('details[data-role="evidence-technical"]')?.remove();
+  return clone.textContent ?? "";
+}
 
 afterEach(() => {
   document.body.innerHTML = "";
 });
 
 describe("How we know", () => {
-  test("has the lake method, the Sentinel-2 check, frozen lakes, the data, the limits and how to check it, in that order", () => {
-    const ids = [...withLakes().root.querySelectorAll<HTMLElement>("[data-section]")].map((s) => s.dataset.section);
-    expect(ids).toEqual(["lake-method", "lake-checks", "frozen", "data", "limits", "check"]);
+  test("shows frozen lakes and the limits in short, then the full method, Sentinel-2 check, data, limits and how to check it inside Technical details", () => {
+    const { root } = withLakes();
+    const ids = [...root.querySelectorAll<HTMLElement>("[data-section]")].map((s) => s.dataset.section);
+    expect(ids).toEqual(["short-frozen", "short-limits", "lake-method", "lake-checks", "frozen", "data", "limits", "check"]);
+    const tech = root.querySelector<HTMLDetailsElement>('details[data-role="evidence-technical"]')!;
+    expect(tech.open).toBe(false);
+    expect(tech.querySelector("summary")!.textContent).toBe("Technical details");
+    expect([...tech.querySelectorAll<HTMLElement>("[data-section]")].map((s) => s.dataset.section)).toEqual(["lake-method", "lake-checks", "frozen", "data", "limits", "check"]);
+    expect(tech.querySelector('[data-role="lake-checks-table"]')).not.toBeNull();
+    expect(tech.textContent).toContain("docs/DATA_SOURCES.md");
+    expect(root.querySelector(".evidence-main")!.lastElementChild).toBe(tech);
+  });
+
+  test("C8: opens with four plain steps and keeps the visible text short and free of jargon", () => {
+    const { root } = withLakes();
+    const box = root.querySelector(".evidence-summary")!;
+    expect(box.querySelector("h3")!.textContent).toBe("How SARtale reads a lake, in four steps");
+    const steps = [...box.querySelectorAll("ol > li")].map((li) => li.textContent ?? "");
+    expect(steps).toHaveLength(4);
+    expect(steps[0]).toMatch(/NISAR/);
+    expect(steps[0]).toMatch(/every 12 days/);
+    expect(steps[0]).toMatch(/through cloud/);
+    expect(steps[1]).toMatch(/dark/);
+    expect(steps[2]).toMatch(/own normal range/);
+    expect(steps[2]).toMatch(/same track/);
+    expect(steps[3]).toMatch(/one status/);
+    expect(steps[3]).toMatch(/Frozen/);
+    expect(steps[3]).toMatch(/Sentinel-2/);
+    expect(steps[3]).toMatch(/air temperature/);
+    const visible = visibleText(root);
+    expect(visible.split(/\s+/).filter(Boolean).length).toBeLessThan(700);
+    for (const jargon of ["IoU", "D17", "Lee", "EPSG", "CUSUM", "GCOV", "z-score", "MNDWI", "speckle"]) expect(visible).not.toContain(jargon);
+    expect(findBannedClaims(visible)).toEqual([]);
+  });
+
+  test("C8: the visible numbers come from lakes.json", () => {
+    const t = lakeTokens(realLakes);
+    const visible = visibleText(withLakes().root);
+    expect(visible).toContain(`${t.cloud_looks} valid`);
+    expect(visible).toContain(`${t.cloud_lakes} of ${t.lake_count} lakes`);
+    expect(visible).toContain(t.cloud_start);
+    expect(visible).toContain(`radar water ${opticalOverlapPhrase(realLakes.checks, true)}`);
+    const fewer: LakesFile = { ...realLakes, lakes: realLakes.lakes.slice(0, 3) };
+    expect(lakeTokens(fewer).lake_count).not.toBe(t.lake_count);
+    expect(visibleText(open(fewer).root)).toContain(` of ${lakeTokens(fewer).lake_count} lakes`);
+  });
+
+  test("C8: the not-an-official-warning line is on the page once", () => {
+    const { text } = withLakes();
+    expect(text.split("Official warnings come from PMD, NDMA, GBDMA and PDMA.").length - 1).toBe(1);
+    expect(text.match(/not an official warning service/gi)).toHaveLength(1);
   });
 
   test("states the freeze rule from lakes.json and its limits", () => {
@@ -49,7 +103,7 @@ describe("How we know", () => {
 
   test("puts what it can and cannot do first, before the detail", () => {
     const main = withLakes().root.querySelector(".evidence-main")!;
-    expect([...main.children].slice(0, 2).map((c) => c.className)).toEqual(["evidence-head", "evidence-verdict"]);
+    expect([...main.children].slice(0, 3).map((c) => c.className)).toEqual(["evidence-head", "evidence-summary", "evidence-verdict"]);
     const verdict = main.querySelector(".evidence-verdict")!.textContent ?? "";
     expect(verdict).toContain("What it cannot do");
     expect(verdict).toMatch(/not an official warning service/);
@@ -58,11 +112,14 @@ describe("How we know", () => {
   test("links to every section, and a link moves focus to its heading without changing the address", () => {
     const { root } = withLakes();
     const links = [...root.querySelectorAll<HTMLAnchorElement>(".evidence-toc a")];
-    expect(links).toHaveLength(6);
+    expect(links.map((a) => a.textContent)).toEqual(["How it works", "Frozen lakes", "Where it falls short", "Technical details"]);
     const before = location.hash;
-    links[4].click();
+    links[2].click();
     expect(location.hash).toBe(before);
-    expect(document.activeElement?.id).toBe("evidence-limits-h");
+    expect(document.activeElement?.id).toBe("evidence-short-limits-h");
+    const tech = root.querySelector<HTMLDetailsElement>('details[data-role="evidence-technical"]')!;
+    links[3].click();
+    expect(tech.open).toBe(true);
   });
 
   test("without lake data the page still stands and has no Sentinel-2 rows", () => {

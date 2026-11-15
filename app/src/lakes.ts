@@ -933,11 +933,11 @@ export function iouRange(checks: LakeCheck[]): string | null {
 }
 
 /** How radar water overlapped optical water, worded from the IoU values; null when no check has an IoU. */
-export function opticalOverlapPhrase(checks: LakeCheck[]): string | null {
+export function opticalOverlapPhrase(checks: LakeCheck[], plain = false): string | null {
   const rows = checks.filter((c) => c.iou !== null);
   if (!rows.length) return null;
   const hi = Math.max(...rows.map((c) => c.iou as number));
-  const range = iouRange(rows)!;
+  const range = plain ? iouRange(rows)!.replace(/^IoU (.*)$/, "overlap score $1 out of 1") : iouRange(rows)!;
   const lo = Math.min(...rows.map((c) => c.iou as number));
   if (hi < 0.5) return `overlapped optical water poorly at every lake checked (${range})`;
   if (lo < 0.5) return `overlapped optical water unevenly across the ${rows.length} lakes checked (${range})`;
@@ -995,6 +995,7 @@ export function lakeTokens(file: LakesFile): Record<string, string> {
     processing_versions: processingVersions(file.crid),
     notes: file.notes,
     iou_range: iouRange(file.checks) ?? "no IoU yet",
+    optical_overlap_plain: opticalOverlapPhrase(file.checks, true) ?? "has not been compared with optical water in this build",
     optical_overlap: opticalOverlapPhrase(file.checks) ?? "has not been compared with optical water in this build",
     ...freezeTokens(c),
     ...levelTokens(file),

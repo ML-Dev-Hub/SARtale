@@ -262,6 +262,8 @@ describe("opticalOverlapPhrase", () => {
     expect(opticalOverlapPhrase([row(0.05), row(0.46), row(0.61)])).toBe("overlapped optical water unevenly across the 3 lakes checked (IoU 0.05–0.61)");
     expect(opticalOverlapPhrase([row(0.7), row(0.8)])).toBe("overlapped optical water with IoU 0.7–0.8 across the 2 lakes checked");
     expect(opticalOverlapPhrase([])).toBeNull();
+    expect(opticalOverlapPhrase([row(0.57), row(0.69)], true)).toBe("overlapped optical water with overlap score 0.57–0.69 out of 1 across the 2 lakes checked");
+    expect(opticalOverlapPhrase([row(0.3)], true)).not.toContain("IoU");
   });
 });
 

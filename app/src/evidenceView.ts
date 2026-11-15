@@ -14,9 +14,13 @@ interface EvidenceSection {
 export interface EvidenceCopy {
   title: string;
   lede: string;
+  summary: { title: string; steps: string[] };
   can: string[];
   cannot: string[];
-  sections: EvidenceSection[];
+  /** The short, plain sections shown on the page. */
+  shortSections: EvidenceSection[];
+  /** The full method, checks and data, inside a closed block. */
+  technical: { title: string; intro: string; sections: EvidenceSection[] };
 }
 
 export const evidenceCopy = evidenceJson as EvidenceCopy;
@@ -97,7 +101,16 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
   cannot.append(cannotList);
   verdict.append(can, cannot);
 
-  main.append(head, verdict);
+  const summary = el("section", "evidence-summary");
+  summary.id = "evidence-steps";
+  summary.setAttribute("aria-labelledby", "evidence-steps-h");
+  const summaryHead = el("h3", undefined, evidenceCopy.summary.title);
+  summaryHead.id = "evidence-steps-h";
+  const stepList = el("ol", "evidence-steps");
+  stepList.append(...items(evidenceCopy.summary.steps));
+  summary.append(summaryHead, stepList);
+
+  main.append(head, summary, verdict);
 
   /** The Sentinel-2 cross-check rows, copied from lakes.json without adjusting any figure. */
   function lakeChecksTable(): HTMLTableElement | null {
@@ -132,7 +145,8 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
     return table;
   }
 
-  for (const sec of evidenceCopy.sections) {
+  /** Builds one section into the parent and returns it. */
+  function addSection(parent: HTMLElement, sec: EvidenceSection): HTMLElement {
     const s = el("section", "evidence-section");
     s.id = `evidence-${sec.id}`;
     s.dataset.section = sec.id;
@@ -187,21 +201,43 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
       const t = filled(p);
       if (t !== null) s.append(el("p", undefined, t));
     }
-    main.append(s);
+    parent.append(s);
+    h.tabIndex = -1;
+    return s;
+  }
 
+  function tocLink(label: string, target: HTMLElement, focusEl: HTMLElement, before?: () => void): void {
     const li = el("li");
-    const a = el("a", undefined, sec.title);
-    a.href = `#${s.id}`;
+    const a = el("a", undefined, label);
+    a.href = `#${target.id}`;
     a.addEventListener("click", (e) => {
       e.preventDefault();
+      before?.();
       const smooth = !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      s.scrollIntoView?.({ behavior: smooth ? "smooth" : "auto", block: "start" });
-      h.focus({ preventScroll: true });
+      target.scrollIntoView?.({ behavior: smooth ? "smooth" : "auto", block: "start" });
+      focusEl.focus({ preventScroll: true });
     });
-    h.tabIndex = -1;
+    focusEl.tabIndex = -1;
     li.append(a);
     tocList.append(li);
   }
+
+  tocLink("How it works", summary, summaryHead);
+  for (const sec of evidenceCopy.shortSections) {
+    const s = addSection(main, sec);
+    tocLink(sec.title, s, s.querySelector("h3")!);
+  }
+
+  const tech = el("details", "evidence-technical");
+  tech.id = "evidence-technical";
+  tech.dataset.role = "evidence-technical";
+  const techSummary = el("summary", undefined, evidenceCopy.technical.title);
+  tech.append(techSummary, el("p", "evidence-technical-intro", evidenceCopy.technical.intro));
+  for (const sec of evidenceCopy.technical.sections) addSection(tech, sec);
+  main.append(tech);
+  tocLink(evidenceCopy.technical.title, tech, techSummary, () => {
+    tech.open = true;
+  });
 
   scroll.append(toc, main);
   root.replaceChildren(scroll);
