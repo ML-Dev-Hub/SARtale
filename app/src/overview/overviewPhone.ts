@@ -21,7 +21,7 @@ const CHIPS: { filter: OverviewFilter; label: string; mark?: string }[] = [
   { filter: "frozen", label: "Frozen", mark: "Frozen (likely)" },
   { filter: "unmeasured", label: "Not measured", mark: "Not observable" },
   { filter: "no-lake", label: "No lake now", mark: "No lake now" },
-  { filter: "above", label: "Above largest" },
+  { filter: "above", label: "Above mapped outline" },
   { filter: "suparco", label: "SUPARCO-listed" },
 ];
 

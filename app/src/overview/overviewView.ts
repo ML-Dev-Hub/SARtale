@@ -145,7 +145,7 @@ function createDesktopOverview(root: HTMLElement, opts: OverviewOptions): Overvi
       ...(c.alert ? [{ filter: "alert" as OverviewFilter, label: "Alert: growing", value: c.alert, sub: nameList(of("Alert: growing").map((l) => l.name)), mark: "Alert: growing" }] : []),
       { filter: "open", label: "Open water", value: c.open_water, sub: "A lake now, not frozen", mark: "No change" },
       { filter: "frozen", label: "Frozen", value: fam.frozen, sub: frozenSub(), mark: "Frozen (likely)" },
-      { filter: "above", label: "Above largest extent", value: c.above_largest, sub: "Above the largest mapped outline by more than radar noise" },
+      { filter: "above", label: "Above mapped outline", value: c.above_largest, sub: "Larger than the largest mapped outline by more than radar noise" },
       ...(fam.breakup ? [{ filter: "breakup" as OverviewFilter, label: "Ice breaking up", value: fam.breakup, sub: "Air above 0 °C; radar cannot measure water yet", mark: "Break-up likely" }] : []),
       { filter: "no-lake", label: "No lake now", value: c.no_lake, sub: nameList(lakes.filter((l) => l.lake_state === "no_lake").map((l) => l.name)), mark: "No lake now" },
       { filter: "unmeasured", label: "Not measured", value: fam.unmeasured, sub: "No usable radar reading", mark: "Not observable" },
