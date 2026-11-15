@@ -43,16 +43,21 @@
 <div class="table-wrap"><table>
   <thead><tr><th>File</th><th>Job</th></tr></thead>
   <tbody>
-    <tr><td><code>app.ts</code></td><td>Shell, header buttons and routing</td></tr>
-    <tr><td><code>storyPage.ts</code>, <code>storyPage.css</code></td><td>The start page and its "Add a lake" section</td></tr>
+    <tr><td><code>app.ts</code>, <code>navLink.ts</code></td><td>Shell, header links and routing; header links are real links, so a modified click opens a new tab</td></tr>
+    <tr><td><code>storyPage.ts</code>, <code>storyPage.css</code></td><td>The story page (the front page): the opening, the seven numbered sections, the Alert banner and the "Add a lake" section</td></tr>
     <tr><td><code>lakeStory.ts</code></td><td>The guided story, beat by beat (<code>#story</code>)</td></tr>
-    <tr><td><code>lakeWatchView.ts</code></td><td>Lake Watch: list, detail panel, pictures, chart and readings table</td></tr>
-    <tr><td><code>lakeLocator.ts</code></td><td>The small MapLibre map of lakes over the MODIS picture, loaded after first paint</td></tr>
-    <tr><td><code>chart.ts</code></td><td>The uPlot area chart, one series per track</td></tr>
+    <tr><td><code>overview/</code></td><td>Lake Watch: <code>overviewView.ts</code> (desktop table and count tiles), <code>overviewPhone.ts</code> (phone cards, chips and the List / Map bar), <code>model.ts</code> (filters, sort and the <code>#lakes?…</code> query), <code>statusKey.ts</code> (What the statuses mean), <code>mapDrawer.ts</code> and <code>drawerPanel.ts</code> (the map and its panel), <code>mappedLakes.ts</code> (reads <code>mapped_lakes.json</code>) and <code>marks.ts</code> (marker shapes)</td></tr>
+    <tr><td><code>lakePage/</code></td><td>A lake's page: <code>lakePage.ts</code> (header, message, What to do and the blocks), <code>gauge.ts</code> (change against baseline), <code>extent.ts</code> (against the largest mapped outline), <code>history.ts</code> (status-track chart and readings) and <code>sources.ts</code> (sources and limits). <code>compare.ts</code> is a placeholder for comparing two passes, not yet available</td></tr>
+    <tr><td><code>lakeWatchView.ts</code></td><td>Shared lake helpers: the status track, chart data, the message box and the factory types for the chart and map</td></tr>
+    <tr><td><code>lakeLocator.ts</code></td><td>The MapLibre style, MODIS picture bounds and status slugs the map uses; MapLibre is loaded on first use</td></tr>
+    <tr><td><code>chart.ts</code></td><td>The uPlot area chart</td></tr>
     <tr><td><code>lakeBrief.ts</code></td><td>The printable one-page brief</td></tr>
     <tr><td><code>evidenceView.ts</code></td><td>How we know</td></tr>
-    <tr><td><code>lakeRequests.ts</code></td><td>The "Add a lake" form: checks the input, then opens the GitHub issue form; also reads <code>requests.json</code></td></tr>
+    <tr><td><code>lakeRequests.ts</code></td><td>The "Add a lake" form (its button is <b>Request a lake</b>): checks the input, then opens the GitHub issue form; also reads <code>requests.json</code></td></tr>
     <tr><td><code>lakes.ts</code></td><td>Types for <code>lakes.json</code>, loading, sorting and status sentences</td></tr>
+    <tr><td><code>statusDisplay.ts</code>, <code>statusMarkers.ts</code></td><td>The status families shown on the site (for example, both frozen statuses as Frozen) and their markers</td></tr>
+    <tr><td><code>contacts.ts</code>, <code>links.ts</code>, <code>provinces.ts</code></td><td>The provincial authority for each lake, the Sentinel-2 imagery link, and province names</td></tr>
+    <tr><td><code>plainLimits.ts</code></td><td>Rewrites the pipeline's technical limit wording in plain words</td></tr>
     <tr><td><code>content.ts</code>, <code>content/*.json</code></td><td>All page text, and the banned-wording list</td></tr>
     <tr><td><code>vtt.ts</code>, <code>vite.config.ts</code></td><td>The videos: the build copies <code>media/*.mp4</code> and the posters into <code>dist/media/</code> and writes each <code>.srt</code> as WebVTT captions; the dev server serves the same files</td></tr>
   </tbody>
@@ -63,9 +68,10 @@
 <div class="table-wrap"><table>
   <thead><tr><th>Hash</th><th>Opens</th></tr></thead>
   <tbody>
-    <tr><td>none</td><td>The story page</td></tr>
-    <tr><td><code>#lakes</code></td><td>Lake Watch, on the lake with the clearest picture</td></tr>
-    <tr><td><code>#lakes/&lt;id&gt;</code></td><td>Lake Watch on that lake, for example <code>#lakes/attabad</code></td></tr>
+    <tr><td>none, or <code>#start</code></td><td>The story page</td></tr>
+    <tr><td><code>#lakes</code></td><td>Lake Watch, the table of every watched lake</td></tr>
+    <tr><td><code>#lakes?&lt;filters&gt;</code></td><td>Lake Watch with its state: <code>show</code> (a tile filter), <code>district</code>, <code>q</code> (search), <code>sort</code>, <code>map=1</code> and <code>sel</code>, for example <code>#lakes?show=attention&amp;map=1</code></td></tr>
+    <tr><td><code>#lakes/&lt;id&gt;</code></td><td>That lake's page, for example <code>#lakes/attabad</code></td></tr>
     <tr><td><code>#story</code></td><td>The guided story</td></tr>
     <tr><td><code>#evidence</code></td><td>How we know</td></tr>
   </tbody>
@@ -80,7 +86,7 @@
 <p>Tests sit next to the code as <code>*.test.ts</code> and run in jsdom. MapLibre and uPlot are replaced by small fakes through the factory options (<code>createLocator</code>, <code>createChart</code>), so tests check what the app shows, not how the libraries draw. <code>publicData.test.ts</code> checks that every picture <code>lakes.json</code> names is in <code>app/public/data/</code>.</p>
 
 <h2 id="configuration">Configuration<a class="anchor" href="#configuration" aria-label="Link to this section">#</a></h2>
-<p>The app has no build-time settings and no server to reach. The "Add a lake" form opens the repository's issue form on GitHub, and the app reads <code>data/lakes.json</code> and <code>data/requests.json</code> as static files. See <a href="lake-requests.html">Lake requests</a>.</p>
+<p>The app has no build-time settings and no server to reach. The "Add a lake" form opens the repository's issue form on GitHub, and the app reads <code>data/lakes.json</code>, <code>data/requests.json</code> and, when the map opens, <code>data/mapped_lakes.json</code> as static files. See <a href="lake-requests.html">Lake requests</a>.</p>
 
     </article>
     <nav class="pager" aria-label="Next and previous page"><a href="data.html"><small>Previous</small>Data files</a><a href="lake-requests.html" style="text-align:right"><small>Next</small>Lake requests</a></nav>

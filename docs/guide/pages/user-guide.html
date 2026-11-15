@@ -2,57 +2,59 @@
 <p class="lede">The site has three views, all reached from the header: the story page, Lake Watch and How we know. Every page carries the label "Provisional NISAR data".</p>
 
 <figure>
-  <img src="assets/story.jpg" alt="The SARtale story page: headline 'When clouds close in, the lakes stay in view', the Open Lake Watch button, a line naming the lakes that need attention, and four figures from the data" width="1440" height="900">
+  <img src="assets/story.jpg" alt="The SARtale story page: headline 'When clouds close in, the lakes stay in view', the Open Lake Watch button, a line naming the lakes that need attention, and three figures from the data" width="1440" height="900">
   <figcaption>The story page opens the site. Its figures come from the data, not from the page text.</figcaption>
 </figure>
 
 <h2>The story page</h2>
-<p>The story page explains, in six parts, why cloud hides glacial lakes and how radar keeps them in view. It is built from <code>lakes.json</code>, so its numbers always match the data in the build.</p>
+<p>The story page explains why cloud hides glacial lakes and how radar keeps them in view. It is built from <code>lakes.json</code>, so its numbers always match the data in the build. The opening gives three figures (lakes watched, lakes holding water now, and NISAR passes over the lakes since the first pass), the latest radar pass, and seven numbered sections follow:</p>
 <ol>
-  <li><b>The risk:</b> the 2022 Shisper outburst and SUPARCO's 131 potentially dangerous lakes.</li>
+  <li><b>The view:</b> the same lake three days apart, radar against optical, and how shadows from mountains can hide a lake from either.</li>
+  <li><b>The flood:</b> the 2022 Shisper outburst and SUPARCO's 131 potentially dangerous lakes.</li>
   <li><b>The gap:</b> the summer cloud, with SUPARCO's 2 July statement linked to its source.</li>
-  <li><b>The view:</b> radar against optical, and how shadows from mountains can hide a lake from either.</li>
-  <li><b>The measure:</b> Attabad's water read from radar, with its noise and status.</li>
-  <li><b>The watch:</b> every watched lake on a NASA MODIS map, coloured by status.</li>
+  <li><b>The measurement:</b> Attabad's water read from radar, with its noise and status.</li>
+  <li><b>The levels:</b> the sites at Alert, Watch or Decrease noted, the other statuses folded by family, and every watched lake on a NASA MODIS map.</li>
   <li><b>Add a lake:</b> the form for putting a new lake forward, covered below.</li>
+  <li><b>The videos:</b> the demo and how it works, with captions on.</li>
 </ol>
-<p><b>Open Lake Watch</b> is the main button, and <b>Lake Watch</b> is highlighted in the header on every page. The line under the button ("3 lakes need attention: …") opens Lake Watch filtered to those lakes. <b>Follow the story</b> steps through the guided lake story.</p>
+<p><b>Open Lake Watch</b> is the main button, and <b>Lake Watch</b> is highlighted in the header on every page. The line under the button ("3 lakes need attention: …") opens Lake Watch filtered to those lakes. <b>Follow the story</b> steps through the guided lake story, and <b>Play the videos</b> jumps to the videos.</p>
 
 <h2>Lake Watch</h2>
 <figure>
-  <img src="assets/lake-watch.jpg" alt="Lake Watch: count tiles for the watched lakes, a key to the statuses, and a table with the lakes that need attention first" width="1440" height="900">
-  <figcaption>Lake Watch: count tiles that filter the table, a key to the statuses, and the lakes that need attention first.</figcaption>
+  <img src="assets/lake-watch.jpg" alt="Lake Watch: count tiles for the watched lakes, the closed key to the statuses, and a table with the lakes that need attention first under one line saying what to do" width="1440" height="900">
+  <figcaption>Lake Watch: count tiles that filter the table, the key to the statuses, and the lakes that need attention first.</figcaption>
 </figure>
 <p>Lake Watch is a table of every watched lake, made for the disaster management officers who follow these lakes.</p>
 <ul>
-  <li><b>Count tiles:</b> Lakes watched, Needs attention, Open water, Frozen, Above mapped outline, No lake now and Not measured. Clicking a tile filters the table. The table can also be filtered by district or SUPARCO match, or searched by name or PDGL number.</li>
-  <li><b>What the statuses mean:</b> a key with each status's marker and one plain sentence. Hovering a status chip shows the same sentence.</li>
-  <li><b>The table:</b> lakes that need attention come first. Each row gives the status and its reason or evidence, the radar water area and its change, the share of the largest mapped outline (the bar's tick marks 100%), the recent trend and the latest pass.</li>
-  <li><b>Show map:</b> the lakes on a NASA MODIS picture, each with its status marker, and the mapped lakes not watched yet as grey dots.</li>
-  <li><b>Phone:</b> the same lists as cards, with filter chips and a List / Map bar.</li>
+  <li><b>Count tiles:</b> Lakes watched, Needs attention, Open water, Frozen, Above mapped outline, No lake now and Not measured, plus Alert: growing, Ice breaking up and Changed since last build when the build has any. Clicking a tile filters the table. The table can also be filtered by district or SUPARCO match, or searched by name or PDGL number.</li>
+  <li><b>What the statuses mean:</b> a key, closed until clicked, with each status's marker and one plain sentence. Hovering a status chip shows the same sentence.</li>
+  <li><b>The table:</b> lakes that need attention come first, under one line that says what to do for each of them: check recent optical imagery (Sentinel-2 or Landsat) or the site, then contact NDMA for Gilgit-Baltistan or PDMA for Khyber Pakhtunkhwa. <b>Show first message</b> opens a flagged lake's message (what changed, how sure, what it is not) in the row. Each row gives the status and its reason or evidence, the radar water area and its change, the share of the largest mapped outline (the bar's tick marks 100%), the recent trend and the latest pass.</li>
+  <li><b>Show map:</b> the lakes on a NASA MODIS picture, each with its status marker, and the mapped lakes not watched yet as grey dots (a checkbox hides them). One credit line under the map names the map data, with the licence notices below it.</li>
+  <li><b>Phone:</b> the same lists as cards, with filter chips (including Needs attention, Not measured and District) and a List / Map bar.</li>
 </ul>
 <p>Selecting a lake opens its page:</p>
 <ul>
-  <li><b>The message first:</b> the status and what to do, with buttons for recent Sentinel-2 imagery, the official contact (NDMA for Gilgit-Baltistan, PDMA for Khyber Pakhtunkhwa) and <b>Print lake brief</b>. Then what changed, how sure, and what it is not.</li>
-  <li><b>Change against baseline</b> and <b>largest recorded extent</b>, as numbers and a gauge.</li>
-  <li><b>Radar picture:</b> the latest HH picture with the water read from radar on top in blue. It is a crop on the UTM grid with north up, a picture and not a map overlay.</li>
-  <li><b>History:</b> one chart per NISAR track (a track is one repeating orbit path) with the lake's normal range, and the readings table with every pass left out and why.</li>
-  <li><b>Sources and limits:</b> the limits in plain words, and the sources in a closed section.</li>
+  <li><b>The message first:</b> the status and its headline. Where the change began with NASA's processing update (P05036), a note says it may be a processing effect, not a real change. <b>What to do</b> comes next, naming the right authority, with buttons for <b>Open recent Sentinel-2 imagery</b>, the official contact (NDMA for Gilgit-Baltistan, PDMA for Khyber Pakhtunkhwa) and <b>Print lake brief</b>. Then what changed, how sure, and what it is not.</li>
+  <li><b>Change against baseline:</b> the latest change against the lake's baseline, as numbers and a gauge, dated by the latest assessment. A frozen lake shows an <b>Ice</b> card here instead, with its freeze evidence and its last open-water pass.</li>
+  <li><b>Against the largest mapped outline:</b> the radar area as a share of the largest mapped outline, and whether it is Above, Within or Within noise. Not shown while the lake is frozen.</li>
+  <li><b>Radar picture:</b> the latest HH picture with the water read from radar on top in blue, and the pass, track and radar water area beside it. It is a crop on the UTM grid with north up, a picture and not a map overlay.</li>
+  <li><b>History on track …:</b> the chart and readings for the lake's status track only (a track is one repeating orbit path, and each sees the lake from its own angle), with the lake's normal range, the passes that set a level, any processing version change, and every pass left out and why. The readings table shows the newest six, or all of them.</li>
+  <li><b>Sources and limits:</b> the limits in plain words (with the technical wording folded), and the sources and processing details in a closed section.</li>
 </ul>
-<p>Pages can be linked directly: <code>#lakes</code> opens Lake Watch, <code>#lakes/passu</code> a lake, <code>#story</code> the guided story and <code>#evidence</code> How we know.</p>
+<p>Pages can be linked directly: <code>#start</code> (or no hash) opens the story page, <code>#lakes</code> Lake Watch, <code>#lakes?show=attention</code> Lake Watch with a filter, <code>#lakes/passu</code> a lake, <code>#story</code> the guided story, <code>#evidence</code> How we know and <code>#videos</code> the videos.</p>
 
 <h2>What each status means</h2>
 <p>Every valid pass is compared with the median of earlier passes on its own track (its baseline) and that track's noise: z = (area − baseline) / noise. A measured lake has one of four levels; every other status says why there is none. On the site the statuses are grouped: the two frozen statuses show as <b>Frozen</b> with their evidence on a second line, and the five "not" statuses show as <b>Not measured</b> with their reason.</p>
 <div class="table-wrap"><table>
   <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
   <tbody>
-    <tr><td>Alert: growing</td><td>Two valid passes in a row, on any tracks, each more than twice the noise above its track's baseline. The chip is a solid yellow pill with a ▲ mark. A banner on the story page and over Lake Watch names the lake, and its message says what changed, how sure, what it is not (not an outburst forecast) and what to do: check recent optical imagery or the site, and contact GBDMA or PDMA. Official warnings come from PMD, NDMA, GBDMA and PDMA.</td></tr>
+    <tr><td>Alert: growing</td><td>Two valid passes in a row, on any tracks, each more than twice the noise above its track's baseline. The chip is a solid yellow pill with a ▲ mark. A banner at the top of the story page names the lake, Lake Watch adds an <b>Alert: growing</b> count tile, and the lake's message says what to do (check recent optical imagery or the site, and contact NDMA for Gilgit-Baltistan or PDMA for Khyber Pakhtunkhwa), what changed, how sure and what it is not (not an outburst forecast). Official warnings come from PMD, NDMA, GBDMA and PDMA.</td></tr>
     <tr><td>Watch</td><td>One pass more than twice the noise from its baseline, either way, or small changes in one direction that add up over several passes (a CUSUM reaching 4). Not confirmed: the next pass shows whether it holds.</td></tr>
     <tr><td>Decrease noted</td><td>Two passes in a row more than twice the noise below their baselines. Information only, never an Alert: the radar sees a lake drawing down onto wet sediment at only about a tenth to a fifth of the real decrease, so check optical imagery.</td></tr>
     <tr><td>No change</td><td>The latest pass is within twice the noise of its baseline. Most lakes read this way most of the time.</td></tr>
     <tr><td>Not yet validated against Sentinel-2</td><td>The lake has no current Sentinel-2 check of its radar water (none yet, one made before the method, zone or point changed, or one that failed or found no clear pair). Its area is shown as information only and it gets no level until a check is made; each data refresh tries again. A newly accepted lake is checked in the same refresh against the 2026 summer passes; it waits only when none of them is valid or no clear Sentinel-2 scene falls within 3 days of one.</td></tr>
     <tr><td>Not measurable</td><td>The lake's Sentinel-2 check overlapped radar water with an IoU under 0.4, so the method is not trusted there: its area is shown as information only and it gets no level.</td></tr>
-    <tr><td>Frozen (likely)</td><td>The air at the lake (NASA POWER, adjusted to the lake's height) has had a daily mean below 0 °C for at least 7 days in a row and at least 30 freezing degree-days since 1 Sep. Radar cannot tell new ice from open water, so there is no level; the area is shown greyed, and passes taken while frozen are greyed and left out of the comparison. The list marks the lake <b>Ice</b>, and the lake panel's <b>Lake ice</b> card gives the temperature run, the degree-days and the last Sentinel-2 view.</td></tr>
+    <tr><td>Frozen (likely)</td><td>The air at the lake (NASA POWER, adjusted to the lake's height) has had a daily mean below 0 °C for at least 7 days in a row and at least 30 freezing degree-days since 1 Sep. Radar cannot tell new ice from open water, so there is no level; the area is shown greyed, and passes taken while frozen are greyed and left out of the comparison. Lake Watch shows the lake as <b>Frozen</b> with "By air temperature since …" under it, and the lake page's <b>Ice</b> card gives the temperature run, the degree-days, the last Sentinel-2 view and the last open-water pass.</td></tr>
     <tr><td>Frozen (seen by Sentinel-2)</td><td>A clear Sentinel-2 image shows snow or ice on at least 80% of the lake itself (its outline, or its summer radar water core). It holds until a clear image shows open water or the air warms enough to call break-up. Otherwise as Frozen (likely).</td></tr>
     <tr><td>Break-up likely</td><td>A frozen lake has had 7 warm days in a row, or a radar pass shows its core much brighter than in summer, a brightening that matches ice going out. Still no level until the lake is released: "Radar back within its summer range", "Open water seen by Sentinel-2", or, for a lake with no radar summer level, "No freeze signal in air temperature since" a date, with open water not confirmed.</td></tr>
     <tr><td>Not seen this pass</td><td>The newest NISAR pass over the lake was left out or gave no valid reading.</td></tr>
@@ -65,13 +67,13 @@
 <p>A level describes radar water area only. It is not a measure of volume, depth or hazard, and an Alert is slow-growth monitoring, 5–12 days after a change begins, not outburst warning. A lake that recent imagery does not confirm, such as a narrow strip of ice and water, keeps its status and says so under <b>Limits for this lake</b>.</p>
 
 <h2>How we know</h2>
-<p>This view sets out the evidence: the method, the check against Sentinel-2 optical images on clear days, the passes left out and why, and where every coordinate comes from. Read it before quoting a number from the site.</p>
+<p>This view sets out the evidence. It opens with how SARtale reads a lake in four steps, and a sentence, computed from the data, that explains the lake counts: the sites watched, how many hold water now or have no lake now, and how many of those holding water had a clear Sentinel-2 scene to check against. Short sections on frozen lakes and where the method falls short follow. <b>Technical details</b>, closed until clicked, holds the lake method, the Sentinel-2 cross-check and what is not validated, frozen lakes, the data, the map data licences, the limits, and how to check it yourself. Read it before quoting a number from the site.</p>
 
 <h2>Add a lake</h2>
-<p>At the end of the story page, under <b>Know a lake we are not watching?</b>, anyone can put forward a lake:</p>
+<p>In the story page's <b>Add a lake</b> section, under <b>Know a lake we are not watching?</b>, anyone can put forward a lake:</p>
 <ol>
   <li>Enter the lake's name, its latitude and longitude, and where the coordinates come from (an inventory, a paper, a field survey or a map).</li>
-  <li>Choose <b>Add to the watch list</b>. The site checks the input: the point must be in Gilgit-Baltistan or upper KP (34.4–37.6 °N, 70.8–76.6 °E).</li>
+  <li>Choose <b>Request a lake</b>. The site checks the input: the point must be in Gilgit-Baltistan or upper KP (34.4–37.6 °N, 70.8–76.6 °E).</li>
   <li>The site then opens a GitHub issue form with your answers filled in. Press <b>Submit new issue</b>. You need to be signed in to GitHub.</li>
   <li>A bot comments on the issue with the number of NISAR passes over the point. The request appears on the map as a requested lake.</li>
   <li>The team reviews it. An accepted lake joins the register and gets a level once a track has 3 earlier looks to compare a new pass with. A rejected one is closed with a reason.</li>
