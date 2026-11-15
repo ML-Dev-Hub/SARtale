@@ -612,6 +612,28 @@ export function cloudLakes(file: LakesFile): number {
 }
 
 /**
+ * What the site, lake and check counts mean, in one sentence from lakes.json: every site on the list, those that hold
+ * water now, those with no lake now, and how many of the lakes have a Sentinel-2 check with an overlap score. Null with
+ * no sites. The clauses are left out when the data has no such site or check.
+ */
+export function siteCountsSentence(file: LakesFile): string | null {
+  const sites = file.lakes.length;
+  if (!sites) return null;
+  const now = lakesNow(file);
+  const noLake = file.lakes.filter((l) => lakeState(l) === "no_lake").length;
+  const forming = file.lakes.filter(mayBeForming).length;
+  const parts = [now.length ? `${now.length} hold${now.length === 1 ? "s" : ""} water now` : null,
+    noLake ? `${noLake} ${noLake === 1 ? "has" : "have"} no lake now` : null,
+    forming ? `${forming} may have a lake forming` : null].filter((x): x is string => !!x);
+  const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0];
+  const ids = new Set(now.map((l) => l.id));
+  const checked = new Set(file.checks.filter((c) => c.iou !== null && ids.has(c.lake)).map((c) => c.lake)).size;
+  const head = `${sites} ${sites === 1 ? "site is" : "sites are"} watched${list ? `: ${list}` : ""}`;
+  if (!checked) return `${head}.`;
+  return `${head}; ${checked} of the ${now.length} had a clear Sentinel-2 scene to check against.`;
+}
+
+/**
  * "7 lakes", or "5 lakes and 2 sites with no lake now" when the list keeps empty basins, with "1 site where a lake may
  * be forming" when a check found water at one.
  */
@@ -991,6 +1013,7 @@ export function lakeTokens(file: LakesFile): Record<string, string> {
     lake_count: String(lakesNow(file).length),
     site_count: String(file.lakes.length),
     watch_list: watchList(file),
+    ...(siteCountsSentence(file) ? { site_counts: siteCountsSentence(file)! } : {}),
     crid: file.crid,
     processing_versions: processingVersions(file.crid),
     notes: file.notes,

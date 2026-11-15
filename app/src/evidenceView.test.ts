@@ -68,6 +68,8 @@ describe("How we know", () => {
     expect(visible).toContain(`${t.cloud_looks} valid`);
     expect(visible).toContain(`${t.cloud_lakes} of ${t.lake_count} lakes`);
     expect(visible).toContain(t.cloud_start);
+    expect(visible).toContain(t.site_counts);
+    expect(t.site_counts).toBe("39 sites are watched: 36 hold water now and 3 have no lake now; 35 of the 36 had a clear Sentinel-2 scene to check against.");
     expect(visible).toContain(`radar water ${opticalOverlapPhrase(realLakes.checks, true)}`);
     const fewer: LakesFile = { ...realLakes, lakes: realLakes.lakes.slice(0, 3) };
     expect(lakeTokens(fewer).lake_count).not.toBe(t.lake_count);
@@ -99,6 +101,12 @@ describe("How we know", () => {
     const older = open({ ...realLakes, constants: old as LakesFile["constants"] });
     expect(older.text).not.toMatch(/\{\w+\}/);
     expect(older.root.querySelector('[data-section="frozen"]')!.textContent).toContain("Winter radar is untested");
+  });
+
+  test("says Not measured, not Not observable", () => {
+    const t = open(realLakes).root.textContent ?? "";
+    expect(t).not.toContain("Not observable");
+    expect(t).toContain("Not measured");
   });
 
   test("puts what it can and cannot do first, before the detail", () => {

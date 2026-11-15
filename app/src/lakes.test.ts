@@ -4,7 +4,8 @@ import realLakes from "../public/data/lakes.json";
 import frozenLakes from "./frozen/lakes.json";
 import { droppedLine, isLake, isLakesFile, keepValidLakes, suparcoLine } from "./lakes";
 import { findBannedClaims } from "./content";
-import { absenceLine, cloudHeadline, LEVEL_LIMITS, FROZEN_AREA, freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, isFrozen, isTrendPass, lakeTokens, mayBeForming, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
+import { splitChecks } from "./lakes";
+import { absenceLine, cloudHeadline, LEVEL_LIMITS, FROZEN_AREA, freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, isFrozen, isTrendPass, lakeTokens, mayBeForming, loadLakes, methodLimits, opticalCheckSentence, opticalOverlapPhrase, processingVersions, siteCountsSentence, sortLakes, statusSentence, STATUS_ORDER, watchList, type LakeCheck, type LakesFile } from "./lakes";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -398,5 +399,31 @@ describe("the new lakes.json fields", () => {
   test("the shipped lakes.json loads", () => {
     expect(isLakesFile(realLakes)).toBe(true);
     expect(keepValidLakes(realLakes as unknown as LakesFile).dropped_lakes).toBeUndefined();
+  });
+});
+
+describe("siteCountsSentence", () => {
+  test("explains 39, 36 and 35 from the shipped lakes.json", () => {
+    const f = splitChecks(realLakes as unknown as LakesFile);
+    const sites = f.lakes.length;
+    const holding = f.lakes.filter(hasLakeNow).length;
+    const checked = new Set(f.checks.filter((c) => c.iou !== null).map((c) => c.lake)).size;
+    expect(sites).toBe(39);
+    expect(holding).toBe(36);
+    expect(checked).toBe(35);
+    expect(siteCountsSentence(f)).toBe("39 sites are watched: 36 hold water now and 3 have no lake now; 35 of the 36 had a clear Sentinel-2 scene to check against.");
+    expect(lakeTokens(f).site_counts).toBe(siteCountsSentence(f));
+  });
+
+  test("follows the data: no checks, and one site", () => {
+    const f = fixtureLakes;
+    const noChecks = { ...f, checks: [] };
+    expect(siteCountsSentence(noChecks)).toBe("7 sites are watched: 7 hold water now.");
+    const sc = siteCountsSentence({ ...f, checks: [] , lakes: f.lakes.slice(0, 1) });
+    expect(sc).toBe("1 site is watched: 1 holds water now.");
+  });
+
+  test("is left out when nothing is watched", () => {
+    expect(siteCountsSentence({ ...fixtureLakes, lakes: [] })).toBeNull();
   });
 });
