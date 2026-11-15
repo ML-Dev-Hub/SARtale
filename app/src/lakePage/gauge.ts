@@ -109,15 +109,14 @@ export function renderGauge(el: HTMLElement, l: Lake, factor: number, phone = fa
 
   el.append(p(`Latest valid ${t} reading minus the median of up to 6 earlier valid ${t} readings`, "lp-gauge-sub"));
 
-  if (pt?.area_km2 != null) {
-    const row = document.createElement("div");
-    row.className = "lp-gauge-area";
-    const big = p(`${pt.area_km2.toFixed(3)} km²`, "lp-gauge-value");
-    row.append(big, p(`Radar-read ${l.area_label}`, "lp-gauge-areaname"));
-    el.append(row);
-  }
-
   const pctText = base > 0 ? ` (${signed((g.change / base) * 100, 0)}%)` : "";
+  // The large number is the change; the area it comes from sits on the line below.
+  const row = document.createElement("div");
+  row.className = "lp-gauge-area";
+  row.append(p(`${signed(g.change, 3)} km²${pctText}`, "lp-gauge-value"));
+  if (pt?.area_km2 != null) row.append(p(`Area ${pt.area_km2.toFixed(3)} km² · radar-read ${l.area_label}`, "lp-gauge-areaname"));
+  el.append(row);
+
   const d = s.latest_date?.slice(0, 10);
   const passText = d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? `Newest pass, ${formatDate(d)}${s.track ? ` (${s.track})` : ""}: baseline` : "Baseline";
   const observable = pt?.observable_share != null ? ` · zone observable on this pass ${Math.round(pt.observable_share * 100)}%` : "";

@@ -10,6 +10,13 @@ const FONT = '"Inter Variable", "Inter", system-ui, sans-serif';
 /** Dates are UTC-midnight seconds, so the axis must read them in UTC or viewers west of UTC see the day before. */
 export const utcTzDate = (ts: number): Date => uPlot.tzDate(new Date(ts * 1e3), "Etc/UTC");
 
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "18 Jun" from UTC-midnight seconds: day then month, the order readers here use. */
+export const dayMonth = (ts: number): string => {
+  const d = new Date(ts * 1e3);
+  return `${d.getUTCDate()} ${MONTH_ABBR[d.getUTCMonth()]}`;
+};
+
 const axis = (label: string): uPlot.Axis => ({
   stroke: TICK,
   grid: { stroke: GRID, width: 1 },
@@ -111,7 +118,7 @@ export function lakeChartOptions(width: number, data: LakeChartData): uPlot.Opti
     series,
     bands,
     hooks,
-    axes: [axis("Date"), axis("Radar water area (km²)")],
+    axes: [{ ...axis("Date"), values: (_u, splits) => splits.map((t) => dayMonth(t)) }, axis("Radar water area (km²)")],
     cursor: { drag: { x: false, y: false, setScale: false }, points: { size: 11 } },
     // The history block has its own legend (shape and words); the plain tooltip-style legend stays for the older chart.
     legend: { show: !hasRail && !marks.length },

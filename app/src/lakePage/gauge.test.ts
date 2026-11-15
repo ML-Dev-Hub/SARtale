@@ -60,6 +60,21 @@ describe("the change gauge", () => {
     expect(el.textContent).toContain("water area in the search window");
     expect(el.querySelector("svg")!.getAttribute("aria-label")).toContain("+0.0010 square kilometres");
   });
+  it("the large number is the change with its percent, and the area sits on the line below", () => {
+    const l = makeLake({ status: { ...makeLake().status, change_km2: -0.0088, baseline_km2: 0.142 } });
+    const el = document.createElement("div");
+    renderGauge(el, l, 2);
+    expect(el.querySelector(".lp-gauge-value")!.textContent).toBe("−0.009 km² (−6%)");
+    const area = el.querySelector(".lp-gauge-areaname")!;
+    expect(area.textContent).toMatch(/^Area 0\.\d{3} km²/);
+    expect(area.textContent).toContain("water area in the search window");
+    expect(el.querySelector(".lp-gauge-value")!.compareDocumentPosition(area) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+  it("the large number has no percent when the baseline is zero", () => {
+    const el = document.createElement("div");
+    renderGauge(el, makeLake({ status: { ...makeLake().status, baseline_km2: 0 } }), 2);
+    expect(el.querySelector(".lp-gauge-value")!.textContent).toBe("+0.001 km²");
+  });
   it("no gauge while frozen; the frozen card has no 'open again'", () => {
     expect(gaugeInput(frozen, 2)).toBeNull();
     expect(cardText()).not.toMatch(/open again/i);
@@ -78,7 +93,7 @@ describe("the change gauge", () => {
   });
   it("the frozen card carries the headline, the facts, the latest reading and the last open-water pass", () => {
     const t = cardText();
-    expect(t).toContain("Frozen: By air temperature since 18 Oct; no clear image");
+    expect(t).toContain("Frozen: by air temperature since 18 Oct; no clear image");
     expect(t).toContain("Air temperature");
     expect(t).toContain("Latest reading 0.226 km² on 30 Oct 2026");
   });

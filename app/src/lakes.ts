@@ -560,6 +560,17 @@ export function levelMessage(l: Lake): LevelMessage | null {
   return hasLevel(l) && m && m.level === l.status.status ? m : null;
 }
 
+/**
+ * One line when a pass that set the lake's level was its track's first on a new NISAR processing version (the data marks
+ * it with `new_version` and names the version): the change may come from the processing update, not from the lake.
+ * Null for a lake with no level, and when the data does not name the version.
+ */
+export function processingNote(l: Lake): string | null {
+  if (!hasLevel(l) || l.status.status === "No change") return null;
+  const first = (l.status.level_passes ?? []).find((p) => p.new_version === true && typeof p.crid === "string" && p.crid !== "");
+  return first ? `This began with a NISAR processing update (${first.crid}), so it may be a processing effect, not a real change.` : null;
+}
+
 /** The site's lake state, "lake" for builds made before the field existed. */
 export function lakeState(l: Lake): LakeState {
   return l.lake_state ?? "lake";
