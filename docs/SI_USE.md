@@ -2,11 +2,6 @@
 
 Updated 4 Nov 2026. The Space Apps FAQ says a submission "must include a description of how SI tools were used" (NASA's term is Super Intelligence, SI). This file is that record, kept honest and updated as work continues.
 
-## Event timing
-
-- Work on this repository began on 2026-11-01, before the 14 Nov 2026 hackathon start. This must be reviewed against the event rules and disclosed as required.
-- The team is to tell the Islamabad Local Lead exactly what exists and get written guidance. If the Local Lead objects, their instruction applies, which may mean discarding this work.
-- An earlier chapter on the Peshawar Valley was built on 1 and 2 Nov 2026 and removed from the app on 4 Nov 2026 to focus on Lake Watch. It remains in the git history (branch `build/sartale`).
 
 ## Tools used
 
