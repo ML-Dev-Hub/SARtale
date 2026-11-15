@@ -15,11 +15,19 @@
 </p>
 
 <p align="center">
-  <b>Demo videos</b>: <a href="https://github.com/ML-Dev-Hub/SARtale/blob/main/media/SARtale-demo-30s.mp4">30 s</a> and <a href="https://github.com/ML-Dev-Hub/SARtale/blob/main/media/SARtale-demo-60s.mp4">60 s</a> ·
-  <a href="https://ml-dev-hub.github.io/SARtale/#videos"><b>More videos</b></a> ·
   <a href="https://ml-dev-hub.github.io/SARtale/"><b>Live site</b></a> ·
+  <a href="https://ml-dev-hub.github.io/SARtale/#videos"><b>More videos</b></a> ·
   <a href="https://ml-dev-hub.github.io/SARtale/guide/"><b>Guide</b></a>
 </p>
+
+## Demo videos
+
+Click a picture to play the video from the live site.
+
+| 30 s demo | 60 s demo |
+|---|---|
+| [![Play the 30 second SARtale demo](media/posters/SARtale-demo-30s.jpg)](https://ml-dev-hub.github.io/SARtale/media/SARtale-demo-30s.mp4) | [![Play the 60 second SARtale demo](media/posters/SARtale-demo-60s.jpg)](https://ml-dev-hub.github.io/SARtale/media/SARtale-demo-60s.mp4) |
+| [Play](https://ml-dev-hub.github.io/SARtale/media/SARtale-demo-30s.mp4) · [subtitles](media/SARtale-demo-30s.srt) | [Play](https://ml-dev-hub.github.io/SARtale/media/SARtale-demo-60s.mp4) · [subtitles](media/SARtale-demo-60s.srt) |
 
 ![Lake Watch: 39 watched lakes, the lakes that need attention first, count tiles that filter the table, and a key to the statuses](media/screens/lake-watch.jpg)
 
