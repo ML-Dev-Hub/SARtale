@@ -16,8 +16,8 @@ describe("srtToVtt", () => {
     expect(srtToVtt("1\n00:00:01,000 --> 00:00:02,000\nCloud, or clear.\n")).toContain("Cloud, or clear.");
   });
 
-  it("converts every cue of both shipped subtitle files", () => {
-    expect(Object.keys(srts).length).toBe(2);
+  it("converts every cue of every shipped subtitle file", () => {
+    expect(Object.keys(srts).length).toBe(4); // the two site videos and the 30 s and 60 s demos
     for (const srt of Object.values(srts)) {
       const blocks = srt.trim().split(/\r?\n\r?\n+/).length;
       const vtt = srtToVtt(srt);
