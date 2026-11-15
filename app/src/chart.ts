@@ -15,8 +15,8 @@ const axis = (label: string): uPlot.Axis => ({
   grid: { stroke: GRID, width: 1 },
   ticks: { stroke: GRID, width: 1 },
   label,
-  labelFont: `600 12px ${FONT}`,
-  font: `12px ${FONT}`,
+  labelFont: `600 14px ${FONT}`,
+  font: `14px ${FONT}`,
 });
 
 export const FROZEN_GREY = "#8d9aa5";
@@ -85,7 +85,7 @@ export function lakeChartOptions(width: number, data: LakeChartData): uPlot.Opti
         ctx.fillStyle = VERSION;
         ctx.lineWidth = 1.5;
         ctx.setLineDash([2, 4]);
-        ctx.font = `13px ${FONT}`;
+        ctx.font = `14px ${FONT}`;
         for (const m of marks) {
           for (const t of m.at) {
             const x = Math.round(u.valToPos(t, "x", true));

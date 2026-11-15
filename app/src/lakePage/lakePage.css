@@ -137,7 +137,7 @@
 .lp-limits ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .lp-block > .lp-slot > .lp-btn[data-action="brief"] { align-self: flex-start; background: transparent; cursor: pointer; font: inherit; font-weight: 600; }
 @media (max-width: 640px) { .lp-source { grid-template-columns: 1fr; } }
-.lp-authority-note { color: var(--muted); font-size: 13px; margin: 0; flex-basis: 100%; }
+.lp-authority-note { color: var(--muted); font-size: 14px; margin: 0; flex-basis: 100%; }
 
 /* ---- Phone: the same blocks in one column. Every control is at least 44 px tall; no sideways scroll. ---- */
 .lp-phone { gap: 16px; font-size: 16px; overflow-x: hidden; }
@@ -145,7 +145,7 @@
 .lp-phone .lp-header { gap: 6px; }
 .lp-phone .lp-top { flex-wrap: nowrap; gap: 8px; border-bottom: 1px solid var(--line); }
 .lp-phone .lp-back { padding: 0 8px 0 0; }
-.lp-phone .lp-built { font-size: 13px; text-align: right; }
+.lp-phone .lp-built { font-size: 14px; text-align: right; }
 .lp-phone .lp-name { font-size: 30px; line-height: 1.1; }
 .lp-phone .lp-place { color: var(--text); font-weight: 400; }
 .lp-phone .ov-chip { align-self: flex-start; }

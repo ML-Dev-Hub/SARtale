@@ -51,6 +51,14 @@ describe("history chart marks", () => {
     ],
   };
 
+  test("axis fonts are at least 14 px", async () => {
+    const { lakeChartOptions } = await import("./chart");
+    for (const a of lakeChartOptions(300, HIST).axes!) {
+      expect(Number(String(a.font).match(/(\d+)px/)![1])).toBeGreaterThanOrEqual(14);
+      expect(Number(String(a.labelFont).match(/(\d+)px/)![1])).toBeGreaterThanOrEqual(14);
+    }
+  });
+
   test("the y axis says it is the radar water area", async () => {
     const { lakeChartOptions } = await import("./chart");
     expect(lakeChartOptions(300, HIST).axes![1].label).toBe("Radar water area (km²)");

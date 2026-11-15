@@ -77,7 +77,7 @@ export function createEvidenceView(root: HTMLElement, opts: EvidenceViewOptions)
 
   const main = el("div", "evidence-main");
   const head = el("header", "evidence-head");
-  const title = el("h2", "evidence-title", evidenceCopy.title);
+  const title = el("h1", "evidence-title", evidenceCopy.title);
   const lede = filled(evidenceCopy.lede);
   head.append(title);
   if (lede !== null) head.append(el("p", "evidence-lede", lede));
