@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import shipped from "../public/data/lakes.json";
 import { frozenFixture, makeLake } from "./fixtures";
 import type { Lake, LakesFile } from "./lakes";
-import { familyCounts, frozenBreakdown, statusDisplay, type Family } from "./statusDisplay";
+import { familyCounts, frozenBreakdown, statusDisplay, tagInSentence, type Family } from "./statusDisplay";
 
 const withStatus = (status: string, extra: Partial<Lake["status"]> = {}): Lake => {
   const l = makeLake();
@@ -66,5 +66,16 @@ describe("statusDisplay", () => {
     const b = frozenBreakdown(file.lakes);
     expect(b.seen + b.temperature).toBe(c.frozen);
     expect(b).toEqual({ seen: 9, temperature: 7 });
+  });
+});
+
+describe("tagInSentence", () => {
+  it("lower-cases the first word after a colon, but not a name or an acronym", () => {
+    expect(tagInSentence("Seen in Sentinel-2 since 18 Oct")).toBe("seen in Sentinel-2 since 18 Oct");
+    expect(tagInSentence("By air temperature since 18 Oct; no clear image")).toBe("by air temperature since 18 Oct; no clear image");
+    expect(tagInSentence("Air above 0 °C since 3 Mar")).toBe("air above 0 °C since 3 Mar");
+    expect(tagInSentence("Sentinel-2 shows ice")).toBe("Sentinel-2 shows ice");
+    expect(tagInSentence("NISAR did not see the lake")).toBe("NISAR did not see the lake");
+    expect(tagInSentence("")).toBe("");
   });
 });

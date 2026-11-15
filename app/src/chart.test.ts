@@ -93,3 +93,13 @@ describe("history chart marks", () => {
     expect(o.hooks!.draw).toBeUndefined();
   });
 });
+
+test("x-axis dates read day month ('18 Jun'), in UTC", async () => {
+  const { dayMonth, lakeChartOptions } = await import("./chart");
+  expect(dayMonth(Date.UTC(2026, 5, 18) / 1000)).toBe("18 Jun");
+  expect(dayMonth(Date.UTC(2026, 0, 1) / 1000)).toBe("1 Jan");
+  const xAxis = lakeChartOptions(300, DATA).axes![0];
+  const ts = Date.UTC(2026, 5, 18) / 1000;
+  const out = (xAxis.values as unknown as (u: unknown, splits: number[]) => string[])({}, [ts, ts + 86400 * 12]);
+  expect(out).toEqual(["18 Jun", "30 Jun"]);
+});

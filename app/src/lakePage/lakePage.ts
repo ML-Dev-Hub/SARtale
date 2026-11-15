@@ -1,13 +1,13 @@
 import "./lakePage.css";
 import { authorityFor } from "../contacts";
 import { dataUrl, formatDate } from "../format";
-import { freezeFacts, frozenAreaLine, isFrozen, levelMessage, picturedPassFrozen, suparcoLine, type Lake, type LakesFile } from "../lakes";
+import { freezeFacts, frozenAreaLine, isFrozen, levelMessage, picturedPassFrozen, processingNote, suparcoLine, type Lake, type LakesFile } from "../lakes";
 import type { LakeChartFactory } from "../lakeWatchView";
 import { sentinel2Url } from "../links";
 import { nextRefresh } from "../overview/model";
 import { PHONE_QUERY } from "../overview/overviewView";
 import { familyChip } from "../overview/marks";
-import { statusDisplay } from "../statusDisplay";
+import { statusDisplay, tagInSentence } from "../statusDisplay";
 import { provinceName } from "../provinces";
 import { renderExtent } from "./extent";
 import { renderCompare, type MaskDecoder } from "./compare";
@@ -129,6 +129,12 @@ function message(lake: Lake, onBrief?: (l: Lake) => void): HTMLElement | null {
   sec.dataset.status = lake.status.status.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   sec.setAttribute("aria-label", "First message");
   sec.append(el("h2", "lp-message-title", m.title));
+  const proc = processingNote(lake);
+  if (proc) {
+    const note = el("p", "lp-processing-note", proc);
+    note.dataset.role = "lp-processing-note";
+    sec.append(note);
+  }
 
   const part = (label: string, ...paras: (string | undefined)[]): HTMLElement => {
     const d = el("div", "lp-part");
@@ -204,12 +210,34 @@ function fillPicture(lake: Lake): (body: HTMLElement) => boolean {
     };
     if (hh) stack.append(img(hh, `Latest HH radar picture of ${lake.name}, north up`, "lp-img lp-img-hh"));
     if (water) stack.append(img(water, `Water pixels for ${lake.name}, north up`, "lp-img lp-img-water"));
-    body.append(stack);
+    // The picture on the left; the caption, the pass it shows and the Sentinel-2 link beside it from 900 px (stacked below that).
+    const grid = el("div", "lp-picture-grid");
+    const side = el("div", "lp-picture-side");
     const when = day(lake.images?.date);
     const parts = [when ? `pass of ${when}` : null, lake.images?.track ? `track ${lake.images.track}` : null].filter(Boolean);
     const what = hh ? "Latest HH radar picture" : "Water pixels";
-    body.append(el("p", "lp-caption", `${what}${parts.length ? `: ${parts.join(", ")}` : ""}. North up${water ? ", water layer over it" : ""}.`));
-    if (hidden && lake.images?.water) body.append(el("p", "lp-caption", "Water layer hidden: not an open-water measurement while frozen."));
+    side.append(el("p", "lp-caption", `${what}${parts.length ? `: ${parts.join(", ")}` : ""}. North up${water ? ", water layer over it" : ""}.`));
+    if (hidden && lake.images?.water) side.append(el("p", "lp-caption", "Water layer hidden: not an open-water measurement while frozen."));
+    const facts: [string, string][] = [];
+    if (when) facts.push(["Pass", `${when}${lake.images?.track ? `, track ${lake.images.track}` : ""}`]);
+    const latest = lake.status.latest_date?.slice(0, 10);
+    const reading = hidden ? null : lake.series.find((p) => p.date === latest && p.track === lake.status.track && p.area_km2 !== null);
+    if (reading?.area_km2 != null) facts.push(["Radar water area", `${reading.area_km2.toFixed(3)} km²`]);
+    if (facts.length) {
+      const dl = el("dl", "lp-picture-facts");
+      for (const [k, v] of facts) {
+        const row = el("div");
+        row.append(el("dt", undefined, k), el("dd", undefined, v));
+        dl.append(row);
+      }
+      side.append(dl);
+    }
+    const s2 = link("Open recent Sentinel-2 imagery", sentinel2Url(lake), "lp-btn");
+    s2.target = "_blank";
+    s2.rel = "noopener noreferrer";
+    side.append(s2);
+    grid.append(stack, side);
+    body.append(grid);
     return true;
   };
 }
@@ -226,7 +254,7 @@ function lastOpenLine(lake: Lake): string | null {
 function fillFreeze(lake: Lake): (body: HTMLElement) => boolean {
   return (body) => {
     const d = statusDisplay(lake);
-    body.append(el("p", "lp-freeze-head", d.tag ? `${d.chip}: ${d.tag}` : d.chip));
+    body.append(el("p", "lp-freeze-head", d.tag ? `${d.chip}: ${tagInSentence(d.tag)}` : d.chip));
     const area = frozenAreaLine(lake);
     if (area) body.append(el("p", "lp-freeze-area", area));
     const facts = freezeFacts(lake);
@@ -333,7 +361,7 @@ export function createLakePage(root: HTMLElement, opts: LakePageOptions): { dest
     const hist = { minObservable: opts.file.constants.min_observable, factor, createChart: opts.createChart, phone };
     const blocks = [
       top,
-      isFrozen(lake) ? null : block("lp-extent", "Largest recorded extent", (b) => (renderExtent(b, lake, opts.file.constants.min_observable), true)),
+      isFrozen(lake) ? null : block("lp-extent", "Against the largest mapped outline", (b) => (renderExtent(b, lake, opts.file.constants.min_observable), true)),
       block("lp-picture", "Radar picture", fillPicture(lake)),
       block("lp-history", historyHeading(lake), (b) => renderHistory(b, lake, hist)),
       block("lp-sources", "Sources and limits", fillSources(lake, opts.file)),

@@ -218,7 +218,7 @@
 .ov-btn:hover { border-color: var(--accent); }
 .ov-drawer { display: flex; flex-direction: column; gap: 12px; }
 .ov-drawer[hidden] { display: none; }
-.ov-map { position: relative; aspect-ratio: 5.8 / 3.5; min-height: 260px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--ground); overflow: hidden; color: var(--muted); font-size: 14px; }
+.ov-map { position: relative; aspect-ratio: var(--ov-map-aspect, 1.466); min-height: 0; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--ground); overflow: hidden; color: var(--muted); font-size: 14px; }
 .ov-mapped-row { color: #d3dfe7; font-size: 14px; }
 .ov-mapped-switch { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; }
 .ov-mapped-switch input { width: 18px; height: 18px; accent-color: var(--accent); }
@@ -242,7 +242,9 @@
 .ov-legend svg { flex: none; display: block; }
 .ov-legend-mark { flex: none; display: inline-flex; }
 .ov-notices { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12.5px; }
-.ov-notices p { margin: 0; }
+.ov-notices p { margin: 0 0 6px; }
+.ov-notices summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--accent); font-weight: 600; font-size: 14px; }
+.ov-attribution { margin: 0; color: var(--muted); font-size: 13px; }
 .ov-locate { flex: none; min-height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: transparent; color: var(--accent); font-size: 14px; cursor: pointer; }
 .ov-locate[hidden] { display: none; }
 .ov-locate[aria-pressed="true"] { border-color: var(--accent); }
@@ -257,8 +259,8 @@
 @media (max-width: 1639px) {
   .ov[data-map="true"] .ov-main { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
   .ov[data-map="true"] .ov-drawer { order: -1; flex: none; max-width: none; width: 100%; }
-  /* Sized by the base map picture (1740 x 960), so no blank bands show beside or above it. */
-  .ov[data-map="true"] .ov-map { aspect-ratio: 1740 / 960; height: auto; min-height: 0; width: 100%; max-width: 1040px; margin: 0 auto; }
+  /* Sized by the picture as drawn (--ov-map-aspect, from its bounds), and fitted with no padding, so no blank bands show. */
+  .ov[data-map="true"] .ov-map { aspect-ratio: var(--ov-map-aspect, 1.466); height: auto; min-height: 0; width: 100%; max-width: 1040px; margin: 0 auto; }
   .ov[data-map="true"] .ov-table-wrap { flex: none; }
 }
 /* With the map open the page widens, so the drawer can sit beside the full-width table on a large screen. */
@@ -362,12 +364,12 @@
 .ovp-sheet { position: fixed; inset: 0 0 60px 0; z-index: 55; overflow-y: auto; padding: 14px 16px; background: var(--ground); }
 .ovp-sheet[hidden] { display: none; }
 .ovp-sheet .ov-drawer { max-width: none; width: 100%; }
-.ovp-sheet .ov-map { aspect-ratio: 1.6 / 1; min-height: 0; width: 100%; }
+.ovp-sheet .ov-map { min-height: 0; width: 100%; }
 .ovp-sheet :is(.ov-btn, .ov-card-link, .ov-locate) { min-height: 44px; }
 .ovp-sheet :is(button, a, select, input, label):not(.ov-pin):not(.maplibregl-ctrl *) { min-height: 44px; }
 .ovp-sheet :is(.ov-mapped-switch, .ov-mapped-switch input) { min-height: 44px; }
 .ovp-sheet .ov-mapped-switch input { min-width: 24px; }
-.ovp-sheet :is(.ov-sub, .ov-facts dt, .ov-card-note, .ov-card-hint, .ov-legend, .ov-notices, .ov-locate) { font-size: 14px; }
+.ovp-sheet :is(.ov-sub, .ov-facts dt, .ov-card-note, .ov-card-hint, .ov-legend, .ov-notices, .ov-attribution, .ov-locate) { font-size: 14px; }
 
 /* ---- Status key (foldable; open on desktop, shut on a phone) ---- */
 .ov-key { border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); padding: 0 14px; }

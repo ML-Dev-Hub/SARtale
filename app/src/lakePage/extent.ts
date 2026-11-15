@@ -10,25 +10,25 @@ export type ExtentView =
   | { pct: string; word: "Above" | "Within" | "Within noise" | "noise unknown"; title: string | null; latest: string; largest: string; note: string }
   | { reason: string };
 
-/** What the block says about the lake's radar area against its largest recorded extent, or why there is no share. */
+/** What the block says about the lake's radar area against its largest mapped outline, or why there is no share. */
 export function extentView(l: Lake, minObservable = 0.5): ExtentView {
   // No value while the lake is frozen (the radar area is not open water), or when the zone is a circle with no outline.
   if (isFrozen(l)) return { reason: l.share_note ?? "Not shown while the lake is frozen: the radar area is not an open-water measurement." };
   if (!l.outline_source) return { reason: l.share_note ?? "Not shown: this lake has no mapped outline, only a circle around its point, so a share of the largest outline would mean nothing." };
   const s = shareState(l);
-  if (!s) return { reason: l.share_note ?? "No largest recorded extent for this lake in this build." };
+  if (!s) return { reason: l.share_note ?? "No largest mapped outline for this lake in this build." };
   const r = latestReadingOnTrack(l, minObservable);
   const e = l.largest_extent;
   const track = l.status.track ? `, ${l.status.track}` : "";
   const latest = r ? `Latest: ${r.area.toFixed(3)} km² on ${formatDate(r.date)} (NISAR${track}).` : "Latest: no open-water reading yet.";
-  const largest = e ? `Largest recorded: ${e.km2.toFixed(3)} km², ${e.source}${e.year == null && /undated\)?$/i.test(e.source) ? "" : `, ${e.year ?? "undated"}`}.` : "Largest recorded: not available.";
+  const largest = e ? `Largest mapped outline: ${e.km2.toFixed(3)} km², ${e.source}${e.year == null && /undated\)?$/i.test(e.source) ? "" : `, ${e.year ?? "undated"}`}.` : "Largest mapped outline: not available.";
   return { pct: `${s.pct}%`, word: s.word, title: s.title, latest, largest, note: CAVEAT };
 }
 
 const SENTENCE: Record<string, string> = {
-  Above: "Above the largest recorded extent",
-  Within: "Within the largest recorded extent",
-  "Within noise": "Within noise: at or above the largest recorded extent, but less than 2× radar noise beyond it",
+  Above: "Above the largest mapped outline",
+  Within: "Within the largest mapped outline",
+  "Within noise": "Within noise: at or above the largest mapped outline, but less than 2× radar noise beyond it",
   "noise unknown": "Above or within not assessed: no noise estimate for this lake yet.",
 };
 

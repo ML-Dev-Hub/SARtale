@@ -34,7 +34,7 @@ Radar sees through cloud, day or night. From 17 June to 4 August 2026, while clo
 
 ## What it does
 
-The site opens on **Lake Watch**, a table of every watched lake for the officers at NDMA, GBDMA and PDMA KP. It now watches **39 lakes** in Gilgit-Baltistan and upper Khyber Pakhtunkhwa, with 503 more mapped lakes shown on the map as candidates.
+The site opens on the story page, with **Open Lake Watch** as its main button. Lake Watch is a table of every watched lake for the officers at NDMA, GBDMA and PDMA KP. It now watches **39 lakes** in Gilgit-Baltistan and upper Khyber Pakhtunkhwa, with 503 more mapped lakes shown on the map as candidates.
 
 - **One plain status per lake, with the reason on a second line.**
 
@@ -50,7 +50,7 @@ The site opens on **Lake Watch**, a table of every watched lake for the officers
   | ⊘ No lake now | A site, such as a drained ice-dammed lake's basin, with no water in recent imagery; it becomes **Lake may be forming** when a clear Sentinel-2 view shows water |
 
   A status holds until later passes clear it, and a newer pass that could not be read never hides it. Every Watch, Alert and Decrease noted carries a short message: what changed, how sure, what it is not, and what to do. Each status has its own map marker (shape, text and colour, never colour alone), and a key on the page explains them.
-- **Puts the lakes that need attention first.** Count tiles (Needs attention, Open water, Frozen, Above largest extent, No lake now, Not measured) filter the table; it can also be filtered by district or SUPARCO match, or searched by name or PDGL number. Each lake shows its radar area, its share of the largest mapped outline (Hi-MAG, HKH-PK-2020, OpenStreetMap), its recent trend and its latest pass. A phone layout has the same lists and a map.
+- **Puts the lakes that need attention first.** Count tiles (Needs attention, Open water, Frozen, Above mapped outline, No lake now, Not measured) filter the table; it can also be filtered by district or SUPARCO match, or searched by name or PDGL number. Each lake shows its radar area, its share of the largest mapped outline (Hi-MAG, HKH-PK-2020, OpenStreetMap), its recent trend and its latest pass. A phone layout has the same lists and a map.
 - **Matches lakes to SUPARCO's list** by map position and area, so an officer can line SARtale up with SUPARCO's GLOF updates. SUPARCO does not publish coordinates, so the match is ours, and it is marked probable where it is not certain.
 - **Says when a lake is frozen.** L-band radar cannot tell new ice from open water, so frozen lakes are found from a clear Sentinel-2 image or from NASA POWER air temperature at the lake's height, never from the radar area. A frozen lake gets no Watch or Alert, and passes taken while it was frozen are left out.
 - **Shows the evidence on each lake's page:** the message, the change against the lake's baseline, its share of the largest recorded extent, the latest radar picture with the water read from it, the history chart per track, every pass left out with its reason, the limits in plain words and the sources. One button opens recent Sentinel-2 imagery and another links the official contact (NDMA for Gilgit-Baltistan, PDMA for Khyber Pakhtunkhwa).

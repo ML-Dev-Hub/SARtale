@@ -1,4 +1,4 @@
-import { statusDisplay } from "./statusDisplay";
+import { statusDisplay, tagInSentence } from "./statusDisplay";
 import { changedLimits, plainLimit } from "./plainLimits";
 import { freezeFacts, freezeHeadline, frozenAreaLine, hasLakeNow, hasLevel, isFrozen, isTrendPass, levelMessage, loadLakes, methodLimits, processingVersions, statusSentence, suparcoLine, type Lake, type LakesFile } from "./lakes";
 import { checkLine } from "./lakeWatchView";
@@ -57,7 +57,7 @@ function readingBlock(lake: Lake, file: LakesFile): string {
     lines.push(`Baseline ${base.toFixed(3)} km²; change ${sg(g.change)} km²; noise ±${g.noise.toFixed(3)} km²${g.floorApplied ? " (noise floor applied)" : ""}; decision band ±${g.band.toFixed(3)} km².`);
   }
   const e = extentView(lake, file.constants.min_observable);
-  lines.push("reason" in e ? `Largest recorded extent: ${e.reason}` : `Largest recorded extent: ${e.pct}. ${e.latest} ${e.largest}`);
+  lines.push("reason" in e ? `Against the largest mapped outline: ${e.reason}` : `Against the largest mapped outline: ${e.pct}. ${e.latest} ${e.largest}`);
   return lines.map((t) => `<p class="lake-brief-reading">${esc(t)}</p>`).join("");
 }
 
@@ -120,7 +120,7 @@ ${briefMessage(lake)}<h1>${esc(lake.name)}</h1>
 <p class="lake-brief-meta">Measures: ${esc(lake.area_label)}. Brief made ${esc(formatDate(localIsoDate(generatedAt)))}.</p>
 <p class="lake-brief-meta">${esc(dataLine(lake, file))}</p>
 <h2>Status</h2>
-<p class="lake-brief-chip"><strong>${esc(display.chip)}</strong>${display.tag ? `: ${esc(display.tag)}` : ""}</p>
+<p class="lake-brief-chip"><strong>${esc(display.chip)}</strong>${display.tag ? `: ${esc(tagInSentence(display.tag))}` : ""}</p>
 <p class="lake-brief-status">${esc(statusSentence(lake, file.constants.change_factor))}</p>
 ${isFrozen(lake) ? "" : readingBlock(lake, file)}
 ${ice}<h2>${passesHead}</h2>

@@ -48,7 +48,7 @@ describe("no value without a real basis", () => {
   it("km2 is shown to 3 decimals and an undated source is not repeated", () => {
     const el = document.createElement("div");
     renderExtent(el, makeLake({ share_of_largest: 1.4, above_largest: true, largest_extent: { km2: 0.1633, source: "OpenStreetMap outline (undated)", year: null } }));
-    expect(el.textContent).toContain("0.163 km², OpenStreetMap outline (undated).");
+    expect(el.textContent).toContain("Largest mapped outline: 0.163 km², OpenStreetMap outline (undated).");
     expect(el.textContent).not.toContain("undated), undated");
   });
 });

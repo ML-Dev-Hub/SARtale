@@ -289,7 +289,7 @@ describe("the brief of a frozen lake", () => {
   test("shows the family chip and its evidence, and keeps the pipeline status name", () => {
     const ice = frozenFixture("ice", "Frozen (seen by Sentinel-2)");
     const t = text(briefHtml(ice, { ...fixtureLakes, lakes: [ice] }, NOW));
-    expect(t).toContain("Frozen: Seen in Sentinel-2 since 18 Oct");
+    expect(t).toContain("Frozen: seen in Sentinel-2 since 18 Oct");
     expect(t).toContain("Frozen (seen by Sentinel-2): ");
   });
 
@@ -308,7 +308,7 @@ describe("the fuller brief", () => {
     const doc = new DOMParser().parseFromString(briefHtml(watch, makeFile([watch]), new Date("2026-11-14")), "text/html");
     expect(doc.body.firstElementChild!.textContent).toContain(watch.status.message!.title);
     expect(doc.body.firstElementChild!.firstElementChild!.className).toBe("lake-brief-message");
-    for (const s of ["Baseline", "noise", "P05023", "Hunza, Gilgit-Baltistan", "SUPARCO PDGL 116", "our match by map position and area", "Largest recorded extent"]) expect(doc.body.textContent).toContain(s);
+    for (const s of ["Baseline", "noise", "P05023", "Hunza, Gilgit-Baltistan", "SUPARCO PDGL 116", "our match by map position and area", "Against the largest mapped outline"]) expect(doc.body.textContent).toContain(s);
   });
 });
 

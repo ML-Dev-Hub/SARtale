@@ -54,13 +54,22 @@
 .lp-img { display: block; width: 100%; height: auto; }
 .lp-img-water { position: absolute; inset: 0; opacity: 0.7; }
 .lp-caption { color: var(--muted); font-size: 14px; }
+.lp-picture-grid { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.lp-picture-side { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; min-width: 0; }
+.lp-picture-facts { margin: 0; display: grid; gap: 6px; }
+.lp-picture-facts dt { color: var(--muted); font-size: 14px; font-weight: 700; }
+.lp-picture-facts dd { margin: 0; }
+@media (min-width: 900px) {
+  .lp-picture-grid { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 28px; align-items: start; }
+}
+.lp-processing-note { color: var(--text); font-size: 16px; padding: 8px 12px; border-left: 3px solid var(--line-strong); background: var(--panel-2); border-radius: 6px; }
 
 .lp-slot { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 /* ---- Change gauge: neutral surfaces; the marker is a solid mark, and the value is written, never colour alone ---- */
 .lp-gauge-sub { color: var(--muted); font-size: 14px; }
-.lp-gauge-area { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+.lp-gauge-area { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .lp-gauge-value { font-family: var(--display); font-size: 44px; font-weight: 700; line-height: 1; }
-.lp-gauge-areaname { font-weight: 600; }
+.lp-gauge-areaname { font-weight: 600; color: var(--muted); }
 .lp-gauge-svg { display: block; max-width: 900px; }
 .lp-g-scale { fill: none; stroke: var(--line-strong); }
 .lp-g-band { fill: var(--line); }

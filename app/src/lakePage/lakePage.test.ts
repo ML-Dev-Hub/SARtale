@@ -37,6 +37,60 @@ function page(lake: Lake, opts: Partial<Parameters<typeof createLakePage>[1]> = 
 const roles = (el: HTMLElement): string[] => [...el.querySelectorAll<HTMLElement>("section")].filter((s) => !s.parentElement?.closest("section")).map((s) => s.dataset.role!);
 const header = (el: HTMLElement): HTMLElement => el.querySelector<HTMLElement>('[data-role="lp-header"]')!;
 
+describe("the processing-update note", () => {
+  const passu = (levelPasses: NonNullable<Lake["status"]["level_passes"]>): Lake =>
+    makeLake({ ...watchLake, status: { ...watchLake.status, level_passes: levelPasses } });
+  const pass = (newVersion: boolean | undefined, crid: string | null = "P05036") =>
+    ({ date: "2026-10-28", track: "055A", crid, area_km2: 0.135, baseline_km2: 0.144, noise_km2: 0.005, z: -1.86, new_version: newVersion });
+  const note = (l: Lake): HTMLElement | null => page(l).querySelector<HTMLElement>('[data-role="lp-processing-note"]');
+
+  it("says so under the message title when the pass that set the level was the first on a new processing version", () => {
+    const n = note(passu([pass(true)]))!;
+    expect(n.textContent).toBe("This began with a NISAR processing update (P05036), so it may be a processing effect, not a real change.");
+    const title = page(passu([pass(true)])).querySelector(".lp-message-title")!;
+    expect(title.nextElementSibling!.getAttribute("data-role")).toBe("lp-processing-note");
+  });
+  it("stays out when the passes that set the level were on a version the baseline already had, or the data does not say", () => {
+    expect(note(passu([pass(false)]))).toBeNull();
+    expect(note(passu([pass(undefined)]))).toBeNull();
+    expect(note(passu([]))).toBeNull();
+    expect(note(passu([pass(true, null)]))).toBeNull();
+  });
+  it("is computed from the shipped data: Passu has it", async () => {
+    const real = (await import("../../public/data/lakes.json")).default as unknown as import("../lakes").LakesFile;
+    const p = real.lakes.find((l) => l.id === "passu")!;
+    const el = document.createElement("div");
+    document.body.append(el);
+    createLakePage(el, { file: real, lakeId: "passu", onRoute: vi.fn() });
+    expect(p.status.level_passes!.some((x) => x.new_version === true && x.crid === "P05036")).toBe(true);
+    expect(el.querySelector('[data-role="lp-processing-note"]')!.textContent).toContain("(P05036)");
+  });
+});
+
+describe("the radar picture card and the extent card", () => {
+  const withPicture = makeLake({ ...watchLake, images: { latest_hh: "lakes/passu/latest_hh.webp", water: "lakes/passu/water.webp", date: "2026-11-09", track: "055A" } });
+  it("is titled against the largest mapped outline", () => {
+    expect(page(watchLake).querySelector('[data-role="lp-extent"] h2')!.textContent).toBe("Against the largest mapped outline");
+  });
+  it("puts the picture left and the caption, the latest pass and the Sentinel-2 link right", () => {
+    const b = page(withPicture).querySelector<HTMLElement>('[data-role="lp-picture"]')!;
+    const grid = b.querySelector(".lp-picture-grid")!;
+    expect(grid.children[0].classList.contains("lp-stack")).toBe(true);
+    const side = grid.children[1] as HTMLElement;
+    expect(side.classList.contains("lp-picture-side")).toBe(true);
+    expect(side.querySelector(".lp-caption")!.textContent).toContain("Latest HH radar picture");
+    expect(side.textContent).toContain("9 Nov 2026");
+    expect(side.textContent).toContain("055A");
+    const a = side.querySelector<HTMLAnchorElement>("a")!;
+    expect(a.href).toBe(sentinel2Url(withPicture));
+    expect(a.textContent).toBe("Open recent Sentinel-2 imagery");
+  });
+  it("is two columns from 900 px", () => {
+    const wide = lakeCss.match(/@media \(min-width: 900px\)\s*\{[\s\S]*?\n\}/g)?.join("\n") ?? "";
+    expect(rulesFor(wide, ".lp-picture-grid").join(";")).toMatch(/grid-template-columns:/);
+  });
+});
+
 describe("the lake page", () => {
   it("draws the header, the message and the filled blocks in order, and no block that has nothing in it yet", () => {
     expect(roles(page(watchLake))).toEqual(["lp-header", "lp-message", "lp-gauge", "lp-extent", "lp-picture", "lp-history", "lp-sources"]);
@@ -155,7 +209,7 @@ describe("the lake page", () => {
     expect(header(page(makeLake({ status: { ...makeLake().status, status: "Not observable" } }))).querySelector(".ov-chip")!.textContent).toBe("Not measured");
   });
   it("the frozen card heading names the family and its evidence", () => {
-    expect(page(frozen).querySelector(".lp-freeze-head")!.textContent).toBe("Frozen: By air temperature since 18 Oct; no clear image");
+    expect(page(frozen).querySelector(".lp-freeze-head")!.textContent).toBe("Frozen: by air temperature since 18 Oct; no clear image");
   });
   it("the frozen card's block title does not repeat Frozen", () => {
     const p = page(frozen);

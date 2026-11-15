@@ -28,7 +28,7 @@
 <p class="lede">The site has three views, all reached from the header: the story page, Lake Watch and How we know. Every page carries the label "Provisional NISAR data".</p>
 
 <figure>
-  <img src="assets/story.jpg" alt="The SARtale story page: headline 'When clouds close in, the lakes stay in view', two buttons and three figures: lakes watched, radar looks through the cloud gap, and NISAR passes read" width="1440" height="900">
+  <img src="assets/story.jpg" alt="The SARtale story page: headline 'When clouds close in, the lakes stay in view', the Open Lake Watch button, a line naming the lakes that need attention, and four figures from the data" width="1440" height="900">
   <figcaption>The story page opens the site. Its figures come from the data, not from the page text.</figcaption>
 </figure>
 
@@ -42,25 +42,33 @@
   <li><b>The watch:</b> every watched lake on a NASA MODIS map, coloured by status.</li>
   <li><b>Add a lake:</b> the form for putting a new lake forward, covered below.</li>
 </ol>
-<p>Choose <b>Follow the story</b> to step through the guided lake story, or <b>Open Lake Watch</b> to go straight to the lakes.</p>
+<p><b>Open Lake Watch</b> is the main button, and <b>Lake Watch</b> is highlighted in the header on every page. The line under the button ("3 lakes need attention: …") opens Lake Watch filtered to those lakes. <b>Follow the story</b> steps through the guided lake story.</p>
 
 <h2 id="lake-watch">Lake Watch<a class="anchor" href="#lake-watch" aria-label="Link to this section">#</a></h2>
 <figure>
-  <img src="assets/lake-watch.jpg" alt="Lake Watch: a satellite map of the lakes, a list of lakes with radar thumbnails and status chips, and the selected lake's status sentence and radar picture" width="1440" height="900">
-  <figcaption>Lake Watch opens on the lake with the clearest water picture. Pick any lake on the map or in the list.</figcaption>
+  <img src="assets/lake-watch.jpg" alt="Lake Watch: count tiles for the watched lakes, a key to the statuses, and a table with the lakes that need attention first" width="1440" height="900">
+  <figcaption>Lake Watch: count tiles that filter the table, a key to the statuses, and the lakes that need attention first.</figcaption>
 </figure>
-<p>Lake Watch shows every lake on a small map over a NASA MODIS picture, with a list beside it. Each row has a radar thumbnail, the status and one sentence saying what was measured. Selecting a lake opens its panel:</p>
+<p>Lake Watch is a table of every watched lake, made for the disaster management officers who follow these lakes.</p>
 <ul>
-  <li><b>Status sentence:</b> the change since earlier passes on the same track, the lake's own noise, the number of looks and the latest date.</li>
-  <li><b>Radar pictures:</b> the latest HH picture, with the water read from radar on top in blue. The slider sets how strongly the water shows. The pictures are crops on the UTM grid with north up; they are pictures, not map overlays.</li>
-  <li><b>Area by track:</b> one line per NISAR track. Hollow markers are passes left out of the trend, and the reason for each is listed below the chart.</li>
-  <li><b>Limits:</b> the method's standing limits, then any limits for that lake.</li>
-  <li><b>Print lake brief:</b> a one-page summary for a meeting or a field team, with dates, looks, noise and limits.</li>
+  <li><b>Count tiles:</b> Lakes watched, Needs attention, Open water, Frozen, Above mapped outline, No lake now and Not measured. Clicking a tile filters the table. The table can also be filtered by district or SUPARCO match, or searched by name or PDGL number.</li>
+  <li><b>What the statuses mean:</b> a key with each status's marker and one plain sentence. Hovering a status chip shows the same sentence.</li>
+  <li><b>The table:</b> lakes that need attention come first. Each row gives the status and its reason or evidence, the radar water area and its change, the share of the largest mapped outline (the bar's tick marks 100%), the recent trend and the latest pass.</li>
+  <li><b>Show map:</b> the lakes on a NASA MODIS picture, each with its status marker, and the mapped lakes not watched yet as grey dots.</li>
+  <li><b>Phone:</b> the same lists as cards, with filter chips and a List / Map bar.</li>
 </ul>
-<p>Pages can be linked directly: <code>#lakes</code> opens Lake Watch, <code>#story</code> the guided story and <code>#evidence</code> How we know.</p>
+<p>Selecting a lake opens its page:</p>
+<ul>
+  <li><b>The message first:</b> the status and what to do, with buttons for recent Sentinel-2 imagery, the official contact (NDMA for Gilgit-Baltistan, PDMA for Khyber Pakhtunkhwa) and <b>Print lake brief</b>. Then what changed, how sure, and what it is not.</li>
+  <li><b>Change against baseline</b> and <b>largest recorded extent</b>, as numbers and a gauge.</li>
+  <li><b>Radar picture:</b> the latest HH picture with the water read from radar on top in blue. It is a crop on the UTM grid with north up, a picture and not a map overlay.</li>
+  <li><b>History:</b> one chart per NISAR track (a track is one repeating orbit path) with the lake's normal range, and the readings table with every pass left out and why.</li>
+  <li><b>Sources and limits:</b> the limits in plain words, and the sources in a closed section.</li>
+</ul>
+<p>Pages can be linked directly: <code>#lakes</code> opens Lake Watch, <code>#lakes/passu</code> a lake, <code>#story</code> the guided story and <code>#evidence</code> How we know.</p>
 
 <h2 id="what-each-status-means">What each status means<a class="anchor" href="#what-each-status-means" aria-label="Link to this section">#</a></h2>
-<p>Every valid pass is compared with the median of earlier passes on its own track (its baseline) and that track's noise: z = (area − baseline) / noise. A measured lake has one of four levels; every other status says why there is none.</p>
+<p>Every valid pass is compared with the median of earlier passes on its own track (its baseline) and that track's noise: z = (area − baseline) / noise. A measured lake has one of four levels; every other status says why there is none. On the site the statuses are grouped: the two frozen statuses show as <b>Frozen</b> with their evidence on a second line, and the five "not" statuses show as <b>Not measured</b> with their reason.</p>
 <div class="table-wrap"><table>
   <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
   <tbody>

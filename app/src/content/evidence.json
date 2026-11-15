@@ -12,6 +12,7 @@
   },
   "can": [
     "Between {cloud_start} and {cloud_end}, NISAR made {cloud_looks} valid readings (one lake on one pass) across {cloud_lakes} of {lake_count} lakes. Cloud limited optical images in the same weeks.",
+    "{site_counts}",
     "Each lake gets one plain status, with a short message on what to do. Passes that look wrong are left out, with the reason shown."
   ],
   "cannot": [
@@ -57,7 +58,7 @@
           "SARtale excludes a pass whose window brightness is far from its own track's median. It lists the reason on the lake and never reads the pass as growth or shrinkage.",
           "A pass is also left out when the share of dark pixels in its window, or its window-median HV, is an outlier among its own track's passes (robust z-score above {outlier_z}). The 5 Sep 2026 pass on track 156A, anomalous over the Hunza lakes, is left out by hand wherever this test does not already catch it. Each lake lists the reason.",
           "A pass is compared once its track has at least {min_looks} earlier valid passes. Until one has, the status is Not enough NISAR looks yet.",
-          "At least {min_observable_pct}% of the lake zone ({min_observable}) must be observable, not missing or masked. Otherwise the status is Not observable, and no area is shown.",
+          "At least {min_observable_pct}% of the lake zone ({min_observable}) must be observable, not missing or masked. Otherwise the status is Not measured (radar cannot see enough of the lake), and no area is shown.",
           "Every valid pass, on any track, is compared with the median of up to {baseline_passes} earlier valid passes on its own track: z = (area − baseline) / noise. The noise is the spread of that track's pass-to-pass differences over up to {noise_passes} passes, never below {noise_floor_km2} km² or {noise_rel_floor_pct}% of the baseline.",
           "Levels. Alert: growing when two valid passes in a row, on any tracks, have z of +{change_factor} or more. Watch when one pass has z beyond ±{change_factor}, or when the running sum of the z values (a CUSUM with k = {cusum_k}) reaches {cusum_h}. Decrease noted when two passes in a row have z of −{change_factor} or less: information only, never an Alert, because the radar sees a drawdown onto wet sediment at only about a tenth to a fifth of its size. Otherwise No change. A level holds until evidence clears it: Alert: growing holds until two valid passes in a row have z under +{change_factor}. Watch holds until a valid pass is within ±{change_factor} with the CUSUM under 4. Decrease noted holds until two valid passes in a row have z above −{change_factor}. A higher level replaces a lower one. The level's date stays the date that set it. The message gives the newest pass's z. A frozen spell suspends any level, and after it the first two passes per track rebuild the baseline. A newer pass that could not be read never hides a level. The status says which pass and why.",
           "Version rule. A track's first pass on a NISAR processing version that its baseline lacks can raise a Watch but cannot be one of the two passes of an Alert. A second pass on that version enters the baseline. When every track's latest pass is its first on a new version, Alerts pause for about two to three weeks and the status says \"Alerts paused\"; otherwise it names the one track whose pass cannot count toward an Alert, since the other tracks still can.",
@@ -143,6 +144,15 @@
             ]
           ]
         }
+      },
+      {
+        "id": "map-licences",
+        "title": "Map data licences",
+        "paragraphs": [
+          "The map under Lake Watch is NASA MODIS true colour. Lake outlines and points: OpenStreetMap, HKH-PK-2020 and Hi-MAG.",
+          "OpenStreetMap data is published under the Open Database Licence (ODbL) 1.0 (https://opendatacommons.org/licenses/odbl/1-0/): it contains data from OpenStreetMap, © OpenStreetMap contributors (https://www.openstreetmap.org/copyright).",
+          "Lake points and areas from HKH-PK-2020 (Siddique et al. 2023, Zenodo 15476013) and Hi-MAG (Chen et al. 2021, ESSD 13:741, Zenodo 4275164) are used under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)."
+        ]
       },
       {
         "id": "limits",

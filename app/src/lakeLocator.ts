@@ -23,6 +23,13 @@ const BACKGROUND = "#0b1825";
 export const BASE_IMAGE = "story/north_map.jpg";
 export const BASE_BOUNDS = { west: 70.8, east: 76.6, south: 34.4, north: 37.6 } as const;
 
+/**
+ * Width over height of the picture as MapLibre draws it. An image source is stretched over its four corners in Web
+ * Mercator, so the drawn shape is the bounds' mercator shape (about 1.47), not the file's own 1740 x 960 pixels.
+ */
+const mercY = (lat: number): number => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+export const BASE_ASPECT = ((BASE_BOUNDS.east - BASE_BOUNDS.west) * Math.PI / 180) / (mercY(BASE_BOUNDS.north) - mercY(BASE_BOUNDS.south));
+
 /** The locator style: a plain background with the MODIS picture on top, dimmed so the pins read. */
 export function locatorStyle(): object {
   const { west, east, south, north } = BASE_BOUNDS;

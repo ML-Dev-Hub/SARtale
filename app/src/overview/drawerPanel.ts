@@ -3,6 +3,7 @@ import { isFrozen, suparcoLine, type Lake } from "../lakes";
 import { el, familyChip, svg } from "./marks";
 import { markerSvg, MARKER_LABELS } from "../statusMarkers";
 import { statusDisplay, type Family } from "../statusDisplay";
+import { BASE_ASPECT } from "../lakeLocator";
 import { SOURCE_LABELS, watchThisLakeUrl } from "./mappedLakes";
 import { latestReadingOnTrack, type MapDrawerFactory, type MappedLake, type MappedLakesFile } from "./model";
 
@@ -55,6 +56,7 @@ export function createDrawerPanel(host: HTMLElement, opts: DrawerPanelOptions): 
   const mapEl = el("div", "ov-map");
   mapEl.dataset.role = "ov-map";
   mapEl.setAttribute("aria-label", "Map of the watched lakes");
+  mapEl.style.setProperty("--ov-map-aspect", BASE_ASPECT.toFixed(4));
   const switchRow = el("div", "ov-mapped-row");
   switchRow.dataset.role = "ov-mapped-row";
   switchRow.setAttribute("role", "status");
@@ -82,9 +84,25 @@ export function createDrawerPanel(host: HTMLElement, opts: DrawerPanelOptions): 
   const dotItem = el("li");
   dotItem.append(dot, "Mapped, not watched yet");
   legend.append(dotItem);
-  const notices = el("div", "ov-notices");
+  // One line of credit with links; the full licence notices stay one tap away.
+  const attribution = el("p", "ov-attribution");
+  attribution.dataset.role = "ov-attribution";
+  const credit = (text: string, href: string): HTMLAnchorElement => {
+    const a = el("a", undefined, text);
+    a.href = href;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    return a;
+  };
+  attribution.append(
+    "Map data: ", credit("OpenStreetMap", "https://www.openstreetmap.org/copyright"), " (ODbL), ",
+    credit("HKH-PK-2020", "https://doi.org/10.5281/zenodo.15476013"), " and ", credit("Hi-MAG", "https://doi.org/10.5281/zenodo.4275164"),
+    " (CC BY 4.0), ", credit("NASA MODIS", "https://modis.gsfc.nasa.gov/"),
+  );
+  const notices = el("details", "ov-notices");
   notices.dataset.role = "ov-notices";
-  host.replaceChildren(header, mapEl, switchRow, card, legend, notices);
+  notices.append(el("summary", undefined, "Licence notices"));
+  host.replaceChildren(header, mapEl, switchRow, card, legend, attribution, notices);
 
   let once: Promise<MappedLakesFile | null> | null = null;
   const loadOnce = (): Promise<MappedLakesFile | null> => (once ??= opts.loadMapped());
@@ -128,7 +146,7 @@ export function createDrawerPanel(host: HTMLElement, opts: DrawerPanelOptions): 
         ["District", l.district ?? "Not known"],
         ["SUPARCO list", suparcoLine(l)],
         ["Area", area],
-        ["Largest recorded extent", ext ? `${ext.km2.toFixed(3)} km² (${ext.source}${ext.year ? ` ${ext.year}` : ""})` : "Not available"],
+        ["Largest mapped outline", ext ? `${ext.km2.toFixed(3)} km² (${ext.source}${ext.year ? ` ${ext.year}` : ""})` : "Not available"],
         ["Latest pass", day ? `${formatDate(day)}${l.status.track ? `, track ${l.status.track}` : ""}` : "None yet"],
         ["Elevation", typeof l.elevation_m === "number" && Number.isFinite(l.elevation_m) ? `${Math.round(l.elevation_m).toLocaleString("en-US")} m` : "Not known"],
       ]),
@@ -190,7 +208,7 @@ export function createDrawerPanel(host: HTMLElement, opts: DrawerPanelOptions): 
     box.addEventListener("change", () => handle.setMappedVisible(box.checked));
     label.append(box, ` Show ${mapped.lakes.length} mapped lakes, not watched yet (grey dots)`);
     switchRow.replaceChildren(label);
-    notices.replaceChildren(el("p", undefined, mapped.notice.odbl), el("p", undefined, mapped.notice.cc_by));
+    notices.replaceChildren(el("summary", undefined, "Licence notices"), el("p", undefined, mapped.notice.odbl), el("p", undefined, mapped.notice.cc_by));
   });
 
   return {

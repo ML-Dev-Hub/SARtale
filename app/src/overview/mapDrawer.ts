@@ -97,9 +97,8 @@ export const createMapDrawer: MapDrawerFactory = (el, { lakes, loadMapped, onPic
           m.resize();
           if (userMoved) return;
           const { west, east, south, north } = BASE_BOUNDS;
-          // A few percent of the smaller side, so pins on the edge are not clipped.
-          const pad = Math.max(10, Math.round(Math.min(el.clientWidth, el.clientHeight) * 0.06));
-          m.fitBounds([[west, south], [east, north]], { padding: pad, animate: false });
+          // The frame has the picture's own shape (--ov-map-aspect), so the bounds fill it with no padding and no empty bands.
+          m.fitBounds([[west, south], [east, north]], { padding: 0, animate: false });
         } finally {
           fitting = false;
         }

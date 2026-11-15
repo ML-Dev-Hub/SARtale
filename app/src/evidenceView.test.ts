@@ -30,13 +30,14 @@ describe("How we know", () => {
   test("shows frozen lakes and the limits in short, then the full method, Sentinel-2 check, data, limits and how to check it inside Technical details", () => {
     const { root } = withLakes();
     const ids = [...root.querySelectorAll<HTMLElement>("[data-section]")].map((s) => s.dataset.section);
-    expect(ids).toEqual(["short-frozen", "short-limits", "lake-method", "lake-checks", "frozen", "data", "limits", "check"]);
+    expect(ids).toEqual(["short-frozen", "short-limits", "lake-method", "lake-checks", "frozen", "data", "map-licences", "limits", "check"]);
     const tech = root.querySelector<HTMLDetailsElement>('details[data-role="evidence-technical"]')!;
     expect(tech.open).toBe(false);
     expect(tech.querySelector("summary")!.textContent).toBe("Technical details");
-    expect([...tech.querySelectorAll<HTMLElement>("[data-section]")].map((s) => s.dataset.section)).toEqual(["lake-method", "lake-checks", "frozen", "data", "limits", "check"]);
+    expect([...tech.querySelectorAll<HTMLElement>("[data-section]")].map((s) => s.dataset.section)).toEqual(["lake-method", "lake-checks", "frozen", "data", "map-licences", "limits", "check"]);
     expect(tech.querySelector('[data-role="lake-checks-table"]')).not.toBeNull();
     expect(tech.textContent).toContain("docs/DATA_SOURCES.md");
+    expect(tech.querySelector('[data-section="map-licences"]')!.textContent).toContain("Open Database Licence (ODbL) 1.0");
     expect(root.querySelector(".evidence-main")!.lastElementChild).toBe(tech);
   });
 
@@ -68,6 +69,8 @@ describe("How we know", () => {
     expect(visible).toContain(`${t.cloud_looks} valid`);
     expect(visible).toContain(`${t.cloud_lakes} of ${t.lake_count} lakes`);
     expect(visible).toContain(t.cloud_start);
+    expect(visible).toContain(t.site_counts);
+    expect(t.site_counts).toBe("39 sites are watched: 36 hold water now and 3 have no lake now; 35 of the 36 had a clear Sentinel-2 scene to check against.");
     expect(visible).toContain(`radar water ${opticalOverlapPhrase(realLakes.checks, true)}`);
     const fewer: LakesFile = { ...realLakes, lakes: realLakes.lakes.slice(0, 3) };
     expect(lakeTokens(fewer).lake_count).not.toBe(t.lake_count);
@@ -99,6 +102,12 @@ describe("How we know", () => {
     const older = open({ ...realLakes, constants: old as LakesFile["constants"] });
     expect(older.text).not.toMatch(/\{\w+\}/);
     expect(older.root.querySelector('[data-section="frozen"]')!.textContent).toContain("Winter radar is untested");
+  });
+
+  test("says Not measured, not Not observable", () => {
+    const t = open(realLakes).root.textContent ?? "";
+    expect(t).not.toContain("Not observable");
+    expect(t).toContain("Not measured");
   });
 
   test("puts what it can and cannot do first, before the detail", () => {
