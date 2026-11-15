@@ -15,13 +15,9 @@ when cloud hides them from optical satellites.
 NISAR radar, from NASA and ISRO, sees through cloud.
 
 5
-00:00:18,900 --> 00:00:20,393
-We built SARtale:
+00:00:18,900 --> 00:00:24,747
+We built SARtale: one plain status for every watched lake, thirty-nine so far,
 
 6
-00:00:20,433 --> 00:00:24,793
-one plain status for each of thirty-nine lakes, with what to
-
-7
-00:00:24,833 --> 00:00:26,660
-do and who to contact.
+00:00:24,787 --> 00:00:26,850
+and anyone can add more.
