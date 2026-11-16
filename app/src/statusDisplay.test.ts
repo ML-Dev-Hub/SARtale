@@ -64,8 +64,8 @@ describe("statusDisplay", () => {
     expect(c.decrease).toBe(file.counts!.decrease);
     expect(c.alert).toBe(file.counts!.alert);
     const b = frozenBreakdown(file.lakes);
+    // no fixed numbers: the weekly refresh changes how many lakes are frozen, and by which evidence
     expect(b.seen + b.temperature).toBe(c.frozen);
-    expect(b).toEqual({ seen: 9, temperature: 7 });
   });
 });
 
