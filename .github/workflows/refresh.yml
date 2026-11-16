@@ -9,6 +9,11 @@ on:
   schedule:
     - cron: "0 3 * * 1"
   workflow_dispatch:
+    inputs:
+      max_new_lakes:
+        description: Lakes new to the window cache to fetch in this run (scheduled runs fetch 12)
+        required: false
+        default: "12"
 
 jobs:
   rebuild:
@@ -34,6 +39,8 @@ jobs:
       - name: Rebuild the lake data
         timeout-minutes: 330  # below the job's 360, so the publish job can still report a timeout
         uses: ./.github/actions/rebuild
+        with:
+          max-new-lakes: ${{ inputs.max_new_lakes || '12' }}
         env:
           EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
           EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}

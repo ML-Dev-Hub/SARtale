@@ -357,7 +357,7 @@ def test_netrc_removed_always():
 def test_rebuild_action_order():
     doc = load(REBUILD)
     assert doc["runs"]["using"] == "composite"
-    assert not doc.get("inputs")
+    assert list(doc.get("inputs") or {}) == ["max-new-lakes"]  # the only input: the fetch cap
     steps = doc["runs"]["steps"]
     runs = [s.get("run") or "" for s in steps]
     uses = [s.get("uses") or "" for s in steps]
@@ -398,7 +398,11 @@ def test_rebuild_action_order():
     assert at("pytest tests -q") < at("npm test -- --run")
     assert "npm ci --ignore-scripts" in runs[at("npm test -- --run")]
     assert runs[at("lakes-fetch")].count("run_pipeline lakes-fetch") == 2, "lakes-fetch is retried once"
-    assert runs[at("lakes-fetch")].count("--max-new-lakes 12") == 2, "at most 12 new lakes per run, the retry too"
+    # at most 12 new lakes per run unless the caller asks for more (refresh.yml's manual input), the retry too
+    assert doc["inputs"]["max-new-lakes"]["default"] == "12"
+    assert steps[at("lakes-fetch")]["env"]["MAX_NEW_LAKES"] == "${{ inputs.max-new-lakes }}"
+    assert runs[at("lakes-fetch")].count('--max-new-lakes "$MAX_NEW_LAKES"') == 2
+    assert "*[!0-9]*" in runs[at("lakes-fetch")], "a cap that is not a whole number stops the fetch"
     # 4 worker processes on the 2-vCPU, 7 GB runner (the reads wait on the network), the retry too; 4 checks at once
     assert runs[at("lakes-fetch")].count("--workers 4") == 2
     assert "--workers 4" in runs[check]
@@ -452,7 +456,11 @@ def test_refresh_scheduled_weekly():
     on = on_of(doc)
     assert on["schedule"] == [{"cron": "0 3 * * 1"}]
     assert "workflow_dispatch" in on
+    # a manual run may fetch more lakes new to the cache (after the cache was invalidated); scheduled runs fetch 12
+    assert on["workflow_dispatch"]["inputs"]["max_new_lakes"]["default"] == "12"
     rebuild, publish = doc["jobs"]["rebuild"], doc["jobs"]["publish"]
+    assert [s["with"] for s in rebuild["steps"] if runs_rebuild(s)] == [
+        {"max-new-lakes": "${{ inputs.max_new_lakes || '12' }}"}]
     assert rebuild["environment"] == "earthdata"
     assert rebuild["timeout-minutes"] == 360
     assert rebuild["permissions"] == {"contents": "read"}

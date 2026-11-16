@@ -8,6 +8,12 @@ description: >
   passes EARTHDATA_USERNAME and EARTHDATA_PASSWORD through `env:` on the step that uses this action; they are
   written to a temporary ~/.netrc only for the fetch.
 
+inputs:
+  max-new-lakes:
+    description: Fetch at most this many lakes new to the cache in this run (the rest wait for the next run)
+    required: false
+    default: "12"
+
 runs:
   using: composite
   steps:
@@ -45,16 +51,19 @@ runs:
       working-directory: processing
       run: python -m sartale.run_pipeline lakes-search
 
-    - name: Fetch the passes (retried once; at most 12 lakes new to the cache per run; 4 passes at once)
+    - name: Fetch the passes (retried once; at most `max-new-lakes` lakes new to the cache per run, 12 by default; 4 passes at once)
       # A lake with no cached window yet costs a full fetch of every pass; the rest wait for next week's run.
       # 4 worker processes, not the default 6: the standard private-repo runner has 2 vCPUs and 7 GB. The reads wait
       # on the network, so 4 keep both cores busy; 4 processes take well under 2 GB; 4 connections stay gentle on NASA.
       shell: bash -el {0}
       working-directory: processing
+      env:
+        MAX_NEW_LAKES: ${{ inputs.max-new-lakes }}
       run: |
-        python -m sartale.run_pipeline lakes-fetch --max-new-lakes 12 --workers 4 || {
+        case "$MAX_NEW_LAKES" in ''|*[!0-9]*) echo "::error::max-new-lakes must be a whole number"; exit 1 ;; esac
+        python -m sartale.run_pipeline lakes-fetch --max-new-lakes "$MAX_NEW_LAKES" --workers 4 || {
           echo "lakes-fetch failed; retrying once"
-          python -m sartale.run_pipeline lakes-fetch --max-new-lakes 12 --workers 4
+          python -m sartale.run_pipeline lakes-fetch --max-new-lakes "$MAX_NEW_LAKES" --workers 4
         }
 
     - name: Remove the Earthdata login

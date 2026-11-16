@@ -49,7 +49,8 @@ def test_site_address_is_the_same_everywhere():
 def test_readme_links_the_live_site_and_guide():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert f'href="{SITE}"' in readme and f'href="{SITE}guide/"' in readme
-    assert "saeedahmad.me" not in readme and "saeedahmadicp" not in readme
+    # no link to the old personal sites; the team table may name GitHub accounts
+    assert "saeedahmad.me" not in readme and "saeedahmadicp.github.io" not in readme
 
 
 def test_guide_relative_links_resolve():
